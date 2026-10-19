@@ -19,8 +19,9 @@ Thumbs.db
 /server/.gradle/
 /server/build/
 
-# Local tool artifacts
-/.superpowers/sdd/
+# Local agent artifacts
+/.superpowers/
+/docs/superpowers/
 
 # Logs
 *.log
