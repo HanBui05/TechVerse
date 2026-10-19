@@ -1,0 +1,26 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE and operating system files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Next.js application output
+/app/node_modules/
+/app/.next/
+/app/out/
+
+# Spring Boot / Gradle output
+/server/.gradle/
+/server/build/
+
+# Local tool artifacts
+/.superpowers/sdd/
+
+# Logs
+*.log
