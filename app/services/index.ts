@@ -9,18 +9,35 @@ const token = () => typeof window === "undefined" ? "" : localStorage.getItem("t
 /** Chuẩn hóa response profile vì PostgreSQL có thể serialize array thành PGobject khi driver trả về metadata. */
 const normalizeUser = (raw: any): User => {
   const source = raw?.user ?? raw;
+  const scalar = (value: unknown) => value && typeof value === "object" && "value" in value ? (value as { value: unknown }).value : value;
   let roles: unknown = source?.roles;
   const roleObject = roles as { value?: unknown } | null | undefined;
   if (!Array.isArray(roles) && roleObject?.value) roles = roleObject.value;
   if (typeof roles === "string") roles = roles.replace(/^\{|\}$/g, "").split(",").filter(Boolean);
-  return { ...source, roles: Array.isArray(roles) ? roles.map((role) => typeof role === "string" ? role : String(role?.value ?? role)).filter(Boolean) : [] } as User;
+  return {
+    ...source,
+    id: String(scalar(source?.id) ?? ""),
+    fullName: String(scalar(source?.fullName) ?? ""),
+    email: String(scalar(source?.email) ?? ""),
+    avatarUrl: scalar(source?.avatarUrl) as string | undefined,
+    roles: Array.isArray(roles) ? roles.map((role) => String(scalar(role) ?? "")).filter(Boolean) : []
+  } as User;
+};
+/** PostgreSQL citext/jsonb đôi khi đi qua JDBC thành {null,type,value}; unwrap đệ quy cho mọi API response. */
+const normalizeApiValue = (value: any): any => {
+  if (Array.isArray(value)) return value.map(normalizeApiValue);
+  if (value && typeof value === "object") {
+    if ("value" in value && "type" in value) return normalizeApiValue(value.value);
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalizeApiValue(item)]));
+  }
+  return value;
 };
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers); headers.set("Content-Type", "application/json");
   if (token()) headers.set("Authorization", `Bearer ${token()}`);
   const response = await fetch(`${API}${path}`, { ...init, headers, cache: "no-store" });
   if (!response.ok) throw new Error((await response.text()) || `API ${response.status}`);
-  return response.status === 204 ? undefined as T : response.json();
+  return response.status === 204 ? undefined as T : response.json().then(normalizeApiValue) as Promise<T>;
 }
 const qs = (params: Record<string, string | undefined>) => { const value = new URLSearchParams(); Object.entries(params).forEach(([k,v]) => v && value.set(k,v)); const text=value.toString(); return text ? `?${text}` : ""; };
 
