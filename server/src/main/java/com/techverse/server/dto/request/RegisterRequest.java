@@ -1,6 +1,7 @@
 package com.techverse.server.dto.request;
 
 import com.techverse.server.validation.annotation.PasswordConfirmationMatches;
+import com.techverse.server.validation.annotation.Utf8ByteLength;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -16,6 +17,7 @@ public record RegisterRequest(
 		String email,
 		@NotBlank(message = "Password is required")
 		@Size(min = 8, max = 72, message = "Password must contain between 8 and 72 characters")
+		@Utf8ByteLength(max = 72, message = "Password must not exceed 72 UTF-8 bytes")
 		String password,
 		@NotBlank(message = "Confirm password is required")
 		String confirmPassword

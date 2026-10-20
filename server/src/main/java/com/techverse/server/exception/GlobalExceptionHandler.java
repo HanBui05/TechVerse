@@ -7,6 +7,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -50,6 +51,11 @@ public class GlobalExceptionHandler {
 			HttpServletRequest request
 	) {
 		return error(ErrorCode.DATA_CONFLICT, request, null);
+	}
+
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	ResponseEntity<ApiError> handleMalformedRequest(HttpServletRequest request) {
+		return error(ErrorCode.MALFORMED_REQUEST, request, null);
 	}
 
 	@ExceptionHandler(Exception.class)

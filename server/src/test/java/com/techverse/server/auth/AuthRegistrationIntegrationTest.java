@@ -85,6 +85,24 @@ class AuthRegistrationIntegrationTest {
 				.andExpect(jsonPath("$.fieldErrors.email").value("Email must be valid"));
 	}
 
+	@Test
+	void rejectsMalformedJson() throws Exception {
+		mockMvc.perform(post("/api/v1/auth/register")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"fullName\":\"Nguyen Van A\""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+	}
+
+	@Test
+	void rejectsPasswordExceedingBcryptUtf8ByteLimit() throws Exception {
+		String tooLongUtf8Password = "é".repeat(37);
+
+		register("unicode-password@example.com", tooLongUtf8Password, tooLongUtf8Password)
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fieldErrors.password").value("Password must not exceed 72 UTF-8 bytes"));
+	}
+
 	private ResultActions register(String email, String password, String confirmPassword) throws Exception {
 		return mockMvc.perform(post("/api/v1/auth/register")
 				.contentType(MediaType.APPLICATION_JSON)
