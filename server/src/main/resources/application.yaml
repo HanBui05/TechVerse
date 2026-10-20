@@ -1,6 +1,9 @@
 spring:
   application:
     name: server
+  datasource:
+    hikari:
+      connection-init-sql: SET search_path TO techverse, public
   flyway:
     locations: classpath:db/migration
     schemas: techverse
