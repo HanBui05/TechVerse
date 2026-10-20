@@ -49,14 +49,26 @@ public class User extends BaseEntity {
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	private final Set<UserRole> userRoles = new HashSet<>();
 
-	private User(String fullName, String email, String password) {
+	private User(String fullName, String email, String password, String phoneNumber, LocalDate dateOfBirth) {
 		this.fullName = fullName;
 		this.email = email;
 		this.password = password;
+		this.phoneNumber = phoneNumber;
+		this.dateOfBirth = dateOfBirth;
 	}
 
 	public static User createLocalAccount(String fullName, String email, String encodedPassword) {
-		return new User(fullName, email, encodedPassword);
+		return createLocalAccount(fullName, email, encodedPassword, null, null);
+	}
+
+	public static User createLocalAccount(
+			String fullName,
+			String email,
+			String encodedPassword,
+			String phoneNumber,
+			LocalDate dateOfBirth
+	) {
+		return new User(fullName, email, encodedPassword, phoneNumber, dateOfBirth);
 	}
 
 	public void addRole(Role role) {

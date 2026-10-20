@@ -37,7 +37,9 @@ public class AuthServiceImpl implements AuthService {
 		User user = User.createLocalAccount(
 				request.fullName().trim(),
 				email,
-				passwordEncoder.encode(request.password())
+				passwordEncoder.encode(request.password()),
+				normalizeOptional(request.phoneNumber()),
+				request.dateOfBirth()
 		);
 		User savedUser = userRepository.saveAndFlush(user);
 
@@ -45,7 +47,13 @@ public class AuthServiceImpl implements AuthService {
 				savedUser.getId(),
 				savedUser.getFullName(),
 				savedUser.getEmail(),
+				savedUser.getPhoneNumber(),
+				savedUser.getDateOfBirth(),
 				Set.of(RoleName.LEARNER)
 		);
+	}
+
+	private String normalizeOptional(String value) {
+		return value == null || value.isBlank() ? null : value.trim();
 	}
 }
