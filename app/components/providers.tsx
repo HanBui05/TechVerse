@@ -1,0 +1,20 @@
+"use client";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { defaultLocale, localeStorageKey, locales, type Locale } from "@/lib/i18n";
+
+type Theme = "light" | "dark" | "system";
+const themeStorageKey = "techverse-theme";
+const accentStorageKey = "techverse-accent";
+const defaultAccent = "#246b63";
+const ThemeContext = createContext<{ theme: Theme; setTheme: (theme: Theme) => void }>({ theme: "light", setTheme: () => undefined });
+const AccentContext = createContext<{ accent: string; setAccent: (accent: string) => void }>({ accent: defaultAccent, setAccent: () => undefined });
+const I18nContext = createContext<{ locale: Locale; setLocale: (locale: Locale) => void; copy: typeof locales.vi | typeof locales.en }>({ locale: defaultLocale, setLocale: () => undefined, copy: locales.vi });
+
+const hexToRgb = (hex: string) => { const value = hex.replace("#", ""); const parsed = value.length === 3 ? value.split("").map((char) => char + char).join("") : value; const number = Number.parseInt(parsed, 16); return { r: number >> 16 & 255, g: number >> 8 & 255, b: number & 255 }; };
+const contrastFor = (hex: string) => { const { r, g, b } = hexToRgb(hex); return (r * 299 + g * 587 + b * 114) / 1000 > 155 ? "#17212b" : "#ffffff"; };
+export function ThemeProvider({ children }: { children: ReactNode }) { const [theme, setThemeState] = useState<Theme>("light"); const [accent, setAccentState] = useState(defaultAccent); useEffect(() => { const stored = window.localStorage.getItem(themeStorageKey) as Theme | null; if (stored === "light" || stored === "dark" || stored === "system") setThemeState(stored); const storedAccent = window.localStorage.getItem(accentStorageKey); if (storedAccent && /^#[0-9a-f]{6}$/i.test(storedAccent)) setAccentState(storedAccent); }, []); useEffect(() => { const root = document.documentElement; const resolved = theme === "system" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : theme; root.dataset.theme = resolved; root.dataset.themePreference = theme; if (theme === "system") { const media = window.matchMedia("(prefers-color-scheme: dark)"); const update = () => { root.dataset.theme = media.matches ? "dark" : "light"; }; media.addEventListener("change", update); return () => media.removeEventListener("change", update); } }, [theme]); useEffect(() => { const root = document.documentElement; const { r, g, b } = hexToRgb(accent); root.style.setProperty("--brand", accent); root.style.setProperty("--brand-soft", `rgb(${r} ${g} ${b} / .14)`); root.style.setProperty("--focus", accent); root.style.setProperty("--brand-contrast", contrastFor(accent)); }, [accent]); const setTheme = (next: Theme) => { setThemeState(next); window.localStorage.setItem(themeStorageKey, next); }; const setAccent = (next: string) => { if (!/^#[0-9a-f]{6}$/i.test(next)) return; setAccentState(next); window.localStorage.setItem(accentStorageKey, next); }; return <ThemeContext.Provider value={{ theme, setTheme }}><AccentContext.Provider value={{ accent, setAccent }}>{children}</AccentContext.Provider></ThemeContext.Provider>; }
+export function I18nProvider({ children }: { children: ReactNode }) { const [locale, setLocaleState] = useState<Locale>(defaultLocale); useEffect(() => { const stored = window.localStorage.getItem(localeStorageKey) as Locale | null; if (stored === "vi" || stored === "en") setLocaleState(stored); }, []); const setLocale = (next: Locale) => { setLocaleState(next); window.localStorage.setItem(localeStorageKey, next); }; const value = useMemo(() => ({ locale, setLocale, copy: locales[locale] }), [locale]); return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>; }
+export function AppProviders({ children }: { children: ReactNode }) { return <ThemeProvider><I18nProvider>{children}</I18nProvider></ThemeProvider>; }
+export const useTheme = () => useContext(ThemeContext);
+export const useAccent = () => useContext(AccentContext);
+export const useI18n = () => useContext(I18nContext);

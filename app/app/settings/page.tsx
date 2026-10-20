@@ -1,0 +1,5 @@
+"use client";
+import { useI18n } from "@/components/providers";
+import { AccentSettings, LanguageSettings, ThemeSettings } from "@/components/settings";
+
+export default function SettingsPage() { const { copy } = useI18n(); return <div className="container"><div className="settings-layout"><aside className="settings-sidebar"><div className="eyebrow">TechVerse</div><h1>{copy.settings.title}</h1><nav className="settings-nav" aria-label={copy.settings.title}><a className="active" href="#appearance">{copy.settings.appearance}</a><a href="#theme-heading">{copy.settings.theme}</a><a href="#accent-heading">{copy.settings.accent}</a><a href="#language-heading">{copy.settings.language}</a></nav></aside><main className="settings-content"><div className="page-heading"><div className="eyebrow">{copy.settings.eyebrow}</div><h2>{copy.settings.title}</h2><p className="lead">{copy.settings.description}</p></div><div id="appearance" className="settings-panel"><ThemeSettings /><AccentSettings /><LanguageSettings /></div></main></div></div>; }

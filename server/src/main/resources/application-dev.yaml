@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:postgresql://${DATABASE_HOST:localhost}:${DATABASE_PORT:${POSTGRES_HOST_PORT:5432}}/${POSTGRES_DB:techverse}
-    username: ${POSTGRES_USER:root}
-    password: ${POSTGRES_PASSWORD:123456}
+    username: ${POSTGRES_USER:techverse}
+    password: ${POSTGRES_PASSWORD:techverse123}
   data:
     redis:
       host: ${REDIS_HOST:localhost}

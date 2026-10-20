@@ -1,0 +1,5 @@
+import Link from "next/link";
+import { exerciseSets, interviewQuestions } from "@/mocks/data";
+import { Badge, Card, PageHeading, SectionHead } from "@/components/ui";
+
+export default function PracticePage() { return <div className="container"><PageHeading eyebrow="Practice" title="Luyện tập" description="Ôn lại kiến thức qua các bộ bài tập và câu hỏi phỏng vấn đã được mô hình hóa." /><SectionHead title="Bộ bài tập" description="Chỉ hiển thị các dạng bài có trong migration." /><div className="grid grid-2">{exerciseSets.map((set) => <Card key={set.id}><div className="card-meta"><Badge>{set.exerciseType}</Badge><span>{set.difficulty}</span></div><h3>{set.title}</h3><p>{set.description}</p><Link className="button button-primary" href={`/practice/${set.id}`}>Bắt đầu làm bài</Link></Card>)}</div><SectionHead title="Ôn tập phỏng vấn" description="Câu hỏi và gợi ý từ dữ liệu mock." href="/practice/interview" /><div className="grid grid-2">{interviewQuestions.map((item) => <Card key={item.id}><div className="card-meta"><Badge>{item.level}</Badge><span>{item.topic.name}</span></div><h3>{item.question}</h3><p>{item.hint}</p></Card>)}</div></div>; }

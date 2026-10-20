@@ -1,6 +1,10 @@
 spring:
   application:
     name: server
+  # Khi chạy local bằng ./gradlew bootRun, tự dùng cấu hình PostgreSQL ở application-dev.yaml.
+  # Môi trường production vẫn nên truyền SPRING_PROFILES_ACTIVE=prod một cách tường minh.
+  profiles:
+    default: dev
   flyway:
     locations: classpath:db/migration
     schemas: techverse
