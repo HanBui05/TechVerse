@@ -1,4 +1,13 @@
 package com.techverse.server.dto.response;
 
-public record ApiResponse<T>(int status, String message, T data) {
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
+public class ApiResponse<T> {
+
+	private final int status;
+	private final String message;
+	private final T data;
 }

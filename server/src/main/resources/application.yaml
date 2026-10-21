@@ -19,3 +19,10 @@ spring:
         default_schema: techverse
         jdbc:
           time_zone: Asia/Ho_Chi_Minh
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY}
+  issuer: https://api.techverse.local
+  access-token-expiration: 15m
+  refresh-token-expiration: 7d
+  refresh-cookie-secure: false

@@ -14,5 +14,7 @@ sendgrid:
   template-id:
     register-success: ${SENDGRID_TEMPLATE_REGISTER_SUCCESS}
 
+jwt:
+  secret-key: ${JWT_SECRET_KEY}
 server:
   port: ${SERVER_PORT:8080}

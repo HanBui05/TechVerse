@@ -3,6 +3,7 @@ name: techverse
 services:
   postgres:
     image: postgres:16-alpine
+    command: ["postgres", "-c", "timezone=Asia/Ho_Chi_Minh"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-techverse}
       POSTGRES_USER: ${POSTGRES_USER:-techverse}

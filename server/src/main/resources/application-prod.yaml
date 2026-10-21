@@ -8,5 +8,8 @@ spring:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
 
+jwt:
+  refresh-cookie-secure: true
+
 server:
   port: ${SERVER_PORT}
