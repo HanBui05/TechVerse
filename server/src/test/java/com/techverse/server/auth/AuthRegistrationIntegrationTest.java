@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.techverse.server.entity.User;
 import com.techverse.server.repository.UserRepository;
+import java.time.LocalDate;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +60,8 @@ class AuthRegistrationIntegrationTest {
 		User savedUser = userRepository.findByEmail("nguyen.van.a@example.com").orElseThrow();
 		assertThat(savedUser.getPassword()).isNotEqualTo("SecurePass123!");
 		assertThat(passwordEncoder.matches("SecurePass123!", savedUser.getPassword())).isTrue();
+		assertThat(savedUser.getCreatedBy()).isEqualTo(savedUser.getId());
+		assertThat(savedUser.getUpdatedBy()).isEqualTo(savedUser.getId());
 	}
 
 	@Test
@@ -83,6 +86,32 @@ class AuthRegistrationIntegrationTest {
 		register("not-an-email", "SecurePass123!", "SecurePass123!")
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.fieldErrors.email").value("Email must be valid"));
+	}
+
+	@Test
+	void rejectsDateOfBirthForUserYoungerThanSix() throws Exception {
+		register(
+				"younger-than-six@example.com",
+				"SecurePass123!",
+				"SecurePass123!",
+				"0912345678",
+				LocalDate.now().minusYears(5)
+		)
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fieldErrors.dateOfBirth").value("User must be at least 6 years old"));
+	}
+
+	@Test
+	void rejectsPhoneNumberWithFewerThanTenDigits() throws Exception {
+		register(
+				"short-phone@example.com",
+				"SecurePass123!",
+				"SecurePass123!",
+				"091234567",
+				LocalDate.of(2000, 5, 24)
+		)
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fieldErrors.phoneNumber").value("Phone number must contain between 10 and 20 digits"));
 	}
 
 	@Test
@@ -111,6 +140,25 @@ class AuthRegistrationIntegrationTest {
 						"email", email,
 						"password", password,
 						"confirmPassword", confirmPassword
+				))));
+	}
+
+	private ResultActions register(
+			String email,
+			String password,
+			String confirmPassword,
+			String phoneNumber,
+			LocalDate dateOfBirth
+	) throws Exception {
+		return mockMvc.perform(post("/api/v1/auth/register")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(Map.of(
+						"fullName", "Nguyen Van A",
+						"email", email,
+						"password", password,
+						"confirmPassword", confirmPassword,
+						"phoneNumber", phoneNumber,
+						"dateOfBirth", dateOfBirth
 				))));
 	}
 }

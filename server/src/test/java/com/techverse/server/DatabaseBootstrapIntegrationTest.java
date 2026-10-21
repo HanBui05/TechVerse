@@ -26,9 +26,17 @@ class DatabaseBootstrapIntegrationTest {
 	private JdbcTemplate jdbcTemplate;
 
 	@Test
-	void appliesV1SchemaAndRecordsIt() {
+	void appliesSchemaMigrationsAndRecordsThem() {
 		assertThat(tableExists("techverse", "users")).isTrue();
 		assertThat(successfulMigrationCount("1")).isEqualTo(1);
+		assertThat(successfulMigrationCount("2")).isEqualTo(1);
+		assertThat(columnExists("techverse", "users", "email_verified_at")).isFalse();
+	}
+
+	@Test
+	void configuresDatabaseConnectionsForVietnamTime() {
+		assertThat(jdbcTemplate.queryForObject("SHOW TIME ZONE", String.class))
+				.isEqualTo("Asia/Ho_Chi_Minh");
 	}
 
 	private boolean tableExists(String schemaName, String tableName) {
@@ -42,6 +50,21 @@ class DatabaseBootstrapIntegrationTest {
 				Boolean.class,
 				schemaName,
 				tableName);
+		return Boolean.TRUE.equals(exists);
+	}
+
+	private boolean columnExists(String schemaName, String tableName, String columnName) {
+		Boolean exists = jdbcTemplate.queryForObject(
+				"""
+					SELECT EXISTS (
+						SELECT FROM information_schema.columns
+						WHERE table_schema = ? AND table_name = ? AND column_name = ?
+					)
+					""",
+				Boolean.class,
+				schemaName,
+				tableName,
+				columnName);
 		return Boolean.TRUE.equals(exists);
 	}
 

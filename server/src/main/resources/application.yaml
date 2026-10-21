@@ -1,9 +1,11 @@
 spring:
   application:
     name: server
+  jackson:
+    time-zone: Asia/Ho_Chi_Minh
   datasource:
     hikari:
-      connection-init-sql: SET search_path TO techverse, public
+      connection-init-sql: SET TIME ZONE 'Asia/Ho_Chi_Minh'; SET search_path TO techverse, public
   flyway:
     locations: classpath:db/migration
     schemas: techverse
@@ -15,3 +17,5 @@ spring:
     properties:
       hibernate:
         default_schema: techverse
+        jdbc:
+          time_zone: Asia/Ho_Chi_Minh

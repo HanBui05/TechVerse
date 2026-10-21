@@ -6,7 +6,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
@@ -42,9 +41,6 @@ public class User extends BaseEntity {
 
 	@Column(name = "is_active", nullable = false)
 	private boolean active = true;
-
-	@Column(name = "email_verified_at")
-	private Instant emailVerifiedAt;
 
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	private final Set<UserRole> userRoles = new HashSet<>();

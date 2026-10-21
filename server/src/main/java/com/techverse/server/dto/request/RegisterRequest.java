@@ -1,6 +1,8 @@
 package com.techverse.server.dto.request;
 
+import com.techverse.server.validation.annotation.MinimumAge;
 import com.techverse.server.validation.annotation.PasswordConfirmationMatches;
+import com.techverse.server.validation.annotation.PhoneNumber;
 import com.techverse.server.validation.annotation.Utf8ByteLength;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
@@ -25,9 +27,11 @@ public record RegisterRequest(
 		@NotBlank(message = "Confirm password is required")
 		String confirmPassword,
 		@Size(max = 20, message = "Phone number must not exceed 20 characters")
+		@PhoneNumber(message = "Phone number must contain between 10 and 20 digits")
 		@Schema(example = "+84912345678")
 		String phoneNumber,
 		@Past(message = "Date of birth must be in the past")
+		@MinimumAge(value = 6, message = "User must be at least 6 years old")
 		@Schema(type = "string", format = "date", example = "2004-05-24")
 		LocalDate dateOfBirth
 ) {
