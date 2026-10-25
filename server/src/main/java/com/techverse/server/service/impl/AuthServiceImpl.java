@@ -16,10 +16,15 @@ import com.techverse.server.repository.UserRepository;
 import com.techverse.server.service.AuthService;
 import com.techverse.server.service.TokenService;
 import java.util.Set;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,6 +82,41 @@ public class AuthServiceImpl implements AuthService {
 			throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
 		}
 
+		return issueLoginTokens(user);
+	}
+
+	@Override
+	@Transactional
+	public LoginTokens refresh(String rawRefreshToken) {
+		Jwt refreshToken = decodeRefreshToken(rawRefreshToken);
+		UUID userId = parseUserId(refreshToken.getSubject());
+		String refreshTokenId = refreshToken.getId();
+		if (refreshTokenId == null
+				|| tokenService.findUserId(refreshTokenId, TokenType.REFRESH)
+				.filter(userId::equals)
+				.isEmpty()) {
+			throw invalidRefreshToken();
+		}
+
+		User user = userRepository.findById(userId)
+				.filter(User::isActive)
+				.orElseThrow(this::invalidRefreshToken);
+		tokenService.deleteToken(refreshTokenId);
+		return issueLoginTokens(user);
+	}
+
+	@Override
+	public void logout(String rawAccessToken, String rawRefreshToken) {
+		revokeToken(rawAccessToken, TokenType.ACCESS);
+		revokeToken(rawRefreshToken, TokenType.REFRESH);
+	}
+
+	@Override
+	public void logoutAll(UUID userId) {
+		tokenService.deleteAllTokensByUserId(userId);
+	}
+
+	private LoginTokens issueLoginTokens(User user) {
 		Set<RoleName> roles = user.getUserRoles().stream()
 				.map(userRole -> userRole.getRole().getName())
 				.collect(Collectors.toUnmodifiableSet());
@@ -89,6 +129,56 @@ public class AuthServiceImpl implements AuthService {
 				.accessToken(accessToken)
 				.refreshToken(refreshToken)
 				.build();
+	}
+
+	private Jwt decodeRefreshToken(String rawRefreshToken) {
+		if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+			throw invalidRefreshToken();
+		}
+		try {
+			return tokenService.decodeRefreshToken(rawRefreshToken);
+		} catch (JwtException exception) {
+			throw invalidRefreshToken();
+		}
+	}
+
+	private void revokeToken(String rawToken, TokenType tokenType) {
+		if (rawToken == null || rawToken.isBlank()) {
+			return;
+		}
+		try {
+			Jwt token = tokenService.decodeTokenForLogout(rawToken);
+			Optional<UUID> userId = tryParseUserId(token.getSubject());
+			if (token.getId() != null
+					&& tokenType.name().toLowerCase(Locale.ROOT).equals(token.getClaimAsString("token_type"))
+					&& userId.filter(id -> tokenService.findUserId(token.getId(), tokenType)
+							.filter(id::equals)
+							.isPresent()).isPresent()) {
+				tokenService.deleteToken(token.getId());
+			}
+		} catch (JwtException exception) {
+			// Logout is idempotent: an invalid or expired browser token is already unusable.
+		}
+	}
+
+	private UUID parseUserId(String userId) {
+		try {
+			return UUID.fromString(userId);
+		} catch (IllegalArgumentException exception) {
+			throw invalidRefreshToken();
+		}
+	}
+
+	private Optional<UUID> tryParseUserId(String userId) {
+		try {
+			return Optional.of(UUID.fromString(userId));
+		} catch (IllegalArgumentException exception) {
+			return Optional.empty();
+		}
+	}
+
+	private BusinessException invalidRefreshToken() {
+		return new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
 	}
 
 	private String normalizeOptional(String value) {

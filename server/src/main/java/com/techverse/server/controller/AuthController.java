@@ -15,15 +15,20 @@ import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -53,17 +58,62 @@ public class AuthController {
 			HttpServletResponse response
 	) {
 		LoginTokens tokens = authService.login(request);
-		addRefreshTokenCookie(response, tokens.getRefreshToken());
+		return tokenResponse(tokens, response, "User authenticated successfully");
+	}
 
+	@PostMapping("/refresh")
+	@Operation(summary = "Rotate access and refresh tokens")
+	public ResponseEntity<ApiResponse<LoginResponse>> refresh(
+			@CookieValue(value = "refresh_token", required = false) String refreshToken,
+			HttpServletResponse response
+	) {
+		LoginTokens tokens = authService.refresh(refreshToken);
+		return tokenResponse(tokens, response, "Token refreshed successfully");
+	}
+
+	@PostMapping("/logout")
+	@Operation(summary = "Log out from the current device")
+	public ResponseEntity<ApiResponse<Void>> logout(
+			@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+			@CookieValue(value = "refresh_token", required = false) String refreshToken,
+			HttpServletResponse response
+	) {
+		authService.logout(extractBearerToken(authorization), refreshToken);
+		clearRefreshTokenCookie(response);
+		return ResponseEntity.ok(ApiResponse.<Void>builder()
+				.status(HttpStatus.OK.value())
+				.message("User logged out successfully")
+				.build());
+	}
+
+	@PostMapping("/logout-all")
+	@Operation(summary = "Log out from every device")
+	public ResponseEntity<ApiResponse<Void>> logoutAll(
+			@AuthenticationPrincipal Jwt authenticatedUser,
+			HttpServletResponse response
+	) {
+		authService.logoutAll(UUID.fromString(authenticatedUser.getSubject()));
+		clearRefreshTokenCookie(response);
+		return ResponseEntity.ok(ApiResponse.<Void>builder()
+				.status(HttpStatus.OK.value())
+				.message("User logged out from all devices successfully")
+				.build());
+	}
+
+	private ResponseEntity<ApiResponse<LoginResponse>> tokenResponse(
+			LoginTokens tokens,
+			HttpServletResponse response,
+			String message
+	) {
+		addRefreshTokenCookie(response, tokens.getRefreshToken());
 		LoginResponse loginResponse = LoginResponse.builder()
 				.accessToken(tokens.getAccessToken().getValue())
 				.expiresAt(tokens.getAccessToken().getExpiresAt())
 				.expiresIn(tokens.getAccessToken().getSecondsTtl())
 				.build();
-
 		return ResponseEntity.ok(ApiResponse.<LoginResponse>builder()
 				.status(HttpStatus.OK.value())
-				.message("User authenticated successfully")
+				.message(message)
 				.data(loginResponse)
 				.build());
 	}
@@ -78,5 +128,23 @@ public class AuthController {
 				.maxAge(maxAge)
 				.build();
 		response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+	}
+
+	private void clearRefreshTokenCookie(HttpServletResponse response) {
+		ResponseCookie cookie = ResponseCookie.from("refresh_token", "")
+				.httpOnly(true)
+				.secure(jwtProperties.refreshCookieSecure())
+				.sameSite("Lax")
+				.path("/api/v1/auth")
+				.maxAge(Duration.ZERO)
+				.build();
+		response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+	}
+
+	private String extractBearerToken(String authorization) {
+		if (authorization == null || !authorization.regionMatches(true, 0, "Bearer ", 0, 7)) {
+			return null;
+		}
+		return authorization.substring(7).trim();
 	}
 }
