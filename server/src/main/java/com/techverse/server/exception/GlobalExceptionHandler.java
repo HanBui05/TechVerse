@@ -17,13 +17,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-	@ExceptionHandler(BusinessException.class)
-	ResponseEntity<ApiError> handleBusinessException(BusinessException exception, HttpServletRequest request) {
+	@ExceptionHandler(CustomException.class)
+	ResponseEntity<ErrorResponse> handleCustomException(CustomException exception, HttpServletRequest request) {
 		return error(exception.getErrorCode(), request, null);
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
-	ResponseEntity<ApiError> handleValidationException(
+	ResponseEntity<ErrorResponse> handleValidationException(
 			MethodArgumentNotValidException exception,
 			HttpServletRequest request
 	) {
@@ -34,19 +34,11 @@ public class GlobalExceptionHandler {
 		exception.getBindingResult().getGlobalErrors().forEach(error ->
 				fieldErrors.putIfAbsent("confirmPassword", error.getDefaultMessage()));
 
-		ApiError body = new ApiError(
-				400,
-				"VALIDATION_ERROR",
-				"Request validation failed",
-				Instant.now(),
-				request.getRequestURI(),
-				fieldErrors
-		);
-		return ResponseEntity.badRequest().body(body);
+		return error(ErrorCode.VALIDATION_ERROR, request, fieldErrors);
 	}
 
 	@ExceptionHandler(DataIntegrityViolationException.class)
-	ResponseEntity<ApiError> handleDataIntegrityViolation(
+	ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
 			DataIntegrityViolationException exception,
 			HttpServletRequest request
 	) {
@@ -54,25 +46,30 @@ public class GlobalExceptionHandler {
 	}
 
 	@ExceptionHandler(HttpMessageNotReadableException.class)
-	ResponseEntity<ApiError> handleMalformedRequest(HttpServletRequest request) {
+	ResponseEntity<ErrorResponse> handleMalformedRequest(HttpServletRequest request) {
 		return error(ErrorCode.MALFORMED_REQUEST, request, null);
 	}
 
 	@ExceptionHandler(Exception.class)
-	ResponseEntity<ApiError> handleUnexpectedException(Exception exception, HttpServletRequest request) {
+	ResponseEntity<ErrorResponse> handleUnexpectedException(Exception exception, HttpServletRequest request) {
 		log.error("Unexpected error for {}", request.getRequestURI(), exception);
 		return error(ErrorCode.INTERNAL_ERROR, request, null);
 	}
 
-	private ResponseEntity<ApiError> error(ErrorCode errorCode, HttpServletRequest request, Map<String, String> fieldErrors) {
-		ApiError body = new ApiError(
-				errorCode.getStatus().value(),
-				errorCode.getCode(),
-				errorCode.getMessage(),
-				Instant.now(),
-				request.getRequestURI(),
-				fieldErrors
-		);
+	private ResponseEntity<ErrorResponse> error(
+			ErrorCode errorCode,
+			HttpServletRequest request,
+			Map<String, String> fieldErrors
+	) {
+		ErrorResponse body = ErrorResponse.builder()
+				.status(errorCode.getStatus().value())
+				.code(errorCode.getCode())
+				.message(errorCode.getMessage())
+				.error(errorCode.getStatus().getReasonPhrase())
+				.timestamp(Instant.now())
+				.path(request.getRequestURI())
+				.fieldErrors(fieldErrors)
+				.build();
 		return ResponseEntity.status(errorCode.getStatus()).body(body);
 	}
 }

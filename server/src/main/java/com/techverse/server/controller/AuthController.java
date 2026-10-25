@@ -1,20 +1,17 @@
 package com.techverse.server.controller;
 
 import com.techverse.server.dto.internal.LoginTokens;
-import com.techverse.server.dto.internal.JwtDetails;
 import com.techverse.server.dto.request.LoginRequest;
 import com.techverse.server.dto.request.RegisterRequest;
 import com.techverse.server.dto.response.ApiResponse;
 import com.techverse.server.dto.response.LoginResponse;
 import com.techverse.server.dto.response.RegisterResponse;
-import com.techverse.server.properties.JwtProperties;
+import com.techverse.server.service.AuthCookieService;
 import com.techverse.server.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -26,7 +23,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 
@@ -37,7 +33,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 public class AuthController {
 
 	private final AuthService authService;
-	private final JwtProperties jwtProperties;
+	private final AuthCookieService authCookieService;
 
 	@PostMapping("/register")
 	@Operation(summary = "Register a learner account")
@@ -79,7 +75,7 @@ public class AuthController {
 			HttpServletResponse response
 	) {
 		authService.logout(extractBearerToken(authorization), refreshToken);
-		clearRefreshTokenCookie(response);
+		authCookieService.clearRefreshTokenCookie(response);
 		return ResponseEntity.ok(ApiResponse.<Void>builder()
 				.status(HttpStatus.OK.value())
 				.message("User logged out successfully")
@@ -93,7 +89,7 @@ public class AuthController {
 			HttpServletResponse response
 	) {
 		authService.logoutAll(UUID.fromString(authenticatedUser.getSubject()));
-		clearRefreshTokenCookie(response);
+		authCookieService.clearRefreshTokenCookie(response);
 		return ResponseEntity.ok(ApiResponse.<Void>builder()
 				.status(HttpStatus.OK.value())
 				.message("User logged out from all devices successfully")
@@ -105,7 +101,7 @@ public class AuthController {
 			HttpServletResponse response,
 			String message
 	) {
-		addRefreshTokenCookie(response, tokens.getRefreshToken());
+		authCookieService.addRefreshTokenCookie(response, tokens.getRefreshToken());
 		LoginResponse loginResponse = LoginResponse.builder()
 				.accessToken(tokens.getAccessToken().getValue())
 				.expiresAt(tokens.getAccessToken().getExpiresAt())
@@ -116,29 +112,6 @@ public class AuthController {
 				.message(message)
 				.data(loginResponse)
 				.build());
-	}
-
-	private void addRefreshTokenCookie(HttpServletResponse response, JwtDetails refreshToken) {
-		Duration maxAge = Duration.between(Instant.now(), refreshToken.getExpiresAt());
-		ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken.getValue())
-				.httpOnly(true)
-				.secure(jwtProperties.refreshCookieSecure())
-				.sameSite("Lax")
-				.path("/api/v1/auth")
-				.maxAge(maxAge)
-				.build();
-		response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-	}
-
-	private void clearRefreshTokenCookie(HttpServletResponse response) {
-		ResponseCookie cookie = ResponseCookie.from("refresh_token", "")
-				.httpOnly(true)
-				.secure(jwtProperties.refreshCookieSecure())
-				.sameSite("Lax")
-				.path("/api/v1/auth")
-				.maxAge(Duration.ZERO)
-				.build();
-		response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 	}
 
 	private String extractBearerToken(String authorization) {

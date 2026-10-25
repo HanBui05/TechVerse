@@ -85,7 +85,9 @@ class AuthRegistrationIntegrationTest {
 	void rejectsInvalidEmail() throws Exception {
 		register("not-an-email", "SecurePass123!", "SecurePass123!")
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.fieldErrors.email").value("Email must be valid"));
+				.andExpect(jsonPath("$.fieldErrors.email").value("Email must be valid"))
+				.andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+				.andExpect(jsonPath("$.error").value("Bad Request"));
 	}
 
 	@Test

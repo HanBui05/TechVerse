@@ -2,16 +2,19 @@ package com.techverse.server.service.impl;
 
 import com.techverse.server.dto.internal.JwtDetails;
 import com.techverse.server.dto.internal.LoginTokens;
+import com.techverse.server.dto.internal.SocialProfile;
 import com.techverse.server.dto.request.LoginRequest;
 import com.techverse.server.dto.request.RegisterRequest;
 import com.techverse.server.dto.response.RegisterResponse;
+import com.techverse.server.entity.SocialAccount;
 import com.techverse.server.entity.User;
 import com.techverse.server.enums.RoleName;
 import com.techverse.server.enums.TokenType;
 import com.techverse.server.event.UserRegisteredEvent;
-import com.techverse.server.exception.BusinessException;
+import com.techverse.server.exception.CustomException;
 import com.techverse.server.exception.ErrorCode;
 import com.techverse.server.repository.RoleRepository;
+import com.techverse.server.repository.SocialAccountRepository;
 import com.techverse.server.repository.UserRepository;
 import com.techverse.server.service.AuthService;
 import com.techverse.server.service.TokenService;
@@ -33,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthServiceImpl implements AuthService {
 
 	private final UserRepository userRepository;
+	private final SocialAccountRepository socialAccountRepository;
 	private final RoleRepository roleRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final ApplicationEventPublisher eventPublisher;
@@ -43,11 +47,11 @@ public class AuthServiceImpl implements AuthService {
 	public RegisterResponse register(RegisterRequest request) {
 		String email = request.email().trim();
 		if (userRepository.existsByEmailIgnoreCase(email)) {
-			throw new BusinessException(ErrorCode.EMAIL_ALREADY_REGISTERED);
+			throw new CustomException(ErrorCode.EMAIL_ALREADY_REGISTERED);
 		}
 
 		roleRepository.findByName(RoleName.LEARNER)
-				.orElseThrow(() -> new BusinessException(ErrorCode.DEFAULT_ROLE_NOT_FOUND));
+				.orElseThrow(() -> new CustomException(ErrorCode.DEFAULT_ROLE_NOT_FOUND));
 
 		User user = User.createLocalAccount(
 				request.fullName().trim(),
@@ -74,15 +78,26 @@ public class AuthServiceImpl implements AuthService {
 	public LoginTokens login(LoginRequest request) {
 		String email = request.email().trim();
 		User user = userRepository.findByEmail(email)
-				.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
+				.orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
 
 		if (!user.isActive()
 				|| user.getPassword() == null
 				|| !passwordEncoder.matches(request.password(), user.getPassword())) {
-			throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+			throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
 		}
 
 		return issueLoginTokens(user);
+	}
+
+	@Override
+	@Transactional
+	public JwtDetails authenticateSocialAccount(SocialProfile profile) {
+		SocialProfile validatedProfile = validateSocialProfile(profile);
+		return socialAccountRepository
+				.findByProviderAndProviderId(validatedProfile.getProvider(), validatedProfile.getProviderId())
+				.map(SocialAccount::getUser)
+				.map(this::issueSocialRefreshTokenForActiveUser)
+				.orElseGet(() -> createSocialAccountAndIssueRefreshToken(validatedProfile));
 	}
 
 	@Override
@@ -128,6 +143,57 @@ public class AuthServiceImpl implements AuthService {
 		return LoginTokens.builder()
 				.accessToken(accessToken)
 				.refreshToken(refreshToken)
+				.build();
+	}
+
+	private JwtDetails createSocialAccountAndIssueRefreshToken(SocialProfile profile) {
+		if (userRepository.existsByEmailIgnoreCase(profile.getEmail())) {
+			throw new CustomException(ErrorCode.SOCIAL_EMAIL_ALREADY_REGISTERED);
+		}
+
+		roleRepository.findByName(RoleName.LEARNER)
+				.orElseThrow(() -> new CustomException(ErrorCode.DEFAULT_ROLE_NOT_FOUND));
+
+		User savedUser = userRepository.saveAndFlush(User.createSocialAccount(
+				profile.getFullName(),
+				profile.getEmail()
+		));
+		socialAccountRepository.save(SocialAccount.link(
+				savedUser,
+				profile.getProvider(),
+				profile.getProviderId()
+		));
+		eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getFullName(), savedUser.getEmail()));
+
+		return issueSocialRefreshTokenForActiveUser(savedUser);
+	}
+
+	private JwtDetails issueSocialRefreshTokenForActiveUser(User user) {
+		if (!user.isActive()) {
+			throw new CustomException(ErrorCode.SOCIAL_ACCOUNT_INACTIVE);
+		}
+
+		JwtDetails refreshToken = tokenService.generateRefreshToken(user.getId(), Set.of());
+		tokenService.saveToken(refreshToken, user.getId(), TokenType.REFRESH);
+		return refreshToken;
+	}
+
+	private SocialProfile validateSocialProfile(SocialProfile profile) {
+		if (profile == null
+				|| profile.getProvider() == null
+				|| !profile.isEmailVerified()
+				|| isBlank(profile.getProviderId())
+				|| isBlank(profile.getEmail())
+				|| isBlank(profile.getFullName())) {
+			throw new CustomException(ErrorCode.SOCIAL_PROFILE_INVALID);
+		}
+
+		return SocialProfile.builder()
+				.provider(profile.getProvider())
+				.providerId(profile.getProviderId().trim())
+				.email(profile.getEmail().trim())
+				.fullName(profile.getFullName().trim())
+				.emailVerified(true)
 				.build();
 	}
 
@@ -177,11 +243,15 @@ public class AuthServiceImpl implements AuthService {
 		}
 	}
 
-	private BusinessException invalidRefreshToken() {
-		return new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+	private CustomException invalidRefreshToken() {
+		return new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
 	}
 
 	private String normalizeOptional(String value) {
 		return value == null || value.isBlank() ? null : value.trim();
+	}
+
+	private boolean isBlank(String value) {
+		return value == null || value.isBlank();
 	}
 }

@@ -26,3 +26,6 @@ jwt:
   access-token-expiration: 15m
   refresh-token-expiration: 7d
   refresh-cookie-secure: false
+
+oauth2:
+  web-url: ${WEB_URL:http://localhost:3000}

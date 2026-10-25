@@ -67,6 +67,10 @@ public class User extends BaseEntity {
 		return new User(fullName, email, encodedPassword, phoneNumber, dateOfBirth);
 	}
 
+	public static User createSocialAccount(String fullName, String email) {
+		return new User(fullName, email, null, null, null);
+	}
+
 	public void addRole(Role role) {
 		userRoles.add(new UserRole(this, role));
 	}
