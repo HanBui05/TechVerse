@@ -71,6 +71,18 @@ public class User extends BaseEntity {
 		return new User(fullName, email, null, null, null);
 	}
 
+	public void updateProfile(String fullName, String phoneNumber, LocalDate dateOfBirth) {
+		if (fullName != null) {
+			this.fullName = fullName.trim();
+		}
+		if (phoneNumber != null) {
+			this.phoneNumber = phoneNumber.isBlank() ? null : phoneNumber.trim();
+		}
+		if (dateOfBirth != null) {
+			this.dateOfBirth = dateOfBirth;
+		}
+	}
+
 	public void addRole(Role role) {
 		userRoles.add(new UserRole(this, role));
 	}

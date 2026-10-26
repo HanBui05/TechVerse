@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -23,6 +24,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfiguration {
 
 	@Bean
@@ -58,6 +60,10 @@ public class SecurityConfiguration {
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/logout", "/api/v1/auth/logout-all").authenticated()
+						.requestMatchers(HttpMethod.POST, "/api/v1/author-profiles/me").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/v1/author-profiles/me").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
+						.requestMatchers(HttpMethod.PATCH, "/api/v1/users/me").authenticated()
 						.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 						.anyRequest().denyAll())
 				.build();
@@ -107,7 +113,7 @@ public class SecurityConfiguration {
 	CorsConfigurationSource corsConfigurationSource(OAuth2Properties oauth2Properties) {
 		CorsConfiguration corsConfiguration = new CorsConfiguration();
 		corsConfiguration.setAllowedOrigins(List.of(oauth2Properties.webUrl()));
-		corsConfiguration.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+		corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PATCH", "OPTIONS"));
 		corsConfiguration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
 		corsConfiguration.setAllowCredentials(true);
 
