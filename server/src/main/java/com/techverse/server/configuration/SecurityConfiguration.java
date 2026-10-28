@@ -4,6 +4,7 @@ import com.techverse.server.properties.OAuth2Properties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -12,10 +13,12 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
@@ -31,6 +34,7 @@ public class SecurityConfiguration {
 	SecurityFilterChain securityFilterChain(
 			HttpSecurity http,
 			@Qualifier("accessTokenDecoder") JwtDecoder accessTokenDecoder,
+			Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthenticationConverter,
 			CustomAuthenticationEntryPoint authenticationEntryPoint,
 			CustomAccessDeniedHandler accessDeniedHandler,
 			OAuth2LoginSuccessHandler oauth2LoginSuccessHandler,
@@ -51,7 +55,9 @@ public class SecurityConfiguration {
 				.oauth2ResourceServer(oauth2 -> oauth2
 						.authenticationEntryPoint(authenticationEntryPoint)
 						.bearerTokenResolver(bearerTokenResolver)
-						.jwt(jwt -> jwt.decoder(accessTokenDecoder)))
+						.jwt(jwt -> jwt
+								.decoder(accessTokenDecoder)
+								.jwtAuthenticationConverter(jwtAuthenticationConverter)))
 				.exceptionHandling(exceptions -> exceptions
 						.authenticationEntryPoint(authenticationEntryPoint)
 						.accessDeniedHandler(accessDeniedHandler))
@@ -64,6 +70,7 @@ public class SecurityConfiguration {
 						.requestMatchers(HttpMethod.GET, "/api/v1/author-profiles/me").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
 						.requestMatchers(HttpMethod.PATCH, "/api/v1/users/me").authenticated()
+						.requestMatchers("/api/v1/admin/**").authenticated()
 						.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 						.anyRequest().denyAll())
 				.build();

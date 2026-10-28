@@ -1,0 +1,19 @@
+jwt:
+  secret-key: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+  issuer: https://api.techverse.local
+  access-token-expiration: 15m
+  refresh-token-expiration: 7d
+  refresh-cookie-secure: false
+
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-client-id
+            client-secret: test-google-client-secret
+            scope: openid, profile, email
+
+oauth2:
+  web-url: http://localhost:3000
