@@ -16,6 +16,7 @@ import com.techverse.server.repository.TokenRepository;
 import com.techverse.server.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
 import java.time.Instant;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -128,6 +129,7 @@ class AuthLoginIntegrationTest {
 		String rawRefreshToken = refreshCookie.split(";", 2)[0].split("=", 2)[1];
 		SignedJWT decodedRefreshToken = SignedJWT.parse(rawRefreshToken);
 		assertThat(decodedRefreshToken.getJWTClaimsSet().getStringClaim("token_type")).isEqualTo("refresh");
+		assertThat(decodedRefreshToken.getJWTClaimsSet().getStringClaim("sid")).isNotBlank();
 	}
 
 	@Test
@@ -144,8 +146,9 @@ class AuthLoginIntegrationTest {
 	}
 
 	@Test
-	void refreshesTokensAndRejectsTheRotatedRefreshToken() throws Exception {
-		String initialRefreshToken = loginAndGetRefreshToken();
+	void reusesRefreshTokenWithoutExtendingExpiryAndKeepsEarlierAccessUsable() throws Exception {
+		SessionTokens initial = loginAndGetSessionTokens();
+		String initialRefreshToken = initial.refreshToken();
 		SignedJWT initialRefreshJwt = SignedJWT.parse(initialRefreshToken);
 		String initialRefreshJwtId = initialRefreshJwt.getJWTClaimsSet().getJWTID();
 
@@ -164,14 +167,74 @@ class AuthLoginIntegrationTest {
 		SignedJWT refreshedRefreshJwt = SignedJWT.parse(refreshedRefreshToken);
 		String refreshedRefreshJwtId = refreshedRefreshJwt.getJWTClaimsSet().getJWTID();
 		Token refreshedToken = tokenRepository.findById(refreshedRefreshJwtId).orElseThrow();
-		assertThat(refreshedRefreshJwtId).isNotEqualTo(initialRefreshJwtId);
-		assertThat(tokenRepository.findById(initialRefreshJwtId)).isEmpty();
+		assertThat(refreshedRefreshToken).isEqualTo(initialRefreshToken);
+		assertThat(refreshedRefreshJwtId).isEqualTo(initialRefreshJwtId);
+		assertThat(refreshedRefreshJwt.getJWTClaimsSet().getExpirationTime())
+				.isEqualTo(initialRefreshJwt.getJWTClaimsSet().getExpirationTime());
 		assertThat(refreshedToken.getTokenType()).isEqualTo(TokenType.REFRESH);
 
-		mockMvc.perform(post("/api/v1/auth/refresh")
+		Instant secondRefreshStartedAt = Instant.now();
+		MvcResult secondRefresh = mockMvc.perform(post("/api/v1/auth/refresh")
 				.cookie(new Cookie("refresh_token", initialRefreshToken)))
-				.andExpect(status().isUnauthorized())
-				.andExpect(jsonPath("$.code").value("AUTH_INVALID_REFRESH_TOKEN"));
+				.andExpect(status().isOk()).andReturn();
+		assertThat(secondRefresh.getResponse().getCookie("refresh_token").getValue()).isEqualTo(initialRefreshToken);
+		assertThat(secondRefresh.getResponse().getCookie("refresh_token").getMaxAge())
+				.isPositive().isLessThanOrEqualTo((int) Duration.between(secondRefreshStartedAt,
+						initialRefreshJwt.getJWTClaimsSet().getExpirationTime().toInstant()).toSeconds());
+		String latestAccess = objectMapper.readTree(secondRefresh.getResponse().getContentAsString())
+				.at("/data/accessToken").asText();
+		assertThat(latestAccess).isNotEqualTo(initial.accessToken());
+		assertThat(SignedJWT.parse(latestAccess).getJWTClaimsSet().getStringClaim("sid"))
+				.isNotBlank().isEqualTo(initialRefreshJwt.getJWTClaimsSet().getStringClaim("sid"));
+		mockMvc.perform(get("/api/v1/users/me")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + initial.accessToken()))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/v1/users/me")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + latestAccess))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void logoutWithoutRefreshCookieStillRevokesTheWholeAccessSession() throws Exception {
+		SessionTokens session = loginAndGetSessionTokens();
+		mockMvc.perform(post("/api/v1/auth/logout")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + session.accessToken()))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/v1/auth/refresh")
+				.cookie(new Cookie("refresh_token", session.refreshToken())))
+				.andExpect(status().isUnauthorized());
+		assertThat(tokenRepository.findById(session.refreshJwtId())).isEmpty();
+	}
+
+	@Test
+	void logoutDoesNotRevokeADifferentSessionsRefreshCookie() throws Exception {
+		SessionTokens first = loginAndGetSessionTokens();
+		SessionTokens other = loginAndGetSessionTokens();
+		mockMvc.perform(post("/api/v1/auth/logout")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + first.accessToken())
+				.cookie(new Cookie("refresh_token", other.refreshToken())))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/v1/auth/refresh")
+				.cookie(new Cookie("refresh_token", other.refreshToken())))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/v1/auth/refresh")
+				.cookie(new Cookie("refresh_token", first.refreshToken())))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void missingSessionRejectsAccessAndRefreshEvenWhenTokenRecordsRemain() throws Exception {
+		SessionTokens session = loginAndGetSessionTokens();
+		String sid = SignedJWT.parse(session.accessToken()).getJWTClaimsSet().getStringClaim("sid");
+		assertThat(sid).isNotBlank();
+		stringRedisTemplate.delete("auth:session:" + sid);
+		assertThat(tokenRepository.findById(session.accessJwtId())).isPresent();
+		mockMvc.perform(get("/api/v1/users/me")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + session.accessToken()))
+				.andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/v1/auth/refresh")
+				.cookie(new Cookie("refresh_token", session.refreshToken())))
+				.andExpect(status().isUnauthorized());
 	}
 
 	@Test

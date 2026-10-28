@@ -27,3 +27,6 @@ jwt:
   secret-key: ${JWT_SECRET_KEY}
 server:
   port: ${SERVER_PORT:8080}
+initial-admin:
+  email: ${INITIAL_ADMIN_EMAIL:admin@gmail.com}
+  password: ${INITIAL_ADMIN_PASSWORD:12345678}

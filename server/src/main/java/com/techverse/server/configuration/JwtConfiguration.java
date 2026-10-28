@@ -29,7 +29,6 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import java.util.UUID;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
 @Configuration
@@ -79,7 +78,7 @@ public class JwtConfiguration {
 		OAuth2TokenValidator<org.springframework.security.oauth2.jwt.Jwt> activeAccessTokenValidator = jwt -> {
 			if ("access".equals(jwt.getClaimAsString("token_type"))
 					&& jwt.getId() != null
-					&& belongsToActiveUser(jwt, tokenService, TokenType.ACCESS)) {
+					&& tokenService.isTokenActive(jwt, TokenType.ACCESS)) {
 				return OAuth2TokenValidatorResult.success();
 			}
 			return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token"));
@@ -107,32 +106,4 @@ public class JwtConfiguration {
 		return jwtDecoder;
 	}
 
-	@Bean
-	JwtDecoder logoutTokenDecoder(SecretKey jwtSigningKey, JwtProperties jwtProperties) {
-		NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withSecretKey(jwtSigningKey)
-				.macAlgorithm(MacAlgorithm.HS256)
-				.build();
-		OAuth2TokenValidator<org.springframework.security.oauth2.jwt.Jwt> logoutTokenValidator = jwt ->
-				jwt.getId() != null
-						&& jwt.getSubject() != null
-						&& jwtProperties.issuer().equals(jwt.getIssuer() == null ? null : jwt.getIssuer().toString())
-						? OAuth2TokenValidatorResult.success()
-						: OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token"));
-		jwtDecoder.setJwtValidator(logoutTokenValidator);
-		return jwtDecoder;
-	}
-
-	private boolean belongsToActiveUser(
-			org.springframework.security.oauth2.jwt.Jwt jwt,
-			TokenService tokenService,
-			TokenType tokenType
-	) {
-		try {
-			return tokenService.findUserId(jwt.getId(), tokenType)
-					.filter(UUID.fromString(jwt.getSubject())::equals)
-					.isPresent();
-		} catch (IllegalArgumentException exception) {
-			return false;
-		}
-	}
 }

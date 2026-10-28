@@ -13,9 +13,11 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.DynamicUpdate;
 
 @Getter
 @Entity
+@DynamicUpdate
 @Table(name = "users")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseEntity {
@@ -81,6 +83,10 @@ public class User extends BaseEntity {
 		if (dateOfBirth != null) {
 			this.dateOfBirth = dateOfBirth;
 		}
+	}
+
+	public void updateActiveStatus(boolean active) {
+		this.active = active;
 	}
 
 	public void addRole(Role role) {

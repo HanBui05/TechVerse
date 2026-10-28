@@ -2,6 +2,8 @@ package com.techverse.server.repository;
 
 import com.techverse.server.entity.User;
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -21,10 +23,22 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
 	Optional<User> findByEmail(String email);
 
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select user from User user where user.email = :email")
+	Optional<User> findByEmailForAuthentication(@Param("email") String email);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select user from User user where user.id = :id")
+	Optional<User> findByIdForAuthentication(@Param("id") UUID id);
+
 	@EntityGraph(attributePaths = {"userRoles", "userRoles.role"})
 	Optional<User> findWithRolesById(UUID id);
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select user from User user where user.id = :id")
 	Optional<User> findByIdForAuthorProfileApplication(@Param("id") UUID id);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select user from User user where user.id in :userIds order by user.id")
+	List<User> findAllByIdForAdminStatusUpdate(@Param("userIds") Collection<UUID> userIds);
 }

@@ -10,6 +10,7 @@ public class JwtDetails {
 
 	private final String value;
 	private final String jwtId;
+	private final String sessionId;
 	private final Instant expiresAt;
 	private final long secondsTtl;
 }

@@ -18,7 +18,7 @@ public interface AuthService {
 
 	LoginTokens refresh(String rawRefreshToken);
 
-	void logout(String rawAccessToken, String rawRefreshToken);
+	void logout(UUID userId, String sessionId);
 
 	void logoutAll(UUID userId);
 }

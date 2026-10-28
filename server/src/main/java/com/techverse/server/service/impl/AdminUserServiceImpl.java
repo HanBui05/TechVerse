@@ -1,9 +1,11 @@
 package com.techverse.server.service.impl;
 
 import com.techverse.server.dto.request.AdminUserFilter;
+import com.techverse.server.dto.request.AdminUserStatusUpdateRequest;
 import com.techverse.server.dto.response.AdminAuthorProfileResponse;
 import com.techverse.server.dto.response.AdminUserDetailResponse;
 import com.techverse.server.dto.response.AdminUserSummaryResponse;
+import com.techverse.server.dto.response.AdminUserStatusUpdateResponse;
 import com.techverse.server.dto.response.PageResponse;
 import com.techverse.server.entity.AuthorProfile;
 import com.techverse.server.entity.SocialAccount;
@@ -14,17 +16,21 @@ import com.techverse.server.enums.SocialProvider;
 import com.techverse.server.exception.CustomException;
 import com.techverse.server.exception.ErrorCode;
 import com.techverse.server.repository.AuthorProfileRepository;
+import com.techverse.server.repository.RoleRepository;
 import com.techverse.server.repository.SocialAccountRepository;
 import com.techverse.server.repository.UserRepository;
 import com.techverse.server.repository.UserRoleRepository;
 import com.techverse.server.repository.specification.UserSpecification;
 import com.techverse.server.service.AdminUserService;
+import com.techverse.server.service.TokenService;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.Comparator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -41,6 +47,8 @@ public class AdminUserServiceImpl implements AdminUserService {
 	private final UserRoleRepository userRoleRepository;
 	private final AuthorProfileRepository authorProfileRepository;
 	private final SocialAccountRepository socialAccountRepository;
+	private final RoleRepository roleRepository;
+	private final TokenService tokenService;
 
 	@Override
 	@Transactional(readOnly = true)
@@ -103,6 +111,69 @@ public class AdminUserServiceImpl implements AdminUserService {
 				.authorProfile(authorProfile)
 				.createdAt(user.getCreatedAt())
 				.updatedAt(user.getUpdatedAt())
+				.build();
+	}
+
+	@Override
+	@Transactional
+	public AdminUserStatusUpdateResponse updateUserStatuses(UUID actorId, AdminUserStatusUpdateRequest request) {
+		List<UUID> userIds = request.userIds();
+		if (new HashSet<>(userIds).size() != userIds.size()) {
+			throw new CustomException(ErrorCode.INVALID_USER_SELECTION);
+		}
+
+		roleRepository.findByNameForUpdate(RoleName.ADMIN)
+				.orElseThrow(() -> new CustomException(ErrorCode.INTERNAL_ERROR));
+
+		List<User> selectedUsers = userRepository.findAllByIdForAdminStatusUpdate(userIds);
+		if (selectedUsers.size() != userIds.size()) {
+			throw new CustomException(ErrorCode.USER_NOT_FOUND);
+		}
+		Map<UUID, User> usersById = selectedUsers.stream()
+				.collect(Collectors.toMap(User::getId, Function.identity()));
+
+		boolean targetActive = request.active();
+		if (!targetActive) {
+			if (userIds.contains(actorId)) {
+				throw new CustomException(ErrorCode.ADMIN_SELF_LOCK_NOT_ALLOWED);
+			}
+
+			long activeAdminCount = userRoleRepository.countActiveUsersByRole(RoleName.ADMIN);
+			long selectedActiveAdminCount = userRoleRepository.countActiveUsersByRoleAndUserIdIn(
+					RoleName.ADMIN,
+					userIds
+			);
+			if (activeAdminCount - selectedActiveAdminCount <= 0) {
+				throw new CustomException(ErrorCode.LAST_ACTIVE_ADMIN_CANNOT_BE_LOCKED);
+			}
+		}
+
+		int changedCount = 0;
+		for (UUID userId : userIds) {
+			User user = usersById.get(userId);
+			if (user.isActive() == targetActive) {
+				continue;
+			}
+
+			user.updateActiveStatus(targetActive);
+			changedCount++;
+			if (!targetActive) {
+				tokenService.deleteAllTokensByUserId(userId);
+			}
+		}
+
+		List<AdminUserStatusUpdateResponse.UserStatus> finalStatuses = userIds.stream()
+				.map(userId -> AdminUserStatusUpdateResponse.UserStatus.builder()
+						.userId(userId)
+						.active(usersById.get(userId).isActive())
+						.build())
+				.toList();
+		return AdminUserStatusUpdateResponse.builder()
+				.active(targetActive)
+				.requestedCount(userIds.size())
+				.changedCount(changedCount)
+				.unchangedCount(userIds.size() - changedCount)
+				.users(finalStatuses)
 				.build();
 	}
 

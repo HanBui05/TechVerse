@@ -14,12 +14,10 @@ import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -58,7 +56,7 @@ public class AuthController {
 	}
 
 	@PostMapping("/refresh")
-	@Operation(summary = "Rotate access and refresh tokens")
+	@Operation(summary = "Issue a new access token using the current refresh token")
 	public ResponseEntity<ApiResponse<LoginResponse>> refresh(
 			@CookieValue(value = "refresh_token", required = false) String refreshToken,
 			HttpServletResponse response
@@ -70,11 +68,10 @@ public class AuthController {
 	@PostMapping("/logout")
 	@Operation(summary = "Log out from the current device")
 	public ResponseEntity<ApiResponse<Void>> logout(
-			@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-			@CookieValue(value = "refresh_token", required = false) String refreshToken,
+			@AuthenticationPrincipal Jwt authenticatedUser,
 			HttpServletResponse response
 	) {
-		authService.logout(extractBearerToken(authorization), refreshToken);
+		authService.logout(UUID.fromString(authenticatedUser.getSubject()), authenticatedUser.getClaimAsString("sid"));
 		authCookieService.clearRefreshTokenCookie(response);
 		return ResponseEntity.ok(ApiResponse.<Void>builder()
 				.status(HttpStatus.OK.value())
@@ -114,10 +111,4 @@ public class AuthController {
 				.build());
 	}
 
-	private String extractBearerToken(String authorization) {
-		if (authorization == null || !authorization.regionMatches(true, 0, "Bearer ", 0, 7)) {
-			return null;
-		}
-		return authorization.substring(7).trim();
-	}
 }

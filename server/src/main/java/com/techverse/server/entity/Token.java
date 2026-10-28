@@ -23,6 +23,7 @@ public class Token {
 	private String jwtId;
 
 	private String userId;
+	private String sessionId;
 
 	private TokenType tokenType;
 

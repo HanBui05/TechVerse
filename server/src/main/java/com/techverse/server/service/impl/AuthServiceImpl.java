@@ -19,8 +19,8 @@ import com.techverse.server.repository.UserRepository;
 import com.techverse.server.service.AuthService;
 import com.techverse.server.service.TokenService;
 import java.util.Set;
-import java.util.Locale;
-import java.util.Optional;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -77,7 +77,7 @@ public class AuthServiceImpl implements AuthService {
 	@Transactional
 	public LoginTokens login(LoginRequest request) {
 		String email = request.email().trim();
-		User user = userRepository.findByEmail(email)
+		User user = userRepository.findByEmailForAuthentication(email)
 				.orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
 
 		if (!user.isActive()
@@ -94,8 +94,8 @@ public class AuthServiceImpl implements AuthService {
 	public JwtDetails authenticateSocialAccount(SocialProfile profile) {
 		SocialProfile validatedProfile = validateSocialProfile(profile);
 		return socialAccountRepository
-				.findByProviderAndProviderId(validatedProfile.getProvider(), validatedProfile.getProviderId())
-				.map(SocialAccount::getUser)
+				.findUserIdByProviderAndProviderId(validatedProfile.getProvider(), validatedProfile.getProviderId())
+				.map(this::findSocialUserForAuthentication)
 				.map(this::issueSocialRefreshTokenForActiveUser)
 				.orElseGet(() -> createSocialAccountAndIssueRefreshToken(validatedProfile));
 	}
@@ -105,38 +105,54 @@ public class AuthServiceImpl implements AuthService {
 	public LoginTokens refresh(String rawRefreshToken) {
 		Jwt refreshToken = decodeRefreshToken(rawRefreshToken);
 		UUID userId = parseUserId(refreshToken.getSubject());
-		String refreshTokenId = refreshToken.getId();
-		if (refreshTokenId == null
-				|| tokenService.findUserId(refreshTokenId, TokenType.REFRESH)
-				.filter(userId::equals)
-				.isEmpty()) {
-			throw invalidRefreshToken();
-		}
-
-		User user = userRepository.findById(userId)
+		User user = userRepository.findByIdForAuthentication(userId)
 				.filter(User::isActive)
 				.orElseThrow(this::invalidRefreshToken);
-		tokenService.deleteToken(refreshTokenId);
-		return issueLoginTokens(user);
+		// Re-check Redis after acquiring the same lock used by logout/account locking.
+		if (refreshToken.getExpiresAt() == null || !refreshToken.getExpiresAt().isAfter(Instant.now())
+				|| !tokenService.isTokenActive(refreshToken, TokenType.REFRESH)) {
+			throw invalidRefreshToken();
+		}
+		String sessionId = refreshToken.getClaimAsString("sid");
+		JwtDetails accessToken = tokenService.generateAccessToken(userId, rolesOf(user), sessionId);
+		if (!refreshToken.getExpiresAt().isAfter(Instant.now())) {
+			throw invalidRefreshToken();
+		}
+		tokenService.saveToken(accessToken, userId, TokenType.ACCESS);
+		return LoginTokens.builder()
+				.accessToken(accessToken)
+				.refreshToken(JwtDetails.builder()
+						.value(rawRefreshToken)
+						.jwtId(refreshToken.getId())
+						.sessionId(sessionId)
+						.expiresAt(refreshToken.getExpiresAt())
+						.secondsTtl(Math.max(0, Duration.between(Instant.now(), refreshToken.getExpiresAt()).toSeconds()))
+						.build())
+				.build();
 	}
 
 	@Override
-	public void logout(String rawAccessToken, String rawRefreshToken) {
-		revokeToken(rawAccessToken, TokenType.ACCESS);
-		revokeToken(rawRefreshToken, TokenType.REFRESH);
+	@Transactional
+	public void logout(UUID userId, String sessionId) {
+		userRepository.findByIdForAuthentication(userId)
+				.orElseThrow(() -> new CustomException(ErrorCode.INVALID_ACCESS_TOKEN));
+		tokenService.deleteSession(userId, sessionId);
 	}
 
 	@Override
+	@Transactional
 	public void logoutAll(UUID userId) {
+		userRepository.findByIdForAuthentication(userId)
+				.orElseThrow(() -> new CustomException(ErrorCode.INVALID_ACCESS_TOKEN));
 		tokenService.deleteAllTokensByUserId(userId);
 	}
 
 	private LoginTokens issueLoginTokens(User user) {
-		Set<RoleName> roles = user.getUserRoles().stream()
-				.map(userRole -> userRole.getRole().getName())
-				.collect(Collectors.toUnmodifiableSet());
-		JwtDetails accessToken = tokenService.generateAccessToken(user.getId(), roles);
-		JwtDetails refreshToken = tokenService.generateRefreshToken(user.getId(), roles);
+		String sessionId = UUID.randomUUID().toString();
+		Set<RoleName> roles = rolesOf(user);
+		JwtDetails accessToken = tokenService.generateAccessToken(user.getId(), roles, sessionId);
+		JwtDetails refreshToken = tokenService.generateRefreshToken(user.getId(), roles, sessionId);
+		tokenService.createSession(user.getId(), refreshToken);
 		tokenService.saveToken(accessToken, user.getId(), TokenType.ACCESS);
 		tokenService.saveToken(refreshToken, user.getId(), TokenType.REFRESH);
 
@@ -144,6 +160,12 @@ public class AuthServiceImpl implements AuthService {
 				.accessToken(accessToken)
 				.refreshToken(refreshToken)
 				.build();
+	}
+
+	private Set<RoleName> rolesOf(User user) {
+		return user.getUserRoles().stream()
+				.map(userRole -> userRole.getRole().getName())
+				.collect(Collectors.toUnmodifiableSet());
 	}
 
 	private JwtDetails createSocialAccountAndIssueRefreshToken(SocialProfile profile) {
@@ -173,9 +195,15 @@ public class AuthServiceImpl implements AuthService {
 			throw new CustomException(ErrorCode.SOCIAL_ACCOUNT_INACTIVE);
 		}
 
-		JwtDetails refreshToken = tokenService.generateRefreshToken(user.getId(), Set.of());
+		JwtDetails refreshToken = tokenService.generateRefreshToken(user.getId(), Set.of(), UUID.randomUUID().toString());
+		tokenService.createSession(user.getId(), refreshToken);
 		tokenService.saveToken(refreshToken, user.getId(), TokenType.REFRESH);
 		return refreshToken;
+	}
+
+	private User findSocialUserForAuthentication(UUID userId) {
+		return userRepository.findByIdForAuthentication(userId)
+				.orElseThrow(() -> new CustomException(ErrorCode.SOCIAL_ACCOUNT_INACTIVE));
 	}
 
 	private SocialProfile validateSocialProfile(SocialProfile profile) {
@@ -208,38 +236,11 @@ public class AuthServiceImpl implements AuthService {
 		}
 	}
 
-	private void revokeToken(String rawToken, TokenType tokenType) {
-		if (rawToken == null || rawToken.isBlank()) {
-			return;
-		}
-		try {
-			Jwt token = tokenService.decodeTokenForLogout(rawToken);
-			Optional<UUID> userId = tryParseUserId(token.getSubject());
-			if (token.getId() != null
-					&& tokenType.name().toLowerCase(Locale.ROOT).equals(token.getClaimAsString("token_type"))
-					&& userId.filter(id -> tokenService.findUserId(token.getId(), tokenType)
-							.filter(id::equals)
-							.isPresent()).isPresent()) {
-				tokenService.deleteToken(token.getId());
-			}
-		} catch (JwtException exception) {
-			// Logout is idempotent: an invalid or expired browser token is already unusable.
-		}
-	}
-
 	private UUID parseUserId(String userId) {
 		try {
 			return UUID.fromString(userId);
-		} catch (IllegalArgumentException exception) {
+		} catch (IllegalArgumentException | NullPointerException exception) {
 			throw invalidRefreshToken();
-		}
-	}
-
-	private Optional<UUID> tryParseUserId(String userId) {
-		try {
-			return Optional.of(UUID.fromString(userId));
-		} catch (IllegalArgumentException exception) {
-			return Optional.empty();
 		}
 	}
 
