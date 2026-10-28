@@ -29,3 +29,10 @@ jwt:
 
 oauth2:
   web-url: ${WEB_URL:http://localhost:3000}
+
+password-reset:
+  secret: ${PASSWORD_RESET_SECRET:${jwt.secret-key}}
+
+sendgrid:
+  template-id:
+    reset-password-otp: ${SENDGRID_TEMPLATE_RESET_PASSWORD_OTP:}

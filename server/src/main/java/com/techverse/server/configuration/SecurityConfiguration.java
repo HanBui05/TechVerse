@@ -65,6 +65,7 @@ public class SecurityConfiguration {
 						.requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/v1/auth/forgot-password", "/api/v1/auth/verify-reset-otp", "/api/v1/auth/reset-password").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/logout", "/api/v1/auth/logout-all").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/v1/author-profiles/me").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/author-profiles/me").authenticated()
@@ -113,7 +114,7 @@ public class SecurityConfiguration {
 	@Bean
 	BearerTokenResolver bearerTokenResolver() {
 		DefaultBearerTokenResolver delegate = new DefaultBearerTokenResolver();
-		return request -> isRefreshRequest(request) ? null : delegate.resolve(request);
+		return request -> isRecoveryOrRefreshRequest(request) ? null : delegate.resolve(request);
 	}
 
 	@Bean
@@ -129,8 +130,10 @@ public class SecurityConfiguration {
 		return source;
 	}
 
-	private boolean isRefreshRequest(HttpServletRequest request) {
+	private boolean isRecoveryOrRefreshRequest(HttpServletRequest request) {
 		String requestPath = request.getRequestURI().substring(request.getContextPath().length());
-		return HttpMethod.POST.matches(request.getMethod()) && "/api/v1/auth/refresh".equals(requestPath);
+		return HttpMethod.POST.matches(request.getMethod()) && List.of(
+				"/api/v1/auth/refresh", "/api/v1/auth/forgot-password",
+				"/api/v1/auth/verify-reset-otp", "/api/v1/auth/reset-password").contains(requestPath);
 	}
 }

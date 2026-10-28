@@ -1,6 +1,7 @@
 package com.techverse.server.dto.request;
 
 import com.techverse.server.validation.annotation.MinimumAge;
+import com.techverse.server.dto.internal.PasswordConfirmation;
 import com.techverse.server.validation.annotation.PasswordConfirmationMatches;
 import com.techverse.server.validation.annotation.PhoneNumber;
 import com.techverse.server.validation.annotation.Utf8ByteLength;
@@ -34,5 +35,5 @@ public record RegisterRequest(
 		@MinimumAge(value = 6, message = "User must be at least 6 years old")
 		@Schema(type = "string", format = "date", example = "2004-05-24")
 		LocalDate dateOfBirth
-) {
+) implements PasswordConfirmation {
 }
