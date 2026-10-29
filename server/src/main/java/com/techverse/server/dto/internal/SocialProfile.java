@@ -12,5 +12,6 @@ public class SocialProfile {
 	private final String providerId;
 	private final String email;
 	private final String fullName;
+	private final String pictureUrl;
 	private final boolean emailVerified;
 }

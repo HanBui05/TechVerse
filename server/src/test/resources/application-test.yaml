@@ -17,3 +17,9 @@ spring:
 
 oauth2:
   web-url: http://localhost:3000
+
+cloudinary:
+  cloud-name: test
+  api-key: ''
+  api-secret: ''
+  cleanup-enabled: false

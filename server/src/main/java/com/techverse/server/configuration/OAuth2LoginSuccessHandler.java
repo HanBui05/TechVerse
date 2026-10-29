@@ -42,6 +42,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 					.providerId(oidcUser.getSubject())
 					.email(oidcUser.getEmail())
 					.fullName(oidcUser.getFullName())
+					.pictureUrl(oidcUser.getClaimAsString("picture"))
 					.emailVerified(Boolean.TRUE.equals(oidcUser.getClaimAsBoolean("email_verified")))
 					.build());
 			redirectUrl = callbackUrl("success", null);

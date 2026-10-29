@@ -16,5 +16,6 @@ public class RegisterResponse {
 	private final String email;
 	private final String phoneNumber;
 	private final LocalDate dateOfBirth;
+	private final String avatarUrl;
 	private final Set<RoleName> roles;
 }

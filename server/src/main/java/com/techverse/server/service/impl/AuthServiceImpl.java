@@ -11,6 +11,7 @@ import com.techverse.server.entity.User;
 import com.techverse.server.enums.RoleName;
 import com.techverse.server.enums.TokenType;
 import com.techverse.server.event.UserRegisteredEvent;
+import com.techverse.server.event.GoogleAvatarImportEvent;
 import com.techverse.server.exception.CustomException;
 import com.techverse.server.exception.ErrorCode;
 import com.techverse.server.repository.RoleRepository;
@@ -43,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
 	private final ApplicationEventPublisher eventPublisher;
 	private final TokenService tokenService;
 	private final AuthorProfileService authorProfileService;
+	private final UserAvatarService userAvatarService;
 
 	@Override
 	@Transactional
@@ -62,6 +64,7 @@ public class AuthServiceImpl implements AuthService {
 				normalizeOptional(request.phoneNumber()),
 				request.dateOfBirth()
 		);
+		user.changeAvatar(userAvatarService.defaultAvatar());
 		User savedUser = userRepository.saveAndFlush(user);
 		eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getFullName(), savedUser.getEmail()));
 
@@ -71,6 +74,7 @@ public class AuthServiceImpl implements AuthService {
 				.email(savedUser.getEmail())
 				.phoneNumber(savedUser.getPhoneNumber())
 				.dateOfBirth(savedUser.getDateOfBirth())
+				.avatarUrl(savedUser.getAvatarUrl())
 				.roles(Set.of(RoleName.LEARNER))
 				.build();
 	}
@@ -179,10 +183,12 @@ public class AuthServiceImpl implements AuthService {
 		roleRepository.findByName(RoleName.LEARNER)
 				.orElseThrow(() -> new CustomException(ErrorCode.DEFAULT_ROLE_NOT_FOUND));
 
-		User savedUser = userRepository.saveAndFlush(User.createSocialAccount(
+		User user = User.createSocialAccount(
 				profile.getFullName(),
 				profile.getEmail()
-		));
+		);
+		user.changeAvatar(userAvatarService.defaultAvatar());
+		User savedUser = userRepository.saveAndFlush(user);
 		socialAccountRepository.save(SocialAccount.link(
 				savedUser,
 				profile.getProvider(),
@@ -190,6 +196,9 @@ public class AuthServiceImpl implements AuthService {
 		));
 		eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getFullName(), savedUser.getEmail()));
 
+		eventPublisher.publishEvent(GoogleAvatarImportEvent.builder()
+				.userId(savedUser.getId()).pictureUrl(profile.getPictureUrl())
+				.expectedAvatar(savedUser.getAvatarUrl()).build());
 		return issueSocialRefreshTokenForActiveUser(savedUser);
 	}
 
@@ -224,6 +233,7 @@ public class AuthServiceImpl implements AuthService {
 				.providerId(profile.getProviderId().trim())
 				.email(profile.getEmail().trim())
 				.fullName(profile.getFullName().trim())
+				.pictureUrl(profile.getPictureUrl())
 				.emailVerified(true)
 				.build();
 	}

@@ -10,10 +10,15 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
+
+	@Modifying
+	@Query(value = "update techverse.users set avatar_url = :url, updated_by = :id where id = :id", nativeQuery = true)
+	int updateAvatarUrl(@Param("id") UUID id, @Param("url") String url);
 
 	@Query(
 			value = "select exists (select 1 from techverse.users where lower(email::text) = lower(:email))",

@@ -3,6 +3,10 @@ spring:
     name: server
   jackson:
     time-zone: Asia/Ho_Chi_Minh
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   datasource:
     hikari:
       connection-init-sql: SET TIME ZONE 'Asia/Ho_Chi_Minh'; SET search_path TO techverse, public
@@ -36,3 +40,14 @@ password-reset:
 sendgrid:
   template-id:
     reset-password-otp: ${SENDGRID_TEMPLATE_RESET_PASSWORD_OTP:}
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
+  folder: ${CLOUDINARY_ARTICLE_FOLDER:techverse/articles}
+  cleanup-enabled: ${CLOUDINARY_CLEANUP_ENABLED:true}
+
+article:
+  imports-per-hour: 60
+  uploads-per-hour: 100

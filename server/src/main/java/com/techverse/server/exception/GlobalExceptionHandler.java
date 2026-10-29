@@ -76,6 +76,30 @@ public class GlobalExceptionHandler {
 		return error(ErrorCode.MALFORMED_REQUEST, request, null);
 	}
 
+	@ExceptionHandler({org.springframework.web.bind.MissingRequestHeaderException.class,
+			org.springframework.web.multipart.support.MissingServletRequestPartException.class,
+			org.springframework.web.bind.MissingServletRequestParameterException.class})
+	ResponseEntity<ErrorResponse> handleMissingInput(HttpServletRequest request) {
+		return error(ErrorCode.MALFORMED_REQUEST, request, null);
+	}
+
+	@ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+	ResponseEntity<ErrorResponse> handleLargeUpload(HttpServletRequest request) {
+		return error(request.getRequestURI().endsWith("/users/me/avatar")
+				? ErrorCode.AVATAR_FILE_TOO_LARGE : ErrorCode.ARTICLE_FILE_TOO_LARGE, request, null);
+	}
+
+	@ExceptionHandler(org.springframework.web.HttpMediaTypeNotSupportedException.class)
+	ResponseEntity<ErrorResponse> handleUnsupportedMedia(HttpServletRequest request) {
+		return error(request.getRequestURI().endsWith("/users/me/avatar")
+				? ErrorCode.AVATAR_FILE_UNSUPPORTED : ErrorCode.ARTICLE_FILE_UNSUPPORTED, request, null);
+	}
+
+	@ExceptionHandler(org.springframework.web.multipart.MultipartException.class)
+	ResponseEntity<ErrorResponse> handleInvalidMultipart(HttpServletRequest request) {
+		return error(ErrorCode.MALFORMED_REQUEST, request, null);
+	}
+
 	@ExceptionHandler(OptimisticLockingFailureException.class)
 	ResponseEntity<ErrorResponse> handleOptimisticConflict(HttpServletRequest request) {
 		return error(ErrorCode.DATA_CONFLICT, request, null);
