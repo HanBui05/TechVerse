@@ -9,6 +9,8 @@ public enum ErrorCode {
 	SOCIAL_EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "AUTH_SOCIAL_EMAIL_ALREADY_REGISTERED", "Email is already registered with a local account"),
 	SOCIAL_ACCOUNT_INACTIVE(HttpStatus.UNAUTHORIZED, "AUTH_SOCIAL_ACCOUNT_INACTIVE", "Social account is inactive"),
 	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found"),
+	TOPIC_NOT_FOUND(HttpStatus.NOT_FOUND, "TOPIC_NOT_FOUND", "Topic not found"),
+	TOPIC_EXISTED(HttpStatus.CONFLICT, "TOPIC_EXISTED", "Topic name already exists"),
 	USER_INACTIVE(HttpStatus.FORBIDDEN, "USER_INACTIVE", "User account is inactive"),
 	INVALID_USER_SELECTION(HttpStatus.BAD_REQUEST, "INVALID_USER_SELECTION", "User selection contains duplicate IDs"),
 	ADMIN_SELF_LOCK_NOT_ALLOWED(HttpStatus.CONFLICT, "ADMIN_SELF_LOCK_NOT_ALLOWED", "An administrator cannot lock their own account"),
