@@ -7,6 +7,7 @@ import { Sidebar } from './components/layout/Sidebar'
 import { ModeratorSidebar } from './components/layout/ModeratorSidebar'
 import { copy } from './data/i18n'
 import { HomePage } from './pages/Home/HomePage'
+import { BlogsPage, BlogDetailPage } from './pages/Blogs/BlogsPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
 import { ThemePage } from './pages/Settings/ThemePage'
 import { LoginPage } from './pages/Login/LoginPage'
@@ -14,6 +15,7 @@ import { ForgotPasswordPage } from './pages/Login/ForgotPasswordPage'
 import { RegisterPage } from './pages/Register/RegisterPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { ProfilePage } from './pages/Profile/ProfilePage'
+import { AvatarUpload } from './pages/Profile/AvatarUpload'
 import { AdminDashboardPage } from './pages/Admin/AdminDashboardPage'
 import { AuthorApplicationsPage } from './pages/Admin/AuthorApplicationsPage'
 import { AdminUsersPage } from './pages/Admin/AdminUsersPage'
@@ -21,6 +23,7 @@ import { TaxonomyPage } from './pages/Admin/TaxonomyPage'
 import { AuthorApplyPage } from './pages/Author/AuthorApplyPage'
 import { AuthorBlogsPage } from './pages/Author/AuthorBlogsPage'
 import { ModeratorDashboardPage } from './pages/Moderator/ModeratorDashboardPage'
+import { ModeratorArticlesPage } from './pages/Moderator/ModeratorArticlesPage'
 import type { Language, Theme } from './types/preferences'
 import { login as loginWithApi, logout as logoutFromApi, logoutAll as logoutAllFromApi, restoreSession } from './services/authService'
 import { register as registerWithApi } from './services/registerService'
@@ -103,16 +106,19 @@ export default function App() {
     catch (error) { window.alert(error instanceof Error ? error.message : 'Không thể đăng xuất khỏi tất cả thiết bị.') }
   }
   return <div className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''} ${isAuthPage ? 'login-mode' : ''}`}>
-    {!isAuthPage && (isModeratorPage && profile?.roles.includes('MODERATOR') ? <ModeratorSidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} profile={profile} onLogout={logout} /> : <Sidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} t={t} authenticated={authenticated} roles={profile?.roles || []} onLogout={logout} />)}
+    {!isAuthPage && (authenticated && profile?.roles.includes('MODERATOR') && (isModeratorPage || !profile.roles.includes('ADMIN')) ? <ModeratorSidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} profile={profile} onLogout={logout} /> : <Sidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} t={t} authenticated={authenticated} roles={profile?.roles || []} onLogout={logout} />)}
     {!isAuthPage && <header className="mobile-topbar"><button className="icon-button" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu size={20} /></button><Brand /><Link className="icon-button" to="/settings/theme" aria-label="Theme settings"><Moon size={18} /></Link></header>}
     <Routes>
       <Route path="/" element={<HomePage t={t} />} />
+      <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><BlogsPage /></AuthRoute>} />
+      <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><BlogDetailPage /></AuthRoute>} />
       <Route path="/login" element={<LoginPage t={t} onLogin={login} />} />
       <Route path="/register" element={<RegisterPage t={t} onRegister={register} />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/profile" element={<AuthRoute authenticated={authenticated}><ProfilePage language={language} profile={profile} onLogout={logout} onProfileChange={setProfile} /><div className="page-content logout-all-panel"><button className="button button-outline" onClick={() => void logoutAll()}>{language === 'vi' ? 'Đăng xuất khỏi tất cả thiết bị' : 'Log out from all devices'}</button></div></AuthRoute>} />
+      <Route path="/profile" element={<AuthRoute authenticated={authenticated}><ProfilePage language={language} profile={profile} onLogout={logout} onProfileChange={setProfile} /><AvatarUpload profile={profile} onProfileChange={setProfile} language={language} /><div className="page-content logout-all-panel"><button className="button button-outline" onClick={() => void logoutAll()}>{language === 'vi' ? 'Đăng xuất khỏi tất cả thiết bị' : 'Log out from all devices'}</button></div></AuthRoute>} />
       <Route path="/admin" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminDashboardPage /></RoleRoute>} />
       <Route path="/moderator" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorDashboardPage language={language} /></RoleRoute>} />
+      <Route path="/moderator/articles" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorArticlesPage /></RoleRoute>} />
       <Route path="/admin/author-applications" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AuthorApplicationsPage /></RoleRoute>} />
       <Route path="/admin/users" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminUsersPage /></RoleRoute>} />
       <Route path="/admin/topics" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="topics" /></RoleRoute>} />

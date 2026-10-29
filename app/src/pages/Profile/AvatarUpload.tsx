@@ -1,0 +1,9 @@
+import { useState } from 'react'
+import { request } from '../../services/api/client'
+import type { UserProfile } from '../../services/profileService'
+import type { Language } from '../../types/preferences'
+export function AvatarUpload({ profile, onProfileChange, language }: { profile: UserProfile | null; onProfileChange: (profile: UserProfile) => void; language: Language }) {
+  const [busy, setBusy] = useState(false); const [message, setMessage] = useState('')
+  const upload = async (file: File) => { setMessage(''); if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { setMessage(language === 'vi' ? 'Chọn ảnh JPEG, PNG hoặc WebP không quá 5 MB.' : 'Choose a JPEG, PNG or WebP image up to 5 MB.'); return } setBusy(true); try { const body = new FormData(); body.append('file', file); onProfileChange(await request<UserProfile>('/api/v1/users/me/avatar', { method: 'PATCH', body })); setMessage(language === 'vi' ? 'Đã cập nhật ảnh đại diện.' : 'Avatar updated.') } catch (e) { setMessage(e instanceof Error ? e.message : 'Upload failed') } finally { setBusy(false) } }
+  return <div className="page-content profile-upload-panel"><section className="article-panel"><h2>{language === 'vi' ? 'Ảnh đại diện' : 'Profile picture'}</h2>{profile?.avatarUrl && <img className="profile-upload-image" src={profile.avatarUrl} alt={language === 'vi' ? 'Ảnh đại diện' : 'Profile picture'} />}<label className="article-form">{language === 'vi' ? 'Chọn ảnh JPEG, PNG hoặc WebP (tối đa 5 MB)' : 'Choose JPEG, PNG or WebP (up to 5 MB)'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={e => { const file = e.target.files?.[0]; if (file) void upload(file); e.target.value = '' }} /></label>{busy && <p role="status">{language === 'vi' ? 'Đang tải ảnh...' : 'Uploading...'}</p>}{message && <p role="status">{message}</p>}</section></div>
+}
