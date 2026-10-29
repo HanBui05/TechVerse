@@ -71,8 +71,10 @@ public class SecurityConfiguration {
 						.requestMatchers(HttpMethod.PATCH, "/api/v1/author-profiles/me/resubmit").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/author-profiles/me").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
-						.requestMatchers(HttpMethod.PATCH, "/api/v1/users/me").authenticated()
+						.requestMatchers(HttpMethod.PATCH, "/api/v1/users/me", "/api/v1/users/me/avatar").authenticated()
 						.requestMatchers("/api/v1/admin/**").authenticated()
+						.requestMatchers("/api/v1/author/articles", "/api/v1/author/articles/**").authenticated()
+						.requestMatchers("/api/v1/moderator/articles", "/api/v1/moderator/articles/**").authenticated()
 						.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 						.anyRequest().denyAll())
 				.build();
@@ -123,7 +125,7 @@ public class SecurityConfiguration {
 		CorsConfiguration corsConfiguration = new CorsConfiguration();
 		corsConfiguration.setAllowedOrigins(List.of(oauth2Properties.webUrl()));
 		corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PATCH", "OPTIONS"));
-		corsConfiguration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+		corsConfiguration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "Upload-Key"));
 		corsConfiguration.setAllowCredentials(true);
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

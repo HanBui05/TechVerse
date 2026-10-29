@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.techverse.server.dto.internal.SocialProfile;
+import com.techverse.server.dto.internal.JwtDetails;
 import com.techverse.server.properties.OAuth2Properties;
 import com.techverse.server.service.AuthCookieService;
 import com.techverse.server.service.AuthService;
@@ -22,6 +23,20 @@ import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 
 class OAuth2LoginSuccessHandlerTest {
+
+	@Test
+	void passesVerifiedGooglePictureToAccountCreation() throws Exception {
+		AuthService service = mock(AuthService.class);
+		when(service.authenticateSocialAccount(any(SocialProfile.class))).thenAnswer(call -> {
+			SocialProfile profile = call.getArgument(0);
+			assertThat(profile.getPictureUrl()).isEqualTo("https://lh3.googleusercontent.com/a/photo");
+			return JwtDetails.builder().value("refresh").build();
+		});
+		var handler = new OAuth2LoginSuccessHandler(service, mock(AuthCookieService.class), new OAuth2Properties("http://localhost:3000"));
+		var response = new MockHttpServletResponse();
+		handler.onAuthenticationSuccess(new MockHttpServletRequest(), response, googleAuthentication());
+		assertThat(response.getRedirectedUrl()).isEqualTo("http://localhost:3000/auth/callback?status=success");
+	}
 
 	@Test
 	void redirectsWithSanitizedErrorWhenSocialAuthenticationFailsUnexpectedly() throws Exception {
@@ -55,7 +70,8 @@ class OAuth2LoginSuccessHandlerTest {
 						"sub", "google-subject-123",
 						"email", "google.user@example.com",
 						"name", "Google User",
-						"email_verified", true
+						"email_verified", true,
+						"picture", "https://lh3.googleusercontent.com/a/photo"
 				)
 		);
 		DefaultOidcUser user = new DefaultOidcUser(
