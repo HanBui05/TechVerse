@@ -1,0 +1,2 @@
+import { FileText, Plus } from 'lucide-react'
+export function AuthorBlogsPage() { return <main className="page-content placeholder-page"><div className="placeholder-icon"><FileText size={28} /></div><span className="section-kicker">TechVerse Author</span><h1>Blog của tôi</h1><p>Bạn chưa có bài blog nào. Các bài viết mới sẽ được quản lý tại đây.</p><button className="button button-primary"><Plus size={17} />Tạo bài viết</button></main> }
