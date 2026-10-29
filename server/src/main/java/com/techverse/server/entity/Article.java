@@ -95,4 +95,16 @@ public class Article extends BaseEntity {
     public void submit() {
         this.status = ArticleStatus.PENDING;
     }
+
+    public void review(ArticleStatus decision, User reviewer, String note, Instant at) {
+        if (status != ArticleStatus.PENDING
+                || (decision != ArticleStatus.PUBLISHED && decision != ArticleStatus.CHANGES_REQUESTED)) {
+            throw new IllegalStateException("Invalid article review transition");
+        }
+        this.status = decision;
+        this.reviewedBy = reviewer;
+        this.moderationNote = note;
+        this.reviewedAt = at;
+        if (decision == ArticleStatus.PUBLISHED) this.publishedAt = at;
+    }
 }

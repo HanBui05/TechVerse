@@ -3,6 +3,11 @@ package com.techverse.server.exception;
 import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
+	ARTICLE_NOT_PENDING(HttpStatus.CONFLICT, "ARTICLE_NOT_PENDING", "Only pending articles can be reviewed"),
+	ARTICLE_REVIEW_STALE(HttpStatus.CONFLICT, "ARTICLE_REVIEW_STALE", "Article has changed. Reload it before reviewing"),
+	ARTICLE_SELF_REVIEW_NOT_ALLOWED(HttpStatus.FORBIDDEN, "ARTICLE_SELF_REVIEW_NOT_ALLOWED", "You cannot review your own article"),
+	ARTICLE_REVIEW_NOTE_REQUIRED(HttpStatus.BAD_REQUEST, "ARTICLE_REVIEW_NOTE_REQUIRED", "Feedback is required when requesting changes"),
+	ARTICLE_AUTHOR_INELIGIBLE(HttpStatus.CONFLICT, "ARTICLE_AUTHOR_INELIGIBLE", "Publication requires an active account with approved Author permission"),
 	AVATAR_IMAGE_INVALID(HttpStatus.BAD_REQUEST, "AVATAR_IMAGE_INVALID", "Image is empty, corrupt, or exceeds the allowed dimensions"),
 	AVATAR_FILE_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "AVATAR_FILE_TOO_LARGE", "Avatar exceeds the size limit (5 MiB source)"),
 	AVATAR_FILE_UNSUPPORTED(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "AVATAR_FILE_UNSUPPORTED", "Avatar must be a static JPEG, PNG or WebP image"),
