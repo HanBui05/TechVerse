@@ -1,6 +1,7 @@
 package com.techverse.server.controller;
 
 import com.techverse.server.dto.request.ApplyAuthorProfileRequest;
+import com.techverse.server.dto.request.ResubmitAuthorProfileRequest;
 import com.techverse.server.dto.response.ApiResponse;
 import com.techverse.server.dto.response.AuthorProfileResponse;
 import com.techverse.server.dto.response.MyAuthorProfileResponse;
@@ -16,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,6 +30,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthorProfileController {
 
 	private final AuthorProfileService authorProfileService;
+
+	@PatchMapping("/me/resubmit")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(summary = "Update and resubmit the current user's rejected application")
+	public ResponseEntity<ApiResponse<AuthorProfileResponse>> resubmit(
+			@AuthenticationPrincipal Jwt authenticatedUser,
+			@Valid @RequestBody ResubmitAuthorProfileRequest request) {
+		return ResponseEntity.ok(ApiResponse.<AuthorProfileResponse>builder()
+				.status(HttpStatus.OK.value())
+				.message("Author application resubmitted successfully")
+				.data(authorProfileService.resubmit(UUID.fromString(authenticatedUser.getSubject()), request))
+				.build());
+	}
 
 	@GetMapping("/me")
 	@PreAuthorize("isAuthenticated()")

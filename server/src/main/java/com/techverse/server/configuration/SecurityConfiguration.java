@@ -68,6 +68,7 @@ public class SecurityConfiguration {
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/forgot-password", "/api/v1/auth/verify-reset-otp", "/api/v1/auth/reset-password").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/logout", "/api/v1/auth/logout-all").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/v1/author-profiles/me").authenticated()
+						.requestMatchers(HttpMethod.PATCH, "/api/v1/author-profiles/me/resubmit").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/author-profiles/me").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
 						.requestMatchers(HttpMethod.PATCH, "/api/v1/users/me").authenticated()

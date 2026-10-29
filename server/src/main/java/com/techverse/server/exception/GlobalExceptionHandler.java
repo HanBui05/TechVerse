@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -73,6 +74,11 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(HttpMessageNotReadableException.class)
 	ResponseEntity<ErrorResponse> handleMalformedRequest(HttpServletRequest request) {
 		return error(ErrorCode.MALFORMED_REQUEST, request, null);
+	}
+
+	@ExceptionHandler(OptimisticLockingFailureException.class)
+	ResponseEntity<ErrorResponse> handleOptimisticConflict(HttpServletRequest request) {
+		return error(ErrorCode.DATA_CONFLICT, request, null);
 	}
 
 	@ExceptionHandler(Exception.class)

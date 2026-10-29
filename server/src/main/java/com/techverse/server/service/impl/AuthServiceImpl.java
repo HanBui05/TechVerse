@@ -17,6 +17,7 @@ import com.techverse.server.repository.RoleRepository;
 import com.techverse.server.repository.SocialAccountRepository;
 import com.techverse.server.repository.UserRepository;
 import com.techverse.server.service.AuthService;
+import com.techverse.server.service.AuthorProfileService;
 import com.techverse.server.service.TokenService;
 import java.util.Set;
 import java.time.Duration;
@@ -41,6 +42,7 @@ public class AuthServiceImpl implements AuthService {
 	private final PasswordEncoder passwordEncoder;
 	private final ApplicationEventPublisher eventPublisher;
 	private final TokenService tokenService;
+	private final AuthorProfileService authorProfileService;
 
 	@Override
 	@Transactional
@@ -165,6 +167,7 @@ public class AuthServiceImpl implements AuthService {
 	private Set<RoleName> rolesOf(User user) {
 		return user.getUserRoles().stream()
 				.map(userRole -> userRole.getRole().getName())
+				.filter(role -> role != RoleName.AUTHOR || authorProfileService.isApprovedAuthor(user.getId()))
 				.collect(Collectors.toUnmodifiableSet());
 	}
 

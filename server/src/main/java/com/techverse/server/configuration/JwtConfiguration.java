@@ -2,12 +2,15 @@ package com.techverse.server.configuration;
 
 import com.nimbusds.jose.proc.SecurityContext;
 import com.techverse.server.enums.TokenType;
+import com.techverse.server.enums.RoleName;
 import com.techverse.server.properties.JwtProperties;
 import com.techverse.server.properties.OAuth2Properties;
 import com.techverse.server.service.TokenService;
+import com.techverse.server.service.AuthorProfileService;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -58,12 +61,16 @@ public class JwtConfiguration {
 	}
 
 	@Bean
-	Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthenticationConverter() {
+	Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthenticationConverter(AuthorProfileService authorProfileService) {
 		return jwt -> {
 			List<String> roles = jwt.getClaimAsStringList("roles");
+			// A signed role claim is not sufficient after an administrator suspends an author.
+			boolean approvedAuthor = roles != null && roles.contains(RoleName.AUTHOR.name())
+					&& authorProfileService.isApprovedAuthor(UUID.fromString(jwt.getSubject()));
 			Collection<GrantedAuthority> authorities = roles == null
 					? List.of()
 					: roles.stream()
+							.filter(role -> !RoleName.AUTHOR.name().equals(role) || approvedAuthor)
 							.<GrantedAuthority>map(role -> new SimpleGrantedAuthority("ROLE_" + role))
 							.toList();
 			return new JwtAuthenticationToken(jwt, authorities);
