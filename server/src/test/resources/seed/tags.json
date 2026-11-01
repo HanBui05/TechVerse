@@ -1,0 +1,386 @@
+[
+  {
+    "name": "Java",
+    "description": "Nội dung về Java, thuộc nhóm kiến thức Java Core."
+  },
+  {
+    "name": "OOP",
+    "description": "Nội dung về OOP, thuộc nhóm kiến thức Java Core."
+  },
+  {
+    "name": "Collections",
+    "description": "Nội dung về Collections, thuộc nhóm kiến thức Java Core."
+  },
+  {
+    "name": "Streams",
+    "description": "Nội dung về Streams, thuộc nhóm kiến thức Java Core."
+  },
+  {
+    "name": "Spring Boot",
+    "description": "Nội dung về Spring Boot, thuộc nhóm kiến thức Spring Boot."
+  },
+  {
+    "name": "Dependency Injection",
+    "description": "Nội dung về Dependency Injection, thuộc nhóm kiến thức Spring Boot."
+  },
+  {
+    "name": "Bean Validation",
+    "description": "Nội dung về Bean Validation, thuộc nhóm kiến thức Spring Boot."
+  },
+  {
+    "name": "Transactions",
+    "description": "Nội dung về Transactions, thuộc nhóm kiến thức Spring Boot."
+  },
+  {
+    "name": "PostgreSQL",
+    "description": "Nội dung về PostgreSQL, thuộc nhóm kiến thức Database & SQL."
+  },
+  {
+    "name": "SQL",
+    "description": "Nội dung về SQL, thuộc nhóm kiến thức Database & SQL."
+  },
+  {
+    "name": "Indexing",
+    "description": "Nội dung về Indexing, thuộc nhóm kiến thức Database & SQL."
+  },
+  {
+    "name": "Flyway",
+    "description": "Nội dung về Flyway, thuộc nhóm kiến thức Database & SQL."
+  },
+  {
+    "name": "Redis",
+    "description": "Nội dung về Redis, thuộc nhóm kiến thức Redis & Caching."
+  },
+  {
+    "name": "Caching",
+    "description": "Nội dung về Caching, thuộc nhóm kiến thức Redis & Caching."
+  },
+  {
+    "name": "TTL",
+    "description": "Nội dung về TTL, thuộc nhóm kiến thức Redis & Caching."
+  },
+  {
+    "name": "Cache Aside",
+    "description": "Nội dung về Cache Aside, thuộc nhóm kiến thức Redis & Caching."
+  },
+  {
+    "name": "JWT",
+    "description": "Nội dung về JWT, thuộc nhóm kiến thức Authentication & Security."
+  },
+  {
+    "name": "OAuth2",
+    "description": "Nội dung về OAuth2, thuộc nhóm kiến thức Authentication & Security."
+  },
+  {
+    "name": "Spring Security",
+    "description": "Nội dung về Spring Security, thuộc nhóm kiến thức Authentication & Security."
+  },
+  {
+    "name": "Session Management",
+    "description": "Nội dung về Session Management, thuộc nhóm kiến thức Authentication & Security."
+  },
+  {
+    "name": "JavaScript",
+    "description": "Nội dung về JavaScript, thuộc nhóm kiến thức JavaScript."
+  },
+  {
+    "name": "Async Await",
+    "description": "Nội dung về Async Await, thuộc nhóm kiến thức JavaScript."
+  },
+  {
+    "name": "Promises",
+    "description": "Nội dung về Promises, thuộc nhóm kiến thức JavaScript."
+  },
+  {
+    "name": "Event Loop",
+    "description": "Nội dung về Event Loop, thuộc nhóm kiến thức JavaScript."
+  },
+  {
+    "name": "TypeScript",
+    "description": "Nội dung về TypeScript, thuộc nhóm kiến thức TypeScript."
+  },
+  {
+    "name": "Generics",
+    "description": "Nội dung về Generics, thuộc nhóm kiến thức TypeScript."
+  },
+  {
+    "name": "Type Guards",
+    "description": "Nội dung về Type Guards, thuộc nhóm kiến thức TypeScript."
+  },
+  {
+    "name": "Utility Types",
+    "description": "Nội dung về Utility Types, thuộc nhóm kiến thức TypeScript."
+  },
+  {
+    "name": "React",
+    "description": "Nội dung về React, thuộc nhóm kiến thức React."
+  },
+  {
+    "name": "Hooks",
+    "description": "Nội dung về Hooks, thuộc nhóm kiến thức React."
+  },
+  {
+    "name": "Forms",
+    "description": "Nội dung về Forms, thuộc nhóm kiến thức React."
+  },
+  {
+    "name": "State Management",
+    "description": "Nội dung về State Management, thuộc nhóm kiến thức React."
+  },
+  {
+    "name": "Next.js",
+    "description": "Nội dung về Next.js, thuộc nhóm kiến thức Next.js."
+  },
+  {
+    "name": "SSR",
+    "description": "Nội dung về SSR, thuộc nhóm kiến thức Next.js."
+  },
+  {
+    "name": "Routing",
+    "description": "Nội dung về Routing, thuộc nhóm kiến thức Next.js."
+  },
+  {
+    "name": "Server Components",
+    "description": "Nội dung về Server Components, thuộc nhóm kiến thức Next.js."
+  },
+  {
+    "name": "HTML",
+    "description": "Nội dung về HTML, thuộc nhóm kiến thức HTML & CSS."
+  },
+  {
+    "name": "CSS",
+    "description": "Nội dung về CSS, thuộc nhóm kiến thức HTML & CSS."
+  },
+  {
+    "name": "Flexbox",
+    "description": "Nội dung về Flexbox, thuộc nhóm kiến thức HTML & CSS."
+  },
+  {
+    "name": "Accessibility",
+    "description": "Nội dung về Accessibility, thuộc nhóm kiến thức HTML & CSS."
+  },
+  {
+    "name": "Node.js",
+    "description": "Nội dung về Node.js, thuộc nhóm kiến thức Node.js."
+  },
+  {
+    "name": "Express",
+    "description": "Nội dung về Express, thuộc nhóm kiến thức Node.js."
+  },
+  {
+    "name": "Middleware",
+    "description": "Nội dung về Middleware, thuộc nhóm kiến thức Node.js."
+  },
+  {
+    "name": "Error Handling",
+    "description": "Nội dung về Error Handling, thuộc nhóm kiến thức Node.js."
+  },
+  {
+    "name": "Python",
+    "description": "Nội dung về Python, thuộc nhóm kiến thức Python."
+  },
+  {
+    "name": "Dataclasses",
+    "description": "Nội dung về Dataclasses, thuộc nhóm kiến thức Python."
+  },
+  {
+    "name": "Iterators",
+    "description": "Nội dung về Iterators, thuộc nhóm kiến thức Python."
+  },
+  {
+    "name": "Typing",
+    "description": "Nội dung về Typing, thuộc nhóm kiến thức Python."
+  },
+  {
+    "name": "Algorithms",
+    "description": "Nội dung về Algorithms, thuộc nhóm kiến thức Data Structures & Algorithms."
+  },
+  {
+    "name": "Hash Map",
+    "description": "Nội dung về Hash Map, thuộc nhóm kiến thức Data Structures & Algorithms."
+  },
+  {
+    "name": "Binary Search",
+    "description": "Nội dung về Binary Search, thuộc nhóm kiến thức Data Structures & Algorithms."
+  },
+  {
+    "name": "Big O",
+    "description": "Nội dung về Big O, thuộc nhóm kiến thức Data Structures & Algorithms."
+  },
+  {
+    "name": "REST API",
+    "description": "Nội dung về REST API, thuộc nhóm kiến thức REST API Design."
+  },
+  {
+    "name": "Pagination",
+    "description": "Nội dung về Pagination, thuộc nhóm kiến thức REST API Design."
+  },
+  {
+    "name": "Idempotency",
+    "description": "Nội dung về Idempotency, thuộc nhóm kiến thức REST API Design."
+  },
+  {
+    "name": "HTTP",
+    "description": "Nội dung về HTTP, thuộc nhóm kiến thức REST API Design."
+  },
+  {
+    "name": "Docker",
+    "description": "Nội dung về Docker, thuộc nhóm kiến thức Docker & Containers."
+  },
+  {
+    "name": "Docker Compose",
+    "description": "Nội dung về Docker Compose, thuộc nhóm kiến thức Docker & Containers."
+  },
+  {
+    "name": "Containers",
+    "description": "Nội dung về Containers, thuộc nhóm kiến thức Docker & Containers."
+  },
+  {
+    "name": "Health Checks",
+    "description": "Nội dung về Health Checks, thuộc nhóm kiến thức Docker & Containers."
+  },
+  {
+    "name": "CI/CD",
+    "description": "Nội dung về CI/CD, thuộc nhóm kiến thức CI/CD & DevOps."
+  },
+  {
+    "name": "GitHub Actions",
+    "description": "Nội dung về GitHub Actions, thuộc nhóm kiến thức CI/CD & DevOps."
+  },
+  {
+    "name": "Build Automation",
+    "description": "Nội dung về Build Automation, thuộc nhóm kiến thức CI/CD & DevOps."
+  },
+  {
+    "name": "Environment Variables",
+    "description": "Nội dung về Environment Variables, thuộc nhóm kiến thức CI/CD & DevOps."
+  },
+  {
+    "name": "Unit Testing",
+    "description": "Nội dung về Unit Testing, thuộc nhóm kiến thức Software Testing."
+  },
+  {
+    "name": "Integration Testing",
+    "description": "Nội dung về Integration Testing, thuộc nhóm kiến thức Software Testing."
+  },
+  {
+    "name": "JUnit",
+    "description": "Nội dung về JUnit, thuộc nhóm kiến thức Software Testing."
+  },
+  {
+    "name": "Mockito",
+    "description": "Nội dung về Mockito, thuộc nhóm kiến thức Software Testing."
+  },
+  {
+    "name": "Git",
+    "description": "Nội dung về Git, thuộc nhóm kiến thức Git & Teamwork."
+  },
+  {
+    "name": "Branching",
+    "description": "Nội dung về Branching, thuộc nhóm kiến thức Git & Teamwork."
+  },
+  {
+    "name": "Commit Convention",
+    "description": "Nội dung về Commit Convention, thuộc nhóm kiến thức Git & Teamwork."
+  },
+  {
+    "name": "Merge",
+    "description": "Nội dung về Merge, thuộc nhóm kiến thức Git & Teamwork."
+  },
+  {
+    "name": "System Design",
+    "description": "Nội dung về System Design, thuộc nhóm kiến thức System Design."
+  },
+  {
+    "name": "Concurrency",
+    "description": "Nội dung về Concurrency, thuộc nhóm kiến thức System Design."
+  },
+  {
+    "name": "Rate Limiting",
+    "description": "Nội dung về Rate Limiting, thuộc nhóm kiến thức System Design."
+  },
+  {
+    "name": "Scalability",
+    "description": "Nội dung về Scalability, thuộc nhóm kiến thức System Design."
+  },
+  {
+    "name": "Linux",
+    "description": "Nội dung về Linux, thuộc nhóm kiến thức Linux & Networking."
+  },
+  {
+    "name": "TCP/IP",
+    "description": "Nội dung về TCP/IP, thuộc nhóm kiến thức Linux & Networking."
+  },
+  {
+    "name": "DNS",
+    "description": "Nội dung về DNS, thuộc nhóm kiến thức Linux & Networking."
+  },
+  {
+    "name": "Reverse Proxy",
+    "description": "Nội dung về Reverse Proxy, thuộc nhóm kiến thức Linux & Networking."
+  },
+  {
+    "name": "Clean Code",
+    "description": "Nội dung về Clean Code, thuộc nhóm kiến thức Clean Code & Design Patterns."
+  },
+  {
+    "name": "SOLID",
+    "description": "Nội dung về SOLID, thuộc nhóm kiến thức Clean Code & Design Patterns."
+  },
+  {
+    "name": "Strategy Pattern",
+    "description": "Nội dung về Strategy Pattern, thuộc nhóm kiến thức Clean Code & Design Patterns."
+  },
+  {
+    "name": "Refactoring",
+    "description": "Nội dung về Refactoring, thuộc nhóm kiến thức Clean Code & Design Patterns."
+  },
+  {
+    "name": "Logging",
+    "description": "Nội dung về Logging, thuộc nhóm kiến thức Observability."
+  },
+  {
+    "name": "Metrics",
+    "description": "Nội dung về Metrics, thuộc nhóm kiến thức Observability."
+  },
+  {
+    "name": "Tracing",
+    "description": "Nội dung về Tracing, thuộc nhóm kiến thức Observability."
+  },
+  {
+    "name": "Correlation ID",
+    "description": "Nội dung về Correlation ID, thuộc nhóm kiến thức Observability."
+  },
+  {
+    "name": "Performance",
+    "description": "Nội dung về Performance, thuộc nhóm kiến thức Web Performance."
+  },
+  {
+    "name": "Lazy Loading",
+    "description": "Nội dung về Lazy Loading, thuộc nhóm kiến thức Web Performance."
+  },
+  {
+    "name": "Debouncing",
+    "description": "Nội dung về Debouncing, thuộc nhóm kiến thức Web Performance."
+  },
+  {
+    "name": "Web Vitals",
+    "description": "Nội dung về Web Vitals, thuộc nhóm kiến thức Web Performance."
+  },
+  {
+    "name": "AI",
+    "description": "Nội dung về AI, thuộc nhóm kiến thức AI Integration."
+  },
+  {
+    "name": "LLM",
+    "description": "Nội dung về LLM, thuộc nhóm kiến thức AI Integration."
+  },
+  {
+    "name": "Prompting",
+    "description": "Nội dung về Prompting, thuộc nhóm kiến thức AI Integration."
+  },
+  {
+    "name": "Data Privacy",
+    "description": "Nội dung về Data Privacy, thuộc nhóm kiến thức AI Integration."
+  }
+]

@@ -1,0 +1,98 @@
+[
+  {
+    "name": "Java Core",
+    "description": "Nền tảng Java, lập trình hướng đối tượng và xử lý tập dữ liệu."
+  },
+  {
+    "name": "Spring Boot",
+    "description": "Xây dựng backend theo lớp, tiêm phụ thuộc và quản lý giao dịch."
+  },
+  {
+    "name": "Database & SQL",
+    "description": "Thiết kế dữ liệu quan hệ, truy vấn và quản lý thay đổi schema."
+  },
+  {
+    "name": "Redis & Caching",
+    "description": "Bộ nhớ đệm, thời hạn dữ liệu và chiến lược giảm tải truy vấn."
+  },
+  {
+    "name": "Authentication & Security",
+    "description": "Đăng nhập, phân quyền và bảo vệ phiên người dùng."
+  },
+  {
+    "name": "JavaScript",
+    "description": "Ngôn ngữ JavaScript và mô hình thực thi bất đồng bộ."
+  },
+  {
+    "name": "TypeScript",
+    "description": "Kiểu dữ liệu tĩnh và mô hình hóa dữ liệu an toàn."
+  },
+  {
+    "name": "React",
+    "description": "Giao diện thành phần, hooks và quản lý trạng thái."
+  },
+  {
+    "name": "Next.js",
+    "description": "Routing và tổ chức trang trong ứng dụng React dùng Next.js."
+  },
+  {
+    "name": "HTML & CSS",
+    "description": "Bố cục web, giao diện responsive và khả năng tiếp cận."
+  },
+  {
+    "name": "Node.js",
+    "description": "HTTP server, middleware và xử lý lỗi phía backend JavaScript."
+  },
+  {
+    "name": "Python",
+    "description": "Nền tảng Python, tổ chức dữ liệu và xử lý tập hợp."
+  },
+  {
+    "name": "Data Structures & Algorithms",
+    "description": "Cấu trúc dữ liệu, thuật toán và phân tích độ phức tạp."
+  },
+  {
+    "name": "REST API Design",
+    "description": "Thiết kế tài nguyên, phân trang và hành vi API nhất quán."
+  },
+  {
+    "name": "Docker & Containers",
+    "description": "Đóng gói ứng dụng và quản lý các dịch vụ phụ thuộc."
+  },
+  {
+    "name": "CI/CD & DevOps",
+    "description": "Tự động hóa kiểm tra, build và quản lý môi trường."
+  },
+  {
+    "name": "Software Testing",
+    "description": "Kiểm thử đơn vị, tích hợp và các tình huống nghiệp vụ."
+  },
+  {
+    "name": "Git & Teamwork",
+    "description": "Quy trình làm việc nhóm và quản lý lịch sử mã nguồn."
+  },
+  {
+    "name": "System Design",
+    "description": "Thiết kế hệ thống, xử lý đồng thời và khả năng mở rộng."
+  },
+  {
+    "name": "Linux & Networking",
+    "description": "Công cụ Linux và nền tảng kết nối dịch vụ."
+  },
+  {
+    "name": "Clean Code & Design Patterns",
+    "description": "Thiết kế mã dễ đọc, dễ thay đổi và các mẫu giải quyết vấn đề."
+  },
+  {
+    "name": "Observability",
+    "description": "Theo dõi hoạt động hệ thống qua log, metric và trace."
+  },
+  {
+    "name": "Web Performance",
+    "description": "Giảm chi phí tải trang và xử lý tương tác hiệu quả."
+  },
+  {
+    "name": "AI Integration",
+    "description": "Tích hợp mô hình ngôn ngữ với giới hạn và bảo vệ dữ liệu."
+  }
+]

@@ -1,0 +1,314 @@
+[
+  {
+    "file": "articles/01-java-oop-composition.md",
+    "title": "Java OOP: ưu tiên composition khi xây dựng dịch vụ thông báo",
+    "summary": "Phân biệt kế thừa và composition qua ví dụ gửi thông báo, giúp thay đổi kênh gửi mà không sửa logic nghiệp vụ.",
+    "topicName": "Java Core",
+    "tagNames": [
+      "Java",
+      "OOP",
+      "Collections",
+      "Streams"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/02-spring-service-transaction.md",
+    "title": "Spring Boot: đặt ranh giới giao dịch ở service thay vì controller",
+    "summary": "Tổ chức controller, service và repository qua tình huống đổi tiêu đề bài viết trong một giao dịch.",
+    "topicName": "Spring Boot",
+    "tagNames": [
+      "Spring Boot",
+      "Dependency Injection",
+      "Bean Validation",
+      "Transactions"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/03-postgresql-index-pagination.md",
+    "title": "PostgreSQL: thiết kế index cho danh sách bài viết theo topic",
+    "summary": "Đọc điều kiện lọc, thứ tự sắp xếp và EXPLAIN để chọn index phù hợp với truy vấn bài viết.",
+    "topicName": "Database & SQL",
+    "tagNames": [
+      "PostgreSQL",
+      "SQL",
+      "Indexing",
+      "Flyway"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/04-redis-cache-aside.md",
+    "title": "Redis: hiểu cache-aside và TTL qua thông tin topic",
+    "summary": "Mô tả luồng đọc cache, đọc database khi miss và xóa cache sau khi cập nhật dữ liệu.",
+    "topicName": "Redis & Caching",
+    "tagNames": [
+      "Redis",
+      "Caching",
+      "TTL",
+      "Cache Aside"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/05-auth-session-token.md",
+    "title": "JWT và session: vì sao logout cần nhiều hơn xóa cookie",
+    "summary": "Phân biệt thời hạn token, trạng thái phiên ở Redis và tác dụng thật của thao tác logout.",
+    "topicName": "Authentication & Security",
+    "tagNames": [
+      "JWT",
+      "OAuth2",
+      "Spring Security",
+      "Session Management"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/06-javascript-async-await.md",
+    "title": "JavaScript: xử lý lỗi HTTP đúng khi dùng async/await",
+    "summary": "Tách lỗi kết nối và lỗi HTTP, kiểm tra response.ok và không nuốt thông báo lỗi từ server.",
+    "topicName": "JavaScript",
+    "tagNames": [
+      "JavaScript",
+      "Async Await",
+      "Promises",
+      "Event Loop"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/07-typescript-discriminated-union.md",
+    "title": "TypeScript: mô hình hóa trạng thái tải dữ liệu bằng union",
+    "summary": "Dùng discriminated union để tránh tổ hợp trạng thái loading, data và error mâu thuẫn nhau.",
+    "topicName": "TypeScript",
+    "tagNames": [
+      "TypeScript",
+      "Generics",
+      "Type Guards",
+      "Utility Types"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/08-react-controlled-form.md",
+    "title": "React: form có kiểm soát và chống bấm lưu liên tục",
+    "summary": "Kết hợp state hiển thị với ref khóa thao tác để tránh gửi nhiều request do nhấp nhanh.",
+    "topicName": "React",
+    "tagNames": [
+      "React",
+      "Hooks",
+      "Forms",
+      "State Management"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/09-nextjs-route-layout.md",
+    "title": "Next.js: tổ chức route và layout cho khu vực tác giả",
+    "summary": "Minh họa cách phân nhóm trang bài viết và tái sử dụng layout trong ứng dụng dùng App Router.",
+    "topicName": "Next.js",
+    "tagNames": [
+      "Next.js",
+      "SSR",
+      "Routing",
+      "Server Components"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/10-css-responsive-accessibility.md",
+    "title": "HTML và CSS: xây dựng thẻ bài viết responsive dễ sử dụng",
+    "summary": "Thiết kế bố cục thẻ bài viết không tràn màn hình và có trạng thái focus rõ cho bàn phím.",
+    "topicName": "HTML & CSS",
+    "tagNames": [
+      "HTML",
+      "CSS",
+      "Flexbox",
+      "Accessibility"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/11-node-error-handling.md",
+    "title": "Node.js: phản hồi lỗi nhất quán trong HTTP server",
+    "summary": "Phân biệt lỗi nghiệp vụ với lỗi bất ngờ và tránh để lộ stack trace trong phản hồi HTTP.",
+    "topicName": "Node.js",
+    "tagNames": [
+      "Node.js",
+      "Express",
+      "Middleware",
+      "Error Handling"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/12-python-dataclasses.md",
+    "title": "Python: dùng dataclass để mô hình hóa kết quả đọc bài",
+    "summary": "Tổ chức dữ liệu bằng dataclass bất biến và xử lý danh sách với hàm thuần dễ kiểm thử.",
+    "topicName": "Python",
+    "tagNames": [
+      "Python",
+      "Dataclasses",
+      "Iterators",
+      "Typing"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/13-algorithms-binary-search.md",
+    "title": "Thuật toán: tìm kiếm nhị phân và lỗi lệch một vị trí",
+    "summary": "Hiểu bất biến khoảng tìm kiếm và các test biên giúp phát hiện lỗi trong binary search.",
+    "topicName": "Data Structures & Algorithms",
+    "tagNames": [
+      "Algorithms",
+      "Hash Map",
+      "Binary Search",
+      "Big O"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/14-rest-api-pagination.md",
+    "title": "REST API: phân trang ổn định và filter rõ ràng",
+    "summary": "Thiết kế danh sách bài viết với filter tùy chọn, giới hạn kích thước trang và thứ tự nhất quán.",
+    "topicName": "REST API Design",
+    "tagNames": [
+      "REST API",
+      "Pagination",
+      "Idempotency",
+      "HTTP"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/15-docker-compose-local.md",
+    "title": "Docker Compose: tổ chức PostgreSQL và Redis cho môi trường local",
+    "summary": "Đọc cấu hình dịch vụ, volume và health check mà không nhầm địa chỉ giữa container và máy host.",
+    "topicName": "Docker & Containers",
+    "tagNames": [
+      "Docker",
+      "Docker Compose",
+      "Containers",
+      "Health Checks"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/16-ci-workflow-quality-gate.md",
+    "title": "CI/CD: xây dựng quality gate trước khi merge",
+    "summary": "Sắp xếp kiểm tra dependency, test và build để phát hiện lỗi sớm trước khi đưa code vào nhánh chính.",
+    "topicName": "CI/CD & DevOps",
+    "tagNames": [
+      "CI/CD",
+      "GitHub Actions",
+      "Build Automation",
+      "Environment Variables"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/17-testing-validation-boundaries.md",
+    "title": "Testing: kiểm thử biên thay vì chỉ kiểm tra happy path",
+    "summary": "Từ một hàm kiểm tra độ dài tên, xây dựng các ca rỗng, sát giới hạn và vượt giới hạn.",
+    "topicName": "Software Testing",
+    "tagNames": [
+      "Unit Testing",
+      "Integration Testing",
+      "JUnit",
+      "Mockito"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/18-git-feature-branch.md",
+    "title": "Git teamwork: tạo feature branch và đồng bộ main an toàn",
+    "summary": "Thực hành tên branch, commit message và merge mà không dùng force push để giải quyết nhầm xung đột.",
+    "topicName": "Git & Teamwork",
+    "tagNames": [
+      "Git",
+      "Branching",
+      "Commit Convention",
+      "Merge"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/19-system-design-atomic-redis.md",
+    "title": "System design: thao tác Redis nguyên tử để dùng token một lần",
+    "summary": "Phân tích khoảng hở giữa kiểm tra và xóa, cùng ví dụ Lua tối giản cho một khóa token đã băm.",
+    "topicName": "System Design",
+    "tagNames": [
+      "System Design",
+      "Concurrency",
+      "Rate Limiting",
+      "Scalability"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/20-network-debugging.md",
+    "title": "Linux và networking: chẩn đoán kết nối theo từng lớp",
+    "summary": "Tách vấn đề DNS, TCP, TLS và HTTP để tìm đúng nguyên nhân khi frontend không gọi được backend.",
+    "topicName": "Linux & Networking",
+    "tagNames": [
+      "Linux",
+      "TCP/IP",
+      "DNS",
+      "Reverse Proxy"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/21-clean-code-strategy.md",
+    "title": "Clean Code: Strategy Pattern cho nhiều cách định dạng nội dung",
+    "summary": "Tách thuật toán biến đổi nội dung khỏi bộ điều phối, tránh một hàm lớn chứa nhiều điều kiện khó thay đổi.",
+    "topicName": "Clean Code & Design Patterns",
+    "tagNames": [
+      "Clean Code",
+      "SOLID",
+      "Strategy Pattern",
+      "Refactoring"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/22-observability-request-id.md",
+    "title": "Observability: dùng request ID để nối các bước xử lý",
+    "summary": "Theo dõi một request qua controller, service và lời gọi dịch vụ ngoài mà không log dữ liệu nhạy cảm.",
+    "topicName": "Observability",
+    "tagNames": [
+      "Logging",
+      "Metrics",
+      "Tracing",
+      "Correlation ID"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/23-web-performance-debounce.md",
+    "title": "Web performance: debounce tìm kiếm mà không hiển thị kết quả cũ",
+    "summary": "Kết hợp khoảng chờ gõ với hủy request trước đó để giảm tải và tránh kết quả về sai thứ tự.",
+    "topicName": "Web Performance",
+    "tagNames": [
+      "Performance",
+      "Lazy Loading",
+      "Debouncing",
+      "Web Vitals"
+    ],
+    "coverImageUrl": null
+  },
+  {
+    "file": "articles/24-ai-safe-integration.md",
+    "title": "Tích hợp AI: coi đầu ra mô hình là dữ liệu chưa được tin cậy",
+    "summary": "Thiết kế ranh giới dữ liệu, kiểm tra đầu ra và kiểm soát chi phí khi thêm AI vào ứng dụng học tập.",
+    "topicName": "AI Integration",
+    "tagNames": [
+      "AI",
+      "LLM",
+      "Prompting",
+      "Data Privacy"
+    ],
+    "coverImageUrl": null
+  }
+]

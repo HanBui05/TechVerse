@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, matchPath, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { Menu, Moon } from 'lucide-react'
 import { Brand } from './components/brand/Brand'
@@ -11,6 +11,7 @@ import { BlogsPage, BlogDetailPage } from './pages/Blogs/BlogsPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
 import { ThemePage } from './pages/Settings/ThemePage'
 import { LoginPage } from './pages/Login/LoginPage'
+import { GoogleCallbackPage } from './pages/Login/GoogleCallbackPage'
 import { ForgotPasswordPage } from './pages/Login/ForgotPasswordPage'
 import { RegisterPage } from './pages/Register/RegisterPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
@@ -25,7 +26,8 @@ import { AuthorBlogsPage } from './pages/Author/AuthorBlogsPage'
 import { ModeratorDashboardPage } from './pages/Moderator/ModeratorDashboardPage'
 import { ModeratorArticlesPage } from './pages/Moderator/ModeratorArticlesPage'
 import type { Language, Theme } from './types/preferences'
-import { login as loginWithApi, logout as logoutFromApi, logoutAll as logoutAllFromApi, restoreSession } from './services/authService'
+import { login as loginWithApi, logout as logoutFromApi, logoutAll as logoutAllFromApi, restoreSession, type GoogleSession } from './services/authService'
+import { setAccessToken } from './services/api/client'
 import { register as registerWithApi } from './services/registerService'
 import { getMyProfile, type UserProfile } from './services/profileService'
 
@@ -48,23 +50,19 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const location = useLocation()
   const navigate = useNavigate()
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password'
+  const isGoogleCallback = Boolean(matchPath('/auth/callback', location.pathname))
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password' || isGoogleCallback
   const isModeratorPage = location.pathname === '/moderator' || location.pathname.startsWith('/moderator/')
   const t = copy[language]
   useEffect(() => { localStorage.setItem('techverse-theme', theme); document.documentElement.dataset.theme = theme }, [theme])
   useEffect(() => { localStorage.setItem('techverse-language', language); document.documentElement.lang = language }, [language])
   useEffect(() => {
-    if (!authenticated) return
+    if (!authenticated || isGoogleCallback || profile) return
     let cancelled = false
+    // On F5, renew permission claims before publishing the profile or mounting protected pages.
     const restore = async () => {
-      try {
-        // The access token survives a normal F5 in sessionStorage. Reuse it first.
-        setProfile(await getMyProfile())
-        return
-      } catch {
-        // If it expired, restoreSession() will use the HttpOnly refresh cookie.
-      }
       const session = await restoreSession()
+      if (cancelled) return
       if (!session) {
         if (!cancelled) {
           localStorage.removeItem('techverse-authenticated')
@@ -78,6 +76,7 @@ export default function App() {
         if (!cancelled) setProfile(nextProfile)
       } catch {
         if (!cancelled) {
+          setAccessToken(null)
           localStorage.removeItem('techverse-authenticated')
           setAuthenticated(false)
           setProfile(null)
@@ -86,9 +85,29 @@ export default function App() {
     }
     void restore()
     return () => { cancelled = true }
-  }, [authenticated])
+  }, [authenticated, isGoogleCallback, profile])
   const toggleSidebar = () => setCollapsed(value => { localStorage.setItem('techverse-sidebar', value ? 'expanded' : 'collapsed'); return !value })
-  const login = async (email: string, password: string) => { await loginWithApi({ email, password }); const nextProfile = await getMyProfile(); setProfile(nextProfile); localStorage.setItem('techverse-authenticated', 'true'); setAuthenticated(true); return nextProfile.roles.includes('ADMIN') ? '/admin' : nextProfile.roles.includes('MODERATOR') ? '/moderator' : '/profile' }
+  // Share verified profile state and role routing between password login and Google login.
+  const acceptProfile = useCallback((nextProfile: UserProfile) => {
+    setProfile(nextProfile)
+    localStorage.setItem('techverse-authenticated', 'true')
+    setAuthenticated(true)
+    return nextProfile.roles.includes('ADMIN') ? '/admin' : nextProfile.roles.includes('MODERATOR') ? '/moderator' : '/profile'
+  }, [])
+  // A callback must start clean, even when another account was previously signed in in this tab.
+  const resetGoogleSession = useCallback(() => {
+    setAccessToken(null)
+    localStorage.removeItem('techverse-authenticated')
+    setAuthenticated(false)
+    setProfile(null)
+  }, [])
+  // Commit tokens only after both cookie exchange and identity lookup succeeded on the active callback.
+  const acceptGoogleSession = useCallback((session: GoogleSession) => {
+    setAccessToken(session.accessToken)
+    return acceptProfile(session.profile)
+  }, [acceptProfile])
+  // Keep password login on its existing API while using the same role destination rules.
+  const login = async (email: string, password: string) => { await loginWithApi({ email, password }); return acceptProfile(await getMyProfile()) }
   const register = async (data: { fullName: string; email: string; password: string; confirmPassword: string }) => { await registerWithApi(data) }
   const logout = async () => {
     try {
@@ -106,28 +125,31 @@ export default function App() {
     catch (error) { window.alert(error instanceof Error ? error.message : 'Không thể đăng xuất khỏi tất cả thiết bị.') }
   }
   return <div className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''} ${isAuthPage ? 'login-mode' : ''}`}>
-    {!isAuthPage && (authenticated && profile?.roles.includes('MODERATOR') && (isModeratorPage || !profile.roles.includes('ADMIN')) ? <ModeratorSidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} profile={profile} onLogout={logout} /> : <Sidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} t={t} authenticated={authenticated} roles={profile?.roles || []} onLogout={logout} />)}
+    {!isAuthPage && (authenticated && profile?.roles.includes('MODERATOR') && (isModeratorPage || !profile.roles.includes('ADMIN')) ? <ModeratorSidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} profile={profile} onLogout={logout} /> : <Sidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} t={t} authenticated={authenticated} roles={profile?.roles || []} profile={profile} onLogout={logout} />)}
     {!isAuthPage && <header className="mobile-topbar"><button className="icon-button" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu size={20} /></button><Brand /><Link className="icon-button" to="/settings/theme" aria-label="Theme settings"><Moon size={18} /></Link></header>}
-    <Routes>
+    {authenticated && !profile && !isAuthPage
+      ? <main className="page-content placeholder-page"><p role="status">Đang đồng bộ phiên đăng nhập và quyền truy cập...</p></main>
+      : <Routes>
       <Route path="/" element={<HomePage t={t} />} />
       <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><BlogsPage /></AuthRoute>} />
       <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><BlogDetailPage /></AuthRoute>} />
       <Route path="/login" element={<LoginPage t={t} onLogin={login} />} />
       <Route path="/register" element={<RegisterPage t={t} onRegister={register} />} />
+      <Route path="/auth/callback" element={<GoogleCallbackPage key={location.search} onAuthenticated={acceptGoogleSession} onResetSession={resetGoogleSession} />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/profile" element={<AuthRoute authenticated={authenticated}><ProfilePage language={language} profile={profile} onLogout={logout} onProfileChange={setProfile} /><AvatarUpload profile={profile} onProfileChange={setProfile} language={language} /><div className="page-content logout-all-panel"><button className="button button-outline" onClick={() => void logoutAll()}>{language === 'vi' ? 'Đăng xuất khỏi tất cả thiết bị' : 'Log out from all devices'}</button></div></AuthRoute>} />
-      <Route path="/admin" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminDashboardPage /></RoleRoute>} />
+      <Route path="/admin" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminDashboardPage language={language} /></RoleRoute>} />
       <Route path="/moderator" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorDashboardPage language={language} /></RoleRoute>} />
-      <Route path="/moderator/articles" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorArticlesPage /></RoleRoute>} />
-      <Route path="/admin/author-applications" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AuthorApplicationsPage /></RoleRoute>} />
-      <Route path="/admin/users" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminUsersPage /></RoleRoute>} />
-      <Route path="/admin/topics" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="topics" /></RoleRoute>} />
-      <Route path="/admin/tags" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="tags" /></RoleRoute>} />
+      <Route path="/moderator/articles" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorArticlesPage language={language} /></RoleRoute>} />
+      <Route path="/admin/author-applications" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AuthorApplicationsPage language={language} /></RoleRoute>} />
+      <Route path="/admin/users" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminUsersPage language={language} /></RoleRoute>} />
+      <Route path="/admin/topics" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="topics" language={language} /></RoleRoute>} />
+      <Route path="/admin/tags" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="tags" language={language} /></RoleRoute>} />
       <Route path="/author/apply" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['LEARNER']}><AuthorApplyPage /></RoleRoute>} />
-      <Route path="/author/blogs" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AuthorBlogsPage /></RoleRoute>} />
+      <Route path="/author/blogs" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AuthorBlogsPage language={language} /></RoleRoute>} />
       <Route path="/settings/theme" element={<ThemePage theme={theme} setTheme={setTheme} t={t} />} />
       <Route path="/settings/language" element={<LanguagePage language={language} setLanguage={setLanguage} t={t} />} />
       <Route path="*" element={<PlaceholderPage t={t} language={language} />} />
-    </Routes>
+    </Routes>}
   </div>
 }
