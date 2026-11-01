@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT
 
-> Bản chốt theo workspace ngày **2026-11-02** (múi giờ Asia/Ho_Chi_Minh), nhánh `feature/google-auth`, HEAD `5738cfd`. Tài liệu phản ánh cả thay đổi chưa commit đang có trong working tree; xem [mục Trạng thái](#5-trạng-thái-hiện-tại) trước khi chia sẻ hoặc bàn giao.
+> Bản chốt theo workspace ngày **2026-11-02** (múi giờ Asia/Ho_Chi_Minh). Trạng thái dự án trước khi dựng workflow đã được checkpoint tại commit `b353805`; công việc workflow tiếp tục trên branch `codex/setup-agent-workflow`.
 
 ## Một người mới vào cần biết gì để làm việc được ngay?
 
@@ -12,7 +12,6 @@ TechVerse là monorepo gồm frontend React ở [`app/`](app/) và backend Sprin
 2. Lịch sử schema chạy thật: [`server/src/main/resources/db/migration/`](server/src/main/resources/db/migration/). Đây là nguồn Flyway áp dụng khi khởi động.
 3. Schema hợp nhất V1–V7 để đọc/ERD hoặc tạo **DB rỗng** thủ công: [`docs/final.sql`](docs/final.sql). File này tự ghi rõ không được đưa vào thư mục migration và không chạy lên DB đã có dữ liệu.
 4. Hành vi được kiểm chứng: [`server/src/test`](server/src/test/) và các file `*.test.ts(x)` trong [`app/src`](app/src/).
-5. [`promt.md`](promt.md) là brief giao diện ban đầu, có các nhận định đã cũ như “chưa có backend”; không dùng nó để phủ định mã hiện tại.
 
 ## 1. Tổng quan
 
@@ -136,7 +135,7 @@ Refresh session, token và password-reset OTP không nằm trong SQL; chúng đ�
 ### Đã xong ở mức có mã backend + frontend hoặc API + test
 
 - Đăng ký, đăng nhập mật khẩu, access/refresh JWT, logout một/tất cả thiết bị.
-- Google OAuth2 signup/login và nhập avatar Google; frontend callback/session synchronization đang có thay đổi chưa commit.
+- Google OAuth2 signup/login, nhập avatar Google và frontend callback/session synchronization.
 - Quên mật khẩu bằng OTP Redis + email, reset và revoke session.
 - Hồ sơ người dùng và upload avatar Cloudinary.
 - Nộp/gửi lại hồ sơ tác giả; admin duyệt, từ chối, đình chỉ, khôi phục.
@@ -147,7 +146,7 @@ Refresh session, token và password-reset OTP không nằm trong SQL; chúng đ�
 
 ### Đang làm dở
 
-- Nhánh `feature/google-auth` có nhiều thay đổi frontend và test chưa commit; [`docs/final.sql`](docs/final.sql) và fixtures bài viết cũng đang untracked. Trạng thái này chạy được ở workspace hiện tại nhưng chưa phải snapshot có thể tái tạo chỉ bằng `git clone`.
+- Khung workflow `Plan → Code → Test → Review → Result` đang được dựng trên branch `codex/setup-agent-workflow`; xem [`PLAN.md`](PLAN.md) để biết trạng thái task thay vì suy luận từ tên branch.
 - Admin dashboard và moderator dashboard mới là khung hiển thị; số liệu/hoạt động/online users chưa có API thật.
 - CI hiện chỉ chạy backend; frontend test/build chưa nằm trong quality gate.
 - Frontend đã có chức năng đọc/viết bài nhưng bundle chưa code-split.
@@ -171,7 +170,7 @@ Refresh session, token và password-reset OTP không nằm trong SQL; chúng đ�
 
 ## 6. Việc nên làm tiếp theo
 
-1. Chốt nhánh hiện tại: review diff, bảo đảm các file untracked cần thiết được đưa vào Git, không đưa secret/build artifact vào commit.
+1. Hoàn tất pilot workflow, review diff và chỉ commit đúng file trong task; không đưa secret/build artifact vào commit.
 2. Sửa `compose.yaml` và `.env.example` để đồng bộ Google OAuth + SendGrid; thêm smoke test khởi động profile `dev` bằng Compose.
 3. Chạy toàn bộ backend integration test trên máy có Docker và xử lý lỗi thật nếu còn; giữ `bootJar`, frontend test/build cùng xanh.
 4. Thêm frontend `npm ci && npm test && npm run build` vào [CI](.github/workflows/ci.yml).
