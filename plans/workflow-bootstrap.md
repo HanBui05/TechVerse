@@ -1,6 +1,6 @@
 # Workflow Bootstrap
 
-**Trạng thái:** Đã chốt
+**Trạng thái:** xem [`PLAN.md`](PLAN.md)
 **Mục tiêu:** Tạo khung điều phối tối thiểu cho quy trình `Plan → Code → Test → Review → Result`, rồi dùng chính khung đó cho một pilot nhỏ.
 
 ## Phạm vi

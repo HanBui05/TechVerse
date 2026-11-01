@@ -1,6 +1,6 @@
 # Workflow Bootstrap Log
 
-## Trạng thái
+## Tóm tắt (trạng thái chính thức ở [`PLAN.md`](PLAN.md))
 
 Chờ người dùng nhận kết quả. Khung workflow và pilot đã hoàn thành; full repository quality gate còn bị chặn bởi Docker/Testcontainers trên máy hiện tại.
 
