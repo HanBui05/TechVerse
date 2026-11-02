@@ -17,7 +17,6 @@ import { ForgotPasswordPage } from './pages/Login/ForgotPasswordPage'
 import { RegisterPage } from './pages/Register/RegisterPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { ProfilePage } from './pages/Profile/ProfilePage'
-import { AvatarUpload } from './pages/Profile/AvatarUpload'
 import { AdminDashboardPage } from './pages/Admin/AdminDashboardPage'
 import { AuthorApplicationsPage } from './pages/Admin/AuthorApplicationsPage'
 import { AdminUsersPage } from './pages/Admin/AdminUsersPage'
@@ -93,7 +92,7 @@ export default function App() {
     setProfile(nextProfile)
     localStorage.setItem('techverse-authenticated', 'true')
     setAuthenticated(true)
-    return nextProfile.roles.includes('ADMIN') ? '/admin' : nextProfile.roles.includes('MODERATOR') ? '/moderator' : '/profile'
+    return nextProfile.roles.includes('ADMIN') ? '/admin' : nextProfile.roles.includes('MODERATOR') ? '/moderator' : '/'
   }, [])
   // A callback must start clean, even when another account was previously signed in in this tab.
   const resetGoogleSession = useCallback(() => {
@@ -120,10 +119,13 @@ export default function App() {
       navigate('/login', { replace: true })
     }
   }
+  // Confirmation and errors live in the profile dialog; a failure must reject so the dialog stays open.
   const logoutAll = async () => {
-    if (!window.confirm(language === 'vi' ? 'Đăng xuất khỏi tất cả thiết bị?' : 'Log out from all devices?')) return
-    try { await logoutAllFromApi(); localStorage.removeItem('techverse-authenticated'); setAuthenticated(false); setProfile(null); navigate('/login', { replace: true }) }
-    catch (error) { window.alert(error instanceof Error ? error.message : 'Không thể đăng xuất khỏi tất cả thiết bị.') }
+    await logoutAllFromApi()
+    localStorage.removeItem('techverse-authenticated')
+    setAuthenticated(false)
+    setProfile(null)
+    navigate('/login', { replace: true })
   }
   return <div className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''} ${isAuthPage ? 'login-mode' : ''}`}>
     {!isAuthPage && (authenticated && profile?.roles.includes('MODERATOR') && (isModeratorPage || !profile.roles.includes('ADMIN')) ? <ModeratorSidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} profile={profile} onLogout={logout} /> : <Sidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} t={t} authenticated={authenticated} roles={profile?.roles || []} profile={profile} onLogout={logout} />)}
@@ -140,7 +142,7 @@ export default function App() {
       </Route>
       <Route path="/auth/callback" element={<GoogleCallbackPage key={location.search} onAuthenticated={acceptGoogleSession} onResetSession={resetGoogleSession} />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage t={t} />} />
-      <Route path="/profile" element={<AuthRoute authenticated={authenticated}><ProfilePage language={language} profile={profile} onLogout={logout} onProfileChange={setProfile} /><AvatarUpload profile={profile} onProfileChange={setProfile} language={language} /><div className="page-content logout-all-panel"><button className="button button-outline" onClick={() => void logoutAll()}>{language === 'vi' ? 'Đăng xuất khỏi tất cả thiết bị' : 'Log out from all devices'}</button></div></AuthRoute>} />
+      <Route path="/profile" element={<AuthRoute authenticated={authenticated}>{profile && <ProfilePage language={language} profile={profile} onLogout={logout} onLogoutAll={logoutAll} onProfileChange={setProfile} />}</AuthRoute>} />
       <Route path="/admin" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminDashboardPage language={language} /></RoleRoute>} />
       <Route path="/moderator" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorDashboardPage language={language} /></RoleRoute>} />
       <Route path="/moderator/articles" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorArticlesPage language={language} /></RoleRoute>} />

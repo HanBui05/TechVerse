@@ -43,11 +43,15 @@ Thêm các danh sách ngắn nếu cần: chỗ còn giá trị viết cứng (v
 Tối đa khoảng 10 mục, theo “Ngân sách kiểm chứng” trong `AGENTS.md`/`CLAUDE.md` và `.claude/rules/`. Logic thuần → unit test; tích hợp chỉ luồng chính.
 
 - [ ] <tiêu chí kiểm chứng được>
-- [ ] Chỉ sửa `app/`: `npm test` + `npm run build` trong `app/` đạt. Có sửa `server/`: `scripts/verify.sh` đạt (cần Docker). Xóa dòng không áp dụng.
+- [ ] Chỉ sửa `app/`: `npm test` + `npm run build` trong `app/` đạt. Có sửa `server/`: các lớp test bị ảnh hưởng `<Lớp1>`, `<Lớp2>` đạt (cần Docker); full backend do CI chạy khi mở PR, không chạy `scripts/verify.sh`. Xóa dòng không áp dụng.
 
 ## Phản hồi vòng 1 (Claude)
 
 Đúng / Sai / Thiếu / Thừa:
+
+### Đề xuất ngoài spec (không chặn chốt)
+
+Tối đa ~3 ý; mỗi ý: lợi ích, công sức, làm ngay hay tách module sau.
 
 ## Trả lời vòng 1 (Codex)
 

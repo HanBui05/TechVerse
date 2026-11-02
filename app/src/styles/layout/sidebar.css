@@ -914,3 +914,10 @@
     justify-content: flex-start;
   }
 }
+
+/* Menu icon tones come from tokens; icons keep their tone on hover and when active. */
+.nav-icon[data-tone='blue'] { color: var(--info); }
+.nav-icon[data-tone='green'] { color: var(--success); }
+.nav-icon[data-tone='violet'] { color: var(--violet); }
+.nav-icon[data-tone='amber'] { color: var(--warning); }
+.nav-icon[data-tone='rose'] { color: var(--rose); }

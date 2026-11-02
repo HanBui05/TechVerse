@@ -2,6 +2,7 @@ package com.techverse.server.dto.response;
 
 import com.techverse.server.enums.AuthorProfileStatus;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 
@@ -12,5 +13,6 @@ public record AdminAuthorApplicationDetailResponse(
 		String reviewNote, UUID reviewedBy, String reviewerName, Instant reviewedAt,
 		String suspensionReason, UUID suspendedBy, Instant suspendedAt,
 		String restorationNote, UUID restoredBy, Instant restoredAt,
+		List<AdminAuthorReviewHistoryResponse> reviewHistory,
 		Instant createdAt, Instant updatedAt
 ) { }

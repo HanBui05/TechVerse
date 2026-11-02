@@ -1,9 +1,46 @@
 import { useState } from 'react'
-import { request } from '../../services/api/client'
+import { Camera } from 'lucide-react'
+import { ApiError, request } from '../../services/api/client'
 import type { UserProfile } from '../../services/profileService'
 import type { Language } from '../../types/preferences'
-export function AvatarUpload({ profile, onProfileChange, language }: { profile: UserProfile | null; onProfileChange: (profile: UserProfile) => void; language: Language }) {
-  const [busy, setBusy] = useState(false); const [message, setMessage] = useState('')
-  const upload = async (file: File) => { setMessage(''); if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { setMessage(language === 'vi' ? 'Chọn ảnh JPEG, PNG hoặc WebP không quá 5 MB.' : 'Choose a JPEG, PNG or WebP image up to 5 MB.'); return } setBusy(true); try { const body = new FormData(); body.append('file', file); onProfileChange(await request<UserProfile>('/api/v1/users/me/avatar', { method: 'PATCH', body })); setMessage(language === 'vi' ? 'Đã cập nhật ảnh đại diện.' : 'Avatar updated.') } catch (e) { setMessage(e instanceof Error ? e.message : 'Upload failed') } finally { setBusy(false) } }
-  return <div className="page-content profile-upload-panel"><section className="article-panel"><h2>{language === 'vi' ? 'Ảnh đại diện' : 'Profile picture'}</h2>{profile?.avatarUrl && <img className="profile-upload-image" src={profile.avatarUrl} alt={language === 'vi' ? 'Ảnh đại diện' : 'Profile picture'} />}<label className="article-form">{language === 'vi' ? 'Chọn ảnh JPEG, PNG hoặc WebP (tối đa 5 MB)' : 'Choose JPEG, PNG or WebP (up to 5 MB)'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={e => { const file = e.target.files?.[0]; if (file) void upload(file); e.target.value = '' }} /></label>{busy && <p role="status">{language === 'vi' ? 'Đang tải ảnh...' : 'Uploading...'}</p>}{message && <p role="status">{message}</p>}</section></div>
+import { profileCopy } from '../../data/profile'
+import { UserAvatar } from '../../components/UserAvatar'
+
+const TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const MAX_BYTES = 5 * 1024 * 1024
+
+// The avatar itself is the file picker: a label wraps the image and a visually hidden, focusable input.
+export function AvatarUpload({ profile, onProfileChange, language }: { profile: UserProfile; onProfileChange: (profile: UserProfile) => void; language: Language }) {
+  const t = profileCopy[language]
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const upload = async (file: File) => {
+    if (!TYPES.includes(file.type) || file.size > MAX_BYTES) { setNotice({ ok: false, text: t.avatarInvalid }); return }
+    setBusy(true)
+    setNotice(null)
+    try {
+      const body = new FormData()
+      body.append('file', file)
+      onProfileChange(await request<UserProfile>('/api/v1/users/me/avatar', { method: 'PATCH', body }))
+      setNotice({ ok: true, text: t.avatarUpdated })
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0
+      setNotice({ ok: false, text: status === 413 || status === 415 ? t.avatarInvalid : status === 429 ? t.avatarRateLimited : t.systemError })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return <div className="profile-avatar-upload">
+    <label className={`profile-avatar-label${busy ? ' is-busy' : ''}`}>
+      <UserAvatar className="avatar avatar-large" name={profile.fullName} url={profile.avatarUrl} />
+      <span className="avatar-camera" aria-hidden="true"><Camera size={16} /></span>
+      <input className="sr-only" type="file" accept={TYPES.join(',')} aria-label={t.changeAvatar} disabled={busy}
+        onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void upload(file) }} />
+    </label>
+    <p className="profile-avatar-hint">{t.avatarHint}</p>
+    {busy && <p className="profile-notice" role="status">{t.avatarUploading}</p>}
+    {notice && <p className={notice.ok ? 'profile-notice is-success' : 'profile-notice is-error'} role={notice.ok ? 'status' : 'alert'}>{notice.text}</p>}
+  </div>
 }

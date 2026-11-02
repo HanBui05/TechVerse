@@ -85,6 +85,22 @@ public class User extends BaseEntity {
 		}
 	}
 
+	public void changeFullName(String fullName) {
+		this.fullName = fullName.trim();
+	}
+
+	public void changePhoneNumber(String phoneNumber) {
+		this.phoneNumber = phoneNumber == null || phoneNumber.isBlank() ? null : phoneNumber.trim();
+	}
+
+	public void changeDateOfBirth(LocalDate dateOfBirth) {
+		this.dateOfBirth = dateOfBirth;
+	}
+
+	public boolean hasLocalPassword() {
+		return password != null && !password.isEmpty();
+	}
+
 	public void updateActiveStatus(boolean active) {
 		this.active = active;
 	}

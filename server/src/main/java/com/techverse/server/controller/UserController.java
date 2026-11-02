@@ -1,5 +1,6 @@
 package com.techverse.server.controller;
 
+import com.techverse.server.dto.request.ChangeMyPasswordRequest;
 import com.techverse.server.dto.request.UpdateMyProfileRequest;
 import com.techverse.server.dto.response.ApiResponse;
 import com.techverse.server.dto.response.MyProfileResponse;
@@ -76,6 +77,24 @@ public class UserController {
 				.status(HttpStatus.OK.value())
 				.message("Profile updated successfully")
 				.data(profile)
+				.build());
+	}
+
+	@PatchMapping("/me/password")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(summary = "Change your local password; other sessions are signed out")
+	public ResponseEntity<ApiResponse<Void>> changeMyPassword(
+			@AuthenticationPrincipal Jwt authenticatedUser,
+			@Valid @RequestBody ChangeMyPasswordRequest request
+	) {
+		userService.changeMyPassword(
+				UUID.fromString(authenticatedUser.getSubject()),
+				authenticatedUser.getClaimAsString("sid"),
+				request
+		);
+		return ResponseEntity.ok(ApiResponse.<Void>builder()
+				.status(HttpStatus.OK.value())
+				.message("Password changed successfully")
 				.build());
 	}
 }

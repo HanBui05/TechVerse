@@ -69,8 +69,8 @@ describe('Google signup and login', () => {
   })
 
   it.each([
-    [['LEARNER'], '/profile'],
-    [['LEARNER', 'AUTHOR'], '/profile'],
+    [['LEARNER'], '/'],
+    [['LEARNER', 'AUTHOR'], '/'],
     [['MODERATOR'], '/moderator'],
     [['ADMIN', 'MODERATOR'], '/admin'],
   ])('completes a Google session and routes %j to %s', async (roles, destination) => {
@@ -94,7 +94,7 @@ describe('Google signup and login', () => {
     setAccessToken('test-old-account-access')
     successfulGoogleSession()
     renderApp('/auth/callback?status=success')
-    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/profile'))
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/'))
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(new Headers(fetchMock.mock.calls[0][1]?.headers).has('Authorization')).toBe(false)
     expect(screen.getAllByText('Google Learner').length).toBeGreaterThan(0)
@@ -105,7 +105,7 @@ describe('Google signup and login', () => {
     setAccessToken('test-old-account-access')
     successfulGoogleSession()
     renderApp(`${path}?status=success`)
-    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/profile'))
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/'))
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/auth\/refresh$/)
   })
@@ -118,7 +118,7 @@ describe('Google signup and login', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     setAccessToken('test-competing-access')
     await act(async () => { finishRefresh(apiResponse({ accessToken: 'test-google-access' })) })
-    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/profile'))
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/'))
     expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('Authorization')).toBe('Bearer test-google-access')
   })
 
@@ -148,7 +148,7 @@ describe('Google signup and login', () => {
     await oldWork
     expect(getAccessToken()).toBe('test-google-access')
     expect(localStorage.getItem('techverse-authenticated')).toBe('true')
-    expect(screen.getByTestId('location').textContent).toBe('/profile')
+    expect(screen.getByTestId('location').textContent).toBe('/')
     expect(refreshCount).toBe(2)
   })
 
@@ -195,7 +195,7 @@ describe('Google signup and login', () => {
   it('ignores a URL-supplied destination and only follows profile roles', async () => {
     successfulGoogleSession()
     renderApp('/auth/callback?status=success&next=https://evil.example')
-    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/profile'))
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/'))
   })
 
   it('does not commit a token before the Google profile has been verified', async () => {
@@ -209,7 +209,7 @@ describe('Google signup and login', () => {
     expect(localStorage.getItem('techverse-authenticated')).toBeNull()
     expect(screen.getByRole('status').textContent).toMatch(/Đang xác thực/)
     await act(async () => { finishProfile(apiResponse(profile)) })
-    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/profile'))
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/'))
     expect(getAccessToken()).toBe('test-google-access')
   })
 
@@ -286,7 +286,7 @@ describe('Google signup and login', () => {
     await user.type(screen.getByLabelText('Email'), 'learner@example.com')
     await user.type(screen.getByLabelText('Mật khẩu', { exact: true }), 'Password123!')
     await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
-    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/profile'))
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/'))
     expect(getAccessToken()).toBe('test-password-access')
   })
 })
@@ -315,7 +315,10 @@ async function fillRegister(user: User, lang: Lang, values: Partial<Record<'name
   const data = { name: 'Local Learner', email: 'local@example.com', password: 'Password123!', ...values }
   const filled = { ...data, confirm: values.confirm ?? data.password }
   for (const key of ['name', 'email', 'password', 'confirm'] as const) {
-    await user.type(screen.getByLabelText(labels[lang][key], { exact: true }), filled[key])
+    const field = screen.getByLabelText(labels[lang][key], { exact: true })
+    // Typing 150+ characters key by key times out under a loaded suite; paste long values instead.
+    if (filled[key].length > 20) { await user.click(field); await user.paste(filled[key]) }
+    else await user.type(field, filled[key])
   }
 }
 
@@ -607,5 +610,27 @@ describe('Auth password visibility and payload', () => {
     await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/login'))
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ fullName: 'Local Learner', email: 'local@example.com', password: 'Password123!', confirmPassword: 'Password123!' })
+  })
+})
+
+describe('Profile logout from all devices', () => {
+  it('clears the session and returns to /login only after the dialog is confirmed and the API succeeds', async () => {
+    HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) { this.setAttribute('open', '') }
+    HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) { this.removeAttribute('open') }
+    localStorage.setItem('techverse-authenticated', 'true')
+    fetchMock.mockImplementation(async input => {
+      const path = new URL(String(input)).pathname
+      if (path === '/api/v1/auth/refresh') return apiResponse({ accessToken: 'test-access' })
+      if (path === '/api/v1/users/me') return apiResponse({ ...profile, hasLocalPassword: true })
+      if (path === '/api/v1/auth/logout-all') return apiResponse(null)
+      throw new Error(`Unexpected API path: ${path}`)
+    })
+    const user = userEvent.setup()
+    renderApp('/profile')
+    await user.click(await screen.findByRole('button', { name: 'Đăng xuất khỏi tất cả thiết bị' }))
+    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith('/auth/logout-all'))).toBe(false)
+    await user.click(screen.getByRole('button', { name: 'Đăng xuất tất cả' }))
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/login'))
+    expect(localStorage.getItem('techverse-authenticated')).toBeNull()
   })
 })

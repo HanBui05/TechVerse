@@ -1,11 +1,11 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { copy } from '../../data/i18n'
 import type { UserProfile } from '../../services/profileService'
 
-const profile: UserProfile = { id: 'current-user', fullName: 'Nguyễn Minh An', email: 'minhan@example.com', avatarUrl: 'https://example.com/my-avatar.png', phoneNumber: null, dateOfBirth: null, roles: ['LEARNER', 'AUTHOR'], createdAt: '', updatedAt: '' }
+const profile: UserProfile = { id: 'current-user', fullName: 'Nguyễn Minh An', email: 'minhan@example.com', avatarUrl: 'https://example.com/my-avatar.png', phoneNumber: null, dateOfBirth: null, roles: ['LEARNER', 'AUTHOR'], createdAt: '', updatedAt: '', hasLocalPassword: true }
 const props = { collapsed: false, onToggle: vi.fn(), mobileOpen: false, onMobileClose: vi.fn(), language: 'vi' as const, t: copy.vi, authenticated: true, roles: profile.roles, onLogout: vi.fn() }
 
 afterEach(cleanup)
@@ -41,6 +41,7 @@ const deadAdminPaths = /^\/admin\/(roles|logins|login-analytics|active-users|str
 // Menu entries without a real route led to the "under development" page; only real routes may stay.
 it('lists only routable entries in the learner sidebar', () => {
   render(<MemoryRouter><Sidebar {...props} profile={profile} /></MemoryRouter>)
+  fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' }))
   expect(hrefs().filter(href => deadUserPaths.test(href))).toEqual([])
   for (const name of ['Trang chủ', 'Bài viết', 'Author', 'Thông tin cá nhân']) expect(screen.queryByRole('link', { name })).not.toBeNull()
   for (const text of ['Tiến độ của tôi', 'Premium & thanh toán', 'Nhận thông báo', 'Giới thiệu']) expect(screen.queryByText(text)).toBeNull()
@@ -56,4 +57,34 @@ it('lists only routable entries in the admin sidebar and keeps the moderator lin
   render(<MemoryRouter><Sidebar {...props} roles={['ADMIN', 'MODERATOR']} profile={profile} /></MemoryRouter>)
   expect(hrefs().filter(href => deadAdminPaths.test(href))).toEqual([])
   for (const name of ['Trang chủ', 'Về trang người dùng', 'Hồ sơ tác giả', 'Quản lý người dùng', 'Chủ đề', 'Thẻ', 'Kiểm duyệt bài viết']) expect(screen.queryByRole('link', { name })).not.toBeNull()
+})
+
+it('keeps settings collapsed until opened, unless the current page is a settings page', () => {
+  render(<MemoryRouter><Sidebar {...props} profile={profile} /></MemoryRouter>)
+  const trigger = screen.getByRole('button', { name: 'Cài đặt' })
+  expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  expect(screen.queryByRole('link', { name: 'Giao diện' })).toBeNull()
+  fireEvent.click(trigger)
+  expect(trigger.getAttribute('aria-expanded')).toBe('true')
+  expect(screen.queryByRole('link', { name: 'Giao diện' })).not.toBeNull()
+  cleanup()
+  render(<MemoryRouter initialEntries={['/settings/language']}><Sidebar {...props} profile={profile} /></MemoryRouter>)
+  expect(screen.queryByRole('link', { name: 'Ngôn ngữ' })).not.toBeNull()
+})
+
+it('gives each main menu icon its own colour tone', () => {
+  render(<MemoryRouter><Sidebar {...props} profile={profile} /></MemoryRouter>)
+  const tones = Array.from(document.querySelectorAll('.sidebar-nav > .nav-item svg.nav-icon')).map(icon => icon.getAttribute('data-tone'))
+  expect(tones.length).toBeGreaterThanOrEqual(4)
+  expect(tones.every(Boolean)).toBe(true)
+  expect(new Set(tones).size).toBe(tones.length)
+})
+
+it('opens settings when client-side navigation enters a settings page without remounting', () => {
+  function GoToLanguage() { const navigate = useNavigate(); return <button onClick={() => navigate('/settings/language')}>go</button> }
+  render(<MemoryRouter><Sidebar {...props} profile={profile} /><GoToLanguage /></MemoryRouter>)
+  expect(screen.queryByRole('link', { name: 'Ngôn ngữ' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'go' }))
+  expect(screen.getByRole('button', { name: 'Cài đặt' }).getAttribute('aria-expanded')).toBe('true')
+  expect(screen.queryByRole('link', { name: 'Ngôn ngữ' })).not.toBeNull()
 })

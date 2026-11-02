@@ -9,7 +9,8 @@ Cách chạy và đọc kết quả test: dùng skill `backend-test`.
 
 ## Ngân sách test
 
-- **Vòng lặp nhanh.** TDD chỉ chạy lớp test của task (`./gradlew test --tests '<Lớp>'`, không `clean`). `scripts/verify.sh` chỉ chạy **một lần** ở cuối, chạy nền, không theo dõi liên tục.
+- **Vòng lặp nhanh.** TDD chỉ chạy lớp test của task (`./gradlew test --tests '<Lớp>'`, không `clean`).
+- **Cuối task: chỉ test bị ảnh hưởng.** Chạy một lần (gộp nhiều `--tests`) lớp của task + lớp regression spec nêu + lớp gọi code dùng chung đã sửa (grep caller). **Không** chạy `scripts/verify.sh` (full ~10 phút) trên máy: full backend do CI (`.github/workflows/ci.yml`) chạy khi mở PR. Chỉ chạy `verify.sh` khi người dùng yêu cầu (ví dụ tái hiện lỗi CI).
 - **Mức test.**
   - Validator, mapper, logic service: JUnit/Mockito thuần, không Spring.
   - Validation/HTTP status của controller: `@WebMvcTest`.

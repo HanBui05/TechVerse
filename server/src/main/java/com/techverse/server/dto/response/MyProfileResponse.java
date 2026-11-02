@@ -19,6 +19,7 @@ public class MyProfileResponse {
 	private final LocalDate dateOfBirth;
 	private final String avatarUrl;
 	private final Set<RoleName> roles;
+	private final boolean hasLocalPassword;
 	private final Instant createdAt;
 	private final Instant updatedAt;
 }

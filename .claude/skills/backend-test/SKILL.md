@@ -25,16 +25,26 @@ grep -l '<failure' TEST-*.xml                                  # lớp có lỗi
 grep -h -A3 '<failure' TEST-*.xml | grep -E 'message=|at com.techverse' | head -20
 ```
 
-## 3. Cuối task: verify một lần, chạy nền
+## 3. Cuối task: chỉ lớp bị ảnh hưởng
+
+```bash
+cd server && ./gradlew test --tests '<LớpTask>' --tests '<LớpRegression>' ...
+```
+
+Danh sách lớp: lớp của task + regression spec nêu + lớp gọi code dùng chung đã sửa (grep caller).
+
+## 4. Chỉ khi người dùng yêu cầu: verify full, chạy nền
+
+Full backend đã do CI chạy khi mở PR; trên máy chỉ chạy khi cần tái hiện lỗi CI.
 
 ```bash
 bash scripts/verify.sh > "<scratchpad>/verify.log" 2>&1; echo "exit=$?"
 grep -E "tests completed|BUILD|Test Files|Tests  |built in" "<scratchpad>/verify.log"
 ```
 
-Chạy bằng Bash `run_in_background`; chờ thông báo, không theo dõi liên tục. Toàn bộ mất khoảng 7–8 phút (backend khoảng 400 giây).
+Chạy bằng Bash `run_in_background`; chờ thông báo, không theo dõi liên tục. Toàn bộ mất khoảng 8–10 phút.
 
-## 4. Khi cần biết lớp nào chậm
+## 5. Khi cần biết lớp nào chậm
 
 ```bash
 cd server/build/test-results/test && for f in TEST-*.xml; do
