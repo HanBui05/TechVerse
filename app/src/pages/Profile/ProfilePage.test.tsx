@@ -22,6 +22,8 @@ function renderPage(profile = local, onLogoutAll: () => Promise<void> = vi.fn(as
   return { ...utils, onProfileChange, onLogout, onLogoutAll, rerenderWith: (next: UserProfile) => utils.rerender(element(next)) }
 }
 
+// Personal information opens read-only; editing starts from the header button.
+const renderEditing = (profile = local) => { const utils = renderPage(profile); fireEvent.click(screen.getByRole('button', { name: t.edit })); return utils }
 const input = (label: string) => screen.getByLabelText(label) as HTMLInputElement
 const change = (label: string, value: string) => fireEvent.change(input(label), { target: { value } })
 const saveButton = () => screen.getByRole('button', { name: t.save })
@@ -61,8 +63,44 @@ describe('panels', () => {
 })
 
 describe('personal information', () => {
+  it('opens read-only with an edit button and shows empty values as not set', () => {
+    renderPage({ ...local, phoneNumber: null })
+    // Same aligned field grid as edit mode, but read-only, so switching modes does not shift the layout.
+    for (const label of [t.name, t.email, t.phone, t.dob]) expect(input(label).readOnly).toBe(true)
+    expect(screen.queryByRole('button', { name: t.save })).toBeNull()
+    expect(screen.queryByRole('button', { name: t.pickDate })).toBeNull()
+    expect(input(t.name).value).toBe('Nguyễn An')
+    expect(input(t.dob).value).toBe('24/05/2000')
+    expect(input(t.phone).placeholder).toBe(t.notSet)
+    expect(screen.getByText(t.basicInfo)).toBeTruthy()
+    expect(screen.getByRole('button', { name: t.edit })).toBeTruthy()
+  })
+
+  it('cancel discards edits and returns to read-only without calling the API', () => {
+    renderEditing()
+    expect(screen.queryByRole('button', { name: t.edit })).toBeNull()
+    change(t.name, 'Tên tạm')
+    fireEvent.click(screen.getByRole('button', { name: t.cancel }))
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(input(t.name).readOnly).toBe(true)
+    expect(input(t.name).value).toBe('Nguyễn An')
+    expect(screen.getByRole('button', { name: t.edit })).toBeTruthy()
+  })
+
+  it('fills the birth date from the calendar picker', () => {
+    const showPicker = vi.fn()
+    HTMLInputElement.prototype.showPicker = showPicker
+    renderEditing({ ...local, dateOfBirth: null })
+    fireEvent.click(screen.getByRole('button', { name: t.pickDate }))
+    expect(showPicker).toHaveBeenCalledTimes(1)
+    const picker = document.querySelector('input[type="date"]') as HTMLInputElement
+    expect(picker.max).toBe(yearsAgo(6))
+    fireEvent.change(picker, { target: { value: '2005-02-20' } })
+    expect(input(t.dob).value).toBe('20/02/2005')
+  })
+
   it('shows only real fields with a read-only email', () => {
-    renderPage()
+    renderEditing()
     expect(input(t.name).value).toBe('Nguyễn An')
     expect(input(t.email).readOnly).toBe(true)
     expect(input(t.phone).value).toBe('0912345678')
@@ -78,7 +116,7 @@ describe('personal information', () => {
 
   it.each([['03032005', '03/03/2005'], ['20022005', '20/02/2005'], ['2002200599', '20/02/2005']])('formats typed digits %s as %s', async (typed, expected) => {
     const user = userEvent.setup()
-    renderPage({ ...local, dateOfBirth: null })
+    renderEditing({ ...local, dateOfBirth: null })
     await user.type(input(t.dob), typed)
     expect(input(t.dob).value).toBe(expected)
   })
@@ -86,7 +124,7 @@ describe('personal information', () => {
   it('sends the typed day-month-year as an ISO date', async () => {
     fetchMock.mockResolvedValue(apiResponse(local))
     const user = userEvent.setup()
-    renderPage({ ...local, dateOfBirth: null })
+    renderEditing({ ...local, dateOfBirth: null })
     await user.type(input(t.dob), '20022005')
     fireEvent.click(saveButton())
     await screen.findByText(t.saved)
@@ -94,7 +132,7 @@ describe('personal information', () => {
   })
 
   it('keeps save disabled while pristine, including trailing spaces on the name', () => {
-    renderPage()
+    renderEditing()
     expect(saveButton().hasAttribute('disabled')).toBe(true)
     change(t.name, 'Nguyễn An  ')
     expect(saveButton().hasAttribute('disabled')).toBe(true)
@@ -103,7 +141,7 @@ describe('personal information', () => {
   it('patches only dirty fields, locks inputs while saving and resets to the saved baseline', async () => {
     let resolve: (response: Response) => void = () => {}
     fetchMock.mockReturnValue(new Promise(done => { resolve = done }))
-    const { onProfileChange, rerenderWith } = renderPage()
+    const { onProfileChange, rerenderWith } = renderEditing()
     change(t.phone, '0987654321')
     fireEvent.click(saveButton())
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
@@ -115,13 +153,14 @@ describe('personal information', () => {
     await screen.findByText(t.saved)
     expect(onProfileChange).toHaveBeenCalledWith(saved)
     rerenderWith(saved)
+    expect(input(t.phone).readOnly).toBe(true)
     expect(input(t.phone).value).toBe('0987654321')
-    expect(saveButton().hasAttribute('disabled')).toBe(true)
+    expect(screen.getByRole('button', { name: t.edit })).toBeTruthy()
   })
 
   it('sends null when phone and date of birth are cleared', async () => {
     fetchMock.mockResolvedValue(apiResponse({ ...local, phoneNumber: null, dateOfBirth: null }))
-    renderPage()
+    renderEditing()
     change(t.phone, '')
     change(t.dob, '')
     fireEvent.click(saveButton())
@@ -141,7 +180,7 @@ describe('personal information', () => {
     ['month 20', t.dob, '20/20/2005', t.dobFormat],
     ['incomplete date', t.dob, '03/03/20', t.dobFormat],
   ])('rejects a %s next to the field without calling the API', (_name, label, value, message) => {
-    renderPage()
+    renderEditing()
     change(label, value)
     fireEvent.click(saveButton())
     expect(fetchMock).not.toHaveBeenCalled()
@@ -151,7 +190,7 @@ describe('personal information', () => {
 
   it('accepts a spaced phone number and a birth date exactly 6 years ago', async () => {
     fetchMock.mockResolvedValue(apiResponse(local))
-    renderPage()
+    renderEditing()
     change(t.phone, '+84 912 345 678')
     change(t.dob, shown(yearsAgo(6)))
     fireEvent.click(saveButton())
@@ -160,7 +199,7 @@ describe('personal information', () => {
   })
 
   it('keeps fields being edited when the shared profile changes after an avatar upload', () => {
-    const { rerenderWith } = renderPage()
+    const { rerenderWith } = renderEditing()
     change(t.name, 'Tên đang sửa')
     rerenderWith({ ...local, fullName: 'Server Name', phoneNumber: '0900000000', avatarUrl: 'https://example.com/new.png' })
     expect(input(t.name).value).toBe('Tên đang sửa')
@@ -169,7 +208,7 @@ describe('personal information', () => {
 
   it.each([[400, t.checkInfo], [500, t.systemError]])('maps status %i to fixed copy', async (status, message) => {
     fetchMock.mockResolvedValue(apiResponse(null, status))
-    renderPage()
+    renderEditing()
     change(t.name, 'Tên mới')
     fireEvent.click(saveButton())
     expect((await screen.findByRole('alert')).textContent).toBe(message)

@@ -35,12 +35,15 @@ export function AvatarUpload({ profile, onProfileChange, language }: { profile: 
   return <div className="profile-avatar-upload">
     <label className={`profile-avatar-label${busy ? ' is-busy' : ''}`}>
       <UserAvatar className="avatar avatar-large" name={profile.fullName} url={profile.avatarUrl} />
-      <span className="avatar-camera" aria-hidden="true"><Camera size={16} /></span>
+      <span className="avatar-camera" aria-hidden="true"><Camera size={14} /></span>
       <input className="sr-only" type="file" accept={TYPES.join(',')} aria-label={t.changeAvatar} disabled={busy}
         onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void upload(file) }} />
     </label>
-    <p className="profile-avatar-hint">{t.avatarHint}</p>
-    {busy && <p className="profile-notice" role="status">{t.avatarUploading}</p>}
-    {notice && <p className={notice.ok ? 'profile-notice is-success' : 'profile-notice is-error'} role={notice.ok ? 'status' : 'alert'}>{notice.text}</p>}
+    <div className="profile-avatar-text">
+      <strong>{t.avatarTitle}</strong>
+      <p className="profile-avatar-hint">{t.avatarHint}</p>
+      {busy && <p className="profile-avatar-status" role="status">{t.avatarUploading}</p>}
+      {notice && <p className={`profile-avatar-status ${notice.ok ? 'is-success' : 'is-error'}`} role={notice.ok ? 'status' : 'alert'}>{notice.text}</p>}
+    </div>
   </div>
 }

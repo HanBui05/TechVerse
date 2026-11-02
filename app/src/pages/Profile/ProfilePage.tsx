@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { KeyRound, LogOut, MonitorSmartphone, UserRound } from 'lucide-react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { CalendarDays, KeyRound, LogOut, MonitorSmartphone, PencilLine, UserRound } from 'lucide-react'
 import type { Language } from '../../types/preferences'
 import { profileCopy, type ProfileTranslation } from '../../data/profile'
 import { updateMyProfile, type UpdateProfile, type UserProfile } from '../../services/profileService'
 import { ApiError } from '../../services/api/client'
 import { AvatarUpload } from './AvatarUpload'
 import { ChangePasswordPanel } from './ChangePasswordPanel'
+import { UserAvatar } from '../../components/UserAvatar'
 
 type Field = 'fullName' | 'phoneNumber' | 'dateOfBirth'
 type Values = Record<Field, string>
@@ -61,8 +62,10 @@ export function ProfilePage({ language, profile, onLogout, onLogoutAll, onProfil
     <header className="profile-heading"><h1>{t.title}</h1><p>{t.subtitle}</p></header>
     <div className="profile-layout">
       <aside className="profile-card profile-sidebar">
-        <AvatarUpload profile={profile} onProfileChange={onProfileChange} language={language} />
-        <div className="profile-identity"><strong>{profile.fullName}</strong><span>{profile.email}</span></div>
+        <div className="profile-identity">
+          <UserAvatar className="avatar profile-identity-avatar" name={profile.fullName} url={profile.avatarUrl} />
+          <div><strong>{profile.fullName}</strong><span>{profile.email}</span></div>
+        </div>
         {canChangePassword && <nav className="profile-nav" aria-label={t.navLabel}>
           <button type="button" className={active === 'personal' ? 'is-active' : ''} aria-current={active === 'personal' ? 'page' : undefined} onClick={() => setPanel('personal')}><UserRound size={18} aria-hidden="true" />{t.personal}</button>
           <button type="button" className={active === 'password' ? 'is-active' : ''} aria-current={active === 'password' ? 'page' : undefined} onClick={() => setPanel('password')}><KeyRound size={18} aria-hidden="true" />{t.password}</button>
@@ -70,21 +73,32 @@ export function ProfilePage({ language, profile, onLogout, onLogoutAll, onProfil
         <SessionActions t={t} onLogout={onLogout} onLogoutAll={onLogoutAll} />
       </aside>
       <section className="profile-card profile-content" aria-labelledby="profile-panel-title">
-        <header className="profile-content-header">
-          <h2 id="profile-panel-title">{active === 'personal' ? t.personal : t.password}</h2>
-          <p>{active === 'personal' ? t.personalDesc : t.passwordDesc}</p>
-        </header>
-        {active === 'personal' ? <PersonalForm t={t} profile={profile} onProfileChange={onProfileChange} /> : <ChangePasswordPanel language={language} />}
+        {active === 'personal'
+          ? <PersonalForm t={t} profile={profile} onProfileChange={onProfileChange} avatar={<AvatarUpload profile={profile} onProfileChange={onProfileChange} language={language} />} />
+          : <><PanelHeader icon={<KeyRound size={15} />} title={t.password} description={t.passwordDesc} /><div className="profile-body"><ChangePasswordPanel language={language} /></div></>}
       </section>
     </div>
   </main>
 }
 
-function PersonalForm({ t, profile, onProfileChange }: { t: ProfileTranslation; profile: UserProfile; onProfileChange: (profile: UserProfile) => void }) {
+function PanelHeader({ icon, title, description, action }: { icon: ReactNode; title: string; description: string; action?: ReactNode }) {
+  return <header className="profile-content-header">
+    <div className="profile-content-title">
+      <span className="profile-content-icon" aria-hidden="true">{icon}</span>
+      <div><h2 id="profile-panel-title">{title}</h2><p>{description}</p></div>
+    </div>
+    {action}
+  </header>
+}
+
+function PersonalForm({ t, profile, onProfileChange, avatar }: { t: ProfileTranslation; profile: UserProfile; onProfileChange: (profile: UserProfile) => void; avatar: ReactNode }) {
   const [form, setForm] = useState(() => ({ baseline: valuesOf(profile), values: valuesOf(profile) }))
   const [errors, setErrors] = useState<Errors>({})
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null)
+  // Read-only until the user chooses to edit; Cancel restores the saved values.
+  const [editing, setEditing] = useState(false)
+  const picker = useRef<HTMLInputElement>(null)
 
   // A shared profile update (e.g. new avatar) refreshes only the fields the user has not touched.
   useEffect(() => {
@@ -110,6 +124,7 @@ function PersonalForm({ t, profile, onProfileChange }: { t: ProfileTranslation; 
       const updated = await updateMyProfile(payload)
       setForm({ baseline: valuesOf(updated), values: valuesOf(updated) })
       onProfileChange(updated)
+      setEditing(false)
       setNotice({ ok: true, text: t.saved })
     } catch (error) {
       setNotice({ ok: false, text: error instanceof ApiError && error.status === 400 ? t.checkInfo : t.systemError })
@@ -118,29 +133,54 @@ function PersonalForm({ t, profile, onProfileChange }: { t: ProfileTranslation; 
     }
   }
 
-  const field = (key: Field, label: string, props: { type?: string; maxLength?: number; autoComplete?: string; inputMode?: 'numeric' | 'tel'; placeholder?: string }, format = (value: string) => value) => <div className="profile-field">
+  const startEditing = () => { setNotice(null); setEditing(true) }
+  const cancel = () => { setForm(current => ({ ...current, values: current.baseline })); setErrors({}); setEditing(false) }
+  // Native picker (localized by the browser) only fills the field; the dd/mm/yyyy text stays the source of truth.
+  const openPicker = () => { const input = picker.current; if (!input) return; if (typeof input.showPicker === 'function') input.showPicker(); else input.focus() }
+
+  const noticeView = notice && <p className={notice.ok ? 'profile-notice is-success' : 'profile-notice is-error'} role={notice.ok ? 'status' : 'alert'}>{notice.text}</p>
+  const header = <PanelHeader icon={<UserRound size={15} />} title={t.personal} description={t.personalDesc}
+    action={!editing && <button type="button" className="profile-edit-button" onClick={startEditing}><PencilLine size={14} aria-hidden="true" />{t.edit}</button>} />
+
+  // Same field grid in both modes (read-only until Edit) so switching modes never shifts the layout.
+  const field = (key: Field, label: string, props: { type?: string; maxLength?: number; autoComplete?: string; inputMode?: 'numeric' | 'tel'; placeholder?: string }, format = (value: string) => value, extra?: ReactNode) => <div className="profile-field">
     <label htmlFor={`profile-${key}`}>{label}</label>
-    <input id={`profile-${key}`} {...props} value={form.values[key]} disabled={saving} onChange={event => set(key, format(event.target.value))}
-      aria-invalid={errors[key] ? true : undefined} aria-describedby={errors[key] ? `profile-${key}-error` : undefined} />
+    <div className={extra && editing ? 'profile-date' : undefined}>
+      <input id={`profile-${key}`} {...props} placeholder={editing ? props.placeholder : t.notSet} value={form.values[key]} readOnly={!editing} disabled={saving}
+        onChange={event => set(key, format(event.target.value))}
+        aria-invalid={errors[key] ? true : undefined} aria-describedby={errors[key] ? `profile-${key}-error` : undefined} />
+      {editing && extra}
+    </div>
     {errors[key] && <p className="profile-field-error" id={`profile-${key}-error`}>{errors[key]}</p>}
   </div>
 
-  return <form className="profile-form" noValidate onSubmit={event => void save(event)}>
-    <div className="profile-fields two-columns">
-      {field('fullName', t.name, { maxLength: 150, autoComplete: 'name' })}
-      <div className="profile-field">
-        <label htmlFor="profile-email">{t.email}</label>
-        <input id="profile-email" type="email" value={profile.email} readOnly aria-describedby="profile-email-hint" />
-        <p className="profile-field-hint" id="profile-email-hint">{t.emailHint}</p>
+  const datePicker = <>
+    <button type="button" className="profile-date-button" aria-label={t.pickDate} disabled={saving} onClick={openPicker}><CalendarDays size={16} aria-hidden="true" /></button>
+    <input ref={picker} type="date" className="profile-date-native" tabIndex={-1} aria-hidden="true" max={latestBirthDate()}
+      value={isRealDate(form.values.dateOfBirth) ? toIso(form.values.dateOfBirth) : ''}
+      onChange={event => { if (event.target.value) set('dateOfBirth', toShown(event.target.value)) }} />
+  </>
+
+  return <>{header}<div className="profile-body">
+    {avatar}
+    <form className="profile-form" noValidate onSubmit={event => void save(event)}>
+      <h3 className="profile-section-title">{t.basicInfo}</h3>
+      <div className="profile-fields two-columns">
+        {field('fullName', t.name, { maxLength: 150, autoComplete: 'name' })}
+        <div className="profile-field">
+          <label htmlFor="profile-email">{t.email}</label>
+          <input id="profile-email" type="email" value={profile.email} readOnly />
+        </div>
+        {field('phoneNumber', t.phone, { type: 'tel', maxLength: 20, autoComplete: 'tel' })}
+        {field('dateOfBirth', t.dob, { inputMode: 'numeric', maxLength: 10, placeholder: 'dd/mm/yyyy', autoComplete: 'bday' }, maskDate, datePicker)}
       </div>
-      {field('phoneNumber', t.phone, { type: 'tel', maxLength: 20, autoComplete: 'tel' })}
-      {field('dateOfBirth', t.dob, { inputMode: 'numeric', maxLength: 10, placeholder: 'dd/mm/yyyy', autoComplete: 'bday' }, maskDate)}
-    </div>
-    {notice && <p className={notice.ok ? 'profile-notice is-success' : 'profile-notice is-error'} role={notice.ok ? 'status' : 'alert'}>{notice.text}</p>}
-    <div className="profile-form-actions">
-      <button className="button button-primary" type="submit" disabled={saving || !dirty.length}>{saving ? t.saving : t.save}</button>
-    </div>
-  </form>
+      {noticeView}
+      {editing && <div className="profile-form-actions">
+        <button className="button button-outline" type="button" disabled={saving} onClick={cancel}>{t.cancel}</button>
+        <button className="button button-primary" type="submit" disabled={saving || !dirty.length}>{saving ? t.saving : t.save}</button>
+      </div>}
+    </form>
+  </div></>
 }
 
 function SessionActions({ t, onLogout, onLogoutAll }: { t: ProfileTranslation; onLogout: () => void; onLogoutAll: () => Promise<void> }) {
