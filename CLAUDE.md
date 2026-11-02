@@ -27,4 +27,14 @@ Trước task: đọc [`PLAN.md`](plans/PLAN.md) (luật chung, chọn module), 
 - Không dùng `writing-plans`, `executing-plans`, `subagent-driven-development`, `using-git-worktrees`.
 - Task có đổi giao diện (spec ghi “Đổi giao diện: Có”): dùng `ui-ux-pro-max`, bám [`docs/UI_GUIDE.md`](docs/UI_GUIDE.md). Không dùng `ui-styling`, `banner-design`, `brand`, `slides`, `design`. Không thêm Tailwind hay thư viện UI mới nếu spec không yêu cầu.
 
+## Bài học vận hành (cập nhật dần)
+
+- Công cụ/script tạm: viết một lần bằng file sạch (Write), không vá nhiều lần bằng `sed` hoặc heredoc. Node/Python trên Windows dùng đường dẫn Windows (`D:/...`), không dùng `/d/...` của Git Bash.
+- Chạy song song các bước độc lập (test, build, chụp ảnh); chạy lâu thì để nền. Tắt dev server sau khi dùng.
+- Kiểm chứng tương xứng với rủi ro. Task giữ nguyên hành vi: inventory + kiểm tra tĩnh thứ tự cascade + các trang spec yêu cầu; chỉ mở rộng sang trang khác khi kiểm tra tĩnh báo lỗi hoặc người dùng yêu cầu.
+- Ảnh chụp có nhiễu: không kết luận từ một lần; so với nhiều lần chụp nền và chụp lại khi lệch vài điểm ảnh.
+- Tách/di chuyển CSS: kiểm tra các class cùng nằm trên một phần tử (kể cả truyền qua prop `className`), vì đổi thứ tự nạp file làm đổi cascade mà ảnh chụp có thể không thấy (ví dụ phần tử ngoài khung nhìn).
+- Công cụ kiểm chứng dùng lại cho nhiều task: đề nghị Codex đưa đường dẫn vào spec rồi mới thêm vào repo; không tự tạo ngoài spec.
+- Công cụ Chrome chỉ nạp khi phiên bắt đầu: nếu chưa thấy sau khi cài, báo người dùng khởi động lại, không tìm lại nhiều lần.
+
 Người dùng quyết định khi chốt plan, khi các AI bất đồng, khi chạm giới hạn vòng và khi nhận kết quả cuối.

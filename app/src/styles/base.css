@@ -1,0 +1,91 @@
+html,
+:root {
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--bg);
+}
+
+button,
+select {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-sans);
+}
+
+h1 {
+  font-size: clamp(38px, 4.7vw, 66px);
+  letter-spacing: -3px;
+  line-height: 1.02;
+  margin: 24px 0 21px;
+  max-width: 760px;
+}
+
+@media (max-width: 980px) {
+  h1 {
+    max-width: 650px;
+  }
+}
+
+@media (max-width: 700px) {
+  h1 {
+    font-size: clamp(37px, 11vw, 56px);
+    letter-spacing: -2px;
+  }
+}
+
+body {
+  transition: background-color .28s ease, color .28s ease, border-color .28s ease, box-shadow .28s ease;
+}
+
+.sr-only {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
+  clip: rect(0, 0, 0, 0);
+}
+
+body {
+  font-size: 16px;
+}
+
+.section-kicker {
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}

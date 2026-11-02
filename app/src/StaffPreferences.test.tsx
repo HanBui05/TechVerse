@@ -33,3 +33,17 @@ it.each(['ADMIN', 'MODERATOR'])('%s can change theme and language from its own s
   expect(screen.queryByRole('link', { name: 'Appearance' })).not.toBeNull()
   expect(localStorage.getItem('techverse-language')).toBe('en')
 })
+
+// Dark stays the default; only a valid saved choice changes it, and the choice is restored as saved.
+it.each([
+  [null, 'dark'],
+  ['light', 'light'],
+  ['dark', 'dark'],
+  ['blue', 'dark'],
+])('stored theme %s renders as %s', (stored, expected) => {
+  localStorage.removeItem('techverse-authenticated')
+  if (stored) localStorage.setItem('techverse-theme', stored)
+  render(<MemoryRouter initialEntries={['/login']}><App /></MemoryRouter>)
+  expect(document.documentElement.dataset.theme).toBe(expected)
+  expect(localStorage.getItem('techverse-theme')).toBe(expected)
+})

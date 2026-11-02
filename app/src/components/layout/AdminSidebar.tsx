@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Activity, BarChart3, BookOpen, ChevronDown, FileQuestion, FileText, GraduationCap, KeyRound, LayoutDashboard, LogIn, MessageSquare, Monitor, ShieldCheck, TrendingUp, UserCheck, Users, Wallet, X } from 'lucide-react'
+import { BookOpen, ChevronDown, FileText, KeyRound, LayoutDashboard, LogIn, UserCheck, Users, X } from 'lucide-react'
 import type { Language } from '../../types/preferences'
 import { Brand } from '../brand/Brand'
 import { AccountIdentity } from './AccountIdentity'
@@ -15,24 +15,10 @@ const groups = [
   { label: { vi: 'Người dùng & học viên', en: 'Users & learners' }, items: [
     { label: { vi: 'Hồ sơ tác giả', en: 'Author applications' }, path: '/admin/author-applications', icon: UserCheck },
     { label: { vi: 'Quản lý người dùng', en: 'Manage users' }, path: '/admin/users', icon: UserCheck },
-    { label: { vi: 'Quản lý vai trò', en: 'Manage roles' }, path: '/admin/roles', icon: ShieldCheck },
-    { label: { vi: 'Quản lý đăng nhập', en: 'Login management' }, path: '/admin/logins', icon: Monitor },
-    { label: { vi: 'Phân tích đăng nhập', en: 'Login analytics' }, path: '/admin/login-analytics', icon: BarChart3 },
-    { label: { vi: 'Người dùng hoạt động', en: 'Active users' }, path: '/admin/active-users', icon: Activity },
-    { label: { vi: 'Chuỗi ngày học tập', en: 'User streaks' }, path: '/admin/streaks', icon: TrendingUp },
-    { label: { vi: 'Quản lý gói đăng ký', en: 'Subscriptions' }, path: '/admin/subscriptions', icon: KeyRound },
-    { label: { vi: 'Thanh toán', en: 'Payments' }, path: '/admin/payments', icon: Wallet },
   ] },
   { label: { vi: 'Bài giảng & học tập', en: 'Lessons & learning' }, items: [
     { label: { vi: 'Chủ đề', en: 'Topics' }, path: '/admin/topics', icon: BookOpen },
     { label: { vi: 'Thẻ', en: 'Tags' }, path: '/admin/tags', icon: KeyRound },
-    { label: { vi: 'Khóa học', en: 'Courses' }, path: '/admin/courses', icon: BookOpen },
-    { label: { vi: 'Quản lý chứng chỉ', en: 'Certificates' }, path: '/admin/certificates', icon: GraduationCap },
-    { label: { vi: 'Bài tập', en: 'Exercises' }, path: '/admin/exercises', icon: FileText },
-    { label: { vi: 'Câu hỏi phỏng vấn', en: 'Interview questions' }, path: '/admin/interview-questions', icon: FileQuestion },
-    { label: { vi: 'Đóng góp câu hỏi', en: 'Question contributions' }, path: '/admin/question-contributions', icon: MessageSquare },
-    { label: { vi: 'Hỏi đáp & thử thách', en: 'Q&A & challenges' }, path: '/admin/qa-challenges', icon: FileQuestion },
-    { label: { vi: 'Bình luận', en: 'Comments' }, path: '/admin/comments', icon: MessageSquare },
   ] },
 ]
 

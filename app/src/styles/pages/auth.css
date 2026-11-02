@@ -1,0 +1,395 @@
+.form-error {
+  color: var(--danger);
+  font-size: 12px;
+  margin: 12px 0 -70px;
+}
+
+.login-mode {
+  min-height: 100vh;
+}
+
+.login-page {
+  align-items: center;
+  background: radial-gradient(circle at 50% 10%, color-mix(in srgb, var(--accent-text) 12%, transparent), transparent 40%), var(--bg);
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 32px 20px;
+}
+
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 17px;
+  box-shadow: 0 28px 90px var(--shadow-color);
+  max-width: 480px;
+  padding: 27px 32px 30px;
+  position: relative;
+  width: 100%;
+}
+
+.login-back {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 13px;
+  gap: 7px;
+  transition: color .2s;
+}
+
+.login-back:hover {
+  color: var(--text);
+}
+
+.login-brand {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: -4px auto 23px;
+  text-align: center;
+}
+
+.login-brand > span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.login-card h1 {
+  font-size: 26px;
+  letter-spacing: -1px;
+  margin: 0 0 7px;
+  text-align: center;
+}
+
+.login-subtitle {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 0 31px;
+  text-align: center;
+}
+
+.login-input {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  display: block;
+  font-size: 14px;
+  min-height: 44px;
+  outline: none;
+  padding: 0 15px;
+  transition: border-color .2s, box-shadow .2s;
+  width: 100%;
+}
+
+.login-input::placeholder {
+  color: var(--muted);
+}
+
+.login-input:focus {
+  border-color: var(--accent-text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-text) 14%, transparent);
+}
+
+.password-field {
+  margin-top: 15px;
+  position: relative;
+}
+
+.password-field .login-input {
+  padding-right: 45px;
+}
+
+.password-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  height: 42px;
+  justify-content: center;
+  position: absolute;
+  right: 4px;
+  top: 1px;
+  width: 38px;
+}
+
+.forgot-link {
+  color: var(--accent-text);
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 15px;
+}
+
+.login-submit {
+  background: var(--primary);
+  border: 0;
+  border-radius: 9px;
+  color: var(--on-primary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 96px;
+  min-height: 45px;
+  width: 100%;
+}
+
+.login-submit:hover {
+  transform: translateY(-1px);
+}
+
+.passkey-button,
+.social-login-grid button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 44px;
+  transition: .2s;
+}
+
+.passkey-button {
+  gap: 9px;
+  margin-top: 15px;
+  width: 100%;
+}
+
+.passkey-button:hover,
+.social-login-grid button:hover {
+  background: var(--surface-2);
+  border-color: var(--accent-text);
+}
+
+.login-divider {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 12px;
+  gap: 13px;
+  margin: 27px 0 17px;
+}
+
+.login-divider::before,
+.login-divider::after {
+  background: var(--border);
+  content: '';
+  flex: 1;
+  height: 1px;
+}
+
+.social-login-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.social-login-grid button {
+  gap: 7px;
+  padding: 0 8px;
+}
+
+.google-mark {
+  color: var(--brand-google);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.social-mark {
+  align-items: center;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  height: 18px;
+  justify-content: center;
+  width: 18px;
+}
+
+.github-mark {
+  background: var(--text);
+  border-radius: 50%;
+  color: var(--surface);
+  font-size: 8px;
+}
+
+.linkedin-mark {
+  background: var(--brand-linkedin);
+  border-radius: 2px;
+  color: var(--on-primary);
+  font-size: 11px;
+}
+
+.social-login-grid button:nth-child(3) svg {
+  color: var(--brand-linkedin);
+}
+
+.login-register {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 27px 0 0;
+  text-align: center;
+}
+
+.login-register button {
+  background: none;
+  border: 0;
+  color: var(--accent-text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+}
+
+@media (max-width: 560px) {
+  .login-card {
+    padding: 23px 20px 25px;
+  }
+
+  .login-submit {
+    margin-top: 70px;
+  }
+
+  .social-login-grid {
+    gap: 7px;
+  }
+
+  .social-login-grid button {
+    font-size: 12px;
+  }
+}
+
+.register-card {
+  max-width: 432px;
+}
+
+.register-card .login-brand {
+  margin-bottom: 18px;
+}
+
+.register-card h1 {
+  margin-bottom: 6px;
+}
+
+.register-card .login-subtitle {
+  margin-bottom: 23px;
+}
+
+.register-spaced {
+  margin-top: 11px;
+}
+
+.register-submit {
+  background: var(--primary);
+  margin-top: 79px;
+}
+
+.terms-copy {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+  margin: 11px auto 0;
+  max-width: 330px;
+  text-align: center;
+}
+
+.register-error {
+  margin-bottom: -59px;
+}
+
+.form-error {
+  font-size: 14px;
+}
+
+.login-back,
+.login-register {
+  font-size: 15px;
+}
+
+.login-brand > span {
+  font-size: 11px;
+}
+
+.login-subtitle {
+  font-size: 16px;
+}
+
+.login-input {
+  font-size: 16px;
+}
+
+.forgot-link {
+  font-size: 15px;
+}
+
+.login-submit {
+  font-size: 16px;
+}
+
+.passkey-button,
+.social-login-grid button {
+  font-size: 15px;
+}
+
+.login-divider {
+  font-size: 14px;
+}
+
+.terms-copy {
+  font-size: 12px;
+}
+
+.social-login-grid {
+  display: flex;
+  justify-content: center;
+}
+
+.social-login-grid button {
+  min-width: 190px;
+}
+
+.social-login-grid .google-auth-button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  display: inline-flex;
+  font-size: 15px;
+  font-weight: 700;
+  gap: 9px;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 190px;
+  padding: 0 16px;
+  text-decoration: none;
+  transition: .2s;
+}
+
+.social-login-grid .google-auth-button:hover {
+  background: var(--surface-2);
+  border-color: var(--accent-text);
+}
+
+.social-login-grid .google-auth-button:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 4px;
+}
+
+.google-callback-card {
+  text-align: center;
+}
+
+.google-callback-message {
+  line-height: 1.7;
+  margin: 22px 0;
+}

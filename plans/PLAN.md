@@ -7,6 +7,9 @@
 | Module | Spec | Trạng thái | Người thực hiện | Task hiện tại | Xong khi | Nhật ký |
 |---|---|---|---|---|---|---|
 | Workflow bootstrap | [`plans/workflow-bootstrap.md`](workflow-bootstrap.md) | Chờ người dùng nhận kết quả | Codex (pilot) | Đã dựng khung, luật, script và chạy pilot | Kết quả/test/review đã ghi; full verify còn cần Docker | [`plans/workflow-bootstrap.log.md`](workflow-bootstrap.log.md) |
+| UI foundation | [`plans/ui-foundation.md`](ui-foundation.md) | Đang review | Claude | Task 1 đã review (không blocker). Task 2 (token, palette, font, theme bootstrap) code xong: `npm test` 76/76, build đạt, 0 literal màu ngoài `tokens.css`, mọi cặp chữ/nền ≥ 4.5:1; Codex review vòng 1 có 1 phát hiện (vòng sáng focus dùng `--primary`) đã sửa. Task 3 (trang chủ + 4 yêu cầu bổ sung D-016) code xong: `npm test` 81/81, build đạt, 0 literal màu ngoài `tokens.css`; chờ `/codex:review --background` rồi người dùng nhận kết quả | Token/font mới, CSS module hóa, placeholder/community Home đã bỏ, frontend test/build đạt | [`plans/ui-foundation.log.md`](ui-foundation.log.md) |
+| Auth login/register | [`plans/auth-login-register.md`](auth-login-register.md) | Đang lập kế hoạch | Chưa giao | Claude đã ghi phản hồi vòng 1 (7 điểm thiếu, 1 rủi ro cần người dùng xác nhận); chờ Codex trả lời. Chỉ code sau khi `ui-foundation` hoàn tất cổng nhận kết quả | Tab auth có chuyển động, typography Inter rõ cấp, cảnh báo VI/EN chung, toggle mật khẩu đúng; test/build đạt | — |
+| Sidebar cleanup | — (làn nhẹ, không cần spec riêng; chi tiết ở D-012 và mục “Quyết định đã chốt cho sidebar-cleanup” của [`plans/ui-foundation.md`](ui-foundation.md)) | Chờ người dùng nhận kết quả | Claude | Code xong: đã xóa 20 mục người dùng, 14 mục Admin, CSS/state/import mồ côi; `npm test` 65/65 và `npm run build` đạt; Codex review vòng 1 không có blocker. Người dùng xem bằng mắt rồi commit/push | Chỉ còn mục có route thật; không còn CSS/state/import mồ côi; `npm test` và `npm run build` đạt | [`plans/sidebar-cleanup.log.md`](sidebar-cleanup.log.md) |
 
 Trạng thái hợp lệ: `Đề xuất` → `Đang lập kế hoạch` → `Chờ người dùng chốt` → `Đã chốt` → `Đang thực hiện` → `Đang review` → `Chờ người dùng nhận kết quả` → `Hoàn tất`; dùng `Bị chặn` khi không thể tạo ra kết quả để bàn giao vì cần quyết định hoặc môi trường bên ngoài.
 
@@ -42,11 +45,16 @@ Người dùng quyết định tại bốn cổng: chốt plan; xử lý bất �
 | D-009 | 2026-11-02 | Spec không liệt kê skill của người code, trừ yêu cầu đầu ra (đổi giao diện) | Tránh lặp và lệch với `CLAUDE.md` | Đã chốt |
 | D-010 | 2026-11-02 | Bảng màu UI theo web mẫu `javabuilder.online` (sáng, xanh dương); giữ CSS thường | Người dùng chọn hướng này | Đã chốt |
 | D-011 | 2026-11-02 | Chức năng đầy đủ: sửa giao diện trước. Chức năng mới: backend trước, giao diện sau khi backend của cả module xong | Tránh sửa backend rải rác khi đang làm giao diện | Đã chốt |
+| D-012 | 2026-11-02 | Trước `ui-foundation`, làm làn nhẹ xóa 20 mục người dùng và 14 mục Admin không có route thật; xóa “Giới thiệu”; giữ nguyên Moderator và `PlaceholderPage`/route `*`. Mỗi module mới tự thêm lại mục menu ở task Giao diện | Tránh menu dẫn tới trang “đang phát triển” và tránh di chuyển CSS chết khi tách `styles.css` | Đã chốt |
+| D-013 | 2026-11-02 | Theme **tối là mặc định** (thay phần “sáng mặc định” của D-010); vẫn giữ chế độ sáng chọn được. Bảng màu theo web mẫu giữ nguyên | Ảnh mẫu người dùng chọn là tối, TechVerse đang mặc định tối; đo trực tiếp JavaBuilder cho thấy nền `#0f172a` | Đã chốt |
+| D-014 | 2026-11-02 | Font toàn giao diện là **Inter** (thay DM Sans và Space Grotesk) | Khớp trang mẫu; font tiêu đề cũ ở cỡ lớn tạo cảm giác “AI” | Đã chốt |
+| D-015 | 2026-11-02 | Bỏ khỏi trang chủ khối “Featured content” (thẻ nổi bật trống) và mục “Khóa học nổi bật” trống cho tới khi có dữ liệu thật | Khối giữ chỗ trông chưa hoàn thiện; cùng nguyên tắc D-012 | Đã chốt |
+| D-016 | 2026-11-02 | Bỏ toàn bộ khu community trên Home, gồm GitHub repository card và Discord placeholder; chỉ thêm lại trong task của chức năng thật sau này | Không giữ giao diện hoặc liên kết rời rạc khi chưa có chức năng tương ứng | Đã chốt |
+| D-016 | 2026-11-02 | Task 3 `ui-foundation` thêm 4 yêu cầu của người dùng: giảm cỡ h1 hero, mô tả hero dài hơn, padding hero lớn hơn, tech tag nhiều màu như trang mẫu | Giao diện trang chủ còn đơn điệu và tiêu đề quá to | Đã chốt |
 
 ## Câu hỏi mở
 
 - **Docker:** đã cài nhưng daemon chưa chạy (kiểm tra 2026-11-02: không kết nối được `dockerDesktopLinuxEngine`). Phải mở Docker Desktop trước khi chạy `scripts/verify.sh`; chưa có lần chạy nào thấy 18 test tích hợp đạt. `scripts/verify.sh` giữ nguyên.
-- **Font:** bảng màu đã chốt theo web mẫu (D-010); font chưa quyết.
 - **`.superpowers/`:** thư mục lưu trữ cũ (đã gitignore, 21 MB); chờ người dùng quyết định giữ hay xóa.
 - **Module đầu tiên** cần cải tổ: chưa chọn.
 - **Tên nhánh** của task do Codex làm (log cũ dùng `codex/...`, `PROJECT_CONTEXT.md` quy định `feature/`, `fix/`, `chore/`): chưa đối chiếu với `docs/GIT_WORKFLOW.md`.

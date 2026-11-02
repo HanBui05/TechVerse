@@ -1,0 +1,118 @@
+.hero-section {
+  background: var(--surface);
+  padding: clamp(72px, 9vw, 128px) clamp(24px, 6vw, 90px) clamp(72px, 8vw, 112px);
+  text-align: center;
+}
+
+.hero-copy {
+  margin: 0 auto;
+  max-width: 720px;
+}
+
+.welcome-badge {
+  background: color-mix(in srgb, var(--accent-text) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-text) 30%, transparent);
+  border-radius: 99px;
+  color: var(--accent-text);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 7px;
+  letter-spacing: .1px;
+  padding: 8px 13px;
+}
+
+.hero-copy h1 {
+  font-size: clamp(30px, 3.4vw, 48px);
+  font-weight: 700;
+  letter-spacing: normal;
+  line-height: 1.2;
+  margin: 24px auto 20px;
+  max-width: none;
+}
+
+.hero-copy h1 span {
+  color: var(--accent-text);
+}
+
+.hero-lede {
+  color: var(--text-2);
+  font-size: 18px;
+  line-height: 1.7;
+  margin: 0 auto;
+  max-width: 640px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin: 28px 0 32px;
+}
+
+/* Each tag takes its color from --tone; the tone is chosen with data-tone in HomePage.tsx. */
+.tech-tag {
+  --tone: var(--accent-text);
+  align-items: center;
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tone) 32%, transparent);
+  border-radius: 99px;
+  color: var(--tone);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 8px;
+  padding: 8px 14px;
+  transition: background-color .2s, border-color .2s;
+}
+
+.tech-tag:hover {
+  background: color-mix(in srgb, var(--tone) 15%, transparent);
+  border-color: var(--tone);
+}
+
+.tech-tag i {
+  background: var(--tone);
+  border-radius: 50%;
+  height: 6px;
+  width: 6px;
+}
+
+.tech-tag[data-tone='green'] {
+  --tone: var(--success);
+}
+
+.tech-tag[data-tone='violet'] {
+  --tone: var(--violet);
+}
+
+.tech-tag[data-tone='amber'] {
+  --tone: var(--warning);
+}
+
+.tech-tag[data-tone='rose'] {
+  --tone: var(--rose);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+@media (max-width: 700px) {
+  .hero-section {
+    padding: 64px 22px 64px;
+  }
+
+  .hero-lede {
+    font-size: 16px;
+  }
+
+  .hero-actions .button {
+    flex: 1;
+    min-width: 180px;
+  }
+}

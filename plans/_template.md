@@ -14,6 +14,16 @@ Chỉ được sửa các đường dẫn sau (backend, frontend, test). Ngoài 
 - `server/...`
 - `app/src/...`
 
+## Bản đồ chi tiết
+
+Để người code không phải tìm lại. Liệt kê cụ thể, đúng tên trong mã:
+
+| Hiện ở đâu (file, tên class/hàm/bean) | Dùng bởi (component/trang/lớp gọi) | Đích sau thay đổi |
+|---|---|---|
+| ... | ... | ... |
+
+Thêm các danh sách ngắn nếu cần: chỗ còn giá trị viết cứng (ví dụ hex), test hiện có bao phủ phần này, phụ thuộc chéo giữa các phần.
+
 ## Phạm vi
 
 - ...

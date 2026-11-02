@@ -1,0 +1,86 @@
+/* Design tokens. Dark is the default; light is selected with data-theme='light'. */
+:root {
+  color-scheme: dark;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Surfaces, borders and text */
+  --bg: #0f172a;
+  --sidebar: var(--bg);
+  --surface: #1e293b;
+  --surface-2: #334155;
+  --border: #334155;
+  --text: #f1f5f9;
+  --text-2: #cbd5e1;
+  --muted: #a8b4c8;
+
+  /* Brand and status. --primary is a fill (white text on it); use --accent-text for text, icons and focus. */
+  --primary: #0056d2;
+  --on-primary: #ffffff;
+  --accent-text: #38bdf8;
+  --info: #38bdf8;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #fca5a5;
+  --violet: #c4b5fd;
+  --rose: #fda4af;
+
+  /* Effects */
+  --shadow-color: rgba(0, 0, 0, .35);
+  --shadow-soft: rgba(0, 0, 0, .12);
+  --scrim: rgba(2, 6, 23, .65);
+
+  /* Fixed colors: theme previews, third-party brand marks */
+  --preview-dark: #0f172a;
+  --preview-light: #ffffff;
+  --brand-google: #4285f4;
+  --brand-linkedin: #0a66c2;
+
+  /* Code blocks and syntax highlighting */
+  --code-bg: #0b1220;
+  --code-header: #131c2e;
+  --code-border: #334155;
+  --code-text: #e2e8f0;
+  --code-comment: #94a3b8;
+  --code-keyword: #c4b5fd;
+  --code-string: #86efac;
+  --code-title: #7dd3fc;
+  --code-number: #fdba74;
+  --code-meta: #f9a8d4;
+  --code-tag: #fca5a5;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #ffffff;
+  --surface: #f9fafb;
+  --surface-2: #f3f4f6;
+  --border: #e5e7eb;
+  --text: #111827;
+  --text-2: #4b5563;
+  --muted: #4b5563;
+
+  --accent-text: #0056d2;
+  --info: #075985;
+  --success: #166534;
+  --warning: #92400e;
+  --danger: #991b1b;
+  --violet: #6d28d9;
+  --rose: #be123c;
+
+  --shadow-color: rgba(17, 24, 39, .12);
+  --shadow-soft: rgba(17, 24, 39, .05);
+  --scrim: rgba(15, 23, 42, .45);
+
+  --code-bg: #f3f4f6;
+  --code-header: #e5e7eb;
+  --code-border: #d1d5db;
+  --code-text: #1f2937;
+  --code-comment: #4b5563;
+  --code-keyword: #6d28d9;
+  --code-string: #166534;
+  --code-title: #075985;
+  --code-number: #9a3412;
+  --code-meta: #9d174d;
+  --code-tag: #991b1b;
+}
