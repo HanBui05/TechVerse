@@ -6,6 +6,8 @@ Nguồn chuẩn cho mọi task có “Đổi giao diện: Có”. Màn mới ph�
 
 Tham khảo `javabuilder.online` về **bố cục và cấu trúc menu**, không sao chép logo, ảnh, văn bản, và không mượn công nghệ của họ (họ dùng Tailwind + shadcn/ui; TechVerse giữ CSS thường).
 
+> **D-024 (2026-11-02):** TechVerse chuyển sang shadcn/ui + Tailwind CSS, giữ bảng màu/theme/font bên dưới. Hướng dẫn này sẽ được viết lại trong module “UI foundation v2 (shadcn)”; tới lúc đó các trang chưa chuyển vẫn theo nội dung hiện tại.
+
 Trang tham chiếu: sidebar cố định 256px, ngăn kéo mobile 320px, hero + thẻ cộng đồng + các khối nổi bật (tiêu đề, một dòng mô tả, “View all”), cài đặt theme/ngôn ngữ trong sidebar, nhãn HOT/NEW/PRO trên menu.
 
 **Bảng màu (đã chốt): theo web mẫu, mặc định là TỐI** (D-013; vẫn giữ chế độ sáng chọn được). Màu nhấn xanh dương `#0056d2`; chế độ tối dùng bảng slate. Giá trị tham chiếu:
