@@ -10,7 +10,7 @@ TechVerse là monorepo gồm frontend React ở [`app/`](../app/) và backend Sp
 
 1. Mã chạy thực tế và cấu hình: [`server/src/main`](../server/src/main/), [`app/src`](../app/src/), [`server/build.gradle`](../server/build.gradle), [`app/package-lock.json`](../app/package-lock.json).
 2. Lịch sử schema chạy thật: [`server/src/main/resources/db/migration/`](../server/src/main/resources/db/migration/). Đây là nguồn Flyway áp dụng khi khởi động.
-3. Schema hợp nhất V1–V7 để đọc/ERD hoặc tạo **DB rỗng** thủ công: [`docs/final.sql`](../docs/final.sql). File này tự ghi rõ không được đưa vào thư mục migration và không chạy lên DB đã có dữ liệu.
+3. Schema hợp nhất V1–V7 để đọc/ERD hoặc tạo **DB rỗng** thủ công: [`docs/technical/db/final.sql`](../docs/technical/db/final.sql). File này tự ghi rõ không được đưa vào thư mục migration và không chạy lên DB đã có dữ liệu.
 4. Hành vi được kiểm chứng: [`server/src/test`](../server/src/test/) và các file `*.test.ts(x)` trong [`app/src`](../app/src/).
 
 ## 1. Tổng quan
@@ -102,7 +102,7 @@ TechVerse/
 - Email, tên topic và tag dùng `citext` để unique không phân biệt hoa/thường.
 - Không dùng soft-delete thống nhất bằng `deleted_at`: tài khoản/taxonomy dùng `is_active`; nội dung dùng cột `status`.
 - Bốn role dựng sẵn: `LEARNER`, `AUTHOR`, `MODERATOR`, `ADMIN`.
-- File tham chiếu hợp nhất: [`docs/final.sql`](../docs/final.sql). Migration chạy thật: [`V1`](../server/src/main/resources/db/migration/V1__initial_schema.sql), [`V2`](../server/src/main/resources/db/migration/V2__remove_email_verification_and_initialize_user_audit.sql), [`V3`](../server/src/main/resources/db/migration/V3__initialize_social_account_audit.sql), [`V4`](../server/src/main/resources/db/migration/V4__add_admin_user_query_indexes.sql), [`V5`](../server/src/main/resources/db/migration/V5__index_author_profile_status_for_admin_user_filter.sql), [`V6`](../server/src/main/resources/db/migration/V6__add_author_profile_version.sql), [`V7`](../server/src/main/resources/db/migration/V7__add_author_suspension_and_restoration_audit.sql).
+- File tham chiếu hợp nhất: [`docs/technical/db/final.sql`](../docs/technical/db/final.sql). Migration chạy thật: [`V1`](../server/src/main/resources/db/migration/V1__initial_schema.sql), [`V2`](../server/src/main/resources/db/migration/V2__remove_email_verification_and_initialize_user_audit.sql), [`V3`](../server/src/main/resources/db/migration/V3__initialize_social_account_audit.sql), [`V4`](../server/src/main/resources/db/migration/V4__add_admin_user_query_indexes.sql), [`V5`](../server/src/main/resources/db/migration/V5__index_author_profile_status_for_admin_user_filter.sql), [`V6`](../server/src/main/resources/db/migration/V6__add_author_profile_version.sql), [`V7`](../server/src/main/resources/db/migration/V7__add_author_suspension_and_restoration_audit.sql).
 
 ### Các bảng đang được mã ứng dụng sử dụng
 
@@ -299,7 +299,7 @@ Tích hợp đang dùng: PostgreSQL/Flyway, Redis cho session/rate limit/passwor
 | Format lỗi API | [`ErrorCode.java`](../server/src/main/java/com/techverse/server/exception/ErrorCode.java), [`GlobalExceptionHandler.java`](../server/src/main/java/com/techverse/server/exception/GlobalExceptionHandler.java) |
 | Security/CORS/quyền endpoint | [`SecurityConfiguration.java`](../server/src/main/java/com/techverse/server/configuration/SecurityConfiguration.java) |
 | Schema DB đang chạy | [`server/src/main/resources/db/migration/`](../server/src/main/resources/db/migration/) |
-| Schema hợp nhất/ERD | [`docs/final.sql`](../docs/final.sql) |
+| Schema hợp nhất/ERD | [`docs/technical/db/final.sql`](../docs/technical/db/final.sql) |
 | Cấu hình local/Compose | [`compose.yaml`](../compose.yaml), [`.env.example`](../.env.example), [`application-dev.yaml`](../server/src/main/resources/application-dev.yaml) |
 | Thêm/sửa test backend | [`server/src/test/java/com/techverse/server/`](../server/src/test/java/com/techverse/server/) |
 | Thêm/sửa test frontend | Các file `*.test.ts(x)` trong [`app/src`](../app/src/) |
@@ -310,4 +310,4 @@ Tích hợp đang dùng: PostgreSQL/Flyway, Redis cho session/rate limit/passwor
 - **Author profile/application:** hồ sơ xin quyền tác giả; có lifecycle `PENDING`, `APPROVED`, `REJECTED`, `SUSPENDED`.
 - **Article review token:** token/version chống moderator ghi đè một lần nộp bài đã thay đổi.
 - **Idempotency-Key / Upload-Key:** UUID giúp retry create/upload mà không nhân bản dữ liệu.
-- **Câu hỏi mở:** miền tiếp theo sau articles là course miễn phí hay dashboard analytics; có cho public đọc bài không cần đăng nhập hay giữ policy hiện tại; khi nào pin dependency/Node và bổ sung frontend CI; `docs/final.sql` có được commit làm schema reference chính thức hay chỉ là artifact local.
+- **Câu hỏi mở:** miền tiếp theo sau articles là course miễn phí hay dashboard analytics; có cho public đọc bài không cần đăng nhập hay giữ policy hiện tại; khi nào pin dependency/Node và bổ sung frontend CI; `docs/technical/db/final.sql` có được commit làm schema reference chính thức hay chỉ là artifact local.

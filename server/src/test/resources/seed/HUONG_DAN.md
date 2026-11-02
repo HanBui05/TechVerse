@@ -28,7 +28,7 @@ SQL cần có ít nhất một tài khoản **ADMIN đang active**. Các dòng m
 
 Chạy lại không tạo bản trùng tên, không sửa description và không tự active lại mục đang inactive. Nếu một tên đã có nhưng inactive, hãy để admin kiểm tra trước khi active lại qua chức năng quản lý.
 
-Chỉ dùng trong môi trường development/test. Không chạy docs/final.sql lên database hiện có để nạp seed.
+Chỉ dùng trong môi trường development/test. Không chạy docs/technical/db/final.sql lên database hiện có để nạp seed.
 
 ### Cách test API tạo từng mục
 

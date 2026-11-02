@@ -6,6 +6,12 @@ import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
 import App from './App'
 import { getAccessToken, request, setAccessToken } from './services/api/client'
 import { restoreSession } from './services/authService'
+import { isEmail } from './components/auth/AuthLayout'
+
+describe('isEmail', () => {
+  it.each(['user@example..com', 'user@.example.com', 'user@example.com.', 'user@-example.com', 'user name@example.com', 'user..name@example.com', '.user@example.com', 'user.@example.com', `${'a'.repeat(65)}@example.com`, 'user@', '@example.com', `${'a'.repeat(243)}@example.com`])('rejects %s', value => expect(isEmail(value)).toBe(false))
+  it.each(['user@example.com', 'first.last+tag@sub.example.co', 'user@localhost'])('accepts %s', value => expect(isEmail(value)).toBe(true))
+})
 
 const fetchMock = vi.fn<typeof fetch>()
 const profile = { id: 'google-user', fullName: 'Google Learner', email: 'learner@example.com', phoneNumber: null, dateOfBirth: null, avatarUrl: null, roles: ['LEARNER'], createdAt: '', updatedAt: '' }
@@ -261,6 +267,17 @@ describe('Google signup and login', () => {
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({ email: 'local@example.com', confirmPassword: 'Password123!' })
   })
 
+  it('keeps password login and its role routing working for moderators', async () => {
+    fetchMock.mockImplementation(async (input) => String(input).endsWith('/login')
+      ? apiResponse({ accessToken: 'test-password-access' }) : apiResponse({ ...profile, roles: ['MODERATOR'] }))
+    const user = userEvent.setup()
+    renderApp('/login')
+    await user.type(screen.getByLabelText('Email'), 'mod@example.com')
+    await user.type(screen.getByLabelText('Mật khẩu', { exact: true }), 'Password123!')
+    await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/moderator'))
+  })
+
   it('keeps password login and its role routing working', async () => {
     fetchMock.mockImplementation(async (input) => String(input).endsWith('/login')
       ? apiResponse({ accessToken: 'test-password-access' }) : apiResponse(profile))
@@ -271,5 +288,324 @@ describe('Google signup and login', () => {
     await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
     await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/profile'))
     expect(getAccessToken()).toBe('test-password-access')
+  })
+})
+
+const alerts = {
+  vi: {
+    login: 'Không thể đăng nhập. Vui lòng kiểm tra lại thông tin.',
+    register: 'Không thể tạo tài khoản. Vui lòng kiểm tra lại thông tin.',
+    system: 'Hệ thống tạm thời chưa thể xử lý yêu cầu. Vui lòng thử lại sau.',
+  },
+  en: {
+    login: 'Unable to log in. Please review your information and try again.',
+    register: 'Unable to create your account. Please review your information and try again.',
+    system: 'The system cannot process your request right now. Please try again later.',
+  },
+}
+const labels = {
+  vi: { name: 'Tên đăng nhập', email: 'Email', password: 'Mật khẩu', confirm: 'Xác nhận mật khẩu', login: 'Đăng nhập', register: 'Tạo tài khoản', show: 'Hiện mật khẩu', hide: 'Ẩn mật khẩu' },
+  en: { name: 'Username', email: 'Email', password: 'Password', confirm: 'Confirm password', login: 'Log in', register: 'Create account', show: 'Show password', hide: 'Hide password' },
+}
+type Lang = keyof typeof labels
+type User = ReturnType<typeof userEvent.setup>
+
+// Fill the register form; each field defaults to a valid value unless overridden.
+async function fillRegister(user: User, lang: Lang, values: Partial<Record<'name' | 'email' | 'password' | 'confirm', string>> = {}) {
+  const data = { name: 'Local Learner', email: 'local@example.com', password: 'Password123!', ...values }
+  const filled = { ...data, confirm: values.confirm ?? data.password }
+  for (const key of ['name', 'email', 'password', 'confirm'] as const) {
+    await user.type(screen.getByLabelText(labels[lang][key], { exact: true }), filled[key])
+  }
+}
+
+async function fillLogin(user: User, lang: Lang, email = 'learner@example.com', password = 'Password123!') {
+  if (email) await user.type(screen.getByLabelText(labels[lang].email), email)
+  if (password) await user.type(screen.getByLabelText(labels[lang].password, { exact: true }), password)
+}
+
+// Answer the submitting endpoint with a status (or network failure) carrying a backend message that must never be shown.
+function failingApi(endpoint: 'login' | 'register', outcome: number | 'network') {
+  fetchMock.mockImplementation(async input => {
+    const path = new URL(String(input)).pathname
+    if (path === '/api/v1/auth/refresh') return apiResponse(null, 401)
+    if (path !== `/api/v1/auth/${endpoint}`) throw new Error(`Unexpected API path: ${path}`)
+    if (outcome === 'network') throw new TypeError('Failed to fetch')
+    return new Response(JSON.stringify({ status: outcome, message: 'BACKEND_SECRET_MESSAGE', data: null }), { status: outcome, headers: { 'Content-Type': 'application/json' } })
+  })
+}
+
+function expectNoBackendMessage() {
+  expect(document.body.textContent).not.toContain('BACKEND_SECRET_MESSAGE')
+  expect(document.body.textContent).not.toContain('Failed to fetch')
+}
+
+describe('Auth layout and tabs', () => {
+  it('shares one mounted layout between login and register tabs', async () => {
+    const user = userEvent.setup()
+    renderApp('/login')
+    const tabs = document.querySelector('.auth-layout .auth-tabs')
+    const panel = document.querySelector('.auth-form-panel')
+    expect(tabs).toBeTruthy()
+    expect(panel).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Đăng nhập' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: 'Đăng ký' }).getAttribute('aria-current')).toBeNull()
+    await user.click(screen.getByRole('link', { name: 'Đăng ký' }))
+    expect(screen.getByTestId('location').textContent).toBe('/register')
+    expect(screen.getByRole('link', { name: 'Đăng ký' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: 'Đăng nhập' }).getAttribute('aria-current')).toBeNull()
+    expect(document.querySelector('.auth-layout .auth-tabs')).toBe(tabs)
+    expect(document.querySelector('.auth-form-panel')).not.toBe(panel)
+    await user.click(screen.getByRole('link', { name: 'Đăng nhập ngay' }))
+    expect(screen.getByTestId('location').textContent).toBe('/login')
+    await user.click(screen.getByRole('link', { name: 'Đăng ký ngay' }))
+    expect(screen.getByTestId('location').textContent).toBe('/register')
+  })
+
+  it.each([
+    ['vi', '/login', 'Chào mừng trở lại!', 'trở lại!'],
+    ['vi', '/register', 'Tạo tài khoản', 'tài khoản'],
+    ['en', '/login', 'Welcome back!', 'back!'],
+    ['en', '/register', 'Create an account', 'account'],
+  ])('%s %s heading keeps its copy with an accented part', (lang, path, title, accent) => {
+    localStorage.setItem('techverse-language', lang)
+    renderApp(path)
+    const heading = screen.getByRole('heading', { level: 1 })
+    expect(heading.textContent).toBe(title)
+    expect(heading.querySelector('.auth-title-accent')?.textContent).toBe(accent)
+  })
+
+  it.each([['vi', '/login'], ['vi', '/register'], ['en', '/login'], ['en', '/register']] as const)('%s %s shows visible labels and disables native validation', (lang, path) => {
+    localStorage.setItem('techverse-language', lang)
+    renderApp(path)
+    expect(document.querySelector('form')?.noValidate).toBe(true)
+    const keys = path === '/login' ? ['email', 'password'] as const : ['name', 'email', 'password', 'confirm'] as const
+    for (const key of keys) {
+      const label = [...document.querySelectorAll('label')].find(item => item.textContent === labels[lang][key])
+      expect(label, labels[lang][key]).toBeTruthy()
+      expect(label?.classList.contains('sr-only')).toBe(false)
+    }
+  })
+})
+
+describe('Auth local validation', () => {
+  it.each([
+    ['invalid email', { email: 'not-an-email' }, ['email']],
+    ['email over 254 characters', { email: `${'a'.repeat(243)}@example.com` }, ['email']],
+    ['full name over 150 characters', { name: 'a'.repeat(151) }, ['name']],
+    ['blank full name', { name: '   ' }, ['name']],
+    ['password under 8 characters', { password: 'Pass12!' }, ['password']],
+    ['password over 72 characters', { password: 'a'.repeat(73) }, ['password']],
+    ['password over 72 UTF-8 bytes (25 × ệ)', { password: 'ệ'.repeat(25) }, ['password']],
+    ['mismatched confirmation', { confirm: 'Password999!' }, ['confirm']],
+  ] as const)('register blocks %s without a request', async (_case, values, invalid) => {
+    const user = userEvent.setup()
+    renderApp('/register')
+    await fillRegister(user, 'vi', values)
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent).toBe(alerts.vi.register)
+    expect(alert.id).toBeTruthy()
+    for (const key of ['name', 'email', 'password', 'confirm'] as const) {
+      const field = screen.getByLabelText(labels.vi[key], { exact: true })
+      if ((invalid as readonly string[]).includes(key)) {
+        expect(field.getAttribute('aria-invalid'), key).toBe('true')
+        expect(field.getAttribute('aria-describedby'), key).toBe(alert.id)
+      } else expect(field.getAttribute('aria-invalid'), key).toBeNull()
+    }
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('register blocks an empty form and marks every field', async () => {
+    const user = userEvent.setup()
+    renderApp('/register')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent).toBe(alerts.vi.register)
+    for (const key of ['name', 'email', 'password', 'confirm'] as const) {
+      expect(screen.getByLabelText(labels.vi[key], { exact: true }).getAttribute('aria-describedby'), key).toBe(alert.id)
+    }
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('login leaves email format to the backend so existing Unicode emails can still sign in', async () => {
+    failingApi('login', 401)
+    const user = userEvent.setup()
+    renderApp('/login')
+    await fillLogin(user, 'vi', 'user@münchen.de')
+    await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
+    await screen.findByRole('alert')
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).email).toBe('user@münchen.de')
+  })
+
+  it.each([
+    ['empty form', '', '', ['email', 'password']],
+    ['email over 254 characters', `${'a'.repeat(243)}@example.com`, 'Password123!', ['email']],
+  ] as const)('login blocks %s without a request', async (_case, email, password, invalid) => {
+    const user = userEvent.setup()
+    renderApp('/login')
+    await fillLogin(user, 'vi', email, password)
+    await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent).toBe(alerts.vi.login)
+    for (const key of ['email', 'password'] as const) {
+      const field = screen.getByLabelText(labels.vi[key], { exact: true })
+      expect(field.getAttribute('aria-describedby'), key).toBe((invalid as readonly string[]).includes(key) ? alert.id : null)
+    }
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each(['vi', 'en'] as const)('local validation alerts follow the %s language', async lang => {
+    localStorage.setItem('techverse-language', lang)
+    const user = userEvent.setup()
+    renderApp('/register')
+    await user.click(screen.getByRole('button', { name: labels[lang].register }))
+    expect(screen.getByRole('alert').textContent).toBe(alerts[lang].register)
+    cleanup()
+    renderApp('/login')
+    await user.click(screen.getByRole('button', { name: labels[lang].login }))
+    expect(screen.getByRole('alert').textContent).toBe(alerts[lang].login)
+  })
+})
+
+describe('Auth API alerts', () => {
+  const outcomes: [number | 'network', 'info' | 'system'][] = [[400, 'info'], [401, 'info'], [409, 'info'], ['network', 'system'], [429, 'system'], [500, 'system'], [503, 'system'], [418, 'system']]
+  const cases = (['vi', 'en'] as const).flatMap(lang => outcomes.map(([outcome, kind]) => [lang, outcome, kind] as const))
+
+  it.each(cases)('login %s %s shows the %s alert', async (lang, outcome, kind) => {
+    localStorage.setItem('techverse-language', lang)
+    failingApi('login', outcome)
+    const user = userEvent.setup()
+    renderApp('/login')
+    await fillLogin(user, lang)
+    await user.click(screen.getByRole('button', { name: labels[lang].login }))
+    expect((await screen.findByRole('alert')).textContent).toBe(kind === 'info' ? alerts[lang].login : alerts[lang].system)
+    expectNoBackendMessage()
+    expect(screen.getByTestId('location').textContent).toBe('/login')
+  })
+
+  it.each(cases)('register %s %s shows the %s alert', async (lang, outcome, kind) => {
+    localStorage.setItem('techverse-language', lang)
+    failingApi('register', outcome)
+    const user = userEvent.setup()
+    renderApp('/register')
+    await fillRegister(user, lang)
+    await user.click(screen.getByRole('button', { name: labels[lang].register }))
+    expect((await screen.findByRole('alert')).textContent).toBe(kind === 'info' ? alerts[lang].register : alerts[lang].system)
+    expectNoBackendMessage()
+    expect(screen.getByTestId('location').textContent).toBe('/register')
+  })
+
+  it('login 401 tries one failing refresh and then shows the same alert for any credential mistake', async () => {
+    failingApi('login', 401)
+    const user = userEvent.setup()
+    renderApp('/login')
+    await fillLogin(user, 'vi', 'unknown@example.com', 'Password123!')
+    await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
+    expect((await screen.findByRole('alert')).textContent).toBe(alerts.vi.login)
+    const paths = fetchMock.mock.calls.map(([url]) => new URL(String(url)).pathname)
+    expect(paths).toEqual(['/api/v1/auth/login', '/api/v1/auth/refresh'])
+    expect(fetchMock.mock.calls[1][1]?.method).toBe('POST')
+    expect(getAccessToken()).toBeNull()
+  })
+
+  it('register 409 does not hint that the account already exists', async () => {
+    failingApi('register', 409)
+    const user = userEvent.setup()
+    renderApp('/register')
+    await fillRegister(user, 'vi')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
+    expect((await screen.findByRole('alert')).textContent).toBe(alerts.vi.register)
+    expect(document.body.textContent).not.toMatch(/tồn tại|already/i)
+  })
+})
+
+describe('Forgot password', () => {
+  it.each([
+    ['vi', 'network', alerts.vi.system], ['vi', 400, 'Không thể thực hiện yêu cầu. Vui lòng kiểm tra lại thông tin.'],
+    ['en', 500, alerts.en.system], ['en', 400, 'Unable to process the request. Please review your information and try again.'],
+  ] as const)('%s %s shows a localized alert instead of the raw error', async (lang, outcome, message) => {
+    localStorage.setItem('techverse-language', lang)
+    fetchMock.mockImplementation(async () => {
+      if (outcome === 'network') throw new TypeError('Failed to fetch')
+      return new Response(JSON.stringify({ status: outcome, message: 'BACKEND_SECRET_MESSAGE', data: null }), { status: outcome, headers: { 'Content-Type': 'application/json' } })
+    })
+    const user = userEvent.setup()
+    renderApp('/forgot-password')
+    await user.type(screen.getByLabelText('Email'), 'learner@example.com')
+    await user.click(screen.getByRole('button', { name: lang === 'vi' ? 'Tiếp tục' : 'Continue' }))
+    expect((await screen.findByRole('alert')).textContent).toBe(message)
+    expectNoBackendMessage()
+  })
+
+  it('follows the English language setting', async () => {
+    localStorage.setItem('techverse-language', 'en')
+    fetchMock.mockResolvedValue(apiResponse(null))
+    const user = userEvent.setup()
+    renderApp('/forgot-password')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Recover your password')
+    expect(screen.getByRole('link', { name: /Back to log in/ }).getAttribute('href')).toBe('/login')
+    await user.type(screen.getByLabelText('Email'), 'learner@example.com')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(await screen.findByLabelText('OTP code')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/Khôi phục|Tiếp tục|Mã OTP/)
+  })
+
+  it('keeps the three-step reset flow inside the shared auth card', async () => {
+    fetchMock.mockImplementation(async input => String(input).endsWith('/verify-reset-otp') ? apiResponse({ resetToken: 'reset-token' }) : apiResponse(null))
+    const user = userEvent.setup()
+    renderApp('/forgot-password')
+    expect(document.querySelector('.auth-layout .auth-card')).toBeTruthy()
+    expect(screen.getByRole('link', { name: /Quay lại đăng nhập/ }).getAttribute('href')).toBe('/login')
+    await user.type(screen.getByLabelText('Email'), 'learner@example.com')
+    await user.click(screen.getByRole('button', { name: 'Tiếp tục' }))
+    await user.type(await screen.findByLabelText('Mã OTP'), '123456')
+    await user.click(screen.getByRole('button', { name: 'Tiếp tục' }))
+    await user.type(await screen.findByLabelText('Mật khẩu mới'), 'Password123!')
+    await user.type(screen.getByLabelText('Xác nhận mật khẩu'), 'Password123!')
+    await user.click(screen.getByRole('button', { name: 'Tiếp tục' }))
+    expect(await screen.findByText(/Mật khẩu đã được cập nhật/)).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Đăng nhập' }).getAttribute('href')).toBe('/login')
+    expect(fetchMock.mock.calls.map(([url]) => new URL(String(url)).pathname)).toEqual(['/api/v1/auth/forgot-password', '/api/v1/auth/verify-reset-otp', '/api/v1/auth/reset-password'])
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({ resetToken: 'reset-token', newPassword: 'Password123!', confirmPassword: 'Password123!' })
+  })
+})
+
+describe('Auth password visibility and payload', () => {
+  it.each(['vi', 'en'] as const)('register eye toggle (%s) only controls the password field', async lang => {
+    localStorage.setItem('techverse-language', lang)
+    const user = userEvent.setup()
+    renderApp('/register')
+    const password = screen.getByLabelText(labels[lang].password, { exact: true })
+    const confirm = screen.getByLabelText(labels[lang].confirm, { exact: true })
+    expect(screen.getAllByRole('button', { name: labels[lang].show })).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: labels[lang].show }))
+    expect(password.getAttribute('type')).toBe('text')
+    expect(confirm.getAttribute('type')).toBe('password')
+    await user.click(screen.getByRole('button', { name: labels[lang].hide }))
+    expect(password.getAttribute('type')).toBe('password')
+    expect(confirm.getAttribute('type')).toBe('password')
+  })
+
+  it.each(['vi', 'en'] as const)('login eye toggle (%s) still works with localized labels', async lang => {
+    localStorage.setItem('techverse-language', lang)
+    const user = userEvent.setup()
+    renderApp('/login')
+    const password = screen.getByLabelText(labels[lang].password, { exact: true })
+    await user.click(screen.getByRole('button', { name: labels[lang].show }))
+    expect(password.getAttribute('type')).toBe('text')
+    await user.click(screen.getByRole('button', { name: labels[lang].hide }))
+    expect(password.getAttribute('type')).toBe('password')
+  })
+
+  it('register sends exactly the four existing fields', async () => {
+    fetchMock.mockResolvedValue(apiResponse({}))
+    const user = userEvent.setup()
+    renderApp('/register')
+    await fillRegister(user, 'vi')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/login'))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ fullName: 'Local Learner', email: 'local@example.com', password: 'Password123!', confirmPassword: 'Password123!' })
   })
 })

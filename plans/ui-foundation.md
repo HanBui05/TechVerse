@@ -2,7 +2,7 @@
 
 Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Codex viết; Claude chỉ ghi vào mục “Phản hồi”.
 
-**Mục tiêu:** Tách `app/src/styles.css` thành CSS theo nền tảng, layout, component và khu vực mà không làm sai cascade; sau đó áp giao diện đã chốt với theme tối mặc định, light theme vẫn chọn được, bảng slate + xanh dương `#0056d2`, font Inter và phong cách phẳng theo [`docs/UI_GUIDE.md`](../docs/UI_GUIDE.md). Đồng thời bỏ các khối giữ chỗ trống trên trang chủ theo D-015.
+**Mục tiêu:** Tách `app/src/styles.css` thành CSS theo nền tảng, layout, component và khu vực mà không làm sai cascade; sau đó áp giao diện đã chốt với theme tối mặc định, light theme vẫn chọn được, bảng slate + xanh dương `#0056d2`, font Inter và phong cách phẳng theo [`docs/design/UI_GUIDE.md`](../docs/design/UI_GUIDE.md). Đồng thời bỏ các khối giữ chỗ trống trên trang chủ theo D-015.
 **Làn:** Đầy đủ
 **Giai đoạn:** Giao diện
 **Đổi giao diện:** Có
@@ -80,7 +80,7 @@ Chỉ được sửa, tạo hoặc xóa các đường dẫn sau. Ngoài danh s�
 
 ### Task 2 — Token, palette, font và theme bootstrap
 
-- Token hóa literal màu đồng thời với áp bảng màu trong [`docs/UI_GUIDE.md`](../docs/UI_GUIDE.md):
+- Token hóa literal màu đồng thời với áp bảng màu trong [`docs/design/UI_GUIDE.md`](../docs/design/UI_GUIDE.md):
   - Dark mặc định: nền chính/phụ `#0f172a` / `#1e293b`, chữ chính/phụ `#f1f5f9` / `#cbd5e1`, viền `#334155`.
   - Light chọn được: nền chính/phụ `#fff` / `#f9fafb`, chữ chính/phụ `#111827` / `#4b5563`, viền `#e5e7eb`.
   - `--primary` là `#0056d2` ở cả hai theme, dùng cho nền nút và chỉ dùng cho viền khi cặp nền đạt tương phản yêu cầu. Không dùng `--primary` làm chữ, icon trạng thái hoặc focus ring trên nền tối.

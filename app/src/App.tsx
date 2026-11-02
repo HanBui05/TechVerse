@@ -10,6 +10,7 @@ import { HomePage } from './pages/Home/HomePage'
 import { BlogsPage, BlogDetailPage } from './pages/Blogs/BlogsPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
 import { ThemePage } from './pages/Settings/ThemePage'
+import { AuthLayout } from './components/auth/AuthLayout'
 import { LoginPage } from './pages/Login/LoginPage'
 import { GoogleCallbackPage } from './pages/Login/GoogleCallbackPage'
 import { ForgotPasswordPage } from './pages/Login/ForgotPasswordPage'
@@ -133,10 +134,12 @@ export default function App() {
       <Route path="/" element={<HomePage t={t} />} />
       <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><BlogsPage /></AuthRoute>} />
       <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><BlogDetailPage /></AuthRoute>} />
-      <Route path="/login" element={<LoginPage t={t} onLogin={login} />} />
-      <Route path="/register" element={<RegisterPage t={t} onRegister={register} />} />
+      <Route element={<AuthLayout t={t} />}>
+        <Route path="/login" element={<LoginPage t={t} onLogin={login} />} />
+        <Route path="/register" element={<RegisterPage t={t} onRegister={register} />} />
+      </Route>
       <Route path="/auth/callback" element={<GoogleCallbackPage key={location.search} onAuthenticated={acceptGoogleSession} onResetSession={resetGoogleSession} />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage t={t} />} />
       <Route path="/profile" element={<AuthRoute authenticated={authenticated}><ProfilePage language={language} profile={profile} onLogout={logout} onProfileChange={setProfile} /><AvatarUpload profile={profile} onProfileChange={setProfile} language={language} /><div className="page-content logout-all-panel"><button className="button button-outline" onClick={() => void logoutAll()}>{language === 'vi' ? 'Đăng xuất khỏi tất cả thiết bị' : 'Log out from all devices'}</button></div></AuthRoute>} />
       <Route path="/admin" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminDashboardPage language={language} /></RoleRoute>} />
       <Route path="/moderator" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorDashboardPage language={language} /></RoleRoute>} />

@@ -36,12 +36,14 @@ Thêm các danh sách ngắn nếu cần: chỗ còn giá trị viết cứng (v
 
 - Được đổi API: Có / Không. Được đổi DB (Flyway mới): Có / Không.
 - Giữ nguyên hành vi hiện tại: Có / Không.
-- Nếu đổi giao diện: bám [`docs/UI_GUIDE.md`](../docs/UI_GUIDE.md).
+- Nếu đổi giao diện: bám [`docs/design/UI_GUIDE.md`](../docs/design/UI_GUIDE.md).
 
 ## Xong khi
 
+Tối đa khoảng 10 mục, theo “Ngân sách kiểm chứng” trong `AGENTS.md`/`CLAUDE.md` và `.claude/rules/`. Logic thuần → unit test; tích hợp chỉ luồng chính.
+
 - [ ] <tiêu chí kiểm chứng được>
-- [ ] `scripts/verify.sh` đạt (backend integration cần Docker)
+- [ ] Chỉ sửa `app/`: `npm test` + `npm run build` trong `app/` đạt. Có sửa `server/`: `scripts/verify.sh` đạt (cần Docker). Xóa dòng không áp dụng.
 
 ## Phản hồi vòng 1 (Claude)
 
