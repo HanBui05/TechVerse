@@ -8,5 +8,6 @@ Mỗi tài liệu một dòng. Thư mục con chỉ tạo khi có tài liệu th
 | [`GIT_WORKFLOW.md`](GIT_WORKFLOW.md) | Quy trình nhánh, commit, pull request |
 | [`technical/db/final.sql`](technical/db/final.sql) | Schema gộp từ Flyway V1–V7, chỉ để tham khảo/ERD. Nguồn sự thật là `server/src/main/resources/db/migration`; cập nhật lại khi có migration mới |
 | [`design/UI_GUIDE.md`](design/UI_GUIDE.md) | Hướng dẫn giao diện: bảng màu, font, mẫu trang, kiểm tra trước khi giao |
+| [`design/javabuilder-patterns.md`](design/javabuilder-patterns.md) | Danh mục mẫu bố cục khảo sát từ javabuilder.online (khung, thang chữ, chip màu, card, bộ lọc, danh sách, trang chi tiết) cho module UI foundation v2 (D-024) |
 
 Không thuộc `docs/`: spec và nhật ký module ở [`plans/`](../plans/PLAN.md) (mẫu spec: `plans/_template.md`); luật cho AI ở `CLAUDE.md`, `AGENTS.md`, `.claude/rules/`.
