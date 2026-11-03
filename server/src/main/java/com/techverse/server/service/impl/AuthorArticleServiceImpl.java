@@ -216,7 +216,7 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
             UUID actor, UUID id, int page, int size) {
         owned(actor, id);
         var result = histories.findPage(id, PageRequest.of(page, size));
-        return PageResponse.from(result, result.stream().map(this::history).toList());
+        return PageResponse.from(result, result.stream().map(ArticleModerationHistoryResponse::from).toList());
     }
 
     @Override
@@ -375,47 +375,6 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                 .build();
     }
 
-    private ArticleModerationHistoryResponse history(ArticleModerationHistory h) {
-        User actor = h.getActor();
-        return ArticleModerationHistoryResponse.builder()
-                .id(h.getId())
-                .action(h.getAction())
-                .note(h.getNote())
-                .actor(
-                        actor == null
-                                ? null
-                                : ArticleAuthorResponse.builder()
-                                        .id(actor.getId())
-                                        .fullName(actor.getFullName())
-                                        .avatarUrl(actor.getAvatarUrl())
-                                        .build())
-                .fromWorkflowStatus(h.getFromWorkflowStatus())
-                .toWorkflowStatus(h.getToWorkflowStatus())
-                .fromPublicationStatus(h.getFromPublicationStatus())
-                .toPublicationStatus(h.getToPublicationStatus())
-                .versionNumber(h.getVersion() == null ? null : h.getVersion().getVersionNumber())
-                .createdAt(h.getCreatedAt())
-                .build();
-    }
-
-    private ArticlePublicationVersionResponse version(ArticlePublicationVersion v) {
-        if (v == null) return null;
-        return ArticlePublicationVersionResponse.builder()
-                .id(v.getId())
-                .versionNumber(v.getVersionNumber())
-                .title(v.getTitle())
-                .summary(v.getSummary())
-                .content(v.getContent())
-                .coverImageUrl(v.getCoverImageUrl())
-                .topic(option(v.getTopic()))
-                .tags(v.getTags().stream().map(t -> option(t.getTag())).toList())
-                .approvedBy(v.getApprovedBy() == null ? null : v.getApprovedBy().getId())
-                .approvedAt(v.getApprovedAt())
-                .contentFingerprint(v.getContentFingerprint())
-                .readingMinutes(v.getReadingMinutes())
-                .build();
-    }
-
     private ArticleResponse toResponse(Article a) {
         return ArticleResponse.builder()
                 .id(a.getId())
@@ -429,7 +388,7 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                 .workflowStatus(a.getWorkflowStatus())
                 .publicationStatus(a.getPublicationStatus())
                 .hasUnpublishedChanges(a.hasUnpublishedChanges())
-                .publishedVersion(version(a.getPublishedVersion()))
+                .publishedVersion(ArticlePublicationVersionResponse.from(a.getPublishedVersion()))
                 .imageIssues(
                         contentService.imageIssues(
                                 a.getContent(), url -> imageService.isOwnManagedUrl(url, a)))

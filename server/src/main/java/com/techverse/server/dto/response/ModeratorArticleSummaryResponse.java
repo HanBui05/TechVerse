@@ -17,5 +17,7 @@ public record ModeratorArticleSummaryResponse(
         ArticleOptionResponse topic,
         ArticleWorkflowStatus workflowStatus,
         ArticlePublicationStatus publicationStatus,
+        boolean hasUnpublishedChanges,
+        boolean authorEligible,
         Instant createdAt,
         Instant updatedAt) {}

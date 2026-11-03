@@ -2,6 +2,7 @@ package com.techverse.server.service.impl;
 
 import com.techverse.server.dto.internal.ArticleImageAsset;
 import com.techverse.server.properties.CloudinaryProperties;
+import com.techverse.server.repository.ArticlePublicationVersionRepository;
 import com.techverse.server.repository.ArticleRepository;
 import com.techverse.server.service.ArticleImageStorage;
 
@@ -22,6 +23,8 @@ public class ArticleImageCleanupService {
     private final ArticleImageStorage storage;
     private final ArticleImageService images;
     private final ArticleRepository articles;
+    private final ArticlePublicationVersionRepository versions;
+    private final ArticleContentService content;
     private final CloudinaryProperties properties;
     private final PlatformTransactionManager transactionManager;
     private String cursor;
@@ -73,7 +76,8 @@ public class ArticleImageCleanupService {
                         if (!article.getAuthor().getId().equals(asset.ownerId())) return;
                         // Any edit delays deletion: a detached image receives a fresh grace period.
                         if (!article.getUpdatedAt().isBefore(cutoff)
-                                || images.references(article).contains(asset.url())) return;
+                                || images.references(article).contains(asset.url())
+                                || referencedByAnyVersion(article.getId(), asset.url())) return;
                     }
                     // A timed-out DELETE may finish after this transaction releases its lock.
                     // Persist a one-way retirement marker first; no save/retry may reuse it.
@@ -84,6 +88,14 @@ public class ArticleImageCleanupService {
                     // incarnation.
                     storage.delete(retired.assetId());
                 });
+    }
+
+    /** Snapshots are immutable and may be restored by discard: their images must survive. */
+    private boolean referencedByAnyVersion(java.util.UUID articleId, String url) {
+        for (Object[] source : versions.findImageSources(articleId))
+            if (url.equals(source[1]) || content.imageUrls((String) source[0]).contains(url))
+                return true;
+        return false;
     }
 
     private Instant lastTouched(ArticleImageAsset asset) {

@@ -981,6 +981,55 @@ class AuthorArticleIntegrationTest {
         assertThat(cloud).isEmpty();
     }
 
+    @Test
+    void approvalRechecksThatImagesAreStillManagedAssets() throws Exception {
+        UUID id = submittedWithCover();
+        cloud.clear(); // asset vanished from the provider after submit
+        review(id, "APPROVE", null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("ARTICLE_IMAGE_INVALID"));
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT workflow_status FROM techverse.articles WHERE id=?",
+                                String.class,
+                                id))
+                .isEqualTo("PENDING");
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT count(*) FROM techverse.article_publication_versions",
+                                Integer.class))
+                .isZero();
+    }
+
+    @Test
+    void cleanupKeepsImagesReferencedOnlyByAPublishedVersion() throws Exception {
+        UUID id = submittedWithCover();
+        review(id, "APPROVE", null).andExpect(status().isOk());
+        mvc.perform(
+                        patch(ROOT + "/" + id)
+                                .header("Authorization", bearer(token))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"action\":\"SAVE\",\"coverImageUrl\":null}"))
+                .andExpect(status().isOk());
+        ageUnusedImage(id);
+        cleanup.clean();
+        assertThat(cloud).hasSize(1);
+    }
+
+    private UUID submittedWithCover() throws Exception {
+        UUID id = draft();
+        var uploaded =
+                upload(token, id, UUID.randomUUID(), png(2)).andExpect(status().isOk()).andReturn();
+        String url =
+                mapper.readTree(uploaded.getResponse().getContentAsString())
+                        .at("/data/url")
+                        .asText();
+        var body = new HashMap<String, Object>(full("SUBMIT"));
+        body.put("coverImageUrl", url);
+        update(id, body).andExpect(status().isOk());
+        return id;
+    }
+
     private ArticleImageAsset ageUnusedImage(UUID id) {
         var original = cloud.values().iterator().next();
         var old =

@@ -4,19 +4,6 @@ Bộ này gồm **24 topic, 96 tag và 24 bài Markdown tiếng Việt**. Đây 
 
 ## 1. Tạo topic và tag: chọn một trong hai cách
 
-### Nạp sẵn Author và bài viết vào DB local
-
-Sau khi đã nạp topic/tag, chạy [demo-authors-articles.sql](demo-authors-articles.sql) trên database `techverse` ở môi trường development. Script tạo **4 Author đã duyệt, 24 bài PUBLISHED và 96 liên kết tag** từ các file Markdown hiện có. Không cần restart backend.
-
-- Email: `author01@demo.techverse.test` đến `author04@demo.techverse.test`.
-- Mật khẩu demo chung: `TechVerseDemo@2026` (trong DB lưu BCrypt, không dùng cho production).
-- Mỗi tài khoản có LEARNER và AUTHOR; không cấp ADMIN/MODERATOR.
-- Script chạy trong một transaction; chạy lại không nhân đôi hoặc ghi đè bản ghi hiện có. Dừng nếu email/ID xung đột hoặc topic/tag thiếu/inactive.
-- Đây là ngoại lệ seed local, bỏ qua quy trình submit/duyệt qua API. Không dùng script để nhập nội dung thật hoặc kiểm thử luồng upload.
-- Ảnh bìa là URL Unsplash bên ngoài, **không phải ảnh đã upload Cloudinary**. Bài PUBLISHED dùng để xem giao diện; khi tạo bài thật vẫn phải upload ảnh qua API của dự án. URL ngoài có thể không tải được khi mất mạng.
-- Ảnh nguồn: [Markus Spiske — code](https://unsplash.com/it/foto/software-colorato-o-codice-web-sul-monitor-di-un-computer-Skf7HxARcoc), [Vishnu Kalanad — code](https://unsplash.com/photos/computer-screen-displaying-colorful-code-evzHeMgbKOg), [Markus Spiske — screen](https://unsplash.com/es/fotos/una-pantalla-de-computadora-con-mucho-texto-fN6HM1hrgxk).
-- Bộ gốc có một bài mỗi topic; bài liên quan cùng topic chỉ xuất hiện nếu DB có thêm bài PUBLISHED cùng topic.
-
 ### Cách nhanh: chạy SQL
 
 1. Khởi động backend để Flyway cập nhật schema và initializer tạo admin.
@@ -72,6 +59,15 @@ Các JSON chỉ chứa name và description, không chứa id, token hoặc thô
 File Markdown chỉ nạp nội dung; **không tự điền title, summary, topic hoặc tags**. Metadata đầy đủ có trong [articles.json](articles.json). topicName/tagNames là tên gợi ý, không phải UUID để gửi thẳng vào API tạo bài. Khi test bằng API, lấy ID thật từ endpoint options.
 
 Các file không có YAML front matter, raw HTML, ảnh ngoài hoặc secret. Không có ảnh mẫu vì backend yêu cầu ảnh được upload và quản lý theo đúng bài viết. Nội dung dưới 1 MB mỗi file; code chỉ hiển thị, không thực thi.
+
+### Tạo nhanh 3–5 bài thật để xem trang đọc
+
+Không có seed SQL cho bài viết: mọi bài phải đi qua API/UI thật (ownership, validation, kiểm duyệt, snapshot công khai). Chọn 3–5 hàng trong danh mục dưới, nên có ít nhất hai bài cùng topic hoặc chung tag để thấy bài liên quan.
+
+1. Đăng nhập Author, lấy `accessToken`; GET `/api/v1/author/articles/options` để lấy UUID topic/tag theo `topicName`/`tagNames`.
+2. Với mỗi bài: POST `/api/v1/author/articles` với header `Idempotency-Key: <UUID mới>` và body `{"action":"SUBMIT","title":…,"summary":…,"topicId":…,"tagIds":[…],"content":<nội dung file .md>}`. Có thể POST `/api/v1/author/articles/import` (multipart `file`) để backend đọc file trước.
+3. Đăng nhập Moderator: GET `/api/v1/moderator/articles/{id}` lấy `reviewToken`, rồi PATCH `/api/v1/moderator/articles/{id}/review` với `{"decision":"APPROVE","reviewToken":…}`.
+4. Đăng nhập tài khoản người đọc bất kỳ: GET `/api/v1/articles` và `/api/v1/articles/{id}` trả bản đã duyệt.
 
 Nếu tạo bài mới bằng API, dùng Idempotency-Key mới cho **mỗi bài mới**. Retry cùng request mới tái sử dụng khóa cũ; không tái sử dụng một khóa để tạo các bài khác nhau. Không tự insert articles bằng SQL vì sẽ bỏ qua ownership, validation và kiểm duyệt.
 

@@ -71,6 +71,23 @@ class ArticleSeedFixtureTest {
                 }));
     }
 
+    // Bài mẫu chỉ được tạo qua API/UI; không còn seed SQL chèn thẳng bài PUBLISHED.
+    @Test
+    void articlesAreImportFixturesOnlyWithLfLineEndings() throws IOException {
+        assertThat(getClass().getResource("/seed/demo-authors-articles.sql")).isNull();
+        for (JsonNode article : json("articles.json")) {
+            try (InputStream input = resource(article.get("file").asString())) {
+                assertThat(new String(input.readAllBytes(), StandardCharsets.UTF_8))
+                        .as(article.get("file").asString())
+                        .doesNotContain("\r");
+            }
+        }
+        try (InputStream input = resource("HUONG_DAN.md")) {
+            String guide = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+            assertThat(guide).doesNotContain("demo-authors-articles", "\r");
+        }
+    }
+
     // Kiểm tra tên không trùng bất kể hoa thường, đồng thời không vượt giới hạn DTO.
     private Set<String> taxonomyNames(String filename, int expected) throws IOException {
         JsonNode values = json(filename);

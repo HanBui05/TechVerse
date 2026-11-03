@@ -245,12 +245,14 @@ Tài liệu runtime đầy đủ được sinh từ OpenAPI tại `/swagger-ui.h
 | AUTHOR | PATCH | `/api/v1/author/articles/{id}/publication` | Tác giả tự ẩn/hiện (`HIDE`/`UNHIDE`) bài đã công khai |
 | Auth | DELETE | `/api/v1/author/articles/{id}` | Xóa cứng bài chưa từng công khai (tombstone khóa tạo bài) hoặc xóa mềm `AUTHOR_DELETED`; tác giả bị đình chỉ vẫn xóa được |
 | Auth | GET | `/api/v1/author/articles/{id}/history` | Lịch sử duyệt/xuất bản của bài mình, mới nhất trước |
-| MODERATOR | GET | `/api/v1/moderator/articles` | Danh sách bài không phải draft |
-| MODERATOR | GET | `/api/v1/moderator/articles/{id}` | Đọc bài và lấy review token |
-| MODERATOR | PATCH | `/api/v1/moderator/articles/{id}/review` | Publish hoặc yêu cầu sửa; chống review stale |
-| Auth | GET | `/api/v1/articles` | Tìm/lọc bài published |
+| MODERATOR | GET | `/api/v1/moderator/articles` | Danh sách bài không phải draft riêng/`AUTHOR_DELETED`; lọc `workflowStatus`/`publicationStatus`; có `authorEligible`, `hasUnpublishedChanges` |
+| MODERATOR | GET | `/api/v1/moderator/articles/{id}` | Working copy + `article.publishedVersion` để so, 5 lịch sử gần nhất, `authorEligible`, review token |
+| MODERATOR | PATCH | `/api/v1/moderator/articles/{id}/review` | APPROVE tạo version kế tiếp (kiểm lại ảnh/tác giả/taxonomy) hoặc REQUEST_CHANGES; chống review stale |
+| MODERATOR | PATCH | `/api/v1/moderator/articles/{id}/publication` | `HIDE`/`RESTORE`/`REMOVE` + `reviewToken`; HIDE/REMOVE bắt buộc lý do; RESTORE về trạng thái trước HIDE |
+| MODERATOR | GET | `/api/v1/moderator/articles/{id}/history` | Lịch sử đầy đủ, mới nhất trước |
+| Auth | GET | `/api/v1/articles` | Snapshot visible (PUBLISHED + tác giả active + profile không SUSPENDED); `keyword`/`topicId`/`tagId`, `sort=NEWEST/OLDEST` |
 | Auth | GET | `/api/v1/articles/options` | Topic/tag phục vụ bộ lọc |
-| Auth | GET | `/api/v1/articles/{id}` | Đọc bài và bài liên quan |
+| Auth | GET | `/api/v1/articles/{id}` | Snapshot + thẻ tác giả công khai + tối đa 5 bài liên quan (cùng topic hoặc chung tag) |
 
 ## 9. Luồng nghiệp vụ chính
 

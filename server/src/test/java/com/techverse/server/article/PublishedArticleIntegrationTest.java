@@ -26,16 +26,21 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.*;
 import org.testcontainers.utility.DockerImageName;
 
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.*;
 
+/** Reader APIs over approved snapshots; every fixture article goes through the real APIs. */
 @Testcontainers
 @SpringBootTest(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class PublishedArticleIntegrationTest {
     static final String ROOT = "/api/v1/articles";
+    static final String AUTHOR = "/api/v1/author/articles";
+    static final String MOD = "/api/v1/moderator/articles";
+    static final String CONTENT = "# Markdown\n```java\nint i = 1;\n```";
 
     @Container @ServiceConnection
     static PostgreSQLContainer<?> postgres =
@@ -53,47 +58,101 @@ class PublishedArticleIntegrationTest {
     @Autowired PasswordEncoder encoder;
     @Autowired EntityManagerFactory emf;
     UUID learner, author, topic, tag;
-    String token;
+    String token, authorToken, modToken;
 
-    /** Seed isolated database fixtures and a real learner session, without an AuthorProfile. */
     @BeforeEach
     void setup() throws Exception {
         jdbc.execute("TRUNCATE techverse.users, techverse.topics, techverse.tags CASCADE");
         jdbc.execute(
                 "INSERT INTO techverse.roles(name) VALUES"
-                    + " ('LEARNER'),('AUTHOR'),('ADMIN'),('MODERATOR')");
-        learner = user("reader@example.com");
-        author = user("writer@example.com");
+                        + " ('LEARNER'),('AUTHOR'),('ADMIN'),('MODERATOR')");
+        learner = user("reader@example.com", null);
+        author = user("writer@example.com", "AUTHOR");
+        user("mod@example.com", "MODERATOR");
         token = login("reader@example.com");
-        topic = taxonomy("topics", "Backend", true);
-        tag = taxonomy("tags", "Java", true);
+        authorToken = login("writer@example.com");
+        modToken = login("mod@example.com");
+        topic = taxonomy("topics", "Backend");
+        tag = taxonomy("tags", "Java");
     }
 
-    /** Ordinary learners must read all three APIs without author permissions. */
     @Test
-    void learnerReadsPublishedContentWithoutPrivateFields() throws Exception {
-        UUID id = article("PUBLISHED", "Java guide", topic, tag);
+    void learnerReadsSnapshotFieldsWithoutPrivateData() throws Exception {
+        String bio = "  " + "😀".repeat(305) + "  ";
+        jdbc.update("UPDATE techverse.author_profiles SET bio=? WHERE user_id=?", bio, author);
+        UUID id = published("Java guide", topic, tag);
         list().andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].id").value(id.toString()))
+                .andExpect(jsonPath("$.data.content[0].title").value("Java guide"))
+                .andExpect(jsonPath("$.data.content[0].summary").value("Summary"))
                 .andExpect(jsonPath("$.data.content[0].author.id").value(author.toString()))
+                .andExpect(jsonPath("$.data.content[0].author.fullName").value("Test user"))
                 .andExpect(jsonPath("$.data.content[0].topic.id").value(topic.toString()))
+                .andExpect(jsonPath("$.data.content[0].topic.name").value("Backend"))
                 .andExpect(jsonPath("$.data.content[0].tags[0].id").value(tag.toString()))
+                .andExpect(jsonPath("$.data.content[0].publishedAt").isNotEmpty())
+                .andExpect(jsonPath("$.data.content[0].approvedAt").isNotEmpty())
+                .andExpect(jsonPath("$.data.content[0].versionNumber").value(1))
+                .andExpect(jsonPath("$.data.content[0].readingMinutes").value(1))
                 .andExpect(jsonPath("$.data.content[0].content").doesNotExist())
-                .andExpect(jsonPath("$.data.content[0].author.email").doesNotExist());
-        detail(id)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.content").value("# Markdown\n```java\nint i = 1;\n```"))
-                .andExpect(jsonPath("$.data.relatedArticles").isEmpty())
-                .andExpect(jsonPath("$.data.moderationNote").doesNotExist())
-                .andExpect(jsonPath("$.data.reviewedBy").doesNotExist())
-                .andExpect(jsonPath("$.data.createdBy").doesNotExist())
-                .andExpect(jsonPath("$.data.author.password").doesNotExist());
+                .andExpect(jsonPath("$.data.content[0].updatedAt").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].workflowStatus").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].author.email").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].author.bioExcerpt").doesNotExist());
+        var detail =
+                json(
+                        detail(id)
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.data.content").value(CONTENT))
+                                .andExpect(jsonPath("$.data.versionNumber").value(1))
+                                .andExpect(jsonPath("$.data.readingMinutes").value(1))
+                                .andExpect(jsonPath("$.data.author.expertise").value("Java"))
+                                .andExpect(jsonPath("$.data.author.email").doesNotExist())
+                                .andExpect(jsonPath("$.data.relatedArticles").isEmpty())
+                                .andExpect(jsonPath("$.data.moderationNote").doesNotExist())
+                                .andExpect(jsonPath("$.data.publicationStatus").doesNotExist())
+                                .andExpect(jsonPath("$.data.history").doesNotExist())
+                                .andExpect(jsonPath("$.data.reviewedBy").doesNotExist()));
+        String excerpt = detail.at("/data/author/bioExcerpt").asText();
+        assertThat(excerpt.codePointCount(0, excerpt.length())).isEqualTo(300);
+        assertThat(excerpt).isEqualTo("😀".repeat(300));
         request("/options")
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.topics.content[0].id").value(topic.toString()));
+                .andExpect(jsonPath("$.data.topics.content[0].id").value(topic.toString()))
+                .andExpect(jsonPath("$.data.tags.content[0].id").value(tag.toString()));
     }
 
-    /** Reader APIs reject anonymous/malformed tokens and keep unsupported writes forbidden. */
+    @Test
+    void readersKeepTheApprovedSnapshotWhileTheAuthorRevises() throws Exception {
+        UUID other = taxonomy("topics", "Frontend");
+        UUID id = published("Original", topic, tag);
+        String publishedAt = json(detail(id)).at("/data/publishedAt").asText();
+        edit(id, "SAVE", Map.of("title", "Draft revision", "content", "# Secret draft", "topicId", other, "tagIds", List.of()));
+        list().andExpect(jsonPath("$.data.content[0].title").value("Original"))
+                .andExpect(jsonPath("$.data.content[0].topic.id").value(topic.toString()))
+                .andExpect(jsonPath("$.data.content[0].tags[0].id").value(tag.toString()));
+        detail(id)
+                .andExpect(jsonPath("$.data.title").value("Original"))
+                .andExpect(jsonPath("$.data.content").value(CONTENT));
+        mvc.perform(get(ROOT).header("Authorization", bearer(token)).param("keyword", "Draft revision"))
+                .andExpect(jsonPath("$.data.totalElements").value(0));
+        mvc.perform(get(ROOT).header("Authorization", bearer(token)).param("topicId", other.toString()))
+                .andExpect(jsonPath("$.data.totalElements").value(0));
+        request("/options").andExpect(jsonPath("$.data.topics.totalElements").value(1));
+        edit(id, "SUBMIT", Map.of());
+        detail(id).andExpect(jsonPath("$.data.title").value("Original"));
+        approve(id);
+        detail(id)
+                .andExpect(jsonPath("$.data.id").value(id.toString()))
+                .andExpect(jsonPath("$.data.title").value("Draft revision"))
+                .andExpect(jsonPath("$.data.content").value("# Secret draft"))
+                .andExpect(jsonPath("$.data.topic.id").value(other.toString()))
+                .andExpect(jsonPath("$.data.tags").isEmpty())
+                .andExpect(jsonPath("$.data.versionNumber").value(2))
+                .andExpect(jsonPath("$.data.publishedAt").value(publishedAt));
+    }
+
     @Test
     void authenticationAndGetOnlyBoundaries() throws Exception {
         for (String suffix : List.of("", "/options", "/" + UUID.randomUUID())) {
@@ -101,27 +160,25 @@ class PublishedArticleIntegrationTest {
             mvc.perform(get(ROOT + suffix).header("Authorization", "Bearer invalid"))
                     .andExpect(status().isUnauthorized());
         }
-        mvc.perform(post(ROOT).header("Authorization", "Bearer " + token))
+        mvc.perform(post(ROOT).header("Authorization", bearer(token)))
                 .andExpect(status().isForbidden());
     }
 
-    /** An already-issued JWT must not bypass a newly inactive reader account. */
     @Test
     void inactiveReaderIsForbiddenOnEveryRoute() throws Exception {
-        UUID id = article("PUBLISHED", "Visible", topic);
+        UUID id = published("Visible", topic);
         jdbc.update("UPDATE techverse.users SET is_active=false WHERE id=?", learner);
         for (String suffix : List.of("", "/options", "/" + id))
             request(suffix).andExpect(status().isForbidden());
     }
 
-    /** Reading is shared by roles; it must not accidentally require LEARNER or AUTHOR alone. */
     @Test
     void adminModeratorAndAuthorCanRead() throws Exception {
-        UUID id = article("PUBLISHED", "Shared", topic);
+        UUID id = published("Shared", topic);
         for (String role : List.of("ADMIN", "MODERATOR", "AUTHOR")) {
             jdbc.update(
                     "INSERT INTO techverse.user_roles(user_id,role_id) SELECT ?,id FROM"
-                        + " techverse.roles WHERE name=?",
+                            + " techverse.roles WHERE name=?",
                     learner,
                     role);
             token = login("reader@example.com");
@@ -131,81 +188,134 @@ class PublishedArticleIntegrationTest {
         }
     }
 
-    /** Every nonpublished status looks like not-found, including an owner's/admin's draft. */
     @Test
-    void onlyPublishedArticlesAreVisibleEvenWithStatusParameter() throws Exception {
-        UUID visible = article("PUBLISHED", "Visible", topic);
-        for (String state : List.of("DRAFT", "PENDING", "CHANGES_REQUESTED", "HIDDEN", "REMOVED"))
-            detail(article(state, state, topic, tag))
+    void onlyVisibleSnapshotsAreReadable() throws Exception {
+        UUID visible = published("Visible", topic);
+        UUID draft = create("SAVE", "Draft", topic);
+        UUID pending = create("SUBMIT", "Pending", topic);
+        UUID changes = create("SUBMIT", "Changes", topic);
+        review(changes, "REQUEST_CHANGES", "Fix");
+        UUID authorHidden = published("Author hidden", topic);
+        authorPublication(authorHidden, "HIDE");
+        UUID modHidden = published("Moderator hidden", topic);
+        modPublication(modHidden, "HIDE", "Spam");
+        UUID removed = published("Removed", topic);
+        modPublication(removed, "REMOVE", "Illegal");
+        UUID deleted = published("Deleted", topic);
+        mvc.perform(delete(AUTHOR + "/" + deleted).header("Authorization", bearer(authorToken)))
+                .andExpect(status().isOk());
+        for (UUID id :
+                List.of(draft, pending, changes, authorHidden, modHidden, removed, deleted))
+            detail(id)
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("ARTICLE_NOT_FOUND"));
-        mvc.perform(get(ROOT).header("Authorization", "Bearer " + token).param("status", "DRAFT"))
+        mvc.perform(get(ROOT).header("Authorization", bearer(token)).param("status", "DRAFT"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].id").value(visible.toString()));
         detail(UUID.randomUUID()).andExpect(status().isNotFound());
-        jdbc.update("UPDATE techverse.articles SET status='HIDDEN' WHERE id=?", visible);
-        detail(visible).andExpect(status().isNotFound());
+        authorPublication(authorHidden, "UNHIDE");
+        detail(authorHidden).andExpect(status().isOk());
     }
 
-    /** Search treats wildcards literally and combines title/topic/tag with AND. */
+    @Test
+    void ineligibleAuthorHidesArticlesWithoutChangingStatusOrHistory() throws Exception {
+        UUID id = published("Eligibility", topic, tag);
+        UUID other = user("other@example.com", "AUTHOR");
+        String otherAuthor = authorToken;
+        authorToken = login("other@example.com");
+        UUID kept = published("Other author", topic, tag);
+        authorToken = otherAuthor;
+        int history = historyCount();
+        for (String update :
+                List.of(
+                        "UPDATE techverse.users SET is_active=false WHERE id=?",
+                        "UPDATE techverse.author_profiles SET status='SUSPENDED' WHERE user_id=?")) {
+            jdbc.update(update, author);
+            detail(id).andExpect(status().isNotFound());
+            list().andExpect(jsonPath("$.data.totalElements").value(1))
+                    .andExpect(jsonPath("$.data.content[0].id").value(kept.toString()));
+            detail(kept).andExpect(jsonPath("$.data.relatedArticles").isEmpty());
+            jdbc.update("UPDATE techverse.users SET is_active=true WHERE id=?", author);
+            jdbc.update(
+                    "UPDATE techverse.author_profiles SET status='APPROVED' WHERE user_id=?",
+                    author);
+            detail(id).andExpect(status().isOk());
+            list().andExpect(jsonPath("$.data.totalElements").value(2));
+        }
+        jdbc.update("UPDATE techverse.author_profiles SET status='SUSPENDED' WHERE user_id=?", other);
+        request("/options").andExpect(jsonPath("$.data.topics.totalElements").value(1));
+        jdbc.update("UPDATE techverse.author_profiles SET status='SUSPENDED' WHERE user_id=?", author);
+        request("/options")
+                .andExpect(jsonPath("$.data.topics.totalElements").value(0))
+                .andExpect(jsonPath("$.data.tags.totalElements").value(0));
+        assertThat(historyCount()).isEqualTo(history);
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT publication_status FROM techverse.articles WHERE id=?",
+                                String.class,
+                                id))
+                .isEqualTo("PUBLISHED");
+    }
+
+    @Test
+    void inactiveTaxonomyDoesNotHidePublishedSnapshot() throws Exception {
+        UUID id = published("Historical article", topic, tag);
+        jdbc.update("UPDATE techverse.topics SET is_active=false WHERE id=?", topic);
+        jdbc.update("UPDATE techverse.tags SET is_active=false WHERE id=?", tag);
+        list().andExpect(jsonPath("$.data.totalElements").value(1));
+        detail(id).andExpect(status().isOk()).andExpect(jsonPath("$.data.tags[0].id").value(tag.toString()));
+        request("/options").andExpect(jsonPath("$.data.topics.totalElements").value(1));
+    }
+
     @Test
     void combinedFiltersAndLiteralSearch() throws Exception {
-        UUID id = article("PUBLISHED", "Java 100%_safe\\path", topic, tag);
-        article("PUBLISHED", "Java 100xyzsafeXpath", topic, tag);
-        article("PUBLISHED", "Java 100%_safe\\path", taxonomy("topics", "Frontend", true), tag);
-        article("PUBLISHED", "Java 100%_safe\\path", topic);
+        UUID frontend = taxonomy("topics", "Frontend");
+        UUID id = published("Java 100%_safe\\path", topic, tag);
+        published("Java 100xyzsafeXpath", topic, tag);
+        published("Java 100%_safe\\path", frontend, tag);
+        published("Java 100%_safe\\path", topic);
         mvc.perform(
                         get(ROOT)
-                                .header("Authorization", "Bearer " + token)
+                                .header("Authorization", bearer(token))
                                 .param("keyword", "  JAVA 100%_SAFE\\PATH  ")
                                 .param("topicId", topic.toString())
                                 .param("tagId", tag.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].id").value(id.toString()));
-        mvc.perform(
-                        get(ROOT)
-                                .header("Authorization", "Bearer " + token)
-                                .param("tagId", UUID.randomUUID().toString()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.content").isEmpty());
-        mvc.perform(
-                        get(ROOT)
-                                .header("Authorization", "Bearer " + token)
-                                .param("topicId", UUID.randomUUID().toString()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.content").isEmpty());
-    }
-
-    /** Collection cardinality must not inflate counts or break page boundaries. */
-    @Test
-    void paginationCountsAndStableSort() throws Exception {
-        UUID extra = taxonomy("tags", "Spring", true);
-        UUID a = article("PUBLISHED", "A", topic, tag, extra);
-        UUID b = article("PUBLISHED", "B", topic, tag, extra);
-        for (String sort : List.of("PUBLISHED_AT", "UPDATED_AT", "TITLE")) {
+        for (String param : List.of("tagId", "topicId"))
             mvc.perform(
                             get(ROOT)
-                                    .header("Authorization", "Bearer " + token)
+                                    .header("Authorization", bearer(token))
+                                    .param(param, UUID.randomUUID().toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.content").isEmpty());
+    }
+
+    @Test
+    void newestAndOldestSortWithStablePagination() throws Exception {
+        UUID extra = taxonomy("tags", "Spring", true);
+        UUID older = published("Older", topic, tag, extra);
+        UUID newer = published("Newer", topic, tag, extra);
+        setPublishedAt(older, "2020-01-01T00:00:00Z");
+        setPublishedAt(newer, "2021-01-01T00:00:00Z");
+        list().andExpect(jsonPath("$.data.content[0].id").value(newer.toString()))
+                .andExpect(jsonPath("$.data.content[0].tags.length()").value(2));
+        for (var sort : Map.of("NEWEST", newer, "OLDEST", older).entrySet())
+            mvc.perform(
+                            get(ROOT)
+                                    .header("Authorization", bearer(token))
                                     .param("size", "1")
-                                    .param("sortBy", sort)
-                                    .param("direction", "ASC"))
+                                    .param("sort", sort.getKey()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.totalElements").value(2))
                     .andExpect(jsonPath("$.data.totalPages").value(2))
-                    .andExpect(jsonPath("$.data.hasNext").value(true));
-        }
+                    .andExpect(jsonPath("$.data.hasNext").value(true))
+                    .andExpect(jsonPath("$.data.content[0].id").value(sort.getValue().toString()));
         mvc.perform(
                         get(ROOT)
-                                .header("Authorization", "Bearer " + token)
-                                .param("sortBy", "TITLE")
-                                .param("direction", "ASC"))
-                .andExpect(jsonPath("$.data.content[0].id").value(a.toString()))
-                .andExpect(jsonPath("$.data.content[1].id").value(b.toString()));
-        mvc.perform(
-                        get(ROOT)
-                                .header("Authorization", "Bearer " + token)
+                                .header("Authorization", bearer(token))
                                 .param("page", "99")
                                 .param("size", "1"))
                 .andExpect(status().isOk())
@@ -213,174 +323,121 @@ class PublishedArticleIntegrationTest {
                 .andExpect(jsonPath("$.data.totalElements").value(2));
     }
 
-    /** Invalid identifiers, pagination, search lengths and nonallowlisted sorting return400. */
     @Test
     void invalidFiltersAreBadRequests() throws Exception {
         for (var param :
                 Map.of(
-                                "page",
-                                "-1",
-                                "size",
-                                "0",
-                                "topicId",
-                                "bad",
-                                "tagId",
-                                "bad",
-                                "sortBy",
-                                "CONTENT",
-                                "direction",
-                                "sideways",
-                                "keyword",
-                                "x".repeat(256))
+                                "page", "-1",
+                                "size", "0",
+                                "topicId", "bad",
+                                "tagId", "bad",
+                                "sort", "TITLE",
+                                "keyword", "x".repeat(256))
                         .entrySet())
             mvc.perform(
                             get(ROOT)
-                                    .header("Authorization", "Bearer " + token)
+                                    .header("Authorization", bearer(token))
                                     .param(param.getKey(), param.getValue()))
                     .andExpect(status().isBadRequest());
-        mvc.perform(get(ROOT).header("Authorization", "Bearer " + token).param("size", "101"))
+        mvc.perform(get(ROOT).header("Authorization", bearer(token)).param("size", "101"))
                 .andExpect(status().isBadRequest());
         request("/not-a-uuid").andExpect(status().isBadRequest());
         for (var param :
                 Map.of(
-                                "topicPage",
-                                "-1",
-                                "topicSize",
-                                "101",
-                                "tagSize",
-                                "0",
-                                "tagKeyword",
-                                "x".repeat(101))
+                                "topicPage", "-1",
+                                "topicSize", "101",
+                                "tagSize", "0",
+                                "tagKeyword", "x".repeat(101))
                         .entrySet())
             mvc.perform(
                             get(ROOT + "/options")
-                                    .header("Authorization", "Bearer " + token)
+                                    .header("Authorization", bearer(token))
                                     .param(param.getKey(), param.getValue()))
                     .andExpect(status().isBadRequest());
     }
 
-    /** Published-used taxonomy is available even if inactive, never draft-only/unused entries. */
     @Test
-    void optionsUseOnlyPublishedAssociationsAndIndependentPagination() throws Exception {
-        UUID oldTopic = taxonomy("topics", "Archived", false);
-        UUID oldTag = taxonomy("tags", "Old tag", false);
-        article("PUBLISHED", "Old article", oldTopic, oldTag);
-        article("PUBLISHED", "Current article", topic, tag);
-        article("PUBLISHED", "Another current article", topic, tag);
-        article(
-                "DRAFT",
-                "Private",
-                taxonomy("topics", "Draft only", true),
-                taxonomy("tags", "Draft tag", true));
-        taxonomy("topics", "Unused", true);
+    void optionsUseOnlyVisibleSnapshotsAndIndependentPagination() throws Exception {
+        UUID archived = taxonomy("topics", "Archived");
+        UUID oldTag = taxonomy("tags", "Old tag");
+        published("Old article", archived, oldTag);
+        jdbc.update("UPDATE techverse.topics SET is_active=false WHERE id=?", archived);
+        jdbc.update("UPDATE techverse.tags SET is_active=false WHERE id=?", oldTag);
+        published("Current article", topic, tag);
+        published("Another current article", topic, tag);
+        create("SAVE", "Private", taxonomy("topics", "Draft only"), taxonomy("tags", "Draft tag"));
+        create("SUBMIT", "Pending", taxonomy("topics", "Pending only"), taxonomy("tags", "Pending tag"));
+        UUID hidden = published("Hidden", taxonomy("topics", "Hidden only"), taxonomy("tags", "Hidden tag"));
+        modPublication(hidden, "HIDE", "Spam");
+        taxonomy("topics", "Unused");
         request("/options")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.topics.totalElements").value(2))
                 .andExpect(jsonPath("$.data.tags.totalElements").value(2));
         mvc.perform(
                         get(ROOT + "/options")
-                                .header("Authorization", "Bearer " + token)
+                                .header("Authorization", bearer(token))
                                 .param("topicKeyword", "  ARCH  ")
                                 .param("tagKeyword", "old")
                                 .param("topicSize", "1")
                                 .param("tagPage", "8"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.topics.content[0].id").value(oldTopic.toString()))
+                .andExpect(jsonPath("$.data.topics.content[0].id").value(archived.toString()))
                 .andExpect(jsonPath("$.data.tags.content").isEmpty())
                 .andExpect(jsonPath("$.data.tags.totalElements").value(1));
     }
 
-    /**
-     * Inactive taxonomy or a locked/suspended author must not implicitly hide published content.
-     */
     @Test
-    void publicationDoesNotDependOnCurrentAuthorOrTaxonomyEligibility() throws Exception {
-        UUID id = article("PUBLISHED", "Historical article", topic, tag);
-        jdbc.update("UPDATE techverse.users SET is_active=false WHERE id=?", author);
-        jdbc.update("UPDATE techverse.topics SET is_active=false WHERE id=?", topic);
-        jdbc.update("UPDATE techverse.tags SET is_active=false WHERE id=?", tag);
-        list().andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(1));
-        detail(id)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.tags[0].id").value(tag.toString()));
-    }
-
-    /** Related articles rank exact shared-tag counts first, use newest next, and cap at six. */
-    @Test
-    void relatedRankingHasNoDuplicatesAndIsBounded() throws Exception {
-        UUID spring = taxonomy("tags", "Spring", true);
-        UUID source = article("PUBLISHED", "Source", topic, tag, spring);
-        UUID strongest = article("PUBLISHED", "Two shared", topic, tag, spring);
-        UUID second = article("PUBLISHED", "One shared", topic, tag);
-        jdbc.update(
-                "UPDATE techverse.articles SET published_at='2020-01-01T00:00:00Z' WHERE id=?",
-                strongest);
-        jdbc.update(
-                "UPDATE techverse.articles SET published_at='2021-01-01T00:00:00Z' WHERE id=?",
-                second);
-        for (int i = 0; i < 9; i++) article("PUBLISHED", "Unmatched " + i, topic);
-        article("PUBLISHED", "Wrong topic", taxonomy("topics", "Other", true), tag, spring);
-        article("PENDING", "Pending", topic, tag, spring);
-        article("HIDDEN", "Hidden", topic, tag, spring);
-        var result =
-                detail(source)
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.data.relatedArticles.length()").value(6))
-                        .andExpect(
-                                jsonPath("$.data.relatedArticles[0].id")
-                                        .value(strongest.toString()))
-                        .andExpect(
-                                jsonPath("$.data.relatedArticles[1].id").value(second.toString()))
-                        .andExpect(jsonPath("$.data.relatedArticles[0].content").doesNotExist())
-                        .andReturn();
-        var related =
-                mapper.readTree(result.getResponse().getContentAsString())
-                        .at("/data/relatedArticles");
-        Set<String> ids = new HashSet<>();
+    void relatedUsesSameTopicOrSharedTagNewestFirstAndCapsAtFive() throws Exception {
+        UUID otherTopic = taxonomy("topics", "Other");
+        UUID otherTag = taxonomy("tags", "Other tag");
+        UUID source = published("Source", topic, tag);
+        List<UUID> expected = new ArrayList<>();
+        for (int i = 0; i < 3; i++) expected.add(published("Same topic " + i, topic, otherTag));
+        for (int i = 0; i < 3; i++) expected.add(published("Shared tag " + i, otherTopic, tag));
+        UUID unrelated = published("Unrelated", otherTopic, otherTag);
+        UUID hidden = published("Hidden related", topic, tag);
+        modPublication(hidden, "HIDE", "Spam");
+        create("SUBMIT", "Pending related", topic, tag);
+        for (int i = 0; i < expected.size(); i++)
+            setPublishedAt(expected.get(i), "202" + i + "-01-01T00:00:00Z");
+        setPublishedAt(unrelated, "2030-01-01T00:00:00Z");
+        setPublishedAt(hidden, "2030-01-01T00:00:00Z");
+        Collections.reverse(expected);
+        var related = json(detail(source).andExpect(status().isOk())).at("/data/relatedArticles");
+        List<String> ids = new ArrayList<>();
         related.forEach(row -> ids.add(row.get("id").asText()));
-        assertThat(ids).hasSize(6).doesNotContain(source.toString());
+        assertThat(ids)
+                .containsExactlyElementsOf(
+                        expected.subList(0, 5).stream().map(UUID::toString).toList());
+        assertThat(related.get(0).has("content")).isFalse();
+        assertThat(related.get(0).get("title").asText()).isEqualTo("Shared tag 2");
+        assertThat(related.get(0).get("publishedAt").asText()).isNotBlank();
     }
 
-    /** A tagless source uses same-topic publication order without unrelated fallback. */
     @Test
-    void relatedWithoutTagsReturnsNewestSameTopicAndCanBeEmpty() throws Exception {
-        UUID source = article("PUBLISHED", "Source", topic);
-        UUID older = article("PUBLISHED", "Older", topic, tag);
-        UUID newer = article("PUBLISHED", "Newer", topic);
-        jdbc.update(
-                "UPDATE techverse.articles SET published_at='2020-01-01T00:00:00Z' WHERE id=?",
-                older);
-        detail(source)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.relatedArticles.length()").value(2))
-                .andExpect(jsonPath("$.data.relatedArticles[0].id").value(newer.toString()));
-        jdbc.update(
-                "UPDATE techverse.articles SET status='HIDDEN' WHERE id IN (?,?)", older, newer);
-        article("PUBLISHED", "Different topic", taxonomy("topics", "Other", true));
-        detail(source)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.relatedArticles").isEmpty());
-    }
-
-    /**
-     * GETs must not dirty audit state or hydrate full Article entities for list/related queries.
-     */
-    @Test
-    void readsAreReadOnlyAndListDoesNotHydrateArticlesOrNPlusOne() throws Exception {
-        UUID source = article("PUBLISHED", "First", topic, tag);
+    void readsAreReadOnlyAndQueryCountDoesNotGrowWithRowsTagsOrRelated() throws Exception {
+        UUID spring = taxonomy("tags", "Spring");
+        UUID source = published("First", topic, tag);
         var before =
                 jdbc.queryForMap(
                         "SELECT updated_at,updated_by FROM techverse.articles WHERE id=?", source);
         var stats = emf.unwrap(SessionFactory.class).getStatistics();
         stats.clear();
         list().andExpect(status().isOk());
-        long singleQueries = stats.getPrepareStatementCount();
-        for (int i = 0; i < 15; i++) article("PUBLISHED", "Article " + i, topic, tag);
+        long listQueries = stats.getPrepareStatementCount();
         stats.clear();
-        list().andExpect(status().isOk()).andExpect(jsonPath("$.data.content.length()").value(16));
-        assertThat(stats.getEntityStatistics(Article.class.getName()).getLoadCount()).isZero();
-        assertThat(stats.getPrepareStatementCount()).isLessThanOrEqualTo(singleQueries + 1);
         detail(source).andExpect(status().isOk());
+        long detailQueries = stats.getPrepareStatementCount();
+        for (int i = 0; i < 8; i++) published("Article " + i, topic, tag, spring);
+        stats.clear();
+        list().andExpect(status().isOk()).andExpect(jsonPath("$.data.content.length()").value(9));
+        assertThat(stats.getEntityStatistics(Article.class.getName()).getLoadCount()).isZero();
+        assertThat(stats.getPrepareStatementCount()).isEqualTo(listQueries);
+        stats.clear();
+        detail(source).andExpect(jsonPath("$.data.relatedArticles.length()").value(5));
+        assertThat(stats.getEntityStatistics(Article.class.getName()).getLoadCount()).isZero();
+        assertThat(stats.getPrepareStatementCount()).isEqualTo(detailQueries);
         request("/options").andExpect(status().isOk());
         assertThat(
                         jdbc.queryForMap(
@@ -390,24 +447,38 @@ class PublishedArticleIntegrationTest {
         assertThat(stats.getEntityUpdateCount()).isZero();
     }
 
-    /** Logout must make an existing access token unusable for reading. */
     @Test
     void loggedOutAccessTokenCannotRead() throws Exception {
-        mvc.perform(post("/api/v1/auth/logout-all").header("Authorization", "Bearer " + token))
+        mvc.perform(post("/api/v1/auth/logout-all").header("Authorization", bearer(token)))
                 .andExpect(status().isOk());
         for (String suffix : List.of("", "/options", "/" + UUID.randomUUID()))
             request(suffix).andExpect(status().isUnauthorized());
     }
 
-    /** Create a local account using the existing registration entity defaults. */
-    private UUID user(String email) {
-        return users.saveAndFlush(
-                        User.createLocalAccount(
-                                "Test reader", email, encoder.encode("SecurePass123!")))
-                .getId();
+    private UUID user(String email, String role) {
+        UUID id =
+                users.saveAndFlush(
+                                User.createLocalAccount(
+                                        "Test user", email, encoder.encode("SecurePass123!")))
+                        .getId();
+        if (role != null)
+            jdbc.update(
+                    "INSERT INTO techverse.user_roles(user_id,role_id) SELECT ?,id FROM"
+                            + " techverse.roles WHERE name=?",
+                    id,
+                    role);
+        if ("AUTHOR".equals(role))
+            jdbc.update(
+                    "INSERT INTO techverse.author_profiles(user_id,bio,expertise,status) VALUES"
+                            + " (?,'Bio','Java','APPROVED')",
+                    id);
+        return id;
     }
 
-    /** Create known taxonomy fixtures; table is restricted to test-owned literals. */
+    private UUID taxonomy(String table, String name) {
+        return taxonomy(table, name, true);
+    }
+
     private UUID taxonomy(String table, String name, boolean active) {
         return jdbc.queryForObject(
                 "INSERT INTO techverse." + table + "(name,is_active) VALUES (?,?) RETURNING id",
@@ -416,32 +487,103 @@ class PublishedArticleIntegrationTest {
                 active);
     }
 
-    /**
-     * Seed content in a requested lifecycle state without Cloudinary or moderation side effects.
-     */
-    private UUID article(String state, String title, UUID selectedTopic, UUID... tags) {
-        UUID id =
-                jdbc.queryForObject(
-                        "INSERT INTO"
-                            + " techverse.articles(author_id,topic_id,title,summary,content,status,published_at)"
-                            + " VALUES (?,?,?,'Summary',?,?,CASE WHEN ?='PUBLISHED' THEN now() ELSE"
-                            + " NULL END) RETURNING id",
-                        UUID.class,
-                        author,
-                        selectedTopic,
-                        title,
-                        "# Markdown\n```java\nint i = 1;\n```",
-                        state,
-                        state);
-        for (UUID selectedTag : tags)
-            jdbc.update(
-                    "INSERT INTO techverse.article_tags(article_id,tag_id) VALUES (?,?)",
-                    id,
-                    selectedTag);
+    private UUID create(String action, String title, UUID selectedTopic, UUID... tags)
+            throws Exception {
+        var body =
+                Map.of(
+                        "action", action,
+                        "title", title,
+                        "topicId", selectedTopic,
+                        "tagIds", List.of(tags),
+                        "summary", "Summary",
+                        "content", CONTENT);
+        var r =
+                mvc.perform(
+                                post(AUTHOR)
+                                        .header("Authorization", bearer(authorToken))
+                                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(mapper.writeValueAsString(body)))
+                        .andExpect(status().isCreated())
+                        .andReturn();
+        return UUID.fromString(
+                mapper.readTree(r.getResponse().getContentAsString()).at("/data/id").asText());
+    }
+
+    private UUID published(String title, UUID selectedTopic, UUID... tags) throws Exception {
+        UUID id = create("SUBMIT", title, selectedTopic, tags);
+        approve(id);
         return id;
     }
 
-    /** Obtain a production JWT/session pair through the actual password login endpoint. */
+    private void approve(UUID id) throws Exception {
+        review(id, "APPROVE", null);
+    }
+
+    private void review(UUID id, String decision, String note) throws Exception {
+        var body = new HashMap<String, Object>();
+        body.put("decision", decision);
+        body.put("reviewToken", reviewToken(id));
+        body.put("moderationNote", note);
+        mvc.perform(
+                        patch(MOD + "/" + id + "/review")
+                                .header("Authorization", bearer(modToken))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(mapper.writeValueAsString(body)))
+                .andExpect(status().isOk());
+    }
+
+    private void modPublication(UUID id, String action, String note) throws Exception {
+        mvc.perform(
+                        patch(MOD + "/" + id + "/publication")
+                                .header("Authorization", bearer(modToken))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        mapper.writeValueAsString(
+                                                Map.of(
+                                                        "action", action,
+                                                        "reviewToken", reviewToken(id),
+                                                        "moderationNote", note))))
+                .andExpect(status().isOk());
+    }
+
+    private void authorPublication(UUID id, String action) throws Exception {
+        mvc.perform(
+                        patch(AUTHOR + "/" + id + "/publication")
+                                .header("Authorization", bearer(authorToken))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"action\":\"" + action + "\"}"))
+                .andExpect(status().isOk());
+    }
+
+    private void edit(UUID id, String action, Map<String, Object> fields) throws Exception {
+        var body = new HashMap<String, Object>(fields);
+        body.put("action", action);
+        mvc.perform(
+                        patch(AUTHOR + "/" + id)
+                                .header("Authorization", bearer(authorToken))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(mapper.writeValueAsString(body)))
+                .andExpect(status().isOk());
+    }
+
+    private String reviewToken(UUID id) throws Exception {
+        return json(mvc.perform(get(MOD + "/" + id).header("Authorization", bearer(modToken))))
+                .at("/data/reviewToken")
+                .asText();
+    }
+
+    /** Reorders fixtures; published_at is mutable article metadata, snapshots stay untouched. */
+    private void setPublishedAt(UUID id, String at) {
+        jdbc.update(
+                "UPDATE techverse.articles SET published_at=?::timestamptz WHERE id=?", at, id);
+    }
+
+    private int historyCount() {
+        return jdbc.queryForObject(
+                "SELECT count(*) FROM techverse.article_moderation_history", Integer.class);
+    }
+
     private String login(String email) throws Exception {
         var result =
                 mvc.perform(
@@ -461,18 +603,23 @@ class PublishedArticleIntegrationTest {
                 .asText();
     }
 
-    /** Call an authenticated reader route using the current fixture token. */
-    private ResultActions request(String suffix) throws Exception {
-        return mvc.perform(get(ROOT + suffix).header("Authorization", "Bearer " + token));
+    private JsonNode json(ResultActions result) throws Exception {
+        return mapper.readTree(result.andReturn().getResponse().getContentAsString());
     }
 
-    /** Request the default public-content list as the authenticated learner. */
+    private ResultActions request(String suffix) throws Exception {
+        return mvc.perform(get(ROOT + suffix).header("Authorization", bearer(token)));
+    }
+
     private ResultActions list() throws Exception {
         return request("");
     }
 
-    /** Request a single article through the reader visibility boundary. */
     private ResultActions detail(UUID id) throws Exception {
         return request("/" + id);
+    }
+
+    private String bearer(String t) {
+        return "Bearer " + t;
     }
 }

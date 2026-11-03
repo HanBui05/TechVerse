@@ -370,13 +370,13 @@ Không thêm màu mới; chỉ dùng token đã đo từ `tokens.css` bằng `np
 
 ### Task 1b — Moderator + Public + cleanup + fixture
 
-- [ ] Moderator approve lần đầu/cập nhật tạo version + fingerprint + readingMinutes tuần tự; REQUEST_CHANGES/HIDE/RESTORE/REMOVE ghi history; hidden restore/approve về đúng nguồn. `AUTHOR_DELETED` rời queue, detail/history chỉ đọc, mọi write trả transition invalid; self-review/eligibility/taxonomy/stale/race giữ đúng.
-- [ ] Public list/detail/options/related chỉ đọc snapshot visible; list/filter/sort và DTO đủ trường đã chốt, detail author card không email, readingMinutes tối thiểu 1 và không tính lại mỗi request.
-- [ ] Related dùng cùng topic hoặc chung tag, loại chính nó, visible, mới nhất trước và tối đa 5. Account inactive/AuthorProfile `SUSPENDED` cho public 404/không xuất hiện; restore tác giả làm bài tự hiện lại mà không đổi status/history.
-- [ ] Public eligibility nằm trong query; query-count regression chứng minh không N+1, không lộ working/moderation fields và không tăng theo số tag/related.
-- [ ] Cleanup giữ ảnh được working copy hoặc bất kỳ publication version nào tham chiếu; APPROVE kiểm lại ảnh managed đúng owner/article.
-- [ ] Xóa `demo-authors-articles.sql`; `articles.json` + toàn bộ Markdown vẫn là fixture import LF hợp lệ; `HUONG_DAN.md` chỉ hướng dẫn tạo 3–5 bài thật qua API/UI.
-- [ ] Chạy bằng Git Bash: `cd server && ./gradlew test --tests 'com.techverse.server.moderator.ModeratorArticleIntegrationTest' --tests 'com.techverse.server.article.PublishedArticleIntegrationTest' --tests 'com.techverse.server.author.ArticleSeedFixtureTest'` đạt (cần Docker), rồi Codex review task 1b.
+- [x] Moderator approve lần đầu/cập nhật tạo version + fingerprint + readingMinutes tuần tự; REQUEST_CHANGES/HIDE/RESTORE/REMOVE ghi history; hidden restore/approve về đúng nguồn. `AUTHOR_DELETED` rời queue, detail/history chỉ đọc, mọi write trả transition invalid; self-review/eligibility/taxonomy/stale/race giữ đúng.
+- [x] Public list/detail/options/related chỉ đọc snapshot visible; list/filter/sort và DTO đủ trường đã chốt, detail author card không email, readingMinutes tối thiểu 1 và không tính lại mỗi request.
+- [x] Related dùng cùng topic hoặc chung tag, loại chính nó, visible, mới nhất trước và tối đa 5. Account inactive/AuthorProfile `SUSPENDED` cho public 404/không xuất hiện; restore tác giả làm bài tự hiện lại mà không đổi status/history.
+- [x] Public eligibility nằm trong query; query-count regression chứng minh không N+1, không lộ working/moderation fields và không tăng theo số tag/related.
+- [x] Cleanup giữ ảnh được working copy hoặc bất kỳ publication version nào tham chiếu; APPROVE kiểm lại ảnh managed đúng owner/article.
+- [x] Xóa `demo-authors-articles.sql`; `articles.json` + toàn bộ Markdown vẫn là fixture import LF hợp lệ; `HUONG_DAN.md` chỉ hướng dẫn tạo 3–5 bài thật qua API/UI.
+- [x] Chạy bằng Git Bash: `cd server && ./gradlew test --tests 'com.techverse.server.moderator.ModeratorArticleIntegrationTest' --tests 'com.techverse.server.article.PublishedArticleIntegrationTest' --tests 'com.techverse.server.author.ArticleSeedFixtureTest'` đạt (cần Docker), rồi Codex review task 1b.
 
 ### Task 1c — Backend lưu bài
 

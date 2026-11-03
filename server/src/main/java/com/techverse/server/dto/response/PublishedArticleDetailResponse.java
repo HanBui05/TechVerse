@@ -13,9 +13,11 @@ public record PublishedArticleDetailResponse(
         String summary,
         String content,
         String coverImageUrl,
-        ArticleAuthorResponse author,
+        PublishedArticleAuthorResponse author,
         ArticleTaxonomyResponse topic,
         List<ArticleTaxonomyResponse> tags,
         Instant publishedAt,
-        Instant updatedAt,
+        Instant approvedAt,
+        int versionNumber,
+        int readingMinutes,
         List<RelatedArticleResponse> relatedArticles) {}

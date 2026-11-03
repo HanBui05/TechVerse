@@ -31,9 +31,11 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ModeratorArticleServiceImpl implements ModeratorArticleService {
+    private static final int HISTORY_PREVIEW = 5;
     private final ArticleRepository articles;
     private final ArticleModerationHistoryRepository histories;
     private final ArticleContentService contentService;
+    private final ArticleImageService imageService;
     private final UserRepository users;
     private final AuthorProfileRepository profiles;
     private final TopicRepository topics;
@@ -58,7 +60,16 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
                 articles.findAll(
                         ModeratorArticleSpecification.filter(f),
                         PageRequest.of(f.getPage(), f.getSize(), sort));
-        return PageResponse.from(page, page.getContent().stream().map(this::summary).toList());
+        var eligible =
+                page.isEmpty()
+                        ? Set.<UUID>of()
+                        : articles.findEligibleAuthorIds(
+                                page.stream().map(a -> a.getAuthor().getId()).distinct().toList());
+        return PageResponse.from(
+                page,
+                page.stream()
+                        .map(a -> summary(a, eligible.contains(a.getAuthor().getId())))
+                        .toList());
     }
 
     @Override
@@ -73,6 +84,19 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ArticleModerationHistoryResponse> history(
+            UUID actor, UUID id, int page, int size) {
+        checkModerator(users.findWithRolesById(actor).orElse(null));
+        ensureVisible(
+                articles.findById(id)
+                        .orElseThrow(() -> new CustomException(ErrorCode.ARTICLE_NOT_FOUND)));
+        var result = histories.findPage(id, PageRequest.of(page, size));
+        return PageResponse.from(
+                result, result.stream().map(ArticleModerationHistoryResponse::from).toList());
+    }
+
+    @Override
     @Transactional
     public ModeratorArticleDetailResponse review(UUID actorId, UUID id, ReviewArticleRequest r) {
         UUID authorId =
@@ -80,27 +104,11 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
                         .orElseThrow(() -> new CustomException(ErrorCode.ARTICLE_NOT_FOUND));
         if (actorId.equals(authorId))
             throw new CustomException(ErrorCode.ARTICLE_SELF_REVIEW_NOT_ALLOWED);
-
-        // Same lock hierarchy as author writes and administrative account/profile updates.
-        // The scalar lookup above deliberately avoids loading an unlocked stale Article.
-        var lockedUsers =
-                users.findAllByIdForAdminStatusUpdate(List.of(actorId, authorId)).stream()
-                        .collect(Collectors.toMap(User::getId, Function.identity()));
-        lockedUsers.values().forEach(entityManager::refresh);
-        User actor = lockedUsers.get(actorId);
-        User author = lockedUsers.get(authorId);
-        checkModerator(actor);
-        if (author == null) throw new CustomException(ErrorCode.ARTICLE_NOT_FOUND);
-        var profile = profiles.findByUserIdForResubmit(authorId).orElse(null);
-        if (profile != null) entityManager.refresh(profile);
-
-        Article article =
-                articles.findByIdForUpdate(id)
-                        .orElseThrow(() -> new CustomException(ErrorCode.ARTICLE_NOT_FOUND));
-        entityManager.refresh(article);
-        ensureVisible(article);
-        if (!article.getAuthor().getId().equals(authorId))
-            throw new CustomException(ErrorCode.ARTICLE_REVIEW_STALE);
+        var locked = lock(actorId, authorId, id);
+        User actor = locked.actor();
+        User author = locked.author();
+        var profile = locked.profile();
+        Article article = locked.article();
         if (article.getPublicationStatus().isTerminal())
             throw new CustomException(ErrorCode.ARTICLE_PUBLICATION_TRANSITION_INVALID);
         if (article.getWorkflowStatus() != ArticleWorkflowStatus.PENDING)
@@ -120,6 +128,8 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
                     || profile.getStatus() != AuthorProfileStatus.APPROVED)
                 throw new CustomException(ErrorCode.ARTICLE_AUTHOR_INELIGIBLE);
             lockActiveAssociations(article);
+            // Assets may have vanished since SUBMIT; the Article lock also guards cleanup.
+            imageService.validateReferences(article);
         }
         Instant now = Instant.now();
         var history =
@@ -133,6 +143,63 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
         // Database triggers own updated_at; return a fingerprint of persisted precision/state.
         entityManager.refresh(article);
         return detailResponse(article);
+    }
+
+    @Override
+    @Transactional
+    public ModeratorArticleDetailResponse publication(
+            UUID actorId, UUID id, ArticlePublicationRequest r) {
+        var action = r.action();
+        if (action == ArticlePublicationAction.UNHIDE || r.reviewToken() == null)
+            throw new CustomException(ErrorCode.VALIDATION_ERROR);
+        UUID authorId =
+                articles.findAuthorIdById(id)
+                        .orElseThrow(() -> new CustomException(ErrorCode.ARTICLE_NOT_FOUND));
+        var locked = lock(actorId, authorId, id);
+        Article article = locked.article();
+        if (!reviewToken(article).equals(r.reviewToken()))
+            throw new CustomException(ErrorCode.ARTICLE_REVIEW_STALE);
+        String note = r.moderationNote() == null ? null : r.moderationNote().strip();
+        if (note != null && note.isBlank()) note = null;
+        if (action != ArticlePublicationAction.RESTORE && note == null)
+            throw new CustomException(ErrorCode.ARTICLE_PUBLICATION_NOTE_REQUIRED);
+        User actor = locked.actor();
+        var history =
+                switch (action) {
+                    case HIDE -> article.moderatorHide(actor, note);
+                    case RESTORE -> article.restore(actor, note);
+                    default -> article.remove(actor, note);
+                };
+        histories.saveAndFlush(history);
+        entityManager.refresh(article);
+        return detailResponse(article);
+    }
+
+    private record Locked(User actor, User author, AuthorProfile profile, Article article) {}
+
+    /**
+     * Same lock hierarchy as author writes and administrative account/profile updates: users,
+     * profile, then Article. The scalar author lookup avoids loading an unlocked stale Article.
+     */
+    private Locked lock(UUID actorId, UUID authorId, UUID id) {
+        var lockedUsers =
+                users.findAllByIdForAdminStatusUpdate(List.of(actorId, authorId)).stream()
+                        .collect(Collectors.toMap(User::getId, Function.identity()));
+        lockedUsers.values().forEach(entityManager::refresh);
+        User actor = lockedUsers.get(actorId);
+        User author = lockedUsers.get(authorId);
+        checkModerator(actor);
+        if (author == null) throw new CustomException(ErrorCode.ARTICLE_NOT_FOUND);
+        var profile = profiles.findByUserIdForResubmit(authorId).orElse(null);
+        if (profile != null) entityManager.refresh(profile);
+        Article article =
+                articles.findByIdForUpdate(id)
+                        .orElseThrow(() -> new CustomException(ErrorCode.ARTICLE_NOT_FOUND));
+        entityManager.refresh(article);
+        ensureVisible(article);
+        if (!article.getAuthor().getId().equals(authorId))
+            throw new CustomException(ErrorCode.ARTICLE_REVIEW_STALE);
+        return new Locked(actor, author, profile, article);
     }
 
     private void lockActiveAssociations(Article article) {
@@ -225,7 +292,7 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
                 .build();
     }
 
-    private ModeratorArticleSummaryResponse summary(Article a) {
+    private ModeratorArticleSummaryResponse summary(Article a, boolean authorEligible) {
         return ModeratorArticleSummaryResponse.builder()
                 .id(a.getId())
                 .title(a.getTitle())
@@ -235,6 +302,8 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
                 .topic(topic(a.getTopic()))
                 .workflowStatus(a.getWorkflowStatus())
                 .publicationStatus(a.getPublicationStatus())
+                .hasUnpublishedChanges(a.hasUnpublishedChanges())
+                .authorEligible(authorEligible)
                 .createdAt(a.getCreatedAt())
                 .updatedAt(a.getUpdatedAt())
                 .build();
@@ -263,6 +332,8 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
                         .workflowStatus(a.getWorkflowStatus())
                         .publicationStatus(a.getPublicationStatus())
                         .hasUnpublishedChanges(a.hasUnpublishedChanges())
+                        .publishedVersion(
+                                ArticlePublicationVersionResponse.from(a.getPublishedVersion()))
                         .moderationNote(a.getModerationNote())
                         .reviewedBy(a.getReviewedBy() == null ? null : a.getReviewedBy().getId())
                         .reviewedAt(a.getReviewedAt())
@@ -276,6 +347,13 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
                 .article(response)
                 .author(author(a.getAuthor()))
                 .reviewToken(reviewToken(a))
+                .authorEligible(
+                        articles.findEligibleAuthorIds(List.of(a.getAuthor().getId()))
+                                .contains(a.getAuthor().getId()))
+                .history(
+                        histories.findPage(a.getId(), PageRequest.of(0, HISTORY_PREVIEW)).stream()
+                                .map(ArticleModerationHistoryResponse::from)
+                                .toList())
                 .build();
     }
 }

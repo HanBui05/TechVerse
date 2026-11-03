@@ -4,10 +4,13 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 
 ## Bắt đầu từ đây (cập nhật 2026-11-04)
 
-- **Task 1a đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1a`. Review vòng 1 sửa 3 phát hiện; vòng 2 (`adversarial-review`) approve, không phát hiện (chưa commit, branch `feature/article-flow`). 4 lớp test của spec đạt 69/69. Chi tiết, lệch spec, chưa kiểm: mục “Task 1a” cuối file.
-- **Task tiếp theo: 1b** (Moderator + Public + cleanup + fixture). Đầu task: grep caller theo `.claude/rules/backend.md`; viết lại `ModeratorArticleIntegrationTest` + `PublishedArticleIntegrationTest` (đang hỏng có chủ đích); Public chuyển sang đọc snapshot; tạo `ArticlePublicationVersionRepository` nếu cần. Thứ tự: 1a → 1b → 1c → cổng wireframe → 2a → 2b → 2c → 2d → regression gộp + E2E.
-- **Tạm hỏng tới 1b (có chủ đích):** `ModeratorArticleIntegrationTest`, `PublishedArticleIntegrationTest` còn ghi cột `status` cũ (đã bỏ ở V10) và kỳ vọng hành vi cũ; Public vẫn đọc cột working của `articles` lọc `publication_status=PUBLISHED` (chưa đọc snapshot). Task 1b phải viết lại hai lớp test này và query Public.
-- **DB dev phải làm mới trước khi chạy app** (V10 dừng nếu `articles` có dữ liệu): lệnh ở `docs/RUNBOOK.md` mục “Làm mới DB dev”.
+- **Task 1a đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1a`.
+- **Task 1b đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1b`; đã đánh dấu “Xong khi” 1b trong spec, nhờ Codex đồng bộ spec (kèm đề xuất container dùng chung).
+- Task 1b: 4 lớp test 94/94, Codex review vòng 1 không phát hiện. Chi tiết, lệch spec, chưa kiểm: mục “Task 1b” cuối file.
+- **Task tiếp theo: 1c** (Backend lưu bài), session mới; áp dụng luật tăng tốc mới (lần đỏ chỉ ca mới + `--fail-fast`) và ghi thời gian chạy test vào log để so. Thứ tự: 1a → 1b → 1c → cổng wireframe → 2a → 2b → 2c → 2d → regression gộp + E2E.
+- **Frontend đang lệch API mới (có chủ đích, tới 2a/2b/2c):** `ModeratorArticlesPage`/`AuthorBlogsPage` còn đọc `status` (bỏ từ 1a); Public bỏ `updatedAt`, `sortBy/direction` → `sort`. Không sửa FE trong task Backend.
+- **Đề xuất chờ Codex đưa vào spec (tăng tốc test, người dùng yêu cầu 2026-11-04):** lớp cha Testcontainers dùng chung Postgres/Redis + một cấu hình context chung (`@MockitoBean ArticleImageStorage`, `generate_statistics`) cho các lớp tích hợp article để Spring cache context; cần spec chỉ định đường dẫn file. Gửi kèm lượt nhờ Codex đồng bộ spec khi người dùng nhận 1b.
+- **DB dev phải làm mới trước khi chạy app** (V10 dừng nếu `articles` có dữ liệu): lệnh ở `docs/RUNBOOK.md` mục “Làm mới DB dev”. Không còn seed SQL bài viết: tạo 3–5 bài qua API theo `server/src/test/resources/seed/HUONG_DAN.md`.
 - **Môi trường:** Docker 29.6.1, `.env` có `CLOUDINARY_CLOUD_NAME`; RUNBOOK có tài khoản dev Moderator.
 
 ## Quyết định người dùng chưa có trong spec
@@ -18,6 +21,17 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — Task 1b đã nhận
+- Người dùng nhận Task 1b; đánh dấu “Xong khi” 1b trong spec, commit WIP (gồm luật tăng tốc), nhờ Codex đồng bộ spec. Tiếp: Task 1c, session mới.
+
+### 2026-11-04 — Tăng tốc quy trình
+- Người dùng muốn giảm thời gian mỗi task (~30 phút). Đã thêm luật: lần đỏ chỉ chạy ca mới + `--fail-fast` (`.claude/rules/backend.md`, skill `backend-test`); `CLAUDE.md`: mọi script Python viết file, đọc spec theo đoạn, gom lệnh song song. Đề xuất container dùng chung chờ Codex đưa vào spec.
+
+### 2026-11-04 — Task 1b: Moderator + Public + cleanup + fixture
+- Đã làm: Moderator publication HIDE/RESTORE/REMOVE + history + detail so sánh/eligibility, APPROVE kiểm lại ảnh; Public đọc snapshot visible (tác giả active, profile không SUSPENDED), sort NEWEST/OLDEST, related topic-hoặc-tag tối đa 5; cleanup giữ ảnh của mọi version; xóa seed SQL. 94/94.
+- Bài học: Bash heredoc chứa Python nhiều nháy lồng vỡ cú pháp lần nữa → luôn Write script vào scratchpad (đã có trong `CLAUDE.md`).
+- Codex review vòng 1 không phát hiện. Việc dở: người dùng nhận 1b → commit WIP + Codex đồng bộ spec.
+
 - 2026-11-04 — Codex: đã đưa quyết định chốt toàn bộ spec `article-flow` vào mục “Quyết định của người dùng”; checklist “Xong khi” Task 1a đã được đánh dấu đầy đủ theo kết quả trong log.
 
 ### 2026-11-04 — Task 1a đã nhận
@@ -87,3 +101,17 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
   - `ArticlePublicationVersionRepository` chưa tạo (1a không cần; version lưu bằng cascade từ `Article`).
   - Trình tự TDD: unit/migration test viết trước và chạy đỏ; test tích hợp Author viết sau khi service đã có (chạy lần đầu đỏ do lỗi schema `char(64)`), không quan sát được đỏ theo từng hành vi API.
 - **Chưa kiểm:** `ModeratorArticleIntegrationTest`, `PublishedArticleIntegrationTest` (hỏng có chủ đích tới 1b); cleanup ảnh chưa giữ asset chỉ còn version tham chiếu (1b); `final.sql` chỉ kiểm tĩnh, chưa chạy thử trên DB rỗng; Cloudinary thật (test dùng mock storage); chạy app thật trên DB dev (cần làm mới DB).
+
+## Task 1b — Moderator + Public + cleanup + fixture (2026-11-04)
+
+- **Đã làm:** Moderator: `PATCH /{id}/publication` (HIDE/REMOVE bắt buộc lý do, RESTORE về `hiddenFromPublicationStatus`, token stale 409, UNHIDE/thiếu token 400), `GET /{id}/history`; detail thêm `article.publishedVersion`, `history` (5 mục mới nhất), `authorEligible`; list thêm `authorEligible` (một query batch `ArticleRepository.findEligibleAuthorIds`) + `hasUnpublishedChanges`; APPROVE gọi `imageService.validateReferences`. Khóa user→profile→article tách thành `lock()` dùng chung review/publication. Public: `PublishedArticleRepository` join `published_version_id` → snapshot, predicate `visible()` (PUBLISHED + `users.is_active` + NOT EXISTS profile SUSPENDED) dùng cho list/detail/options/related; tag theo version (batch); detail thêm `PublishedArticleAuthorResponse` (expertise, `bioExcerpt` 300 code point); related cùng topic HOẶC chung tag, `publishedAt DESC, id ASC`, tối đa 5. Cleanup: `ArticlePublicationVersionRepository.findImageSources` → không xóa asset version nào tham chiếu. Xóa `demo-authors-articles.sql`, `HUONG_DAN.md` hướng dẫn 3–5 bài qua API; `PROJECT_CONTEXT.md` bảng API.
+- **Test:** `./gradlew test --tests ModeratorArticleIntegrationTest --tests PublishedArticleIntegrationTest --tests ArticleSeedFixtureTest --tests AuthorArticleIntegrationTest` → lần đỏ 24/62 lỗi đúng lý do (thiếu endpoint/field); sau code BUILD SUCCESSFUL 19 + 15 + 26 + 34 = 94/94. `AuthorArticleIntegrationTest` thêm vì sửa cleanup/APPROVE (2 ca mới: APPROVE ảnh đã mất → 400; cleanup giữ ảnh chỉ version tham chiếu).
+- **Lệch khác spec (chi tiết kỹ thuật tự chọn):**
+  - Public bỏ `sortBy`/`direction`/`updatedAt` (lộ thời điểm sửa working copy); `sort=NEWEST/OLDEST` sắp `publishedAt` rồi `id` cùng chiều.
+  - Tên trường tác giả giữ `fullName`/`avatarUrl` như API cũ (spec viết tắt `name/avatar`).
+  - Public visible không đòi role AUTHOR/profile APPROVED, đúng chữ spec (account active + profile không SUSPENDED); `authorEligible` của Moderator dùng luật APPROVE (active + AUTHOR + APPROVED).
+  - Moderator publication không chặn tự xử lý bài của chính mình (spec chỉ nêu self-review cho review).
+  - `history` trong detail giới hạn 5 mục; đầy đủ qua `/history`.
+  - `PublishedArticleSpecification` đổi từ `Specification<Article>` sang hàm predicate nhận join snapshot.
+- **Review vòng 1 (Codex `review`):** “Không phát hiện lỗi mức trung bình hoặc cao”; không sửa, không chạy vòng 2.
+- **Chưa kiểm:** Cloudinary thật (mock storage); FE chưa theo API mới (2a–2c); chạy app thật trên DB dev; `final.sql` không đổi ở 1b (không đổi schema).
