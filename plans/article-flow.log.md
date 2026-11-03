@@ -21,6 +21,9 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — Codex đồng bộ Task 1b và cấu hình test tích hợp
+- Codex: đã đối chiếu kết quả Task 1b trong log với checklist spec; toàn bộ “Xong khi” 1b đã được đánh dấu `[x]`. Đã đưa đề xuất tăng tốc vào Task 1c: tạo `ArticleIntegrationTestBase` dùng chung Postgres/Redis và Spring context cho bốn lớp integration article; giữ `ArticlePublicationMigrationTest` độc lập.
+
 ### 2026-11-04 — Task 1b đã nhận
 - Người dùng nhận Task 1b; đánh dấu “Xong khi” 1b trong spec, commit WIP (gồm luật tăng tốc), nhờ Codex đồng bộ spec. Tiếp: Task 1c, session mới.
 

@@ -91,6 +91,7 @@ Chỉ được sửa/tạo các đường dẫn sau. File mới ghi rõ “tạo
 - `server/src/main/java/com/techverse/server/exception/ErrorCode.java`
 - `server/src/test/java/com/techverse/server/article/ArticleLifecycleTest.java` (tạo, unit test không Spring)
 - `server/src/test/java/com/techverse/server/article/ArticlePublicationMigrationTest.java` (tạo, Testcontainers/Flyway)
+- `server/src/test/java/com/techverse/server/article/ArticleIntegrationTestBase.java` (tạo ở Task 1c, lớp cha Testcontainers/Spring context dùng chung)
 - `server/src/test/java/com/techverse/server/author/AuthorArticleIntegrationTest.java`
 - `server/src/test/java/com/techverse/server/author/ArticleContentServiceTest.java`
 - `server/src/test/java/com/techverse/server/moderator/ModeratorArticleIntegrationTest.java`
@@ -232,6 +233,7 @@ Chỉ được sửa/tạo các đường dẫn sau. File mới ghi rõ “tạo
 - Saved list lọc cùng visibility public, keyword, mới lưu trước; row của bài tạm ẩn/soft-delete/tác giả suspended được giữ nhưng không trả về, và tự hiện lại khi bài visible. Hard delete chưa từng public không thể được lưu; FK cascade giữ nguyên.
 - Public list/detail/related thêm `saved` của actor bằng join/`EXISTS` trong query; không gọi repository từng article và không làm tăng query-count theo số dòng.
 - Security cho phép authenticated GET `/api/v1/me/saved-articles` và PUT/DELETE `/api/v1/articles/{id}/saved`; không nới endpoint khác.
+- Tạo `ArticleIntegrationTestBase` cho `AuthorArticleIntegrationTest`, `ModeratorArticleIntegrationTest`, `PublishedArticleIntegrationTest` và `SavedArticleIntegrationTest`: chỉ một cặp static Testcontainers Postgres/Redis, cùng `@SpringBootTest(properties = "spring.jpa.properties.hibernate.generate_statistics=true")`, `@AutoConfigureMockMvc`, profile `test`, `@MockitoBean ArticleImageStorage` và `@MockitoSpyBean ArticleCreationRepository` để bốn lớp có cùng khóa Spring context cache. Mỗi lớp vẫn tự dọn dữ liệu/Redis cần dùng, không phụ thuộc thứ tự chạy. `ArticlePublicationMigrationTest` không kế thừa lớp này vì cần điều khiển Flyway/data source độc lập.
 
 ### Cổng UI trước Task 2a — bắt buộc
 
@@ -384,7 +386,8 @@ Không thêm màu mới; chỉ dùng token đã đo từ `tokens.css` bằng `np
 - [ ] PUT bài không visible trả 404; DELETE row thiếu hoặc bài đã ẩn vẫn 200 false. Saved list lọc visibility, keyword/paging, sort `savedAt DESC, id DESC`; row ẩn được giữ và hiện lại khi article visible.
 - [ ] Public list/detail/related trả `saved` đúng actor trong query; saved list trả summary + savedAt, không N+1/query per row và không công khai tổng lượt lưu.
 - [ ] `SavedArticleIntegrationTest` có 3–5 ca mỗi endpoint: auth/visibility, idempotency + race, paging/filter/order, hidden→visible và soft-delete; khẳng định JSON shape và Security matcher dùng cho frontend.
-- [ ] Chạy bằng Git Bash: `cd server && ./gradlew test --tests 'com.techverse.server.article.SavedArticleIntegrationTest' --tests 'com.techverse.server.article.PublishedArticleIntegrationTest'` đạt (cần Docker), rồi Codex review task 1c.
+- [ ] Bốn lớp Spring integration article kế thừa `ArticleIntegrationTestBase`, không còn khai báo container/context/bean override lệch nhau; chạy chung dùng một Spring context cache và test không phụ thuộc thứ tự. `ArticlePublicationMigrationTest` vẫn chạy độc lập.
+- [ ] Chạy bằng Git Bash: `cd server && ./gradlew test --tests 'com.techverse.server.author.AuthorArticleIntegrationTest' --tests 'com.techverse.server.moderator.ModeratorArticleIntegrationTest' --tests 'com.techverse.server.article.PublishedArticleIntegrationTest' --tests 'com.techverse.server.article.SavedArticleIntegrationTest'` đạt trong một Gradle invocation (cần Docker), rồi Codex review task 1c.
 
 ### Cổng UI trước Task 2a
 
