@@ -3,6 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { HomePage } from './HomePage'
 import { copy } from '../../data/i18n'
+import { toneFor } from '@/lib/utils'
 
 afterEach(cleanup)
 const renderHome = (language: 'vi' | 'en' = 'vi') => render(<MemoryRouter><HomePage t={copy[language]} /></MemoryRouter>)
@@ -31,9 +32,11 @@ it.each(['vi', 'en'] as const)('has a longer %s hero description', language => {
   expect(copy[language].heroDescription.length).toBeGreaterThanOrEqual(150)
 })
 
-it('gives each technology tag its own tone', () => {
-  const { container } = renderHome()
-  const tags = [...container.querySelectorAll<HTMLElement>('.tech-tag')]
+it('colors technology tags with the shared tone helper', () => {
+  renderHome()
+  const tags = screen.getAllByRole('listitem').map(item => item.querySelector<HTMLElement>('[data-slot="badge"]')!)
   expect(tags.map(tag => tag.textContent)).toEqual(['Git & GitHub', 'Spring Boot', 'Docker', 'Artificial Intelligence', 'Backend Development'])
-  expect(tags.map(tag => tag.dataset.tone)).toEqual(['blue', 'green', 'violet', 'amber', 'rose'])
+  // Same tag, same tone as on article pages; the row still shows several colors (D-016).
+  expect(tags.map(tag => tag.dataset.tone)).toEqual(tags.map(tag => toneFor(tag.textContent!)))
+  expect(new Set(tags.map(tag => tag.dataset.tone)).size).toBeGreaterThanOrEqual(4)
 })

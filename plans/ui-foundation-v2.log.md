@@ -4,24 +4,42 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ui-foundation-v2.
 
 ## Bắt đầu từ đây (cập nhật 2026-11-03)
 
-- **Task 3 + 4 xong, đủ 2 vòng review** (vòng 2 = `/code-review` người dùng chạy; 8/9 phát hiện đã sửa, gồm 3 bug sidebar của Task 2). Chi tiết ở mục Task 4.
-- **Người dùng đã nhận Task 3 + 4** (2026-11-03). **Task tiếp theo: Task 5** (Home + `EmptyState`), session mới. Đề xuất sửa luật (xem Nhật ký phiên) chờ người dùng hỏi, chưa áp dụng.
-- **Thứ tự sau đó:** Task 5 (Home + tạo `EmptyState`) → Task 6 (AuthorApply + Admin, Pagination) → Task 7a (Blogs, AuthorBlogs, Moderator, TagPicker, MarkdownContent) → Task 7b (preflight, dọn CSS, gỡ `framer-motion`).
-- **Đã xong — không đọc lại, không làm lại, không kiểm lại:** Task 1 (Tailwind v4, shadcn new-york/Radix, 20 primitive trong `components/ui`, token + 8 tone, `test/setup.ts`, UI_GUIDE/rule/skill). Task 2 (shell `SidebarProvider`, 3 sidebar dùng `SidebarFrame` trong `components/layout/Sidebar.tsx`, `Brand` logo Cloudinary, favicon, xóa `sidebar.css`, vùng chạm 44px). Cả hai đã review đủ 2 vòng. Chưa commit — cố ý, một commit sau Task 7b.
-- **Bỏ qua — không liên quan task tiếp theo:** các trang hoãn của Task 7a và CSS của chúng (`blogs.css`, `moderator.css`, `author.css`); `server/`; các module cũ khác trong `PLAN.md`.
-- **Chưa kiểm còn treo:** thiết bị cảm ứng thật (không giả lập được `pointer: coarse`). Đã kiểm 2026-11-03 qua iframe 390px: Profile mobile (topbar hiện, card xếp dọc 326px, không cuộn ngang), sheet mobile Moderator 320px, menu đúng vai trò, bấm logo thì sheet đóng; Moderator đăng nhập → `/moderator`.
+- **Task 5 (Home + `EmptyState`) xong, đủ 2 vòng review** (vòng 1: 1 × P2 tone tag → `toneFor`, đã sửa; vòng 2 approve). Test liên quan 30/30, build đạt, kiểm bằng mắt dark/light + mobile 390px. **Chờ người dùng nhận Task 5**; sau đó Task 6 trong session mới.
+- **Task 1–4 đã nhận, đã commit WIP** — không đọc lại, không làm lại, không kiểm lại.
+- **Thứ tự sau đó:** Task 6 (chỉ Admin; consumer đầu tiên của `components/EmptyState.tsx`) → Task 7a (chỉ Moderator) → Task 7b (dọn CSS ngoài Author/Blogs, giữ preflight tắt, gỡ `framer-motion`).
+- **Đã tách sang module riêng:** Author (`AuthorApplyPage`, `AuthorBlogsPage`, `TagPicker`) → `author-ui-shadcn`; Blogs (`BlogsPage`, `BlogDetailPage`, `MarkdownContent`, wrapper `Pagination`) → `blogs-ui-shadcn`. Không sửa hoặc redesign các trang/component này trong Task 6/7.
+- **Bỏ qua — không liên quan Task 6:** trang/CSS Author và Blogs; trang Moderator + `moderator.css` thuộc Task 7a; `server/`; các module cũ khác trong `PLAN.md`.
+- **Kiểm bằng mắt từ nay dùng Playwright MCP** (`.mcp.json`, nạp sau khi khởi động lại phiên; giả lập điện thoại cảm ứng được — `pointer: coarse` khớp). Thủ tục: skill `visual-check`.
+- **Phát hiện chờ người dùng quyết:** link logo trên topbar mobile chỉ 32×32px khi cảm ứng (< 44px, QĐ 1A) — thuộc Task 2 đã nhận, chưa sửa.
 
 ## Quyết định người dùng chưa có trong spec
 
-| Ngày | Quyết định | Hệ quả khi làm |
-|---|---|---|
-| 2026-11-03 | Commit WIP cục bộ sau mỗi task người dùng nhận (`wip(ui-foundation-v2): Task n`), squash thành một commit cuối module (luật ở `CLAUDE.md`). | Spec chờ Codex cập nhật dòng “Không commit riêng từng task”. Task 1–4 đã commit WIP; review Task 5 chỉ xem diff chưa commit. |
+- (không có)
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-03 — Playwright MCP
+- Thêm Playwright MCP mức project (`.mcp.json`), Chromium cài ở `%LOCALAPPDATA%/ms-playwright`. Thử bằng script tạm: context 390×844 `hasTouch` → `pointer: coarse` khớp, nút hero 44px.
+- Bắt được lỗi Task 5: nút hero mobile cảm ứng co lại, chữ tràn (`pointer-coarse:min-w-11` của Button đè `max-sm:min-w-44`) → `max-sm:w-full`; sau sửa 342×44, không tràn. Home test 5/5, build đạt.
+- Luật: `visual-check` viết lại (Playwright chính, Chrome dự phòng, bẫy `min-w`); `frontend.md` trỏ theo.
+- Việc dở: logo topbar mobile 32px (Task 2) chờ người dùng quyết; người dùng nhận Task 5.
+
+### 2026-11-03 — Tách Blogs UI
+- Codex: đã đưa quyết định tách Blogs/BlogDetail/MarkdownContent/wrapper Pagination khỏi `ui-foundation-v2` sang module `blogs-ui-shadcn` vào spec; Task 7a chỉ còn Moderator, Task 7b giữ preflight tắt và lớp CSS tương thích Author/Blogs.
+
+### 2026-11-03 — Tách Author UI
+- Codex: đã đưa quyết định tách toàn bộ Author UI khỏi `ui-foundation-v2` sang module `author-ui-shadcn` vào spec; Task 6 chỉ còn Admin; D-026 sau đó tách Blogs để Task 7a chỉ còn Moderator.
+- Codex: đã đưa quy tắc commit WIP sau mỗi task được nhận và squash một commit cuối module từ bảng quyết định chờ vào spec.
+
+### 2026-11-03 — Task 5
+- Home chuyển sang shadcn/Tailwind (hero 4.1), tạo `components/EmptyState.tsx` + test; xóa `pages/home.css`. Test liên quan 30/30, build đạt, kiểm bằng mắt dark/light desktop + mobile 390px.
+- Review: vòng 1 P2 tone tag riêng trang → dùng `toneFor` (Docker/AI cùng cyan, còn 4 màu); vòng 2 approve.
+- Luật mới (người dùng đồng ý sau Task 5): `codex-workflow` vòng 1 `review` không focus, `git add -N` file mới, Codex không chạy được Vitest; `visual-check` chờ animation, màu theo theme tin ảnh/tải lại; `ui-components` tự kiểm tone qua `toneFor`/`statusTone`; `CLAUDE.md` không `sed -i` trên file CRLF.
+- Việc dở: người dùng nhận Task 5.
+
 
 Mới nhất ở trên; mỗi phiên ≤ 6 dòng: đã làm, quyết định mới, bài học, việc dở. Chi tiết kỹ thuật để ở mục Task bên dưới.
 
@@ -106,6 +124,19 @@ Mới nhất ở trên; mỗi phiên ≤ 6 dòng: đã làm, quyết định m�
 | Review vòng 1 (Task 3+4) | Hai job `codex-companion review` chạy trùng (hủy job 2 lỗi `taskkill` do Git Bash đổi `/PID` thành đường dẫn) → gộp làm vòng 1: 3 × P2, đều nhận. (1) Dropdown tháng của `Calendar` theo locale trình duyệt → `formatMonthDropdown` dùng `props.locale.code`. (2) Link Auth (`authLinkClass`, `authInlineLink`) < 44px trên cảm ứng → `inline-flex` + `pointer-coarse:min-h-11`. (3) Dropdown tháng/năm 32px → `pointer-coarse:h-11`/`min-h-11`. +3 test (`ProfilePage` locale tháng, `ui/calendar.test.ts`, `auth/AuthLayout.test.ts`). `ProfilePage`, `calendar`, `focus`, `AuthLayout`, `App.auth`: **183/183**; build đạt. |
 | Review vòng 2 (Task 3+4) | `/code-review --background` (lượt Codex vòng 2 bị dừng khi phiên đóng): 9 phát hiện, sửa 8. (1+2) `h1` mới nhận `letter-spacing:-3px`/margin của `base.css`, `p/h2/h3` giữ lề UA → reset tạm `.tw-page` trên `main` Auth/Profile/Settings + `:is(h1..p)[data-slot]{margin:0}` trong `styles.css` (xóa ở 7b). (3) Footer sidebar thu gọn tràn → `px-1`/`p-0` khi icon. (4) Ô nhập Profile/đổi mật khẩu `pointer-coarse:h-11`, nút icon căn giữa. (5) Sheet mobile đóng theo mọi đổi route (`MobileTopbar` effect). (6) Bấm Cài đặt khi thu gọn → mở sidebar. (7) `PasswordInput` giữ `className`. (8) `setSidebarOpen` `useCallback`. +4 test. 9 files **211/211**; build đạt. Đo Chrome: `h1` tracking normal, margin 0; sidebar thu gọn 48px không tràn. Hết 2 vòng. |
 | Kiểm bằng mắt | Chrome desktop: `/login` dark + light, `/register` light (lỗi validation hiện đủ 4 trường), `/forgot-password`, `/auth/callback` lỗi — có card, không cuộn ngang. Chưa kiểm mobile (Chrome MCP không đổi viewport). |
+
+## Task 5 — Trang chủ và EmptyState
+
+| Mục | Kết quả |
+|---|---|
+| Code | `HomePage`: hero 4.1 trong `section bg-card` — chip kicker accent → H1 (48px desktop, 36 sm, 30 mobile; “TechVerse” màu nhấn) → mô tả 18px muted (≤ 672px) → 2 `Button asChild` (`/courses` default, `/interview` outline; mobile full-width) → hàng `Badge tone` trong `ul`. `framer-motion` → `animate-in` của `tw-animate-css` có delay, `motion-reduce:animate-none`. `EmptyState` (ngoài `ui/`): `role="status"`, props `icon?`, `title`, `description?`, `action?`, `className` (gộp `cn`); không copy. |
+| Lệch khác spec | Home chỉ còn hero (D-015/D-016 đã bỏ các khối dưới) nên 4.7 tiêu đề khu vực + 4.3 lưới card không có nội dung để áp; không thêm khối/copy mới. Hàng tag chuyển xuống dưới hàng nút (thứ tự mẫu 4.1). Tone tag theo `toneFor` (review vòng 1). Nút ghost → `outline`. Chưa gỡ `framer-motion` (thuộc 7b theo thứ tự đã ghi). |
+| CSS | Xóa `pages/home.css` + import; grep selector Home (`hero-*`, `welcome-badge`, `tech-tag`, `tag-list`) trong `src`: 0. Không chạm `blogs.css`/`content.css`. |
+| Test | TDD đỏ (Home tone 1 ca, `EmptyState` import lỗi) → xanh. `npx vitest run src/pages/Home/HomePage.test.tsx src/components/EmptyState.test.tsx src/components/ui/focus.test.ts`: **30/30**; `npm run build` đạt (cảnh báo chunk > 500 kB có từ trước). |
+| Review vòng 1 | `codex-companion review --wait`: 1 × P2, nhận — tone tag Home ánh xạ riêng (Docker `purple` khác `toneFor('Docker')` = `cyan`), trái quy tắc “cùng giá trị cùng tone” (spec dòng 151). Đổi sang `toneFor(label)`: 5 tag ra rose/green/cyan/cyan/amber (4 màu, D-016 “nhiều màu” vẫn đạt; Docker và AI trùng cyan). Test đổi: tone = `toneFor`, ≥ 4 màu. Test liên quan **30/30**, build đạt. |
+| Review vòng 2 | `adversarial-review --wait` chỉ trên phần sửa: **approve**, không phát hiện. Hết 2 vòng. |
+| Sau review | Playwright giả lập điện thoại cảm ứng bắt lỗi nút hero co lại/chữ tràn → `max-sm:w-full` (thay `max-sm:min-w-44 max-sm:flex-1`). Home test **5/5**, build đạt; đo lại 2 nút 342×44px, không tràn, không cuộn ngang. Sửa nhỏ sau vòng 2, chưa review lại. |
+| Kiểm bằng mắt | Chrome, cổng 3000 (phiên Moderator có sẵn): `/` light + dark desktop — H1 48/48 700, tracking normal, `ul` không bullet/padding, nền section đổi theo theme, không cuộn ngang. Mobile iframe 390px: H1 30px, 2 nút xếp dọc 324px, tag xuống dòng, không cuộn ngang. Chưa kiểm cảm ứng thật. |
 
 ## Ghi nhận khác
 
