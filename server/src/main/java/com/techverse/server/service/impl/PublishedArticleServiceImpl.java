@@ -31,7 +31,7 @@ public class PublishedArticleServiceImpl implements PublishedArticleService {
         checkReader(actor);
         var direction = filter.getSort().getDirection();
         var sort = Sort.by(direction, "publishedAt").and(Sort.by(direction, "id"));
-        var page = articles.findPage(filter, PageRequest.of(filter.getPage(), filter.getSize(), sort));
+        var page = articles.findPage(actor, filter, PageRequest.of(filter.getPage(), filter.getSize(), sort));
         var tags = articles.findTags(page.stream().map(PublishedArticleRow::versionId).toList());
         return PageResponse.from(
                 page,
@@ -45,7 +45,7 @@ public class PublishedArticleServiceImpl implements PublishedArticleService {
     public PublishedArticleDetailResponse detail(UUID actor, UUID id) {
         checkReader(actor);
         var row =
-                articles.findVisibleById(id)
+                articles.findVisibleById(actor, id)
                         .orElseThrow(() -> new CustomException(ErrorCode.ARTICLE_NOT_FOUND));
         var tags = articles.findTags(List.of(row.versionId())).getOrDefault(row.versionId(), List.of());
         var profile = articles.findAuthorProfile(row.author().id()).orElse(new Object[2]);
@@ -69,8 +69,10 @@ public class PublishedArticleServiceImpl implements PublishedArticleService {
                 .approvedAt(row.approvedAt())
                 .versionNumber(row.versionNumber())
                 .readingMinutes(row.readingMinutes())
+                .saved(row.saved())
                 .relatedArticles(
                         articles.findRelated(
+                                actor,
                                 id,
                                 row.topic().id(),
                                 tags.stream().map(ArticleTaxonomyResponse::id).toList()))
@@ -117,6 +119,7 @@ public class PublishedArticleServiceImpl implements PublishedArticleService {
                 .approvedAt(row.approvedAt())
                 .versionNumber(row.versionNumber())
                 .readingMinutes(row.readingMinutes())
+                .saved(row.saved())
                 .build();
     }
 }

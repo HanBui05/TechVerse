@@ -22,4 +22,5 @@ public record PublishedArticleRow(
         Instant publishedAt,
         Instant approvedAt,
         int versionNumber,
-        int readingMinutes) {}
+        int readingMinutes,
+        boolean saved) {}

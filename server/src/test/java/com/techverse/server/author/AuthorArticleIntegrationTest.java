@@ -10,58 +10,34 @@ import com.techverse.server.dto.internal.ArticleCreationReceipt;
 import com.techverse.server.dto.internal.ArticleImageAsset;
 import com.techverse.server.dto.internal.DecodedArticleImage;
 import com.techverse.server.entity.User;
-import com.techverse.server.repository.ArticleCreationRepository;
 import com.techverse.server.repository.UserRepository;
 import com.techverse.server.service.ArticleImageStorage;
 import com.techverse.server.service.impl.ArticleImageCleanupService;
 
+import com.techverse.server.article.ArticleIntegrationTestBase;
+
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.*;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.*;
-import org.testcontainers.utility.DockerImageName;
 
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.*;
 import java.util.concurrent.*;
 
-@Testcontainers
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class AuthorArticleIntegrationTest {
+class AuthorArticleIntegrationTest extends ArticleIntegrationTestBase {
     static final String ROOT = "/api/v1/author/articles";
-
-    @Container @ServiceConnection
-    static PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"));
-
-    @Container
-    @ServiceConnection(name = "redis")
-    static GenericContainer<?> redis =
-            new GenericContainer<>(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379);
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
     @Autowired JdbcTemplate jdbc;
     @Autowired UserRepository users;
     @Autowired PasswordEncoder encoder;
-    @MockitoBean ArticleImageStorage imageStorage;
     @Autowired ArticleImageCleanupService cleanup;
-    @MockitoSpyBean ArticleCreationRepository receipts;
     @Autowired org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     final Map<String, ArticleImageAsset> cloud = new ConcurrentHashMap<>();
     UUID author, other, learner, moderator, topic, tag;
@@ -677,7 +653,7 @@ class AuthorArticleIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Methods", org.hamcrest.Matchers.containsString("DELETE")));
         mvc.perform(
-                        put("/api/v1/articles/" + UUID.randomUUID() + "/saved")
+                        put("/api/v1/articles/" + UUID.randomUUID())
                                 .header("Authorization", bearer(token)))
                 .andExpect(status().isForbidden());
     }

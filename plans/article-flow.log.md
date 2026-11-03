@@ -6,10 +6,9 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 
 - **Task 1a đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1a`.
 - **Task 1b đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1b`; đã đánh dấu “Xong khi” 1b trong spec, nhờ Codex đồng bộ spec (kèm đề xuất container dùng chung).
-- Task 1b: 4 lớp test 94/94, Codex review vòng 1 không phát hiện. Chi tiết, lệch spec, chưa kiểm: mục “Task 1b” cuối file.
-- **Task tiếp theo: 1c** (Backend lưu bài), session mới; áp dụng luật tăng tốc mới (lần đỏ chỉ ca mới + `--fail-fast`) và ghi thời gian chạy test vào log để so. Thứ tự: 1a → 1b → 1c → cổng wireframe → 2a → 2b → 2c → 2d → regression gộp + E2E.
+- **Task 1c đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1c`; đã đánh dấu “Xong khi” 1c trong spec, nhờ Codex đồng bộ spec. 76/76, Codex review không phát hiện; chi tiết mục “Task 1c” cuối file. **Backend module xong (1a–1c).**
+- **Task tiếp theo: cổng wireframe 2a–2d** (session mới): trình wireframe ASCII mọi màn + loading/empty/error, người dùng duyệt và ghi quyết định vào log rồi mới code 2a. Thứ tự: cổng wireframe → 2a → 2b → 2c → 2d → regression gộp + E2E.
 - **Frontend đang lệch API mới (có chủ đích, tới 2a/2b/2c):** `ModeratorArticlesPage`/`AuthorBlogsPage` còn đọc `status` (bỏ từ 1a); Public bỏ `updatedAt`, `sortBy/direction` → `sort`. Không sửa FE trong task Backend.
-- **Đề xuất chờ Codex đưa vào spec (tăng tốc test, người dùng yêu cầu 2026-11-04):** lớp cha Testcontainers dùng chung Postgres/Redis + một cấu hình context chung (`@MockitoBean ArticleImageStorage`, `generate_statistics`) cho các lớp tích hợp article để Spring cache context; cần spec chỉ định đường dẫn file. Gửi kèm lượt nhờ Codex đồng bộ spec khi người dùng nhận 1b.
 - **DB dev phải làm mới trước khi chạy app** (V10 dừng nếu `articles` có dữ liệu): lệnh ở `docs/RUNBOOK.md` mục “Làm mới DB dev”. Không còn seed SQL bài viết: tạo 3–5 bài qua API theo `server/src/test/resources/seed/HUONG_DAN.md`.
 - **Môi trường:** Docker 29.6.1, `.env` có `CLOUDINARY_CLOUD_NAME`; RUNBOOK có tài khoản dev Moderator.
 
@@ -21,6 +20,14 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — Task 1c đã nhận
+- Người dùng nhận Task 1c; đánh dấu “Xong khi” 1c trong spec, commit WIP, nhờ Codex đồng bộ spec. Backend xong. Tiếp: cổng wireframe 2a–2d, session mới.
+
+### 2026-11-04 — Task 1c: Backend lưu bài
+- Đã làm: PUT/DELETE `/articles/{id}/saved`, `GET /me/saved-articles`, `saved` trong list/detail/related bằng EXISTS; `ArticleIntegrationTestBase` (container khởi động `static`, một context). 76/76, 280 s; Codex review vòng 1 không phát hiện.
+- Bài học: lớp cha dùng chung context không được dùng `@Container` (extension dừng container sau mỗi lớp). Test cũ khẳng định “endpoint bị chặn tới task sau” phải đổi khi task đó mở endpoint.
+- Việc dở: người dùng nhận 1c → đánh dấu spec, commit WIP, Codex đồng bộ spec. Tiếp: cổng wireframe.
+
 ### 2026-11-04 — Codex đồng bộ Task 1b và cấu hình test tích hợp
 - Codex: đã đối chiếu kết quả Task 1b trong log với checklist spec; toàn bộ “Xong khi” 1b đã được đánh dấu `[x]`. Đã đưa đề xuất tăng tốc vào Task 1c: tạo `ArticleIntegrationTestBase` dùng chung Postgres/Redis và Spring context cho bốn lớp integration article; giữ `ArticlePublicationMigrationTest` độc lập.
 
@@ -118,3 +125,16 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
   - `PublishedArticleSpecification` đổi từ `Specification<Article>` sang hàm predicate nhận join snapshot.
 - **Review vòng 1 (Codex `review`):** “Không phát hiện lỗi mức trung bình hoặc cao”; không sửa, không chạy vòng 2.
 - **Chưa kiểm:** Cloudinary thật (mock storage); FE chưa theo API mới (2a–2c); chạy app thật trên DB dev; `final.sql` không đổi ở 1b (không đổi schema).
+
+## Task 1c — Backend lưu bài (2026-11-04)
+
+- **Đã làm:** `SavedArticle` map bảng V1 (unique + FK cascade giữ nguyên; index đọc đã có từ V10). `SavedArticleRepository.insertIfAbsent` (`INSERT … ON CONFLICT DO NOTHING`) + `deleteByUserAndArticle`. `SavedArticleController`: `PUT/DELETE /api/v1/articles/{id}/saved` → `{saved}`, `GET /api/v1/me/saved-articles` (`keyword`/page/size). `PublishedArticleRepository`: `saved` của actor bằng `CASE WHEN EXISTS` trong cùng query list/detail/related; `isVisible`; `findSavedPage` join saved → article → snapshot với cùng predicate `visible()`. Security mở đúng 3 matcher. `ArticleIntegrationTestBase` cho 4 lớp tích hợp. `PROJECT_CONTEXT.md` bảng API.
+- **Test:** lần đỏ `SavedArticleIntegrationTest` + ca mới Published (`--fail-fast`) → 403 (Security chặn PUT) đúng lý do. Xanh: 8/8 (123 s). Chạy cuối 4 lớp spec một Gradle (`./gradlew test --tests AuthorArticleIntegrationTest --tests ModeratorArticleIntegrationTest --tests PublishedArticleIntegrationTest --tests SavedArticleIntegrationTest`) → BUILD SUCCESSFUL, 34 + 19 + 16 + 7 = 76/76, tổng 280 s (Published 124 s, Author 70 s, Moderator 49 s, Saved 22 s); `Started …` chỉ xuất hiện 1 lần → 4 lớp dùng chung một context. Lượt trước đó 75/76: ca 1a nêu dưới.
+- **Lệch khác spec (chi tiết kỹ thuật tự chọn):**
+  - Race PUT xử lý bằng `ON CONFLICT DO NOTHING` (không ném lỗi unique rồi đọc lại); entity `SavedArticle` chỉ dùng cho query đọc.
+  - Saved list sắp `saved_articles.created_at DESC, saved_articles.id DESC` (id của row lưu, khớp index V10); keyword tìm trên title snapshot như Public.
+  - `SavedArticleSummaryResponse` lặp field của public summary + `saved`/`savedAt` (record phẳng, không `@JsonUnwrapped`).
+  - Lớp cha khởi động container trong khối `static` (không `@Testcontainers/@Container`, vì extension dừng container sau mỗi lớp làm hỏng context cache); Ryuk dọn khi JVM thoát.
+  - Test 1a `browserMayPreflightDeleteButUnmatchedEndpointsStayDenied` khẳng định `PUT …/saved` bị chặn “tới 1c” → đổi sang `PUT /api/v1/articles/{id}` (vẫn chưa có matcher).
+- **Review vòng 1 (Codex `review`):** “Không phát hiện lỗi mức trung bình hoặc cao”; không sửa, không chạy vòng 2.
+- **Chưa kiểm:** FE chưa dùng `saved`/API lưu (2c/2d); chạy app thật trên DB dev.

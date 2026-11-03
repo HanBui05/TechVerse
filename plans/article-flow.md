@@ -382,12 +382,12 @@ Không thêm màu mới; chỉ dùng token đã đo từ `tokens.css` bằng `np
 
 ### Task 1c — Backend lưu bài
 
-- [ ] `SavedArticle` map đúng bảng V1 và unique/FK cascade; V10 chỉ thêm index user + saved time. PUT/DELETE idempotent cho mọi role auth, concurrent PUT không 500 và không tạo trùng.
-- [ ] PUT bài không visible trả 404; DELETE row thiếu hoặc bài đã ẩn vẫn 200 false. Saved list lọc visibility, keyword/paging, sort `savedAt DESC, id DESC`; row ẩn được giữ và hiện lại khi article visible.
-- [ ] Public list/detail/related trả `saved` đúng actor trong query; saved list trả summary + savedAt, không N+1/query per row và không công khai tổng lượt lưu.
-- [ ] `SavedArticleIntegrationTest` có 3–5 ca mỗi endpoint: auth/visibility, idempotency + race, paging/filter/order, hidden→visible và soft-delete; khẳng định JSON shape và Security matcher dùng cho frontend.
-- [ ] Bốn lớp Spring integration article kế thừa `ArticleIntegrationTestBase`, không còn khai báo container/context/bean override lệch nhau; chạy chung dùng một Spring context cache và test không phụ thuộc thứ tự. `ArticlePublicationMigrationTest` vẫn chạy độc lập.
-- [ ] Chạy bằng Git Bash: `cd server && ./gradlew test --tests 'com.techverse.server.author.AuthorArticleIntegrationTest' --tests 'com.techverse.server.moderator.ModeratorArticleIntegrationTest' --tests 'com.techverse.server.article.PublishedArticleIntegrationTest' --tests 'com.techverse.server.article.SavedArticleIntegrationTest'` đạt trong một Gradle invocation (cần Docker), rồi Codex review task 1c.
+- [x] `SavedArticle` map đúng bảng V1 và unique/FK cascade; V10 chỉ thêm index user + saved time. PUT/DELETE idempotent cho mọi role auth, concurrent PUT không 500 và không tạo trùng.
+- [x] PUT bài không visible trả 404; DELETE row thiếu hoặc bài đã ẩn vẫn 200 false. Saved list lọc visibility, keyword/paging, sort `savedAt DESC, id DESC`; row ẩn được giữ và hiện lại khi article visible.
+- [x] Public list/detail/related trả `saved` đúng actor trong query; saved list trả summary + savedAt, không N+1/query per row và không công khai tổng lượt lưu.
+- [x] `SavedArticleIntegrationTest` có 3–5 ca mỗi endpoint: auth/visibility, idempotency + race, paging/filter/order, hidden→visible và soft-delete; khẳng định JSON shape và Security matcher dùng cho frontend.
+- [x] Bốn lớp Spring integration article kế thừa `ArticleIntegrationTestBase`, không còn khai báo container/context/bean override lệch nhau; chạy chung dùng một Spring context cache và test không phụ thuộc thứ tự. `ArticlePublicationMigrationTest` vẫn chạy độc lập.
+- [x] Chạy bằng Git Bash: `cd server && ./gradlew test --tests 'com.techverse.server.author.AuthorArticleIntegrationTest' --tests 'com.techverse.server.moderator.ModeratorArticleIntegrationTest' --tests 'com.techverse.server.article.PublishedArticleIntegrationTest' --tests 'com.techverse.server.article.SavedArticleIntegrationTest'` đạt trong một Gradle invocation (cần Docker), rồi Codex review task 1c.
 
 ### Cổng UI trước Task 2a
 

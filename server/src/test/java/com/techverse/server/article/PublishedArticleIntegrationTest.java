@@ -13,18 +13,10 @@ import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.*;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.*;
-import org.testcontainers.utility.DockerImageName;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -32,24 +24,11 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.*;
 
 /** Reader APIs over approved snapshots; every fixture article goes through the real APIs. */
-@Testcontainers
-@SpringBootTest(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class PublishedArticleIntegrationTest {
+class PublishedArticleIntegrationTest extends ArticleIntegrationTestBase {
     static final String ROOT = "/api/v1/articles";
     static final String AUTHOR = "/api/v1/author/articles";
     static final String MOD = "/api/v1/moderator/articles";
     static final String CONTENT = "# Markdown\n```java\nint i = 1;\n```";
-
-    @Container @ServiceConnection
-    static PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"));
-
-    @Container
-    @ServiceConnection(name = "redis")
-    static GenericContainer<?> redis =
-            new GenericContainer<>(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379);
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
@@ -416,6 +395,26 @@ class PublishedArticleIntegrationTest {
     }
 
     @Test
+    void savedFlagBelongsToTheActorOnListDetailAndRelated() throws Exception {
+        UUID saved = published("Saved", topic);
+        UUID unsaved = published("Unsaved", topic);
+        mvc.perform(put(ROOT + "/" + saved + "/saved").header("Authorization", bearer(token)))
+                .andExpect(status().isOk());
+        list().andExpect(jsonPath("$.data.content[?(@.id=='" + saved + "')].saved").value(true))
+                .andExpect(
+                        jsonPath("$.data.content[?(@.id=='" + unsaved + "')].saved").value(false));
+        detail(saved).andExpect(jsonPath("$.data.saved").value(true));
+        detail(unsaved)
+                .andExpect(jsonPath("$.data.saved").value(false))
+                .andExpect(jsonPath("$.data.relatedArticles[0].id").value(saved.toString()))
+                .andExpect(jsonPath("$.data.relatedArticles[0].saved").value(true));
+        token = authorToken;
+        list().andExpect(jsonPath("$.data.content[?(@.saved==true)]").isEmpty());
+        detail(saved).andExpect(jsonPath("$.data.saved").value(false));
+        detail(unsaved).andExpect(jsonPath("$.data.relatedArticles[0].saved").value(false));
+    }
+
+    @Test
     void readsAreReadOnlyAndQueryCountDoesNotGrowWithRowsTagsOrRelated() throws Exception {
         UUID spring = taxonomy("tags", "Spring");
         UUID source = published("First", topic, tag);
@@ -429,7 +428,11 @@ class PublishedArticleIntegrationTest {
         stats.clear();
         detail(source).andExpect(status().isOk());
         long detailQueries = stats.getPrepareStatementCount();
-        for (int i = 0; i < 8; i++) published("Article " + i, topic, tag, spring);
+        for (int i = 0; i < 8; i++) {
+            UUID id = published("Article " + i, topic, tag, spring);
+            mvc.perform(put(ROOT + "/" + id + "/saved").header("Authorization", bearer(token)))
+                    .andExpect(status().isOk());
+        }
         stats.clear();
         list().andExpect(status().isOk()).andExpect(jsonPath("$.data.content.length()").value(9));
         assertThat(stats.getEntityStatistics(Article.class.getName()).getLoadCount()).isZero();

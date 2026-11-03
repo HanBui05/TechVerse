@@ -155,7 +155,7 @@ Refresh session, token và password-reset OTP không nằm trong SQL; chúng đ�
 
 ### Chưa làm
 
-- API/service/UI cho document và saved content.
+- API/service/UI cho document và saved document; UI bài đã lưu (API lưu bài đã có).
 - Course, lesson, enrollment/progress.
 - Order, payment, commission, refund.
 - Exercise và interview practice.
@@ -252,7 +252,9 @@ Tài liệu runtime đầy đủ được sinh từ OpenAPI tại `/swagger-ui.h
 | MODERATOR | GET | `/api/v1/moderator/articles/{id}/history` | Lịch sử đầy đủ, mới nhất trước |
 | Auth | GET | `/api/v1/articles` | Snapshot visible (PUBLISHED + tác giả active + profile không SUSPENDED); `keyword`/`topicId`/`tagId`, `sort=NEWEST/OLDEST` |
 | Auth | GET | `/api/v1/articles/options` | Topic/tag phục vụ bộ lọc |
-| Auth | GET | `/api/v1/articles/{id}` | Snapshot + thẻ tác giả công khai + tối đa 5 bài liên quan (cùng topic hoặc chung tag) |
+| Auth | GET | `/api/v1/articles/{id}` | Snapshot + thẻ tác giả công khai + tối đa 5 bài liên quan (cùng topic hoặc chung tag); list/detail/related có `saved` của người gọi |
+| Auth | PUT/DELETE | `/api/v1/articles/{id}/saved` | Lưu (bài phải visible, 404 nếu không) / bỏ lưu (luôn 200); idempotent, trả `{saved}` |
+| Auth | GET | `/api/v1/me/saved-articles` | Bài đã lưu còn visible, `keyword`, mới lưu trước; item = summary public + `savedAt` |
 
 ## 9. Luồng nghiệp vụ chính
 

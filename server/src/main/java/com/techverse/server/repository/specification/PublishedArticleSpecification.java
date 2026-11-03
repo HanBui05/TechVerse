@@ -18,7 +18,8 @@ public final class PublishedArticleSpecification {
      * Visible = publication PUBLISHED, author account active and AuthorProfile not SUSPENDED.
      * Derived in SQL so suspension/restore never rewrites status or history.
      */
-    public static Predicate visible(Root<Article> a, AbstractQuery<?> query, CriteriaBuilder cb) {
+    public static Predicate visible(
+            From<?, Article> a, AbstractQuery<?> query, CriteriaBuilder cb) {
         var suspended = query.subquery(UUID.class);
         var profile = suspended.from(AuthorProfile.class);
         suspended
@@ -35,7 +36,7 @@ public final class PublishedArticleSpecification {
     /** Visibility plus reader filters on snapshot title/topic/tag combined with AND. */
     public static Predicate filter(
             PublishedArticleFilter filter,
-            Root<Article> a,
+            From<?, Article> a,
             Join<Article, ArticlePublicationVersion> v,
             CriteriaQuery<?> query,
             CriteriaBuilder cb) {

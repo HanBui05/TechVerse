@@ -20,4 +20,5 @@ public record PublishedArticleDetailResponse(
         Instant approvedAt,
         int versionNumber,
         int readingMinutes,
+        boolean saved,
         List<RelatedArticleResponse> relatedArticles) {}
