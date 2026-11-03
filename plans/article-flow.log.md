@@ -7,19 +7,26 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - **Task 1a đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1a`.
 - **Task 1b đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1b`; đã đánh dấu “Xong khi” 1b trong spec, nhờ Codex đồng bộ spec (kèm đề xuất container dùng chung).
 - **Task 1c đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1c`; đã đánh dấu “Xong khi” 1c trong spec, nhờ Codex đồng bộ spec. 76/76, Codex review không phát hiện; chi tiết mục “Task 1c” cuối file. **Backend module xong (1a–1c).**
-- **Task tiếp theo: cổng wireframe 2a–2d** (session mới): trình wireframe ASCII mọi màn + loading/empty/error, người dùng duyệt và ghi quyết định vào log rồi mới code 2a. Thứ tự: cổng wireframe → 2a → 2b → 2c → 2d → regression gộp + E2E.
+- **Cổng wireframe 2a–2d đã nhận (2026-11-04)** — [`article-flow.wireframe.md`](article-flow.wireframe.md) (bố cục + mục “Phong cách”); đã đánh dấu “Xong khi” cổng UI trong spec.
+- **Task tiếp theo: 2a — Author workspace + editor** (session mới), code theo spec + file wireframe. Thứ tự: 2a → 2b → 2c → 2d → regression gộp + E2E.
 - **Frontend đang lệch API mới (có chủ đích, tới 2a/2b/2c):** `ModeratorArticlesPage`/`AuthorBlogsPage` còn đọc `status` (bỏ từ 1a); Public bỏ `updatedAt`, `sortBy/direction` → `sort`. Không sửa FE trong task Backend.
 - **DB dev phải làm mới trước khi chạy app** (V10 dừng nếu `articles` có dữ liệu): lệnh ở `docs/RUNBOOK.md` mục “Làm mới DB dev”. Không còn seed SQL bài viết: tạo 3–5 bài qua API theo `server/src/test/resources/seed/HUONG_DAN.md`.
 - **Môi trường:** Docker 29.6.1, `.env` có `CLOUDINARY_CLOUD_NAME`; RUNBOOK có tài khoản dev Moderator.
 
 ## Quyết định người dùng chưa có trong spec
 
+- **2026-11-04 — Cổng UI:** duyệt wireframe `plans/article-flow.wireframe.md` gồm 5 điểm Claude tự chọn (ô số liệu workspace từ `totalElements` theo filter; một nút chính + menu `⋯`; editor có khối metadata thu gọn + tab “Bản công khai vN”; Moderator detail so song song, nút ở header; list Moderator mặc định “Chờ duyệt”).
+- **2026-11-04 — Phong cách:** Reader list/detail/Bài đã lưu bám mẫu javabuilder.online (patterns 4.1–4.4); Author và Moderator không có mẫu, Claude tự thiết kế sinh động nhưng giữ khung chung của web (chi tiết mục “Phong cách” trong file wireframe).
+- **2026-11-04 — Mở rộng Author:** không dựng trước menu/trang tổng quan; khi có tính năng tác giả thứ hai thì đổi mục sidebar “Tác giả” thành nhóm.
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — Cổng wireframe 2a–2d đã nhận
+- Tạo `plans/article-flow.wireframe.md` (ma trận hành động Author, mọi màn 2a–2d + loading/empty/error, desktop/mobile). Người dùng duyệt; chốt phong cách: Reader theo javabuilder, Author/Moderator Claude tự thiết kế sinh động trong khung chung. Không sửa code. Tiếp: Task 2a.
+
 ### 2026-11-04 — Codex đồng bộ Task 1c
 - Codex: đã đối chiếu kết quả Task 1c trong log với checklist spec; toàn bộ 6 mục “Xong khi” 1c đã được đánh dấu `[x]`. Bảng “Quyết định người dùng chưa có trong spec” đang trống nên không có quyết định nào cần đưa vào thân spec.
 

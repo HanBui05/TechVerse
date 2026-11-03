@@ -391,7 +391,7 @@ Không thêm màu mới; chỉ dùng token đã đo từ `tokens.css` bằng `np
 
 ### Cổng UI trước Task 2a
 
-- [ ] Wireframe ASCII/Markdown bao phủ mọi màn 2a–2d và loading/empty/error, desktop/mobile nơi khác bố cục; người dùng duyệt và quyết định được ghi vào log trước khi có diff code UI.
+- [x] Wireframe ASCII/Markdown bao phủ mọi màn 2a–2d và loading/empty/error, desktop/mobile nơi khác bố cục; người dùng duyệt và quyết định được ghi vào log trước khi có diff code UI.
 
 ### Task 2a — Author workspace + editor
 
