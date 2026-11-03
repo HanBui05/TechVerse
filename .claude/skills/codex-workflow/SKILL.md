@@ -13,10 +13,11 @@ Chính sách (ai quyết, giới hạn vòng, sửa gì) ở `CLAUDE.md`. File n
 
 1. `node "<script>" status ""` — đã có job review đang chạy (kể cả người dùng tự gõ `/codex:review`) thì chờ job đó, không chạy thêm. Job treo của phiên cũ (tiến trình đã chết) thì `cancel <job-id>`.
 2. Chạy **chờ kết quả**, không chạy nền (job nền chết khi phiên đóng):
-   - Vòng 1: `node "<script>" review --wait` (task rủi ro cao theo spec: `adversarial-review --wait "<focus>"`).
+   - Vòng 1: `node "<script>" review --wait` — **không kèm focus** (lệnh từ chối focus). Task rủi ro cao theo spec: `adversarial-review --wait "<focus>"`.
    - Vòng 2: luôn `node "<script>" adversarial-review --wait "<focus>"`.
-   - Focus: `Xong khi: plans/<module>.md — Task <n>. Test đã chạy: <lệnh> → <đạt/lỗi>. Vòng 2: chỉ xem <file/phần sửa sau vòng 1>.`
-3. Phạm vi: diff chưa commit = task đang làm (task trước đã ở commit `wip(...)`).
+   - Focus (chỉ cho `adversarial-review`): `Xong khi: plans/<module>.md — Task <n>. Test đã chạy: <lệnh> → <đạt/lỗi>. Vòng 2: chỉ xem <file/phần sửa sau vòng 1>.`
+   - Codex không chạy được Vitest trong sandbox (`EPERM`), chỉ đối chiếu kết quả test trong log → log phải ghi lệnh + số đạt trước khi review.
+3. Phạm vi: diff chưa commit = task đang làm (task trước đã ở commit `wip(...)`). File mới chưa track: `git add -N <file>` trước khi review để có trong diff.
 4. Kết quả tiếng Anh: dán nguyên văn trong khối trích dẫn + dịch đủ từng phát hiện (mức, vị trí, nội dung). Đánh giá theo `superpowers:receiving-code-review`.
 5. Vòng 1: blocker thuộc diện sửa → sửa, chạy lại test liên quan + build, ghi log, tự chạy vòng 2. Vòng 2 còn phát hiện → trình bày + một khuyến nghị, người dùng quyết.
 

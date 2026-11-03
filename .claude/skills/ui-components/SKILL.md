@@ -97,6 +97,7 @@ Grep trên file đã sửa, sửa hết rồi mới review (đây là các lỗi
 - Chữ hiển thị (tháng, ngày, nhãn) theo `language` của app, không theo locale trình duyệt (`toLocaleString("default")`, `Intl` không truyền locale).
 - `<main>` có `tw-page`; `border*` ngoài primitive kèm `border-border`; không `text-destructive` cho chữ.
 - `className` truyền vào composite được gộp (`cn(..., className)`), không bị ghi đè.
+- Tone của topic/tag/tên luôn qua `toneFor`, status qua `statusTone`; không tự ánh xạ tone trong trang (cùng giá trị phải cùng màu ở mọi trang).
 
 ## Điều cấm
 

@@ -4,8 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ui-foundation-v2.
 
 ## Bắt đầu từ đây (cập nhật 2026-11-03)
 
-- **Task 5 (Home + `EmptyState`) xong, đủ 2 vòng review** (vòng 1: 1 × P2 tone tag → `toneFor`, đã sửa; vòng 2 approve). Test liên quan 30/30, build đạt, kiểm bằng mắt dark/light + mobile 390px. **Chờ người dùng nhận Task 5**; sau đó Task 6 trong session mới.
-- **Task 1–4 đã nhận, đã commit WIP** — không đọc lại, không làm lại, không kiểm lại.
+- **Task 1–5 đã nhận, đã commit WIP** (Task 5 nhận 2026-11-03) — không đọc lại, không làm lại, không kiểm lại. **Task tiếp theo: Task 6** (Admin), session mới; dùng Playwright MCP để kiểm bằng mắt.
 - **Thứ tự sau đó:** Task 6 (chỉ Admin; consumer đầu tiên của `components/EmptyState.tsx`) → Task 7a (chỉ Moderator) → Task 7b (dọn CSS ngoài Author/Blogs, giữ preflight tắt, gỡ `framer-motion`).
 - **Đã tách sang module riêng:** Author (`AuthorApplyPage`, `AuthorBlogsPage`, `TagPicker`) → `author-ui-shadcn`; Blogs (`BlogsPage`, `BlogDetailPage`, `MarkdownContent`, wrapper `Pagination`) → `blogs-ui-shadcn`. Không sửa hoặc redesign các trang/component này trong Task 6/7.
 - **Bỏ qua — không liên quan Task 6:** trang/CSS Author và Blogs; trang Moderator + `moderator.css` thuộc Task 7a; `server/`; các module cũ khác trong `PLAN.md`.
@@ -21,10 +20,14 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ui-foundation-v2.
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-03 — Nhận Task 5
+- Người dùng nhận Task 5; commit WIP `wip(ui-foundation-v2): Task 5`; nhờ Codex đồng bộ spec theo log.
+- Việc dở: quyết sửa logo topbar mobile 32px trong Task 6 hay không.
+
 ### 2026-11-03 — Playwright MCP
 - Thêm Playwright MCP mức project (`.mcp.json`), Chromium cài ở `%LOCALAPPDATA%/ms-playwright`. Thử bằng script tạm: context 390×844 `hasTouch` → `pointer: coarse` khớp, nút hero 44px.
 - Bắt được lỗi Task 5: nút hero mobile cảm ứng co lại, chữ tràn (`pointer-coarse:min-w-11` của Button đè `max-sm:min-w-44`) → `max-sm:w-full`; sau sửa 342×44, không tràn. Home test 5/5, build đạt.
-- Luật: `visual-check` viết lại (Playwright chính, Chrome dự phòng, bẫy `min-w`); `frontend.md` trỏ theo.
+- Luật: `visual-check` viết lại (Playwright chính, Chrome dự phòng, bẫy `min-w`); `frontend.md` trỏ theo. Thêm bảng “Khi nào dùng” (Vitest / Playwright / Chrome / không mở trình duyệt); không thêm e2e Playwright vào `app/` khi chưa có spec.
 - Việc dở: logo topbar mobile 32px (Task 2) chờ người dùng quyết; người dùng nhận Task 5.
 
 ### 2026-11-03 — Tách Blogs UI

@@ -49,7 +49,7 @@ Luật riêng theo vùng tự nạp khi làm việc với file tương ứng: [`
 
 ## Bài học vận hành (chung)
 
-- Công cụ/script tạm: viết một lần bằng file sạch (Write), không vá nhiều lần bằng `sed` hoặc heredoc. Node/Python trên Windows dùng đường dẫn Windows (`D:/...`), không dùng `/d/...` của Git Bash.
+- Công cụ/script tạm: viết một lần bằng file sạch (Write), không vá nhiều lần bằng `sed` hoặc heredoc. Node/Python trên Windows dùng đường dẫn Windows (`D:/...`), không dùng `/d/...` của Git Bash. File CRLF: sửa bằng Edit hoặc Python `newline=''` + chuỗi `\r\n`; không `sed -i` của Git Bash (làm mất CRLF).
 - Chạy song song các bước độc lập; chạy lâu thì để nền. Tắt server sau khi dùng (chỉ server do Claude bật; server của người dùng thì để nguyên).
 - **Windows:** lệnh có cờ `/X` (`taskkill /PID`) chạy bằng PowerShell. Script sửa file giữ kiểu xuống dòng sẵn có (CRLF/LF); PowerShell ghi file không BOM (`[IO.File]::WriteAllText` + `UTF8Encoding $false`). `npm` luôn `cd` đường dẫn tuyệt đối vào `app/`.
 - Công cụ kiểm chứng dùng lại cho nhiều task: đề nghị Codex đưa đường dẫn vào spec rồi mới thêm vào repo; không tự tạo ngoài spec.

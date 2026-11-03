@@ -2,7 +2,7 @@
 
 Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Codex viết; Claude chỉ ghi vào mục “Phản hồi”.
 
-**Mục tiêu:** Chuyển toàn bộ giao diện frontend TechVerse sang shadcn/ui + Tailwind CSS v4 trên nhánh `feature/shadcn-ui`, giữ nguyên nghiệp vụ, route, API và nội dung vi/en. Giao diện mới dùng một hệ token dark/light, component và tỷ lệ thống nhất theo [`javabuilder-patterns.md`](../docs/design/javabuilder-patterns.md); sau khi hoàn tất không còn CSS trang kiểu cũ.
+**Mục tiêu:** Chuyển toàn bộ giao diện frontend TechVerse **ngoài các trang phía Author và Blogs** sang shadcn/ui + Tailwind CSS v4 trên nhánh `feature/shadcn-ui`, giữ nguyên nghiệp vụ, route, API và nội dung vi/en. Giao diện mới dùng một hệ token dark/light, component và tỷ lệ thống nhất theo [`javabuilder-patterns.md`](../docs/design/javabuilder-patterns.md); Author, Blogs và lớp CSS tương thích của chúng được giữ nguyên để chuyển trong các module riêng.
 **Làn:** Đầy đủ
 **Giai đoạn:** Giao diện
 **Đổi giao diện:** Có
@@ -14,21 +14,20 @@ Chỉ được sửa các đường dẫn sau. Ngoài danh sách là ngoài ph�
 
 - Cấu hình và dependency: `app/index.html`, `app/package.json`, `app/package-lock.json`, `app/components.json`, `app/tsconfig.json`, `app/tsconfig.app.json`, `app/vite.config.ts`, `app/vitest.config.ts`.
 - Điểm vào và khung route: `app/src/main.tsx`, `app/src/App.tsx`, `app/src/styles.css`.
-- Token/CSS chuyển tiếp và CSS cũ sẽ được xóa theo task: `app/src/styles/tokens.css`, `app/src/styles/base.css`, `app/src/styles/layout/{shell,sidebar}.css`, `app/src/styles/components/{controls,forms,content}.css`, `app/src/styles/pages/{home,settings,auth,profile,admin,author,moderator,blogs}.css`.
+- Token/CSS chuyển tiếp và CSS cũ được xóa hoặc giữ làm lớp tương thích Author/Blogs theo từng task: `app/src/styles/tokens.css`, `app/src/styles/base.css`, `app/src/styles/layout/{shell,sidebar}.css`, `app/src/styles/components/{controls,forms,content}.css`, `app/src/styles/pages/{home,settings,auth,profile,admin,author,moderator,blogs}.css`.
 - Hạ tầng shadcn: `app/src/lib/utils.ts`, `app/src/components/ui/*.tsx`, `app/src/hooks/use-mobile.ts` cho shadcn Sidebar đã chọn.
-- Component dùng chung/nghiệp vụ: `app/src/components/{EmptyState,GoogleAuthButton,MarkdownContent,Pagination,TagPicker,UserAvatar}.tsx`, `app/src/components/auth/AuthLayout.tsx`, `app/src/components/brand/Brand.tsx`, `app/src/components/layout/{AccountIdentity,AdminSidebar,ModeratorSidebar,Sidebar,StaffSettingsLinks}.tsx`.
-- Trang Home/Blogs: `app/src/pages/Home/HomePage.tsx`, `app/src/pages/Blogs/BlogsPage.tsx` (`BlogsPage`, `BlogDetailPage`).
+- Component dùng chung/nghiệp vụ: `app/src/components/{EmptyState,GoogleAuthButton,UserAvatar}.tsx`, `app/src/components/auth/AuthLayout.tsx`, `app/src/components/brand/Brand.tsx`, `app/src/components/layout/{AccountIdentity,AdminSidebar,ModeratorSidebar,Sidebar,StaffSettingsLinks}.tsx`.
+- Trang Home: `app/src/pages/Home/HomePage.tsx`.
 - Trang Profile/Settings: `app/src/pages/Profile/{AvatarUpload,ChangePasswordPanel,ProfilePage}.tsx`, `app/src/pages/Settings/{LanguagePage,SettingsLayout,ThemePage}.tsx`.
 - Trang Auth: `app/src/pages/Login/{LoginPage,ForgotPasswordPage,GoogleCallbackPage}.tsx`, `app/src/pages/Register/RegisterPage.tsx`.
-- Trang Author: `app/src/pages/Author/{AuthorApplyPage,AuthorBlogsPage}.tsx`.
 - Trang Admin: `app/src/pages/Admin/{AdminDashboardPage,AdminUsersPage,AuthorApplicationsPage,TaxonomyPage}.tsx`.
 - Trang Moderator và fallback: `app/src/pages/Moderator/{ModeratorDashboardPage,ModeratorArticlesPage}.tsx`, `app/src/pages/PlaceholderPage.tsx`.
-- Test frontend hiện có được phép cập nhật: `app/src/{App.auth,App.author-session,StaffPreferences}.test.tsx`, `app/src/theme-bootstrap.test.ts`, `app/src/components/{Pagination.test.tsx,layout/Sidebar.test.tsx}`, `app/src/pages/Admin/AdminUsersPage.test.tsx`, `app/src/pages/Author/AuthorBlogsPage.test.tsx`, `app/src/pages/Blogs/BlogsPage.test.tsx`, `app/src/pages/Home/HomePage.test.tsx`, `app/src/pages/Moderator/ModeratorArticlesPage.test.tsx`, `app/src/pages/Profile/{ChangePasswordPanel,ProfilePage}.test.tsx`; được thêm test đồng vị cho đúng component/trang trong danh sách trên.
+- Test frontend hiện có được phép cập nhật: `app/src/{App.auth,App.author-session,StaffPreferences}.test.tsx`, `app/src/theme-bootstrap.test.ts`, `app/src/components/layout/Sidebar.test.tsx`, `app/src/pages/Admin/AdminUsersPage.test.tsx`, `app/src/pages/Home/HomePage.test.tsx`, `app/src/pages/Moderator/ModeratorArticlesPage.test.tsx`, `app/src/pages/Profile/{ChangePasswordPanel,ProfilePage}.test.tsx`; được thêm test đồng vị cho đúng component/trang trong danh sách trên.
 - Setup test mới: `app/src/test/setup.ts`.
 - Dọn script cũ: `app/scripts/verify-css-split.mjs`.
 - Luật/tài liệu: `.claude/rules/frontend.md`, `.claude/skills/ui-components/SKILL.md`, `docs/design/UI_GUIDE.md`.
 
-Không sửa `app/src/services/**`, `app/src/data/**`, `app/src/types/**` hay `server/**`. Nếu việc chuyển giao diện cho thấy cần đổi các đường dẫn đó, dừng task liên quan và đưa vấn đề về cho người dùng thay vì mở rộng phạm vi.
+Từ Task 6 trở đi, không sửa `app/src/services/**`, `app/src/data/**`, `app/src/types/**`, `app/src/pages/Author/**`, `app/src/pages/Blogs/**`, `app/src/components/{TagPicker,MarkdownContent,Pagination}.tsx`, test riêng của Author/Blogs hay `server/**`. Các file CSS legacy còn consumer Author/Blogs chỉ được giữ nguyên hoặc lược bỏ rule đã chứng minh không còn consumer; không được đổi hình thức/hành vi các trang đó. Nếu việc chuyển giao diện cho thấy cần đổi các đường dẫn này, dừng task liên quan và đưa vấn đề về cho người dùng thay vì mở rộng phạm vi.
 
 ## Bản đồ chi tiết
 
@@ -36,12 +35,14 @@ Không sửa `app/src/services/**`, `app/src/data/**`, `app/src/types/**` hay `s
 
 | Hiện ở đâu | Dùng bởi | Đích sau thay đổi |
 |---|---|---|
-| `app/src/styles.css` import Google Font và 16 file CSS cũ | Toàn app qua `main.tsx` | Entry Tailwind v4 dùng CSS config; giai đoạn chuyển chỉ nạp theme + utilities, task cuối bật preflight và bỏ mọi import CSS cũ |
-| `app/src/styles/tokens.css` (`:root`, `:root[data-theme='light']`) | Toàn bộ CSS hiện tại | Nguồn duy nhất cho token shadcn, tone badge, code highlighting và dark/light; shadcn token là canonical sau task 7 |
+| `app/src/styles.css` import Google Font và 16 file CSS cũ | Toàn app qua `main.tsx` | Entry Tailwind v4 dùng CSS config; chỉ nạp theme + utilities, chưa bật preflight; Task 7b bỏ import CSS của trang đã chuyển và giữ lớp tương thích tối thiểu cho Author/Blogs |
+| `app/src/styles/tokens.css` (`:root`, `:root[data-theme='light']`) | Toàn bộ CSS hiện tại | Nguồn duy nhất cho token shadcn, tone badge, code highlighting và dark/light; shadcn token là canonical, alias legacy chỉ giữ khi Author/Blogs còn dùng |
 | `App.tsx` (`data-theme`, shell, mobile topbar, route) | Mọi trang | Giữ `data-theme`/localStorage/route, thay lớp trình bày và primitive giao diện |
 | `Sidebar`, `AdminSidebar`, `ModeratorSidebar`, `StaffSettingsLinks`, `AccountIdentity` | Shell theo vai trò | Một cấu trúc shadcn Sidebar thống nhất, giữ menu/quyền/thu gọn/mobile hiện tại |
 | `UserAvatar`, `GoogleAuthButton`, `Brand` | Sidebar, Profile, Auth | Component ghép nghiệp vụ ngoài `components/ui/`; `Brand` dùng logo Cloudinary `techverse/brand/logo`, không tự thiết kế logo mới trong Task 2 |
-| `Pagination`, `TagPicker`, `MarkdownContent` | Blogs, Author blogs, Moderator | Giữ API component và hành vi; Pagination bọc primitive shadcn theo quyết định đã chốt |
+| `Pagination` | Author, Blogs, Admin, Moderator | Primitive shadcn đã sinh ở Task 1 nhưng wrapper dùng chung giữ nguyên trong module này để không đổi gián tiếp Author/Blogs; migrate trong `blogs-ui-shadcn` và regression mọi caller |
+| `MarkdownContent` | Blogs và Moderator | Giữ nguyên trong module này; chuyển cùng Blogs trong module `blogs-ui-shadcn`, kèm regression cho Moderator |
+| `TagPicker` | Chỉ `AuthorBlogsPage` | Giữ nguyên trong module này; chuyển sang shadcn trong module `author-ui-shadcn` |
 | Native `<dialog>` ở Profile và `window.confirm` ở bốn trang quản trị | Profile/Admin/Moderator | `Dialog`/`AlertDialog` Radix; bỏ stub `HTMLDialogElement` và API trình duyệt cũ |
 | Input ngày sinh kiểu gõ + native picker ở Profile | `ProfilePage` | `Popover` + `Calendar`, vẫn cho gõ `dd/mm/yyyy` và giữ validation/API hiện tại |
 | 13 file test / 221 test hiện tại | Luồng chính frontend | Giữ regression; test phụ thuộc class cũ chuyển sang role/label/state |
@@ -53,13 +54,9 @@ Chỉ lấy bố cục, tỷ lệ và công thức màu từ tài liệu mẫu; 
 | Route/trang TechVerse | Mẫu áp dụng từ `javabuilder-patterns.md` | Quy định chính |
 |---|---|---|
 | `/` — `HomePage` | 4.1 đầu trang + 4.7 tiêu đề khu vực + 4.3 lưới card | Hero hiện có, section header căn giữa, card nội dung 3 cột; không khôi phục các khối đã bỏ theo D-015/D-016 |
-| `/blogs` — `BlogsPage` | 4.1 đầu trang gọn + 4.2 card bộ lọc + 4.3 lưới card | Filter card 12 cột, lưới 3 cột desktop, badge topic/tag có tone ổn định |
-| `/blogs/:id` — `BlogDetailPage` | 4.4 trang chi tiết | Nội dung + cột phải 280px, gap 32px; có breadcrumb, khối Tóm tắt và hàng tag màu |
 | `/profile` — `ProfilePage`, `AvatarUpload`, `ChangePasswordPanel` | 4.6 hồ sơ hai cột | Card trái 320px, card nội dung bên phải; avatar, form và hành động giữ nguyên nghiệp vụ |
 | `/settings/theme`, `/settings/language` — `SettingsLayout`, `ThemePage`, `LanguagePage` | 4.6 cài đặt hai cột | Dùng cùng khung Profile/Settings, card lựa chọn có trạng thái rõ ràng |
 | `/login`, `/register`, `/forgot-password`, `/auth/callback` — Auth pages + `AuthLayout` | Bố cục Auth hiện tại, thay control theo hệ 1–3 | Không đổi luồng/tab route/copy; chuẩn hóa thang chữ, Card, Button, Input, Label và trạng thái |
-| `/author/apply` — `AuthorApplyPage` | 4.1 đầu trang gọn + form trong card | Không tạo trường/luồng mới; trạng thái hồ sơ dùng Badge tone |
-| `/author/blogs` — `AuthorBlogsPage` | 4.1 đầu trang gọn + 4.2 filter + 4.3 lưới card | Giữ editor/quản lý hiện tại; danh sách và tag dùng primitive mới |
 | `/admin` — `AdminDashboardPage` | 4.1 đầu trang gọn + card số liệu + 4.5 card danh sách/rỗng | Chỉ trình bày dữ liệu hiện có, không tạo dashboard/backend mới |
 | `/admin/users` — `AdminUsersPage` | 4.2 filter + 4.5 hàng trong card | Checkbox chọn nhiều; xác nhận thao tác bằng AlertDialog |
 | `/admin/author-applications` — `AuthorApplicationsPage` | 4.2 filter + 4.5 hàng trong card | Badge trạng thái; chi tiết/hành động trong card/dialog; AlertDialog xác nhận |
@@ -72,7 +69,7 @@ Mọi mẫu dùng vùng nội dung tối đa 1280px, padding ngang 24–32px, ga
 
 ### Token shadcn và tương phản
 
-Trong task 1, token shadcn lấy đúng giá trị từ token cũ để trang chưa chuyển không đổi màu. Riêng tên `--muted` bị xung đột nghĩa: CSS cũ dùng nó làm chữ phụ, còn shadcn dùng nó làm nền. Vì CSS variable không thể “chụp” giá trị cũ qua alias động, task 1 phải chuyển mọi reference chữ phụ legacy từ `var(--muted)` sang `var(--muted-foreground)` trước, rồi mới đặt `--muted` = `--surface-2`; không được viết `--muted-foreground: var(--muted)` sau khi đổi nghĩa. Các token không xung đột có thể dùng alias tương thích trong giai đoạn chuyển. Task 7b xóa alias cũ không còn dùng và giữ các token shadcn làm nguồn chuẩn. `@theme inline` expose màu/font cho utility Tailwind; mọi giá trị màu thực nằm trong `app/src/styles/tokens.css`.
+Trong task 1, token shadcn lấy đúng giá trị từ token cũ để trang chưa chuyển không đổi màu. Riêng tên `--muted` bị xung đột nghĩa: CSS cũ dùng nó làm chữ phụ, còn shadcn dùng nó làm nền. Vì CSS variable không thể “chụp” giá trị cũ qua alias động, task 1 phải chuyển mọi reference chữ phụ legacy từ `var(--muted)` sang `var(--muted-foreground)` trước, rồi mới đặt `--muted` = `--surface-2`; không được viết `--muted-foreground: var(--muted)` sau khi đổi nghĩa. Các token không xung đột có thể dùng alias tương thích trong giai đoạn chuyển. Task 7b xóa alias cũ không còn dùng ngoài lớp tương thích Author và giữ các token shadcn làm nguồn chuẩn. `@theme inline` expose màu/font cho utility Tailwind; mọi giá trị màu thực nằm trong `app/src/styles/tokens.css`.
 
 | Token shadcn | Tối mặc định | Sáng (`data-theme='light'`) | Ánh xạ/ghi chú |
 |---|---:|---:|---|
@@ -129,24 +126,24 @@ Chỉ sinh component có người dùng trong bảng bằng `npx shadcn@latest a
 
 | Component | Trang/component dùng |
 |---|---|
-| `button` | Mọi form, filter, pagination, hành động Profile/Author/Admin/Moderator, mobile topbar |
-| `input`, `label`, `textarea` | Auth; Profile; Author apply/blog editor; bộ lọc Blogs/Admin/Moderator; ghi chú duyệt |
-| `card` | Home, Blogs, Profile/Settings, Auth, Author, Admin, Moderator, Placeholder |
-| `native-select` | Mọi select chữ đơn giản hiện có ở Blogs/Author/Admin/Moderator; giữ `<select>` gốc, mobile UX và `selectOptions` |
-| `checkbox` | Chọn nhiều ở `AdminUsersPage`; có thể làm primitive chọn tag trong `TagPicker` nhưng không đổi API |
-| `badge` + `tone` | Topic/category/tag; trạng thái bài viết/hồ sơ tác giả; chip số liệu trên Home/Blogs/Author/Admin/Moderator |
+| `button` | Mọi form, filter, pagination, hành động Profile/Admin/Moderator, mobile topbar |
+| `input`, `label`, `textarea` | Auth; Profile; bộ lọc Admin/Moderator; ghi chú duyệt |
+| `card` | Home, Profile/Settings, Auth, Admin, Moderator, Placeholder |
+| `native-select` | Mọi select chữ đơn giản hiện có ở Admin/Moderator; giữ `<select>` gốc, mobile UX và `selectOptions` |
+| `checkbox` | Chọn nhiều ở `AdminUsersPage` |
+| `badge` + `tone` | Topic/category/tag; trạng thái bài viết/hồ sơ tác giả trong màn Admin; chip số liệu trên Home/Admin/Moderator |
 | `avatar` | `UserAvatar`, `AccountIdentity`, Profile, byline bài viết, danh sách người dùng/hồ sơ |
 | `separator` | Sidebar, card meta, Profile/Settings, Auth, danh sách hàng |
-| `breadcrumb` | Chỉ Blog detail; không thêm vào Author/Admin/Moderator khi chưa có điều hướng phân cấp |
+| `breadcrumb` | Đã sinh ở Task 1 cho Blog detail nhưng chưa dùng trong module này; module `blogs-ui-shadcn` là consumer |
 | `dialog` | Profile/logout-all và vùng chi tiết/chỉnh sửa đang cần modal; không đổi thành modal nếu hiện tại là trang |
 | `alert-dialog` | Thay `window.confirm` ở `AdminUsersPage`, `AuthorApplicationsPage`, `TaxonomyPage`, `ModeratorArticlesPage` |
 | `popover`, `calendar` | Chọn ngày sinh Profile, vẫn cho nhập `dd/mm/yyyy` |
 | `tooltip` | Icon button và sidebar thu gọn |
-| `skeleton` | Trạng thái tải ở Profile, Blogs, Author, Admin, Moderator |
+| `skeleton` | Trạng thái tải ở Profile, Admin, Moderator |
 | `sheet` | Sidebar/mobile navigation 320px |
 | `sidebar` | Đã chọn 4A; dùng cho shell User/Admin/Moderator, controlled bằng state/localStorage hiện có |
-| `pagination` | Đã chọn 6B; bọc sau API `Pagination` hiện tại |
-| `EmptyState` (composite ngoài `ui/`) | Tạo và test ở Task 5; dùng cho Admin/Author apply ở Task 6 và nhóm trang hoãn ở Task 7a |
+| `pagination` | Primitive đã sinh ở Task 1; wrapper `Pagination` dùng chung chỉ migrate trong `blogs-ui-shadcn` |
+| `EmptyState` (composite ngoài `ui/`) | Tạo và test ở Task 5; dùng cho Admin ở Task 6 và Moderator ở Task 7a |
 
 Tone cho category/topic/tag được gán cố định bằng cấu hình hoặc hàm băm tên ổn định; tone cho status/số liệu dùng bảng ánh xạ semantic cố định. Cùng một giá trị phải ra cùng tone ở mọi trang và cả hai ngôn ngữ.
 
@@ -258,67 +255,69 @@ Không thêm `react-hook-form`, `zod`, thư viện UI thứ hai hoặc `tailwind
 - [ ] Trong `app/`, test liên quan `src/pages/Home/HomePage.test.tsx` và test mới của `EmptyState` đạt bằng `npx vitest run <các file>`; `npm run build` đạt. Không chạy full `npm test` hoặc backend.
 - [ ] Kiểm bằng mắt Home dark/light desktop và mobile; thiếu môi trường ghi “chưa kiểm”.
 
-### Task 6 — Author apply và Admin
+### Task 6 — Admin
 
-- Chuyển `AuthorApplyPage` và Admin dashboard/users/author applications/taxonomy theo bảng ánh xạ. Hoãn `AuthorBlogsPage` và toàn bộ Moderator sang Task 7a.
+- Chuyển Admin dashboard/users/author applications/taxonomy theo bảng ánh xạ. Toàn bộ trang phía Author được giữ nguyên cho module `author-ui-shadcn`; toàn bộ Moderator tiếp tục hoãn sang Task 7a.
 - Dùng `EmptyState` từ Task 5 cho trạng thái rỗng phù hợp, truyền copy/hành động từ trang thay vì đặt nghiệp vụ trong component.
-- Chuyển component `Pagination` sang primitive shadcn nhưng giữ props/API và page 0-based hiện tại để Admin dùng ngay; Task 7a tái sử dụng cho các trang hoãn.
+- Giữ nguyên wrapper `Pagination`, props/API, CSS và page 0-based hiện tại vì component còn dùng chung với Author/Blogs; Admin tiếp tục dùng wrapper này. Việc bọc primitive shadcn chuyển sang `blogs-ui-shadcn` và phải regression mọi caller.
 - Filter dùng Card/Input/NativeSelect; danh sách dùng hàng trong Card; mọi status/topic/tag/stat dùng Badge tone ổn định.
 - Admin users dùng Checkbox cho chọn nhiều. Thay `window.confirm` ở `AdminUsersPage`, `AuthorApplicationsPage`, `TaxonomyPage` bằng AlertDialog, giữ nguyên thời điểm gọi API, payload, loading/error và câu hỏi xác nhận hiện có. Câu hỏi cũ thành mô tả; tiêu đề lấy từ nhãn hành động; chỉ thêm inline copy cấu trúc tối thiểu vi/en.
-- Xóa `styles/pages/admin.css` khi task đạt. Giữ `author.css` vì `AuthorBlogsPage` chưa chuyển; chỉ xóa selector AuthorApply đã hết dùng nếu không ảnh hưởng trang hoãn.
+- Xóa các rule chỉ còn phục vụ Admin sau khi task đạt. Nếu `styles/pages/admin.css` vẫn chứa rule `.application-row`/`.applications-actions` mà `AuthorBlogsPage` đang dùng thì giữ nguyên các rule đó và file/import tương ứng như lớp tương thích; không di chuyển, đổi selector hoặc đổi giao diện Author trong task này.
 
 #### Xong khi — Task 6
 
-- [ ] Author apply và toàn bộ route Admin hiện hữu dùng primitive/token mới, đúng mẫu và giữ đủ loading/empty/error.
+- [ ] Toàn bộ route Admin hiện hữu dùng primitive/token mới, đúng mẫu và giữ đủ loading/empty/error.
 - [ ] Bulk select Admin users dùng Checkbox có label/trạng thái chọn rõ; ba xác nhận Admin dùng AlertDialog, không còn `window.confirm` trong ba trang này.
-- [ ] Apply/review/resubmit, taxonomy và user status giữ nguyên API/payload/quyền/copy; không thêm route/chức năng/field Author mới.
-- [ ] Pagination giữ API hiện tại và các caller Admin hoạt động; `EmptyState` được dùng ở consumer thật.
-- [ ] Không còn `admin.css`, import hoặc selector Admin mồ côi; `author.css`, `blogs.css`, `moderator.css` vẫn được giữ cho Task 7a.
-- [ ] Trong `app/`, các test liên quan `src/App.author-session.test.tsx`, `src/pages/Admin/AdminUsersPage.test.tsx`, `src/components/Pagination.test.tsx` và test mới của Author apply/Admin (nếu có) đạt bằng `npx vitest run <các file>`; `npm run build` đạt. Không chạy full `npm test` hoặc backend.
-- [ ] Kiểm bằng mắt dark/light desktop cho Author apply và các trang Admin, mobile cho ít nhất một danh sách; thiếu môi trường ghi “chưa kiểm”.
+- [ ] Review hồ sơ tác giả phía Admin, taxonomy và user status giữ nguyên API/payload/quyền/copy; không thêm route/chức năng/field mới.
+- [ ] Pagination giữ nguyên API/hình thức hiện tại và các caller Admin hoạt động; `EmptyState` được dùng ở consumer thật.
+- [ ] Không còn rule/import Admin mồ côi; nếu còn `admin.css` thì chỉ giữ rule có consumer trực tiếp ở trang Author chưa chuyển. `author.css`, `blogs.css`, `moderator.css` vẫn được giữ.
+- [ ] Trong `app/`, các test liên quan `src/pages/Admin/AdminUsersPage.test.tsx` và test mới của Admin (nếu có) đạt bằng `npx vitest run <các file>`; `npm run build` đạt. Không chạy full `npm test` hoặc backend.
+- [ ] Kiểm bằng mắt dark/light desktop cho các trang Admin, mobile cho ít nhất một danh sách; thiếu môi trường ghi “chưa kiểm”.
 
-### Task 7a — Nhóm trang hoãn: Blogs, Author blogs và Moderator
+### Task 7a — Moderator
 
-- Chuyển Blogs list sang filter card + lưới 3 cột; Blog detail sang bố cục hai cột với rail 280px, breadcrumb, Tóm tắt, tag màu và `MarkdownContent`.
-- Chuyển `AuthorBlogsPage`, `ModeratorDashboardPage`, `ModeratorArticlesPage`; dùng lại Pagination/EmptyState, chuyển `TagPicker` và `MarkdownContent` sang token/utility mới nhưng giữ API, markdown render và syntax highlighting hiện tại.
+- Chuyển `ModeratorDashboardPage`, `ModeratorArticlesPage`; dùng lại Pagination/EmptyState. Giữ nguyên `MarkdownContent` và CSS markdown hiện tại vì component còn dùng chung với Blog detail; chỉ ghép nó vào bố cục Moderator mới.
 - Thay `window.confirm` còn lại ở `ModeratorArticlesPage` bằng AlertDialog theo cùng quy tắc copy vi/en của Task 6.
-- Xóa `styles/pages/blogs.css`, `author.css`, `moderator.css` và phần `components/content.css` đã hết consumer khi toàn bộ nhóm này đạt.
+- Xóa `styles/pages/moderator.css` và rule chỉ phục vụ Moderator đã hết consumer khi task đạt; giữ `styles/pages/blogs.css`, `MarkdownContent`, rule markdown/TagPicker trong `components/content.css` và mọi CSS còn consumer Author/Blogs.
 
 #### Xong khi — Task 7a
 
-- [ ] Blogs list/detail, Author blogs và toàn bộ route Moderator dùng primitive/token mới, đúng mẫu và responsive.
-- [ ] Filter/query/pagination/navigation, quản lý bài, moderation, trạng thái loading/empty/error và markdown giữ nguyên hành vi/API/copy.
-- [ ] Topic/tag/status dùng Badge tone ổn định; Blog detail có rail 280px, Summary và hàng tag ở desktop.
-- [ ] Moderator dùng AlertDialog, không còn `window.confirm`; TagPicker/MarkdownContent/Pagination giữ hợp đồng hiện tại.
-- [ ] Không còn `blogs.css`, `author.css`, `moderator.css` hoặc selector/import mồ côi của nhóm đã chuyển.
-- [ ] Trong `app/`, các test liên quan `src/pages/Blogs/BlogsPage.test.tsx`, `src/pages/Author/AuthorBlogsPage.test.tsx`, `src/pages/Moderator/ModeratorArticlesPage.test.tsx`, `src/components/Pagination.test.tsx` và test mới của MarkdownContent/TagPicker/Moderator (nếu có) đạt bằng `npx vitest run <các file>`; `npm run build` đạt. Không chạy full `npm test` hoặc backend.
-- [ ] Kiểm bằng mắt dark/light desktop cho Blogs list/detail, Author blogs và Moderator; mobile cho Blogs detail và một trang danh sách; thiếu môi trường ghi “chưa kiểm”.
+- [ ] Toàn bộ route Moderator dùng primitive/token mới, đúng mẫu và responsive; đủ loading/empty/error.
+- [ ] Filter/query/pagination/navigation, moderation và markdown giữ nguyên hành vi/API/copy.
+- [ ] Topic/tag/status dùng Badge tone ổn định; vùng đọc bài giữ Markdown render và syntax highlighting hiện tại.
+- [ ] Moderator dùng AlertDialog, không còn `window.confirm`; MarkdownContent/Pagination giữ nguyên hợp đồng và hình thức hiện tại.
+- [ ] Không còn `moderator.css` hoặc selector/import Moderator mồ côi; `blogs.css`, `author.css`, rule markdown/TagPicker và lớp tương thích Author/Blogs vẫn còn nguyên.
+- [ ] Trong `app/`, các test liên quan `src/pages/Moderator/ModeratorArticlesPage.test.tsx` và test mới của Moderator (nếu có) đạt bằng `npx vitest run <các file>`; `npm run build` đạt. Không chạy full `npm test` hoặc backend.
+- [ ] Kiểm bằng mắt dark/light desktop cho Moderator dashboard/articles và mobile cho một trang danh sách; thiếu môi trường ghi “chưa kiểm”.
 
-### Task 7b — Dọn CSS cũ và hoàn tất migration
+### Task 7b — Dọn CSS ngoài Author/Blogs và hoàn tất phạm vi module
 
-- Bật Tailwind preflight sau khi mọi trang đã chuyển; kiểm lại semantic element, focus, form control và markdown để reset không gây regression.
-- Xóa toàn bộ import/file CSS legacy còn lại: `base.css`, `layout/*`, `components/*`, `styles/pages/*`; giữ `styles.css` làm entry Tailwind và `styles/tokens.css` làm nguồn token.
-- Chuyển shadcn token thành canonical, xóa alias/token cũ không còn reference. Xóa `app/scripts/verify-css-split.mjs` vì chỉ phục vụ kiến trúc CSS cũ.
+- Tiếp tục **không bật Tailwind preflight** vì các trang Author/Blogs chưa chuyển vẫn phụ thuộc reset/style legacy; việc bật preflight chỉ thực hiện sau khi cả hai module riêng đã chuyển xong.
+- Giữ các reset chuyển tiếp trong `styles.css` đang thay vai trò preflight cho component shadcn; chỉ xóa chúng trong module hoãn hoàn tất sau cùng, sau khi preflight được bật và kiểm regression toàn frontend.
+- Xóa import/file/rule CSS legacy không còn consumer ngoài Author/Blogs. Giữ lớp tương thích tối thiểu cho `AuthorApplyPage`, `AuthorBlogsPage`, `BlogsPage`, `BlogDetailPage`, `TagPicker`, `MarkdownContent` và `Pagination`: `base.css`, `layout/shell.css`, `components/controls.css`, `components/forms.css`, phần markdown/TagPicker/Pagination trong `components/content.css`, `pages/author.css`, `pages/blogs.css`, cùng phần `.application-row`/`.applications-actions` trong `pages/admin.css` nếu vẫn còn consumer trực tiếp.
+- Chuyển shadcn token thành canonical; chỉ giữ alias/token cũ còn được lớp tương thích Author/Blogs tham chiếu. Xóa `app/scripts/verify-css-split.mjs` vì không còn dùng để bảo toàn toàn bộ inventory CSS cũ.
 - Xóa dependency `framer-motion` sau khi Sidebar/Home đã thay animation và grep không còn import; Auth không phải consumer.
-- Quét và loại mọi literal màu ngoài token, `window.confirm`, `window.alert`, class/selector CSS legacy và import CSS trang.
+- Quét và loại mọi literal màu ngoài token, `window.confirm`, `window.alert`, class/selector CSS legacy và import CSS trang **ngoài allowlist tương thích Author/Blogs nêu trên**.
 
 #### Xong khi — Task 7b
 
-- [ ] Tailwind preflight được bật; dark mặc định/light tùy chọn, focus, form, markdown và responsive không regression.
-- [ ] `test ! -d src/styles/pages || ! find src/styles/pages -type f -print -quit | grep -q .` chạy trong `app/` đạt; không còn file CSS legacy/import tương ứng.
+- [ ] Tailwind preflight vẫn chưa được nạp và reset chuyển tiếp cần thiết trong `styles.css` vẫn còn; dark mặc định/light tùy chọn, focus, form, markdown và responsive của các trang đã chuyển không regression.
+- [ ] `find src/styles/pages -type f ! -name 'author.css' ! -name 'admin.css' ! -name 'blogs.css' -print` chạy trong `app/` không có kết quả; nếu `admin.css` còn thì chỉ chứa rule có consumer trực tiếp ở Author chưa chuyển.
 - [ ] `rg -n --glob '*.{css,ts,tsx}' --glob '!styles/tokens.css' '(#[0-9A-Fa-f]{3,8}\b|(?:rgb|hsl|oklch|oklab|lab|lch|color)\()' src` không có kết quả màu literal.
 - [ ] `rg -n 'window\.(confirm|alert)\(' src` không có kết quả; mọi xác nhận nguy hiểm dùng AlertDialog.
-- [ ] Không còn token cũ/class legacy không được tham chiếu; `scripts/verify-css-split.mjs` và dependency/import `framer-motion` đã xóa.
-- [ ] Toàn bộ route trong bảng ánh xạ dùng component/token mới, giữ hành vi/route/API/copy vi/en.
+- [ ] Không còn token cũ/class legacy không được tham chiếu ngoài lớp tương thích Author/Blogs; `scripts/verify-css-split.mjs` và dependency/import `framer-motion` đã xóa.
+- [ ] Toàn bộ route trong bảng ánh xạ dùng component/token mới, giữ hành vi/route/API/copy vi/en; `/author/apply`, `/author/blogs`, `/blogs`, `/blogs/:id` vẫn hoạt động với giao diện cũ, không bị cleanup làm hỏng.
 - [ ] Trong `app/`, các test liên quan đến hạ tầng dùng chung bị sửa ở cleanup — tối thiểu `src/theme-bootstrap.test.ts`, `src/styles/tokens.test.ts`, `src/components/ui/focus.test.ts`, `src/components/ui/labels.test.tsx` và test của file trực tiếp bị sửa trong Task 7b — đạt bằng `npx vitest run <các file>`; `npm run build` đạt. Không chạy full `npm test` hoặc backend theo quyết định 2026-11-03/D-021.
-- [ ] Kiểm bằng mắt dark/light desktop cho một route đại diện mỗi nhóm và mobile cho shell/form/list/detail; thiếu môi trường ghi rõ route nào “chưa kiểm”.
+- [ ] Kiểm bằng mắt dark/light desktop cho một route đại diện mỗi nhóm và mobile cho shell/form/list; smoke-check thêm `/author/apply`, `/author/blogs`, `/blogs`, `/blogs/:id` ở giao diện cũ để bắt regression do cleanup, không đánh giá lại thiết kế các trang hoãn. Thiếu môi trường ghi rõ route nào “chưa kiểm”.
 
 ## Ngoài phạm vi
 
 - Không sửa `server/`, DB, API, service/data/type frontend hoặc hợp đồng request/response.
 - Không thêm chức năng, route, field nghiệp vụ, quyền, copy vi/en hoặc dữ liệu mẫu; ngoại lệ duy nhất là copy cấu trúc tối thiểu vi/en bắt buộc cho ba AlertDialog Admin ở Task 6 và một AlertDialog Moderator ở Task 7a.
 - Không đổi bảng màu D-010, dark mặc định D-013 hoặc font Inter D-014.
-- Không tạo giao diện Author mới; task 6 chỉ migrate `/author/apply` và `/author/blogs` đang có. Màn Author mới thuộc module sau.
+- Không migrate hoặc đổi thiết kế `/author/apply`, `/author/blogs`, `TagPicker` và CSS Author; toàn bộ giao diện phía Author thuộc module `author-ui-shadcn` riêng. Màn Admin `/admin/author-applications` vẫn thuộc module hiện tại vì là giao diện quản trị.
+- Không migrate hoặc đổi thiết kế `/blogs`, `/blogs/:id`, `MarkdownContent`, wrapper `Pagination` dùng chung và CSS Blogs; toàn bộ phần này thuộc module `blogs-ui-shadcn` riêng.
+- Không bật Tailwind preflight hoặc xóa lớp CSS legacy còn consumer Author/Blogs; chỉ bật preflight và dọn legacy cuối sau khi cả hai module riêng đã chuyển xong.
 - Không sao chép logo, chữ, ảnh hoặc code từ javabuilder.online.
 - Không thêm thư viện form, validation schema, animation/UI thứ hai ngoài dependency được chốt trong spec.
 
@@ -327,12 +326,12 @@ Không thêm `react-hook-form`, `zod`, thư viện UI thứ hai hoặc `tailwind
 - Được đổi API: Không. Được đổi DB (Flyway mới): Không.
 - Giữ nguyên hành vi hiện tại: Có; chỉ thay hệ giao diện/cấu trúc CSS và thay API trình bày cũ (`dialog`, `confirm`) bằng component tương đương.
 - Bám [`docs/design/UI_GUIDE.md`](../docs/design/UI_GUIDE.md) sau khi tài liệu được viết lại trong Task 1 và [`docs/design/javabuilder-patterns.md`](../docs/design/javabuilder-patterns.md).
-- Mỗi task chỉ xóa CSS của trang vừa chuyển sau khi test/build đạt; không dọn trước CSS của trang chưa chuyển.
+- Mỗi task chỉ xóa CSS của trang vừa chuyển sau khi test/build đạt; không dọn trước CSS của trang chưa chuyển và không xóa rule dùng chung còn consumer Author/Blogs.
 - Không sửa logic nghiệp vụ trong `components/ui/*`; composite theo nghiệp vụ đặt ngoài `ui/`. Variant Badge `tone` chỉ là API trình bày.
 - Không chạy `shadcn add --overwrite` lên primitive đã review ở Task 1; component thêm sau phải giữ quy ước label qua prop, focus ring đặc và token màu đã chốt.
 - Test bám role/label/state; chỉ sửa assertion class cũ khi class đó không còn là hợp đồng. Mỗi task chỉ chạy file test của component/trang bị sửa và nơi dùng trực tiếp bằng `npx vitest run <file...>`, cộng `npm run build` một lần; không chạy full `npm test`, `scripts/verify.sh` hoặc backend (quyết định 2026-11-03).
 - Mỗi task kiểm dark/light desktop bằng Chrome; nếu không có môi trường phải ghi “chưa kiểm”, không suy diễn là đã đạt.
-- Không commit riêng từng task; chỉ tạo một commit sau khi toàn bộ module, gồm Task 7b và review cuối, hoàn tất.
+- Sau mỗi task được người dùng nhận, tạo commit WIP cục bộ `wip(ui-foundation-v2): Task n`; khi toàn bộ module, gồm Task 7b và review cuối, hoàn tất thì squash các WIP thành một commit cuối.
 - Task 3 và Task 4 thực hiện liên tiếp trong cùng một session nhưng vẫn giữ hai nhóm “Xong khi” và kiểm chứng riêng. Task 2 dùng adversarial review; các task còn lại dùng review thường. Mỗi task/review vẫn tuân giới hạn hai vòng.
 
 ## Quyết định thiết kế đã chốt
@@ -342,19 +341,21 @@ Không thêm `react-hook-form`, `zod`, thư viện UI thứ hai hoặc `tailwind
 3. Không thêm `sonner` trong module này; toast tách module sau nếu cần.
 4. Dùng shadcn Sidebar, controlled bằng state/localStorage TechVerse như Task 2.
 5. Danh sách Admin/Moderator dùng hàng trong Card; không thêm Table khi dữ liệu hiện tại không cần nhiều cột số.
-6. Dùng shadcn Pagination, bọc sau props/API `Pagination` hiện tại.
+6. Primitive shadcn Pagination đã sinh ở Task 1; hoãn việc bọc wrapper `Pagination` dùng chung sang `blogs-ui-shadcn` để không đổi gián tiếp Author/Blogs trong module này.
 7. Gỡ `framer-motion` sau Task 5 khi Sidebar và Home đã chuyển sang transition/animation Tailwind-shadcn.
 8. Thêm `EmptyState` composite ngoài `components/ui/` ở Task 5, dùng tiếp trong Task 6.
 9. Không làm UI kit/dev route. `JWT_SECRET_KEY` hiện tại đã được xác nhận là Base64 hợp lệ, 32 byte/256 bit; thử chạy server dev từ Task 2 để kiểm bằng mắt, nếu môi trường khác lỗi thì ghi đúng nguyên nhân.
 10. Task 3 và Task 4 chạy trong cùng một session; Task 2 dùng adversarial review, các task khác dùng review thường.
-11. Không commit từng task; commit một lần sau khi toàn bộ module hoàn tất.
+11. Commit WIP cục bộ sau mỗi task được người dùng nhận; squash thành một commit cuối khi toàn bộ module hoàn tất.
+12. Tách toàn bộ giao diện phía Author (`AuthorApplyPage`, `AuthorBlogsPage`, `TagPicker`) khỏi module này; giữ preflight tắt và lớp CSS tương thích cho tới module `author-ui-shadcn`.
+13. Tách toàn bộ giao diện Blogs (`BlogsPage`, `BlogDetailPage`, `MarkdownContent`) và việc migrate wrapper `Pagination` dùng chung khỏi module này sang `blogs-ui-shadcn`; Task 7a chỉ còn Moderator.
 
 ## Xong khi
 
-Module chỉ hoàn tất khi Task 1–6, Task 7a và Task 7b đều đạt “Xong khi”, các quyết định thiết kế đã chốt được thực hiện và không còn nhóm trang hoãn. Tiêu chí tổng không thay thế kiểm chứng riêng của từng task.
+Module chỉ hoàn tất khi Task 1–6, Task 7a và Task 7b đều đạt “Xong khi”, các quyết định thiết kế đã chốt được thực hiện và không còn nhóm trang hoãn **trong phạm vi ngoài Author/Blogs**. Tiêu chí tổng không thay thế kiểm chứng riêng của từng task.
 
 - [ ] Toàn bộ route/trang trong bảng đã ánh xạ dùng shadcn/ui + Tailwind/token mới, giữ hành vi, route, API và copy vi/en.
-- [ ] Không còn CSS trang/legacy, literal màu ngoài token, `window.confirm`/`window.alert` hoặc dependency bị quyết định gỡ.
+- [ ] Không còn CSS trang/legacy ngoài allowlist tương thích Author/Blogs, literal màu ngoài token, `window.confirm`/`window.alert` hoặc dependency bị quyết định gỡ; preflight vẫn tắt cho đến khi hai module hoãn hoàn tất.
 - [ ] Dark mặc định/light tùy chọn đúng bảng màu, Inter duy nhất, tương phản và focus đạt; responsive không cuộn ngang.
 - [ ] Các file test frontend liên quan đã ghi tại từng task và `npm run build` đạt; không có task nào yêu cầu full `npm test` hoặc backend.
 
@@ -461,6 +462,8 @@ Không còn điểm nào cần phản biện thêm. Task 1 đã hoàn tất; spe
 - Giao Claude thực hiện, bắt đầu Task 1.
 - 2026-11-03 sau Task 1: không commit từng task, chỉ commit một lần khi hoàn tất module; Task 3 + Task 4 chạy cùng session; chỉ Task 2 dùng adversarial review.
 - Logo đổi sang asset Cloudinary public ID `techverse/brand/logo`; Task 2 chỉ ghép bản đầy đủ/icon vào shell, `app/index.html` dùng cùng master cho favicon. Không commit file ảnh nguồn lớn.
-- Hoãn Blogs/BlogDetail/MarkdownContent/TagPicker/AuthorBlogs/Moderator sang Task 7a; Task 7b mới bật preflight và dọn CSS cuối. Các trang hoãn vẫn thuộc phạm vi và “Xong khi” của module.
+- Task 7a chỉ còn Moderator; Task 7b dọn CSS ngoài Author/Blogs. Các quyết định cũ đưa Blogs/BlogDetail/MarkdownContent hoặc TagPicker/AuthorBlogs vào Task 7a và bật preflight ở Task 7b đã được thay bởi các quyết định tách module bên dưới.
 - Đính chính: `JWT_SECRET_KEY` hiện tại hợp lệ (Base64 chuẩn, 32 byte/256 bit); không cần người dùng sửa trước Task 2, chỉ cần xác nhận bằng lần chạy server dev.
 - 2026-11-03: Vòng review 2 của Task 3+4 dùng `/code-review` thay lượt Codex bị dừng; sửa 8/9 phát hiện để ổn định, gồm ba bug sidebar thuộc Task 2. Phát hiện #9 về logo Cloudinary khi offline được ghi “Ngoài phạm vi”.
+- 2026-11-03: Tách `AuthorApplyPage`, `AuthorBlogsPage`, `TagPicker` và cleanup CSS/preflight phụ thuộc chúng sang module `author-ui-shadcn`; Task 6 chỉ còn Admin. D-026 sau đó tiếp tục tách Blogs để Task 7a chỉ còn Moderator.
+- 2026-11-03: Tách `BlogsPage`, `BlogDetailPage`, `MarkdownContent`, wrapper `Pagination` dùng chung và CSS phụ thuộc sang module `blogs-ui-shadcn`; Task 7a chỉ còn Moderator.

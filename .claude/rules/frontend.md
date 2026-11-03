@@ -21,7 +21,7 @@ paths:
 
 ## Kiểm bằng mắt
 
-- Thủ tục (dev server cổng 3000, đăng nhập theo vai trò, đo bằng JS, tối đa 2 ảnh, dark/light, mobile qua iframe 390px): skill `visual-check`; môi trường ở [`docs/RUNBOOK.md`](../../docs/RUNBOOK.md).
+- Thủ tục (dev server cổng 3000, đăng nhập theo vai trò, đo bằng JS, tối đa 2 ảnh, dark/light, mobile cảm ứng 390px qua Playwright MCP; Chrome dự phòng). Khi nào dùng công cụ nào: bảng “Khi nào dùng” trong skill đó; không thêm test e2e Playwright vào `app/`: skill `visual-check`; môi trường ở [`docs/RUNBOOK.md`](../../docs/RUNBOOK.md).
 - Không khởi động lại backend của người dùng; thiếu môi trường hoặc vai trò thì ghi “chưa kiểm” kèm nguyên nhân, không suy diễn là đạt.
 
 ## Style (shadcn + Tailwind v4)
