@@ -55,7 +55,7 @@ it('lists only routable entries in the learner sidebar', () => {
   render(<Shell><Sidebar {...props} profile={profile} /></Shell>)
   fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' }))
   expect(hrefs().filter(href => deadUserPaths.test(href))).toEqual([])
-  for (const name of ['Trang chủ', 'Bài viết', 'Author', 'Thông tin cá nhân']) expect(screen.queryByRole('link', { name })).not.toBeNull()
+  for (const name of ['Trang chủ', 'Bài viết', 'Tác giả', 'Thông tin cá nhân']) expect(screen.queryByRole('link', { name })).not.toBeNull()
   for (const text of ['Tiến độ của tôi', 'Premium & thanh toán', 'Nhận thông báo', 'Giới thiệu']) expect(screen.queryByText(text)).toBeNull()
 })
 

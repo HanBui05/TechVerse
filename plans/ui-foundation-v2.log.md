@@ -4,30 +4,60 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ui-foundation-v2.
 
 ## Bắt đầu từ đây (cập nhật 2026-11-03)
 
-- **Task 1–6 đã nhận, đã commit WIP** (Task 6 nhận 2026-11-03) — không đọc lại, không làm lại, không kiểm lại. **Task tiếp theo: Task 7a** (chỉ Moderator), session mới.
-- **Cho Task 7a:** làm theo hướng giao diện Admin đã duyệt (header icon, Card filter, hàng trong Card, Badge tone, Skeleton, `EmptyState`, Sheet chi tiết, AlertDialog); tìm động thì dùng `hooks/use-debounced-value.ts` + chặn response cũ (`latest` ref như 3 trang Admin); icon màu sidebar Moderator (`toneText`); phần tử thô `button`/`ul`/`dd` gắn `data-slot` hoặc `m-0`. Spec Task 7a chưa ghi hướng “sinh động” — nếu người dùng muốn thì Codex cập nhật spec trước.
-- **Sau đó:** Task 7b (dọn CSS ngoài Author/Blogs, giữ preflight tắt, gỡ `framer-motion`).
-- **Đã tách sang module riêng:** Author (`AuthorApplyPage`, `AuthorBlogsPage`, `TagPicker`) → `author-ui-shadcn`; Blogs (`BlogsPage`, `BlogDetailPage`, `MarkdownContent`, wrapper `Pagination`) → `blogs-ui-shadcn`. Không sửa hoặc redesign các trang/component này trong Task 7.
-- **Bỏ qua — không liên quan Task 7a:** trang Admin (đã nhận), trang/CSS Author và Blogs; `server/` trừ khi spec 7a đòi; các module cũ khác trong `PLAN.md`.
+- **Task 1–7a đã nhận, đã commit WIP** (Task 7a nhận 2026-11-03) — không đọc lại, không làm lại, không kiểm lại. Codex đang/đã đồng bộ spec theo log (3 quyết định người dùng sau Task 7a).
+- **Task tiếp theo: Task 7b** (spec mục “Task 7b”) trong session mới.
+- **Task 7b:** dọn CSS ngoài luồng bài viết, giữ preflight tắt, gỡ `framer-motion`; `author.css` đã xóa ở Task 7a.
+- **Đã tách sang module `article-flow`:** `AuthorBlogsPage`, `TagPicker`, Blogs/Learner, Moderator, `MarkdownContent`, wrapper `Pagination` và cleanup/preflight phụ thuộc chúng. Task 7a chỉ có ngoại lệ thuật ngữ: kicker AuthorBlogs đổi theo `language`, câu vi của Moderator dùng “tác giả”; không sửa bố cục, logic hoặc CSS.
+- **Thuật ngữ — 3 chỗ phải sửa (đã đối chiếu code):** `Sidebar.tsx:95` link + tooltip “Author” → vi “Tác giả”/en “Author” (copy inline theo `language`, không sửa `data/**`); kicker `AuthorBlogsPage.tsx:227` “TechVerse Author” dùng chung hai ngôn ngữ → hiển thị theo prop `language` sẵn có (vi “Tác giả”, en “Author”), ghi “Lệch khác spec” vì spec nói “nhánh tiếng Việt”; `ModeratorDashboardPage.tsx:15` câu vi. `Sidebar.test.tsx:58` đang assert link “Author” ở tiếng Việt → đổi sang “Tác giả”.
+- **Spec 7a/7b đã chốt:** phản biện dài đã được Codex rút khỏi spec, kết luận nằm trong “Quyết định của người dùng”. Thay đổi chưa commit trong `plans/` là cập nhật spec/log, **không phải code task trước** — đi chung commit WIP Task 7a.
+- **Bỏ qua — không liên quan Task 7a:** trang Admin (đã nhận), mọi phần khác của AuthorBlogs/Blogs/Moderator, `server/` và các module cũ khác trong `PLAN.md`.
 - **Môi trường kiểm:** Playwright MCP (`.mcp.json`) nạp sau khi khởi động lại phiên — phiên Task 6 không có, đã dùng script tạm. Dữ liệu mẫu Admin: `scripts/dev-seed-admin.sql` (RUNBOOK). Avatar thật trong danh sách Admin cần backend chạy code mới (khởi động lại backend).
-- **Phát hiện chờ người dùng quyết:** link logo trên topbar mobile chỉ 32×32px khi cảm ứng (< 44px, QĐ 1A) — thuộc Task 2 đã nhận, chưa sửa. Nút “Trước/Tiếp” wrapper `Pagination` 40px cảm ứng — thuộc `blogs-ui-shadcn`.
+- **Ngoài phạm vi Task 7a:** link logo topbar mobile 32×32px thuộc Task 2 đã nhận; nút “Trước/Tiếp” wrapper `Pagination` 40px thuộc `article-flow`. Không tự sửa trong Task 7a.
 
 ## Quyết định người dùng chưa có trong spec
 
-- **2026-11-03 — Task 6 thiết kế sinh động hơn, không chỉ đổi primitive** (spec chờ Codex cập nhật; đứng trên “không thêm copy/khối” của spec cho riêng Admin):
-  - Được thêm khối/copy ngắn vi/en thuần trình bày: đầu trang có icon + mô tả + số kết quả; hàng danh sách có avatar, Badge màu, icon meta, hover; Skeleton khi tải; `EmptyState` có icon; chi tiết trong Sheet phải; Users có thanh hành động nổi khi chọn nhiều; Author applications có chip lọc nhanh theo trạng thái sẵn có; Taxonomy dạng card màu + form trong Dialog. Hiệu ứng chỉ CSS/Tailwind.
-  - **Bỏ mọi thứ của tính năng chưa có:** thẻ số liệu giả Dashboard (khóa học, doanh thu, học viên…), nhãn nhóm “học viên/bài giảng”; Dashboard thay bằng lời chào + thẻ lối tắt tới các trang Admin thật. Không bịa số liệu.
-  - **Sidebar Admin giống sidebar user:** icon mỗi mục có màu tone (`toneText` của `Sidebar.tsx`); nhóm Cài đặt là mục thu gọn, **mặc định đóng**, tự mở khi đang ở trang cài đặt. `StaffSettingsLinks` dùng chung với Moderator nên Moderator đổi theo.
-  - Giữ nguyên API/payload/quyền/route/bảng màu/font/wrapper `Pagination`. Làm Dashboard + Users trước, chụp dark/light cho người dùng duyệt hướng rồi mới làm 2 trang còn lại.
-  - **2026-11-03 — Chỉnh sau khi người dùng test Task 6:** (1) avatar trong danh sách/chi tiết Users và Author applications phải là avatar thật của người dùng (đang hiện chữ cái/sai); (2) ô tìm kiếm Admin tìm động khi gõ (không cần Enter); (3) phần chuyên môn trong hồ sơ tác giả trình bày đẹp hơn dạng chữ thường.
-  - **2026-11-03 — Seed dev cho Admin:** người dùng yêu cầu thêm dữ liệu mẫu hồ sơ tác giả/chủ đề/thẻ để test → `scripts/dev-seed-admin.sql` (SQL idempotent chạy tay vào DB dev, không phải migration; cách chạy ở `docs/RUNBOOK.md`). Đã chạy vào DB dev.
-  - **2026-11-03 — Người dùng duyệt hướng** (Dashboard + Users): “khá ưng”, được tự do sáng tạo cho Author applications + Taxonomy miễn hợp bối cảnh quản trị.
+- 2026-11-03 (sau Task 7a): (1) Admin “Hồ sơ tác giả” — người dùng không bấm được “Từ chối”: nút bị khóa khi ô lý do trống mà không có giải thích → nút luôn bấm được, thiếu lý do thì báo lỗi tại ô và focus vào ô (áp cho Từ chối/Tạm ngưng/Khôi phục); backend vẫn bắt buộc lý do. (2) Thiết kế lại chọn chuyên môn ở `/author/apply` cho đẹp → thay native select (spec ghi “tiếp tục là native select”) bằng nhóm chip radio theo 4 lĩnh vực; value vẫn tiếng Việt, giá trị cũ vẫn hiện nguyên văn. Spec chờ Codex cập nhật. (3) 2026-11-03: ở `/author/apply`, ô giới thiệu, vùng chọn chuyên môn và lịch sử xét duyệt (cùng khối giới thiệu đã gửi) phải có chiều cao giới hạn + cuộn bên trong, không bày dài cả trang; luật chung ghi vào skill `ui-components` để tự áp ở các trang sau.
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-03 — Nhận Task 7a
+- Người dùng test tay và nhận Task 7a; commit WIP `wip(ui-foundation-v2): Task 7a`; nhờ Codex đồng bộ spec theo log. Việc tiếp: Task 7b.
+
+### 2026-11-03 — Task 7a: cuộn trong khung
+- Người dùng: khối dài (giới thiệu, chuyên môn, lịch sử) phải cuộn trong khung, không kéo dài trang; tự áp ở các trang sau → luật “Nội dung dài: cuộn trong khung” trong skill `ui-components` + mục tự kiểm.
+- Bài học: primitive `Textarea` có `field-sizing-content` → tự giãn vô hạn, luôn kèm `max-h-*`.
+- Review: 1 × medium (Badge chuyên môn dài tràn ngang) đã sửa; bài học: Badge chứa chữ người nhập phải cho xuống dòng (`[overflow-wrap:anywhere]`).
+
+### 2026-11-03 — Task 7a: sửa theo người dùng test
+- Admin: nút Từ chối/Tạm ngưng/Khôi phục khóa im lặng khi chưa có lý do → luôn bấm được, báo lỗi + focus ô lý do, có dòng gợi ý “bắt buộc”. Luồng PATCH đã thử bằng Playwright (chặn PATCH, không ghi DB) — chạy đúng khi có lý do.
+- `/author/apply`: native select chuyên môn → 4 nhóm chip radio (icon tone, dấu ✓, phím mũi tên native). 53/53, build đạt. Review bổ sung approve; chờ người dùng test tay rồi nhận Task 7a.
+
+### 2026-11-03 — Task 7a
+- Code `AuthorApplyPage` mới (hero quy trình 3 bước + vùng làm việc theo trạng thái, timeline lịch sử), thuật ngữ Tác giả/Author ở Sidebar/AuthorBlogs/Moderator, type `AuthorProfile`, xóa `author.css`. 46/46, build đạt, kiểm bằng mắt dark/light + mobile cảm ứng.
+- Bài học: preflight tắt → `textarea` không kế thừa font (ra monospace) → cần `font-sans`.
+- Review: vòng 1 2 × P2 đã sửa (nhãn “Gửi lúc”, 409 khi GET lại lỗi); vòng 2 approve. Việc dở: người dùng nhận Task 7a.
+### 2026-11-03 — Người dùng chốt Task 7a/7b
+- Codex: đã nhận phản hồi vòng 2 của Claude, sửa rõ kicker AuthorBlogs theo `language`, rút gọn tranh luận khỏi spec thành 5 dòng kết luận và chuyển Task 7a sang code.
+
+### 2026-11-03 — Phản biện Task 7a/7b + chuẩn bị code
+- Người dùng chốt thuật ngữ vi “Tác giả”/en “Author” (không “Giảng viên”); Codex đưa vào spec D-027/D-028. Claude phản biện vòng 2: không chặn; 2 điểm nhỏ (kicker AuthorBlogs theo `language`, assertion Sidebar test) ghi ở “Bắt đầu từ đây”.
+- Đã kiểm hook SessionStart nạp đúng log; phiên sau bắt đầu Task 7a.
+
+### 2026-11-03 — Refresh nhận quyền Author sau khi duyệt
+- Codex: đã đưa quyết định mới của người dùng vào Task 7a và D-028; kiểm bằng `App.author-session.test.tsx`, giữ route `/profile` nhưng cập nhật shell/sidebar theo role mới.
+
+### 2026-11-03 — Trả lời phản biện Task 7a/7b
+- Codex: đã đưa thuật ngữ người dùng chốt (“Tác giả”/“Author”) vào spec và D-027; chốt giữ value chuyên môn tiếng Việt, chỉ dịch label tiếng Anh; 409 tự tải lại trạng thái, còn 403/lỗi khác dùng cảnh báo chung và giữ form. Không mở `managementI18n.ts` hay `ApiError`.
+
+### 2026-11-03 — Đổi Task 7a sang `AuthorApplyPage`
+- Codex: đã đưa quyết định người dùng vào spec: Task 7a chuyển giao diện đăng ký Tác giả/Author với quyền sáng tạo UI có ranh giới; `AuthorBlogsPage` + Blogs/Learner + Moderator chuyển sang `article-flow`; Task 7b giữ CSS/preflight tương thích luồng bài viết.
+
+### 2026-11-03 — Đồng bộ spec sau Task 6
+- Codex: đã đưa các quyết định Task 6 về thiết kế Admin sinh động, bỏ tính năng chưa có, sidebar Admin/Moderator, avatar API, tìm động, chip chuyên môn và seed dev vào spec; đã đánh dấu “Xong khi” theo kết quả/chưa kiểm trong log.
+
 ### 2026-11-03 — Nhận Task 6
 - Người dùng nhận Task 6; commit WIP `wip(ui-foundation-v2): Task 6`; nhờ Codex đồng bộ spec theo log (gồm quyết định thiết kế sinh động, sửa `server/` avatar, seed dev).
 
@@ -191,3 +221,18 @@ Mới nhất ở trên; mỗi phiên ≤ 6 dòng: đã làm, quyết định m�
 
 - `vitest.config.ts` thêm `css.include` cho `src/styles` để test đọc CSS thật qua `?raw`.
 - Đính chính 2026-11-03: `JWT_SECRET_KEY` trong `.env` hợp lệ (Base64, 256 bit); nhận định “không hợp lệ” trong phản hồi vòng 2 của spec là sai.
+
+## Task 7a — Đăng ký Tác giả/Author
+
+| Mục | Kết quả |
+|---|---|
+| Code | `AuthorApplyPage` (nhận `language` từ `App.tsx`): lưới `lg` 5/7 — trái hero (Badge “Tác giả/Author”, H1, 3 bước có icon tone blue/amber/green nối đường dọc, mẹo cũ), phải vùng làm việc: card trạng thái (icon + tiêu đề + Badge `statusTone`, callout rose lý do từ chối/đình chỉ kèm thời gian, callout green ghi chú duyệt/khôi phục, ngày gửi), card hồ sơ đã gửi (PENDING/APPROVED/SUSPENDED: chip chuyên môn, giới thiệu, nút mở portfolio), form (NOT_APPLIED/REJECTED prefill), card “Lịch sử xét duyệt” `ol` mới nhất trước (Badge quyết định, “v<n>”, thời gian, ghi chú, chip chuyên môn snapshot; không reviewer). Skeleton khi tải; lỗi tải `role=alert` + “Thử lại”; 409 → GET lại, rồi “Hồ sơ đã thay đổi”; lỗi khác → cảnh báo chung, giữ form. 22 chuyên môn: value vi, label en; giá trị ngoài bảng hiện nguyên văn “(đã lưu/saved)”. Chặn response cũ bằng request id. Sidebar link/tooltip, kicker AuthorBlogs theo `language`, câu vi Moderator “tác giả”. Xóa `styles/pages/author.css` + import. |
+| Lệch khác spec | Form `noValidate`: validation tự viết (đã có sẵn) báo theo vi/en thay cho bong bóng native theo locale trình duyệt; giới hạn giữ nguyên. Kicker AuthorBlogs đổi theo `language` (spec cũ nói nhánh vi). Timeline chỉ hiện snapshot chuyên môn, không lặp lại toàn văn giới thiệu. Ngày giờ `toLocaleString(vi-VN/en-US)`. `textarea` thêm `font-sans` (preflight tắt). |
+| Test | TDD đỏ 10 → xanh. `npx vitest run src/pages/Author/AuthorApplyPage.test.tsx src/components/layout/Sidebar.test.tsx src/App.author-session.test.tsx src/pages/Author/AuthorBlogsPage.test.tsx`: **46/46** (AuthorApply 8 ca: NOT_APPLIED en + validation, 3 trạng thái tham số, REJECTED + timeline + chuyên môn cũ + `expectedVersion`, 409, 403, lỗi tải/thử lại; +1 ca F5 tại `/profile` nhận AUTHOR). `npm run build` đạt (cảnh báo chunk có từ trước). |
+| Kiểm bằng mắt | Playwright script tạm (MCP không có trong phiên), dev server 3000 + backend của người dùng, seed `tu.author` (REJECTED) và admin (NOT_APPLIED): desktop 1440 dark + light REJECTED, light form; mobile cảm ứng 390 dark form + light REJECTED — không cuộn ngang, `coarse` khớp, mọi a/button/input/select ≥ 44px, chữ nút không tràn, H1 tracking normal/margin 0. Sửa sau ảnh: textarea monospace → `font-sans`. Chưa kiểm: PENDING/APPROVED/SUSPENDED bằng mắt (test tự động). |
+| Review vòng 1 | `codex-companion review --wait`: 2 × P2, đều nhận. (1) “Gửi lúc” dùng `updatedAt` (audit, đổi khi duyệt/đình chỉ) → chỉ hiện ở PENDING. (2) 409 mà GET lại lỗi thì mất “Hồ sơ đã thay đổi” → luôn báo, GET lỗi thì bỏ form cũ + nút “Thử lại”; +1 test. Test liên quan **47/47**, build đạt. |
+| Review vòng 2 | `adversarial-review --wait` chỉ phần sửa vòng 1: **approve**, không phát hiện. Hết 2 vòng. |
+| Sau review (người dùng test) | (1) `AuthorApplicationsPage`: `needsNote` khóa nút không giải thích → nút luôn bật; thiếu lý do thì `aria-invalid` + câu lỗi `text-danger` + focus textarea, không mở AlertDialog; gợi ý “Bắt buộc khi từ chối, tạm ngưng hoặc khôi phục.” vi/en; payload không đổi. Đã tái hiện bằng Playwright trên dữ liệu thật (PATCH bị chặn, không ghi DB): có lý do → AlertDialog → PATCH đúng `{decision: REJECTED, reviewNote, expectedVersion}`. (2) Chuyên môn: `fieldset` 4 nhóm (Phát triển phần mềm/Dữ liệu & AI/Hạ tầng & bảo mật/Thiết kế & sản phẩm, tone blue/purple/cyan/amber) chứa `input type=radio` `sr-only` bọc trong chip `label`; chip chọn đổi màu tone + ✓; giá trị cũ là chip slate “(đã lưu)” ở đầu. Lệch spec (“native select”) theo quyết định người dùng 2026-11-03. Test: `AuthorApplyPage`, `AuthorApplicationsPage`, `Sidebar`, `App.author-session`, `AuthorBlogsPage` **53/53**; build đạt. Kiểm bằng mắt picker: desktop dark (chọn + phím mũi tên), mobile cảm ứng light — chip ≥ 44px, radio ẩn, không cuộn ngang. Review bổ sung (người dùng yêu cầu): `adversarial-review --wait` chỉ phần sửa này → **approve**, không phát hiện. Chưa chụp gợi ý lỗi lý do Admin (chỉ test); người dùng đang test tay. |
+| Cuộn trong khung (người dùng yêu cầu) | `AuthorApplyPage`: textarea giới thiệu `max-h-64` (256px) rồi cuộn; vùng chip chuyên môn `max-h-80` + dòng “Đang chọn: <chip>” (`aria-live`) ngoài khung; lịch sử `max-h-96`; giới thiệu đã gửi `max-h-48`; vùng cuộn là `region` có tên, `tabIndex=0`, focus ring. Admin: textarea lý do và mô tả Taxonomy `max-h-48`. Skill `ui-components` thêm luật + mục tự kiểm. Test: `AuthorApplyPage`, `src/pages/Admin` (4 file), `Sidebar`, `App.author-session`, `AuthorBlogsPage` **66/66**; build đạt. Playwright: bio dài 1869 ký tự → textarea 256px cuộn; chuyên môn 320px cuộn; trang form mobile 1755px; không cuộn ngang. Chưa kiểm bằng mắt lịch sử dài (seed chỉ 1 mục, chỉ test). |
+| Review cuộn trong khung | `adversarial-review --wait`: 1 × medium, nhận — chuyên môn cũ 255 ký tự không khoảng trắng trong Badge `whitespace-nowrap` (dòng “Đang chọn”) tràn ngang mobile. Sửa `wrapBadge` (`max-w-full shrink whitespace-normal [overflow-wrap:anywhere]`) cho cả Badge “Đang chọn”, hồ sơ đã gửi, snapshot lịch sử + chip `max-w-full min-w-0`. Playwright mobile 390, GET giả lập 255 ký tự `X`: REJECTED và PENDING không cuộn ngang, không phần tử vượt mép. **66/66**, build đạt. |
+| Review vòng 2 (cuộn trong khung) | `adversarial-review --wait` chỉ phần sửa `wrapBadge`: **approve**, không phát hiện. |

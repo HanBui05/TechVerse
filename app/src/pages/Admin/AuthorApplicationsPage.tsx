@@ -34,7 +34,7 @@ export function AuthorApplicationsPage({ language = 'vi' }: { language?: Languag
   const t = (message: string) => managementText(message, language)
   const vi = language === 'vi'
   const [items, setItems] = useState<Application[]>([]); const [selected, setSelected] = useState<Application | null>(null); const [status, setStatus] = useState('PENDING'); const [keyword, setKeyword] = useState(''); const [query, setQuery] = useState(''); const [active, setActive] = useState(''); const [sortBy, setSortBy] = useState('CREATED_AT'); const [direction, setDirection] = useState('DESC'); const [page, setPage] = useState(0); const [hasNext, setHasNext] = useState(false); const [note, setNote] = useState(''); const [error, setError] = useState(''); const [loading, setLoading] = useState(false)
-  const [pending, setPending] = useState<{ kind: Kind; title: string } | null>(null); const [total, setTotal] = useState<number | null>(null)
+  const [pending, setPending] = useState<{ kind: Kind; title: string } | null>(null); const [noteError, setNoteError] = useState(false); const noteRef = useRef<HTMLTextAreaElement>(null); const [total, setTotal] = useState<number | null>(null)
   // Only the newest list request may update the page; an older search answering late must not overwrite it.
   const latest = useRef(0)
   const load = async () => { const id = ++latest.current; setLoading(true); setError(''); try { const params = new URLSearchParams({ page: String(page), size: '20', sortBy, direction }); if (status) params.set('status', status); if (active) params.set('active', active); if (query) params.set('keyword', query); const result = await request<Page>(`${base}?${params}`); if (id !== latest.current) return; setItems(result.content); setHasNext(result.hasNext); setTotal(result.totalElements ?? null) } catch (e) { if (id === latest.current) setError(e instanceof Error ? e.message : t("Không tải được hồ sơ")) } finally { if (id === latest.current) setLoading(false) } }
@@ -42,7 +42,7 @@ export function AuthorApplicationsPage({ language = 'vi' }: { language?: Languag
   // Live search: typing updates the query after a short pause; Enter applies it at once.
   const typed = useDebouncedValue(keyword.trim())
   useEffect(() => { setPage(0); setQuery(typed) }, [typed])
-  const open = async (id: string) => { setError(''); try { setSelected(await request<Application>(`${base}/${id}`)); setNote('') } catch (e) { setError(e instanceof Error ? e.message : t("Không tải được chi tiết")) } }
+  const open = async (id: string) => { setError(''); try { setSelected(await request<Application>(`${base}/${id}`)); setNote(''); setNoteError(false) } catch (e) { setError(e instanceof Error ? e.message : t("Không tải được chi tiết")) } }
   // Runs only after the AlertDialog is confirmed; payloads are unchanged from the old window.confirm flow.
   const action = async (kind: Kind) => { if (!selected || (kind !== 'APPROVED' && !note.trim())) return; setLoading(true); setError(''); try { const review = kind === 'APPROVED' || kind === 'REJECTED'; const payload = review ? { decision: kind, reviewNote: note.trim(), expectedVersion: selected.version } : kind === 'suspend' ? { reason: note.trim(), expectedVersion: selected.version } : { note: note.trim(), expectedVersion: selected.version }; const updated = await request<Application>(`${base}/${selected.id}/${review ? 'review' : kind}`, { method: 'PATCH', body: JSON.stringify(payload) }); setSelected(updated); setNote(''); await load() } catch (e) { setError(e instanceof Error ? e.message : t("Không thể cập nhật hồ sơ")) } finally { setLoading(false) } }
   const date = (value?: string | null) => value ? new Date(value).toLocaleDateString(vi ? 'vi-VN' : 'en-US') : '—'
@@ -52,8 +52,9 @@ export function AuthorApplicationsPage({ language = 'vi' }: { language?: Languag
   </div>
   const chips: [string, string][] = [['', t("Tất cả")], ['PENDING', t("Chờ duyệt")], ['APPROVED', t("Đã duyệt")], ['REJECTED', t("Từ chối")], ['SUSPENDED', t("Tạm ngưng")]]
   const errorText = error && <p role="alert" className="rounded-lg border border-border bg-tone-rose-bg px-4 py-3 text-sm text-danger">{error}</p>
-  const ask = (kind: Kind, title: string) => setPending({ kind, title })
   const needsNote = !note.trim()
+  // Reject/suspend/restore need a reason (backend rule): explain on the field instead of a silently disabled button.
+  const ask = (kind: Kind, title: string) => { if (kind !== 'APPROVED' && needsNote) { setNoteError(true); noteRef.current?.focus(); return } setPending({ kind, title }) }
 
   return <main className="tw-page mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 lg:px-8">
     <header className="flex items-center gap-4">
@@ -166,14 +167,15 @@ export function AuthorApplicationsPage({ language = 'vi' }: { language?: Languag
             </section>}
             {['PENDING', 'APPROVED', 'SUSPENDED'].includes(selected.status) && <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
               <Label htmlFor="author-app-note" className={fieldLabel}>{t("Ghi chú / lý do")}</Label>
-              <Textarea id="author-app-note" rows={3} maxLength={2000} value={note} onChange={e => setNote(e.target.value)} />
+              <Textarea ref={noteRef} id="author-app-note" rows={3} className="max-h-48 overflow-y-auto" maxLength={2000} value={note} aria-invalid={noteError && needsNote} aria-describedby="author-app-note-hint" onChange={e => { setNote(e.target.value); setNoteError(false) }} />
+              <p id="author-app-note-hint" className={noteError && needsNote ? 'text-xs text-danger' : 'text-xs text-muted-foreground'}>{noteError && needsNote ? (vi ? 'Nhập lý do trước khi thực hiện thao tác này.' : 'Enter a reason before this action.') : (vi ? 'Bắt buộc khi từ chối, tạm ngưng hoặc khôi phục.' : 'Required to reject, suspend or restore.')}</p>
               <div className="flex flex-wrap gap-2">
                 {selected.status === 'PENDING' && <>
                   <Button disabled={loading} onClick={() => ask('APPROVED', t("Phê duyệt"))}><Check />{t("Phê duyệt")}</Button>
-                  <Button variant="destructive" disabled={loading || needsNote} onClick={() => ask('REJECTED', t("Từ chối"))}><X />{t("Từ chối")}</Button>
+                  <Button variant="destructive" disabled={loading} onClick={() => ask('REJECTED', t("Từ chối"))}><X />{t("Từ chối")}</Button>
                 </>}
-                {selected.status === 'APPROVED' && <Button variant="destructive" disabled={loading || needsNote} onClick={() => ask('suspend', t("Tạm ngưng"))}><PauseCircle />{t("Tạm ngưng")}</Button>}
-                {selected.status === 'SUSPENDED' && <Button disabled={loading || needsNote} onClick={() => ask('restore', t("Khôi phục"))}><RotateCcw />{t("Khôi phục")}</Button>}
+                {selected.status === 'APPROVED' && <Button variant="destructive" disabled={loading} onClick={() => ask('suspend', t("Tạm ngưng"))}><PauseCircle />{t("Tạm ngưng")}</Button>}
+                {selected.status === 'SUSPENDED' && <Button disabled={loading} onClick={() => ask('restore', t("Khôi phục"))}><RotateCcw />{t("Khôi phục")}</Button>}
               </div>
             </section>}
           </div>

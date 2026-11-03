@@ -92,7 +92,7 @@ export function Sidebar({ language, t, authenticated, roles, profile, onLogout }
       <SidebarGroupLabel className="uppercase tracking-[.05em]">{t.mainMenu}</SidebarGroupLabel>
       <SidebarMenu>
         {navItems.map(({ path, icon: Icon, label, tone }) => <SidebarMenuItem key={path}><SidebarMenuButton asChild tooltip={label[language]} className={activeLink}><NavLink to={path} end={path === '/'} onClick={close}><Icon className={toneText[tone]} data-tone={tone} /><span>{label[language]}</span></NavLink></SidebarMenuButton></SidebarMenuItem>)}
-        {authenticated && <SidebarMenuItem><SidebarMenuButton asChild tooltip="Author" className={activeLink}><NavLink to={isAuthor ? '/author/blogs' : '/author/apply'} onClick={close}><UserRound className={toneText.violet} data-tone="violet" /><span>Author</span></NavLink></SidebarMenuButton></SidebarMenuItem>}
+        {authenticated && <SidebarMenuItem><SidebarMenuButton asChild tooltip={language === 'vi' ? 'Tác giả' : 'Author'} className={activeLink}><NavLink to={isAuthor ? '/author/blogs' : '/author/apply'} onClick={close}><UserRound className={toneText.violet} data-tone="violet" /><span>{language === 'vi' ? 'Tác giả' : 'Author'}</span></NavLink></SidebarMenuButton></SidebarMenuItem>}
       </SidebarMenu>
     </SidebarGroup>
     {authenticated && <SidebarSeparator />}

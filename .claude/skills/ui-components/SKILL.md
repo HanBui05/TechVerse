@@ -89,10 +89,22 @@ Xác nhận nguy hiểm:
 </AlertDialog>
 ```
 
+## Nội dung dài: cuộn trong khung, không kéo dài trang
+
+Người dùng chốt 2026-11-03: trang không được dài ra chỉ vì một khối nhiều nội dung. Khi dựng trang, tự hỏi với từng khối: **độ dài có phụ thuộc dữ liệu/người nhập không?** Có thì giới hạn chiều cao và cho cuộn bên trong.
+
+- Áp khi: lựa chọn > ~8 mục (chip, checkbox, radio); textarea người dùng gõ tự do; timeline/lịch sử/log; danh sách con trong card hoặc Sheet; đoạn văn người dùng nhập (bio, ghi chú) được hiển thị lại. Không áp cho nội dung chính của trang (danh sách chính có phân trang, bài viết).
+- Mức trần: textarea `max-h-64 overflow-y-auto` (primitive `Textarea` có `field-sizing-content` nên tự giãn vô hạn nếu thiếu); nhóm lựa chọn `max-h-80`; timeline `max-h-96`; đoạn văn hiển thị lại `max-h-48`.
+- Vùng cuộn: `overflow-y-auto overscroll-contain [scrollbar-width:thin]` + `role="region"` + `aria-label` + `tabIndex={0}` + focus ring (người dùng bàn phím mới cuộn được khi bên trong không có control). Không dùng gradient làm bóng mờ mép.
+- Lựa chọn hiện tại phải nhìn thấy mà không cần cuộn (dòng “Đang chọn: …” bên ngoài khung). Test: assert `region` có tên + `tabIndex` 0, không assert class.
+- Mẫu: `pages/Author/AuthorApplyPage.tsx` (`scrollArea`).
+
 ## Tự kiểm trước khi gửi review
 
 Grep trên file đã sửa, sửa hết rồi mới review (đây là các lỗi review từng bắt lại):
 
+- Mọi `Textarea` có `max-h-*`; khối dài theo dữ liệu đã cuộn trong khung (mục trên). Kiểm bằng mắt thì đo `document.documentElement.scrollHeight` với dữ liệu dài.
+- `Badge`/chip chứa chữ người nhập (có thể dài, không khoảng trắng) phải xuống dòng: `max-w-full shrink whitespace-normal [overflow-wrap:anywhere]` — Badge mặc định `whitespace-nowrap` làm tràn ngang mobile.
 - Mọi `a`, `button`, `select`, dropdown, ô nhập có nút bên trong: có `pointer-coarse:min-h-11` (hoặc `h-11`) và nút trong ô căn giữa (`top-1/2 -translate-y-1/2`).
 - Chữ hiển thị (tháng, ngày, nhãn) theo `language` của app, không theo locale trình duyệt (`toLocaleString("default")`, `Intl` không truyền locale).
 - `<main>` có `tw-page`; `border*` ngoài primitive kèm `border-border`; không `text-destructive` cho chữ.

@@ -128,7 +128,7 @@ export function TaxonomyPage({ kind, language = 'vi' }: { kind: 'topics' | 'tags
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor={`${kind}-description`} className={fieldLabel}>{t("Mô tả")}</Label>
-            <Textarea id={`${kind}-description`} rows={4} maxLength={500} value={description} onChange={e => setDescription(e.target.value)} />
+            <Textarea id={`${kind}-description`} rows={4} className="max-h-48 overflow-y-auto" maxLength={500} value={description} onChange={e => setDescription(e.target.value)} />
           </div>
           <DialogFooter className="gap-2 sm:justify-between">
             {selected ? <Button type="button" variant={selected.active ? 'destructive' : 'outline'} disabled={loading} onClick={() => setConfirming(true)}>{selected.active ? <EyeOff /> : <Power />}{toggleLabel}</Button> : <span />}

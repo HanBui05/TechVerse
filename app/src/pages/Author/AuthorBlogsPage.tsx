@@ -224,7 +224,7 @@ export function AuthorBlogsPage({ language = 'vi' }: { language?: Language } = {
   }
 
   return <main className="page-content article-page"><div className="article-content">
-    <span className="section-kicker">TechVerse Author</span>
+    <span className="section-kicker">{language === 'vi' ? 'Tác giả' : 'Author'}</span>
     <header className="article-header"><div><h1>Blog của tôi</h1><p>Viết và quản lý bài viết của bạn.</p></div>
       <button className="button button-primary" disabled={busy} onClick={fresh}>+ Tạo bài viết</button>
     </header>
