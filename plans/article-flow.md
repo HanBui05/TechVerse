@@ -18,10 +18,11 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Codex viết; Claude chỉ ghi 
 - Người dùng đã duyệt [`article-flow.wireframe.md`](article-flow.wireframe.md) ngày 2026-11-04; Task 2a–2d phải thực hiện theo file này cùng spec. Năm điểm bố cục đã chốt là: ô số liệu workspace lấy `totalElements` theo filter hiện hành; mỗi bài có một nút chính + menu `⋯`; editor có khối metadata thu gọn + tab “Bản công khai vN”; Moderator detail so sánh song song và đặt nút hành động ở header; list Moderator mặc định “Chờ duyệt”.
 - Phong cách Reader list/detail/Bài đã lưu bám `javabuilder-patterns.md` mục 4.1–4.4; Author/Moderator không có mẫu riêng, được thiết kế sinh động bằng token/Badge tone nhưng giữ khung chung của web và không dùng gradient.
 - Không dựng trước menu/trang tổng quan Author; khi có tính năng tác giả thứ hai mới đổi mục sidebar “Tác giả” thành nhóm.
+- Người dùng chọn sửa phát hiện review vòng 2 của Task 2a ngày 2026-11-04: mọi thao tác ghi trong editor phải loại trừ lẫn nhau; khi một thao tác đang chạy, toàn bộ control của panel ảnh và các handler upload/import/ảnh bìa/chèn ảnh phải bị khóa hoặc dừng sớm để response cũ không ghi đè trạng thái mới.
 
 ## Đường dẫn thuộc module
 
-Các đường dẫn thuộc phạm vi module được liệt kê dưới đây; mục ghi “chỉ đọc” không được sửa trong Task 2a–2d. File mới ghi rõ “tạo”; migration cũ V1–V9 không được sửa.
+Các đường dẫn thuộc phạm vi module được liệt kê dưới đây; mục ghi “chỉ đọc” không được sửa trong Task 2a–2d. File mới ghi rõ “tạo”; migration V1–V10 đã áp dụng không được sửa, mọi thay đổi schema tiếp theo phải dùng migration mới.
 
 ### Tài liệu thiết kế bắt buộc — chỉ đọc trong Task 2a–2d
 
@@ -250,7 +251,7 @@ Các đường dẫn thuộc phạm vi module được liệt kê dưới đây;
 
 - `/author/blogs` là workspace tổng quan: các ô số liệu dùng `totalElements` theo filter hiện hành, có filter/search, hai badge trạng thái và action matrix đầy đủ gồm hide/unhide/delete hard/soft; mỗi bài chỉ có một nút chính, action phụ nằm trong menu `⋯`, entry tới tạo/sửa/xem live rõ ràng và không hiện action backend từ chối.
 - `/author/blogs/new` và `/author/blogs/:id/edit` là editor riêng. Desktop có source Markdown/text/import trái + preview bài thật phải; mobile dùng tab “Soạn thảo/Xem trước”. Metadata nằm trong khối thu gọn; bài từng công khai có tab “Bản công khai vN”. Toolbar và panel ảnh theo wireframe/UI Guide mà không làm vùng viết chật.
-- Editor hỗ trợ title/topic/tối đa 10 tag/summary/cover, import, upload, save/submit/withdraw/discard/delete. `imageIssues` hiện callout “N ảnh cần tải lên” và từng dòng alt/source/line-column với “Tải ảnh thay thế” hoặc “Bỏ ảnh”; client thay theo `source + occurrence`, nếu target không còn khớp thì không sửa nhầm và yêu cầu save/reload issue. Bài mới: upload đầu tiên tự POST `action=SAVE` bằng `Idempotency-Key` khi title/topic hợp lệ rồi upload; nếu chưa đủ thì khóa nút với hướng dẫn “Nhập tiêu đề, chủ đề và lưu nháp trước”. Chọn nhiều file tự ghép theo filename; lỗi 429, quá 50 ảnh hoặc file >5 MiB nằm ngay dòng tương ứng. Preview dùng placeholder và tuyệt đối không request URL ngoài; khóa Submit tới khi hết issue. Mobile đặt panel trong Sheet/tab. Dirty navigation dùng `beforeunload` và `AlertDialog` cho link/nút do editor kiểm soát, không đổi `BrowserRouter`.
+- Editor hỗ trợ title/topic/tối đa 10 tag/summary/cover, import, upload, save/submit/withdraw/discard/delete. `imageIssues` hiện callout “N ảnh cần tải lên” và từng dòng alt/source/line-column với “Tải ảnh thay thế” hoặc “Bỏ ảnh”; client thay theo `source + occurrence`, nếu target không còn khớp thì không sửa nhầm và yêu cầu save/reload issue. Bài mới: upload đầu tiên tự POST `action=SAVE` bằng `Idempotency-Key` khi title/topic hợp lệ rồi upload; nếu chưa đủ thì khóa nút với hướng dẫn “Nhập tiêu đề, chủ đề và lưu nháp trước”. Chọn nhiều file tự ghép theo filename; lỗi 429, quá 50 ảnh hoặc file >5 MiB nằm ngay dòng tương ứng. Mọi thao tác ghi được tuần tự hóa; khi một thao tác đang chạy, các nút thay/bỏ/thử lại, input nhiều file, upload/import/ảnh bìa/chèn ảnh đều bị khóa và handler phải dừng sớm. Preview dùng placeholder và tuyệt đối không request URL ngoài; khóa Submit tới khi hết issue. Mobile đặt panel trong Sheet/tab. Dirty navigation dùng `beforeunload` và `AlertDialog` cho link/nút do editor kiểm soát, không đổi `BrowserRouter`.
 - Preview editor dùng cùng typography/composition Reader nhưng ẩn thời gian đọc vì `readingMinutes` chỉ được backend tính và lưu lúc APPROVE; client không tự ước lượng.
 - Sidebar giữ một mục “Tác giả” dẫn thẳng tới workspace; không dựng menu nhóm hay trang tổng quan Author trước khi có tính năng tác giả thứ hai.
 
@@ -357,7 +358,7 @@ Không thêm màu mới; chỉ dùng token đã đo từ `tokens.css` bằng `np
 
 ## Ràng buộc
 
-- Được đổi API: **Có**. Được đổi DB: **Có**, chỉ bằng V10 mới; `ApiResponse<T>`/`ErrorResponse` và prefix `/api/v1` giữ nguyên.
+- Được đổi API: **Có**. DB đã đổi bằng V10 trong Task 1a; V1–V10 đã áp dụng không được sửa, mọi thay đổi schema tiếp theo phải tạo migration mới. `ApiResponse<T>`/`ErrorResponse` và prefix `/api/v1` giữ nguyên.
 - Task 1a, 1b rồi 1c phải hoàn tất và qua review trước cổng wireframe; người dùng duyệt wireframe mọi màn 2a–2d rồi mới code 2a. Nếu UI phát hiện thiếu dữ liệu/endpoint thì quay lại task Backend tương ứng trong spec, không sửa backend xen kẽ.
 - Stable article ID/URL; public API không bao giờ trả working copy. Snapshot/version/history bất biến sau commit; mọi approve/publication action là một transaction có pessimistic lock và stale token.
 - Giữ giới hạn/import/upload/idempotency/rate-limit và lock order hiện có. Không làm cleanup mất asset còn được working copy hoặc version lịch sử tham chiếu.

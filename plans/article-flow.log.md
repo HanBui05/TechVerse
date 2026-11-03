@@ -17,13 +17,16 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 
 ## Quyết định người dùng chưa có trong spec
 
-- **2026-11-04 — Task 2a, review vòng 2:** người dùng chọn sửa phát hiện [high] (panel ảnh phải khóa khi đang ghi + chặn thao tác chồng).
+- (không có)
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — Codex đồng bộ Task 2a
+- Codex: đã đưa quyết định sửa phát hiện review vòng 2 của Task 2a và bài học không sửa migration V1–V10 đã áp dụng vào spec; 8 mục “Xong khi” Task 2a đã là `[x]` đúng theo kết quả trong log nên giữ nguyên.
+
 ### 2026-11-04 — Task 2a đã nhận
 - Người dùng nhận Task 2a; đánh dấu 8 mục “Xong khi” 2a trong spec, commit WIP, nhờ Codex đồng bộ spec. Tiếp: Task 2b (session mới).
 
