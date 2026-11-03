@@ -29,6 +29,7 @@ Luật riêng theo vùng tự nạp khi làm việc với file tương ứng: [`
 - Sau vòng 1: blocker thuộc diện trên thì **sửa luôn, không hỏi**, rồi báo. Sau vòng 2 còn phát hiện: trình bày kèm đánh giá và một khuyến nghị, người dùng quyết.
 - Review gate (Stop hook của Codex) luôn tắt. Mỗi task là một session mới (`/clear`).
 - Kết thúc: ghi kết quả test/review ngắn vào log, cập nhật `PLAN.md`, chờ người dùng nhận kết quả.
+- **Đánh dấu hoàn thành ở cả 2 nơi** (người dùng chốt 2026-11-03): khi người dùng nhận task, Claude tự đổi `- [ ]` → `- [x]` trong “Xong khi” của task đó ở `plans/<module>.md` (ngoại lệ duy nhất cho việc Claude sửa spec) **và** ghi “Task <n> đã nhận (<ngày>)” trong log (“Bắt đầu từ đây” + nhật ký phiên) và dòng `PLAN.md`. Nhiệm vụ sửa lỗi người dùng giao thẳng (không có spec) thì ghi vào log module đang làm.
 - **Người dùng nhận task** → commit WIP cục bộ `wip(<module>): Task <n>` (không push, không `main`; squash một commit cuối module) rồi nhờ Codex đồng bộ spec theo log — thủ tục ở skill `codex-workflow`. Đầu task mới: phần đã commit WIP là đã nhận, không đọc lại/chạy lại test của nó; `git status` còn thay đổi của task trước thì báo người dùng trước.
 
 ## Ngân sách kiểm chứng (chung)

@@ -21,6 +21,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ui-foundation-v2.
 ## Nhật ký phiên
 ### 2026-11-03 — Nhận Task 7b, đóng module
 - Người dùng nhận Task 7b; đánh dấu toàn bộ “Xong khi” Task 1–7 + module trong spec; commit WIP Task 7b. Việc tiếp: nhiệm vụ sửa lỗi do người dùng giao.
+- Luật mới (`CLAUDE.md`): nhận task xong thì đánh dấu ở cả spec (`[x]` “Xong khi”) lẫn log/`PLAN.md`; nhiệm vụ sửa lỗi không spec ghi vào log module.
 ### 2026-11-03 — Task 7b
 - Dọn CSS ngoài luồng bài viết: `UserAvatar`, `PlaceholderPage`, màn chờ `App.tsx` sang Tailwind; xóa rule mồ côi, token không dùng, `framer-motion`, `verify-css-split.mjs`; comment/luật “tới Task 7b” → `article-flow`. 187/187, build đạt.
 - Bài học: hit màu literal còn lại chỉ là giá trị mong đợi trong `tokens.test.ts`; class `hljs-*`/`task-list-item` do rehype sinh, `published`/`changes_requested` ghép động — không coi là mồ côi.
