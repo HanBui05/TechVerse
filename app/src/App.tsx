@@ -26,6 +26,7 @@ import { AdminUsersPage } from './pages/Admin/AdminUsersPage'
 import { TaxonomyPage } from './pages/Admin/TaxonomyPage'
 import { AuthorApplyPage } from './pages/Author/AuthorApplyPage'
 import { AuthorBlogsPage } from './pages/Author/AuthorBlogsPage'
+import { ArticleEditorPage } from './pages/Author/ArticleEditorPage'
 import { ModeratorDashboardPage } from './pages/Moderator/ModeratorDashboardPage'
 import { ModeratorArticlesPage } from './pages/Moderator/ModeratorArticlesPage'
 import type { Language, Theme } from './types/preferences'
@@ -153,6 +154,9 @@ export default function App() {
       <Route path="/admin/tags" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="tags" language={language} /></RoleRoute>} />
       <Route path="/author/apply" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['LEARNER']}><AuthorApplyPage language={language} /></RoleRoute>} />
       <Route path="/author/blogs" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AuthorBlogsPage language={language} /></RoleRoute>} />
+      {/* Same element type on both paths: after the first auto-save /new → /:id/edit keeps editor state. */}
+      <Route path="/author/blogs/new" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><ArticleEditorPage language={language} /></RoleRoute>} />
+      <Route path="/author/blogs/:id/edit" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><ArticleEditorPage language={language} /></RoleRoute>} />
       <Route path="/settings/theme" element={<ThemePage theme={theme} setTheme={setTheme} t={t} />} />
       <Route path="/settings/language" element={<LanguagePage language={language} setLanguage={setLanguage} t={t} />} />
       <Route path="*" element={<PlaceholderPage t={t} language={language} />} />

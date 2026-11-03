@@ -19,7 +19,13 @@ const components: Components = {
   img: ({ node, ...props }) => <img {...props} loading="lazy" />,
 }
 
+type Props = { content: string; imageAllowed?: (src: string) => boolean; imagePlaceholder?: string }
+
 // Render Markdown/GFM thành nội dung có ngữ nghĩa; raw HTML bị bỏ qua, URL nguy hiểm bị lọc mặc định.
-export function MarkdownContent({ content }: { content: string }) {
-  return <div className="markdown-content"><ReactMarkdown skipHtml remarkPlugins={[remarkGfm]} rehypePlugins={[[rehypeHighlight, { detect: false }]]} components={components}>{content}</ReactMarkdown></div>
+// `imageAllowed` (editor preview): ảnh bị từ chối thành placeholder, trình duyệt không request URL đó.
+export function MarkdownContent({ content, imageAllowed, imagePlaceholder = '' }: Props) {
+  const rendered: Components = imageAllowed ? { ...components, img: ({ node, src, alt, ...props }) => typeof src === 'string' && imageAllowed(src)
+    ? <img {...props} src={src} alt={alt} loading="lazy" />
+    : <span role="img" aria-label={alt || imagePlaceholder} className="my-4 flex min-h-32 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border bg-muted p-4 text-center text-sm text-muted-foreground"><span>{imagePlaceholder}</span>{alt && <span className="text-xs">{alt}</span>}</span> } : components
+  return <div className="markdown-content"><ReactMarkdown skipHtml remarkPlugins={[remarkGfm]} rehypePlugins={[[rehypeHighlight, { detect: false }]]} components={rendered}>{content}</ReactMarkdown></div>
 }

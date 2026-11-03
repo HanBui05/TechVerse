@@ -1,195 +1,119 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { AuthorBlogsPage } from './AuthorBlogsPage'
 import { setAccessToken } from '../../services/api/client'
 
 const base = '/api/v1/author/articles'
-const coverUrl = 'https://res.cloudinary.com/demo/image/upload/v1/articles/cover.png'
-const oldCover = 'https://res.cloudinary.com/demo/image/upload/v1/articles/old.png'
-const draft = { id: 'draft-1', title: 'OOP Java', summary: 'Learn OOP', content: '# OOP', status: 'DRAFT', topic: { id: 'java', name: 'Java' }, tags: [], moderationNote: null, coverImageUrl: null as string | null }
+const summary = (id: string, title: string, workflowStatus: string, publicationStatus: string) => ({ id, title, summary: 'S', coverImageUrl: null, topic: { id: 'java', name: 'Java', active: true }, workflowStatus, publicationStatus, hasUnpublishedChanges: workflowStatus !== 'PUBLISHED', publishedAt: null, createdAt: '2026-11-01T09:00:00Z', updatedAt: '2026-11-04T10:42:00Z' })
 const fetchMock = vi.fn<typeof fetch>()
-let writes: { method: string; path: string; body: unknown; uploadKey: string | null }[]
-let existing: typeof draft | null
-let uploadFailures: number
-let patchFailures: number
-let tagOptions: { id: string; name: string }[]
+let rows: ReturnType<typeof summary>[]
+let failList: boolean
+const calls = () => fetchMock.mock.calls.map(([url, init]) => ({ url: new URL(String(url)), method: init?.method || 'GET', body: init?.body }))
+const response = (data: unknown, status = 200) => new Response(JSON.stringify({ status, message: 'x', data }), { status })
 
-// Return a backend envelope without replacing any frontend upload or save behavior.
-function response(data: unknown, status = 200) {
-  return new Response(JSON.stringify({ status, message: status === 200 ? 'OK' : 'Temporary failure', data }), { status })
+// Backend fake: counts follow the filter, the list honours workflow/publication filters.
+async function backend(input: RequestInfo | URL, init?: RequestInit) {
+  const url = new URL(String(input))
+  const method = init?.method || 'GET'
+  if (url.pathname.endsWith('/options')) return response({ topics: { content: [{ id: 'java', name: 'Java', active: true }], hasNext: false }, tags: { content: [], hasNext: false } })
+  if (url.pathname.endsWith('/history')) return response({ content: [{ id: 'h1', action: 'REQUEST_CHANGES', note: 'Bổ sung ví dụ', actor: { id: 'm', fullName: 'Mod A', avatarUrl: null }, fromWorkflowStatus: 'PENDING', toWorkflowStatus: 'CHANGES_REQUESTED', fromPublicationStatus: 'PUBLISHED', toPublicationStatus: 'PUBLISHED', versionNumber: null, createdAt: '2026-11-04T10:20:00Z' }], page: 0, size: 10, totalElements: 1, totalPages: 1, hasNext: false })
+  if (method !== 'GET') return response(method === 'DELETE' ? null : rows[0])
+  if (failList && url.searchParams.get('size') !== '1') return response(null, 503)
+  const wf = url.searchParams.get('workflowStatus'), pub = url.searchParams.get('publicationStatus')
+  const content = rows.filter(r => (!wf || r.workflowStatus === wf) && (!pub || r.publicationStatus === pub))
+  return response({ content: url.searchParams.get('size') === '1' ? content.slice(0, 1) : content, page: 0, size: 20, totalElements: content.length, totalPages: 1, hasNext: false })
 }
 
-// Model editable drafts and enforce upload-before-save ordering at the HTTP boundary.
-async function backend(input: RequestInfo | URL, options?: RequestInit) {
-  const path = new URL(String(input)).pathname
-  const method = options?.method || 'GET'
-  if (method === 'GET') {
-    if (path.endsWith('/options')) return response({ topics: { content: [draft.topic], hasNext: false }, tags: { content: tagOptions, hasNext: false } })
-    if (path === `${base}/${draft.id}`) return response(existing || draft)
-    return response({ content: existing ? [existing] : [], hasNext: false })
-  }
-  const body = options?.body instanceof FormData ? options.body : JSON.parse(String(options?.body))
-  writes.push({ method, path, body, uploadKey: new Headers(options?.headers).get('Upload-Key') })
-  if (path.endsWith('/images')) {
-    if (uploadFailures-- > 0) return response(null, 503)
-    return response({ url: coverUrl, uploadKey: new Headers(options?.headers).get('Upload-Key'), publicId: 'cover', width: 800, height: 450 })
-  }
-  if (method === 'PATCH' && patchFailures-- > 0) return response(null, 503)
-  return response({ ...draft, ...body, status: body.action === 'SUBMIT' ? 'PENDING' : draft.status })
-}
-
-// Open an unsaved article and fill the required metadata using the real form.
-async function newArticle() {
-  const user = userEvent.setup({ applyAccept: false })
-  render(<AuthorBlogsPage />)
-  await screen.findByText('Chưa có bài viết để hiển thị.')
-  await user.click(screen.getByRole('button', { name: '+ Tạo bài viết' }))
-  await user.type(screen.getByLabelText('Tiêu đề *'), 'OOP Java')
-  await user.selectOptions(screen.getByLabelText('Chủ đề *'), 'java')
-  await user.type(screen.getByLabelText('Tóm tắt'), 'Learn OOP')
-  await user.type(screen.getByLabelText('Nội dung Markdown'), '# OOP')
-  return user
-}
-
-// Open an existing draft to test replacing/removing its persisted cover.
-async function openDraft() {
-  const user = userEvent.setup({ applyAccept: false })
-  render(<AuthorBlogsPage />)
-  await user.click(await screen.findByRole('button', { name: /OOP Java/ }))
-  await screen.findByText('Chi tiết bài viết')
-  return user
+function renderPage(language: 'vi' | 'en' = 'vi') {
+  return render(<MemoryRouter><AuthorBlogsPage language={language} /></MemoryRouter>)
 }
 
 beforeEach(() => {
-  setAccessToken('test-author-access')
-  writes = []
-  existing = null
-  uploadFailures = 0
-  patchFailures = 0
-  tagOptions = []
+  setAccessToken('t')
+  rows = [summary('a1', 'Bài công khai', 'PUBLISHED', 'PUBLISHED'), summary('a2', 'Bài chờ duyệt', 'PENDING', 'UNPUBLISHED'), summary('a3', 'Bản nháp mới', 'DRAFT', 'UNPUBLISHED'), summary('a4', 'Bài bị ẩn', 'PUBLISHED', 'HIDDEN')]
+  failList = false
   fetchMock.mockReset().mockImplementation(backend)
   vi.stubGlobal('fetch', fetchMock)
-  vi.stubGlobal('URL', URL)
-  URL.createObjectURL = vi.fn(() => 'blob:cover-preview')
-  URL.revokeObjectURL = vi.fn()
 })
-
 afterEach(() => { cleanup(); setAccessToken(null); vi.unstubAllGlobals() })
 
-it('selects a local cover with preview, then creates draft, uploads and submits in order', async () => {
-  const user = await newArticle()
-  expect(screen.queryByLabelText('URL ảnh bìa')).toBeNull()
-  const file = new File(['image'], 'cover.png', { type: 'image/png' })
-  await user.upload(screen.getByLabelText('Ảnh bìa'), file)
-  expect(screen.getByRole('img', { name: 'Xem trước ảnh bìa' }).getAttribute('src')).toBe('blob:cover-preview')
-  expect(writes).toHaveLength(0)
-  await user.click(screen.getByRole('button', { name: 'Gửi kiểm duyệt' }))
-  await screen.findByText('Đã gửi bài viết để kiểm duyệt.')
-  expect(writes.map(write => [write.method, write.path])).toEqual([
-    ['POST', base], ['POST', `${base}/${draft.id}/images`], ['PATCH', `${base}/${draft.id}`],
-  ])
-  expect(writes[0].body).toMatchObject({ action: 'SAVE', coverImageUrl: null })
-  expect((writes[1].body as FormData).get('file')).toBe(file)
-  expect(writes[1].uploadKey).toMatch(/^[a-f0-9-]{36}$/)
-  expect(writes[2].body).toMatchObject({ action: 'SUBMIT', content: '# OOP', coverImageUrl: coverUrl })
-  expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:cover-preview')
+it('shows real counts, two status badges per row and filters by clicking a stat', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  const row = (await screen.findByText('Bài công khai')).closest('li')!
+  expect(within(row).getByRole('list', { name: 'Trạng thái bài viết' }).textContent).toContain('Đang công khai')
+  expect(within(screen.getByText('Bài chờ duyệt').closest('li')!).getByRole('link', { name: 'Xem Bài chờ duyệt' }).getAttribute('href')).toBe('/author/blogs/a2/edit')
+  expect(within(row).getByRole('link', { name: 'Sửa Bài công khai' })).toBeTruthy()
+  expect(screen.getByText('Kiểm duyệt viên đã ẩn bài')).toBeTruthy()
+  const drafts = await screen.findByRole('button', { name: /Bản nháp\s*1/ })
+  await user.click(drafts)
+  await waitFor(() => expect(screen.queryByText('Bài công khai')).toBeNull())
+  expect(drafts.getAttribute('aria-pressed')).toBe('true')
+  expect(calls().some(c => c.url.searchParams.get('workflowStatus') === 'DRAFT' && c.url.searchParams.get('size') === '20')).toBe(true)
 })
 
-it.each([
-  ['text.txt', 'text/plain', 5],
-  ['large.png', 'image/png', 5 * 1024 * 1024 + 1],
-  ['empty.png', 'image/png', 0],
-])('rejects invalid local cover %s before making upload requests', async (name, type, size) => {
-  const user = await newArticle()
-  await user.upload(screen.getByLabelText('Ảnh bìa'), new File([new Uint8Array(size)], name, { type }))
-  expect((await screen.findByRole('alert')).textContent).toMatch(/JPEG|PNG|WebP|5 MB/)
-  expect(writes).toHaveLength(0)
-  expect(screen.queryByRole('img', { name: 'Xem trước ảnh bìa' })).toBeNull()
+it('offers only the actions the backend accepts for each state', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Thao tác khác cho Bài công khai' }))
+  const menu = await screen.findByRole('dialog')
+  expect(within(menu).getAllByRole('menuitem').map(i => i.textContent)).toEqual(['Xem bản công khai', 'Ẩn bài', 'Xóa bài', 'Lịch sử'])
+  expect(within(menu).getByRole('menuitem', { name: 'Xem bản công khai' }).getAttribute('href')).toBe('/blogs/a1')
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: 'Thao tác khác cho Bài chờ duyệt' }))
+  expect(within(await screen.findByRole('dialog')).getAllByRole('menuitem').map(i => i.textContent)).toEqual(['Rút lại', 'Lịch sử'])
 })
 
-it('keeps the draft and reuses the upload key when retrying a failed cover upload', async () => {
-  uploadFailures = 1
-  const user = await newArticle()
-  await user.upload(screen.getByLabelText('Ảnh bìa'), new File(['image'], 'cover.webp', { type: 'image/webp' }))
-  await user.click(screen.getByRole('button', { name: 'Gửi kiểm duyệt' }))
-  await screen.findByRole('alert')
-  expect(writes.filter(write => write.method === 'PATCH')).toHaveLength(0)
-  await user.click(screen.getByRole('button', { name: 'Gửi kiểm duyệt' }))
-  await screen.findByText('Đã gửi bài viết để kiểm duyệt.')
-  expect(writes.filter(write => write.path === base)).toHaveLength(1)
-  const uploads = writes.filter(write => write.path.endsWith('/images'))
-  expect(uploads).toHaveLength(2)
-  expect(uploads[0].uploadKey).toBe(uploads[1].uploadKey)
+it('hides an article only after AlertDialog confirmation, then reloads', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Thao tác khác cho Bài công khai' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Ẩn bài' }))
+  const dialog = await screen.findByRole('alertdialog')
+  expect(dialog.textContent).toMatch(/độc giả/i)
+  const before = calls().length
+  await user.click(within(dialog).getByRole('button', { name: 'Ẩn bài' }))
+  await waitFor(() => expect(calls().some(c => c.method === 'PATCH' && c.url.pathname === `${base}/a1/publication`)).toBe(true))
+  expect(JSON.parse(String(calls().find(c => c.method === 'PATCH')!.body))).toEqual({ action: 'HIDE' })
+  await waitFor(() => expect(calls().length).toBeGreaterThan(before + 1))
 })
 
-it('does not upload the cover again when retrying a failed final save', async () => {
-  patchFailures = 1
-  const user = await newArticle()
-  await user.upload(screen.getByLabelText('Ảnh bìa'), new File(['image'], 'cover.png', { type: 'image/png' }))
-  await user.click(screen.getByRole('button', { name: 'Lưu nháp' }))
-  await screen.findByRole('alert')
-  await user.click(screen.getByRole('button', { name: 'Lưu nháp' }))
-  await screen.findByText('Đã lưu bài viết.')
-  expect(writes.filter(write => write.path.endsWith('/images'))).toHaveLength(1)
-  expect(writes.filter(write => write.method === 'PATCH')).toHaveLength(2)
-  expect(writes.at(-1)?.body).toMatchObject({ coverImageUrl: coverUrl })
+it('warns that a never-published draft is deleted permanently', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Thao tác khác cho Bản nháp mới' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Xóa vĩnh viễn' }))
+  const dialog = await screen.findByRole('alertdialog')
+  expect(dialog.textContent).toContain('không khôi phục')
+  await user.click(within(dialog).getByRole('button', { name: 'Xóa vĩnh viễn' }))
+  await waitFor(() => expect(calls().some(c => c.method === 'DELETE' && c.url.pathname === `${base}/a3`)).toBe(true))
 })
 
-it('replaces an existing cover without creating another draft', async () => {
-  existing = { ...draft, coverImageUrl: oldCover } as typeof draft
-  const user = await openDraft()
-  expect(screen.getByRole('img', { name: 'Xem trước ảnh bìa' }).getAttribute('src')).toBe(oldCover)
-  await user.upload(screen.getByLabelText('Ảnh bìa'), new File(['image'], 'cover.jpeg', { type: 'image/jpeg' }))
-  await user.click(screen.getByRole('button', { name: 'Lưu nháp' }))
-  await screen.findByText('Đã lưu bài viết.')
-  expect(writes.map(write => write.path)).toEqual([`${base}/${draft.id}/images`, `${base}/${draft.id}`])
-  expect(writes.at(-1)?.body).toMatchObject({ coverImageUrl: coverUrl })
+it('opens the history sheet with translated actions', async () => {
+  const user = userEvent.setup()
+  renderPage('en')
+  await user.click(await screen.findByRole('button', { name: 'More actions for Bài công khai' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'History' }))
+  const sheet = await screen.findByRole('dialog', { name: 'Article history' })
+  expect(await within(sheet).findByText('Changes requested')).toBeTruthy()
+  expect(within(sheet).getByText(/Bổ sung ví dụ/)).toBeTruthy()
+  expect(within(sheet).queryByText('REQUEST_CHANGES')).toBeNull()
 })
 
-it('removes a persisted cover by saving null without uploading another image', async () => {
-  existing = { ...draft, coverImageUrl: oldCover } as typeof draft
-  const user = await openDraft()
-  await user.click(screen.getByRole('button', { name: 'Bỏ ảnh bìa' }))
-  await user.click(screen.getByRole('button', { name: 'Lưu nháp' }))
-  await screen.findByText('Đã lưu bài viết.')
-  expect(writes).toHaveLength(1)
-  expect(writes[0].body).toMatchObject({ coverImageUrl: null })
-})
-
-it('continues creating articles without an optional cover in one request', async () => {
-  const user = await newArticle()
-  await user.click(screen.getByRole('button', { name: 'Gửi kiểm duyệt' }))
-  await screen.findByText('Đã gửi bài viết để kiểm duyệt.')
-  expect(writes).toHaveLength(1)
-  expect(writes[0].body).toMatchObject({ action: 'SUBMIT', coverImageUrl: null })
-})
-
-// Bắt lỗi tìm kiếm làm mất lựa chọn hoặc chip không gỡ được thẻ khỏi payload.
-it('searches tags, preserves selected chips and removes a tag before saving', async () => {
-  tagOptions = [{ id: 'java', name: 'Java' }, { id: 'spring', name: 'Spring Boot' }]
-  const user = await newArticle()
-  await user.type(screen.getByRole('searchbox', { name: 'Tìm thẻ' }), 'spring')
-  await user.click(screen.getByRole('checkbox', { name: 'Spring Boot' }))
-  await user.clear(screen.getByRole('searchbox', { name: 'Tìm thẻ' }))
-  await user.click(screen.getByRole('checkbox', { name: 'Java' }))
-  await user.click(screen.getByRole('button', { name: 'Bỏ thẻ Spring Boot' }))
-  await user.click(screen.getByRole('button', { name: 'Lưu nháp' }))
-  await screen.findByText('Đã lưu bài viết.')
-  expect(writes[0].body).toMatchObject({ tagIds: ['java'] })
-})
-
-// Bắt lỗi chọn vượt 10 thẻ thay vì chỉ cắt bớt payload một cách âm thầm.
-it('limits selection to ten tags and allows another after removing one', async () => {
-  tagOptions = Array.from({ length: 11 }, (_, i) => ({ id: `tag-${i}`, name: `Tag ${i + 1}` }))
-  const user = await newArticle()
-  for (let i = 1; i <= 10; i++) await user.click(screen.getByRole('checkbox', { name: `Tag ${i}` }))
-  expect((screen.getByRole('checkbox', { name: 'Tag 11' }) as HTMLButtonElement).disabled).toBe(true)
-  await user.click(screen.getByRole('button', { name: 'Bỏ thẻ Tag 1' }))
-  await user.click(screen.getByRole('checkbox', { name: 'Tag 11' }))
-  await user.click(screen.getByRole('button', { name: 'Lưu nháp' }))
-  await screen.findByText('Đã lưu bài viết.')
-  expect((writes[0].body as { tagIds: string[] }).tagIds).toHaveLength(10)
-  expect((writes[0].body as { tagIds: string[] }).tagIds).toContain('tag-10')
-  expect((writes[0].body as { tagIds: string[] }).tagIds).not.toContain('tag-0')
+it('shows an onboarding empty state, and a retryable error', async () => {
+  rows = []
+  renderPage()
+  expect(await screen.findByText('Bạn chưa có bài viết nào')).toBeTruthy()
+  expect(screen.getByRole('link', { name: 'Viết bài đầu tiên' }).getAttribute('href')).toBe('/author/blogs/new')
+  cleanup()
+  failList = true
+  rows = [summary('a1', 'Bài công khai', 'PUBLISHED', 'PUBLISHED')]
+  const user = userEvent.setup()
+  renderPage()
+  expect((await screen.findByRole('alert')).textContent).toContain('Hệ thống tạm thời gián đoạn')
+  failList = false
+  await user.click(screen.getByRole('button', { name: 'Thử lại' }))
+  expect(await screen.findByText('Bài công khai')).toBeTruthy()
 })

@@ -8,22 +8,41 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - **Task 1b đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1b`; đã đánh dấu “Xong khi” 1b trong spec, nhờ Codex đồng bộ spec (kèm đề xuất container dùng chung).
 - **Task 1c đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1c`; đã đánh dấu “Xong khi” 1c trong spec, nhờ Codex đồng bộ spec. 76/76, Codex review không phát hiện; chi tiết mục “Task 1c” cuối file. **Backend module xong (1a–1c).**
 - **Cổng wireframe 2a–2d đã nhận (2026-11-04)** — [`article-flow.wireframe.md`](article-flow.wireframe.md) (bố cục + mục “Phong cách”); đã đánh dấu “Xong khi” cổng UI trong spec.
-- **Task tiếp theo: 2a — Author workspace + editor** (session mới), code theo spec + file wireframe. Thứ tự: 2a → 2b → 2c → 2d → regression gộp + E2E.
-- **Frontend đang lệch API mới (có chủ đích, tới 2a/2b/2c):** `ModeratorArticlesPage`/`AuthorBlogsPage` còn đọc `status` (bỏ từ 1a); Public bỏ `updatedAt`, `sortBy/direction` → `sort`. Không sửa FE trong task Backend.
+- **Task 2a đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2a`; đã đánh dấu “Xong khi” 2a trong spec, nhờ Codex đồng bộ spec. Test 80/80 + build đạt; Codex vòng 1 sửa 5 lỗi, vòng 2 sửa 1 lỗi; chi tiết mục “Task 2a” cuối file.
+- **Task tiếp theo: 2b — Moderator UI** (session mới), theo spec + wireframe 2b-1…2b-3. Dùng lại `ArticleHistorySheet`/`formatDate`/`fieldLabel`/`TONE_TILE` export từ `pages/Author/AuthorBlogsPage.tsx`, `articleI18n` (thêm mã lỗi Moderator), `ArticleStatusBadges`, `ArticlePreview`. Thứ tự sau đó: 2c → 2d → regression gộp + E2E.
+- **Frontend còn lệch API mới (tới 2b/2c):** `ModeratorArticlesPage`/`ArticleStats` còn đọc `status`; Public bỏ `updatedAt`, `sortBy/direction` → `sort`. Author đã theo API mới ở 2a.
+- **Lỗi có sẵn ngoài 2a (đã kiểm trên HEAD bằng `git stash`):** `App.auth.test.tsx` › “routes ["MODERATOR"] to /moderator” gọi fetch 10 lần thay vì 2 (dashboard Moderator gọi số liệu) → thuộc 2b. Sidebar dư 8 px cuộn ngang ở desktop (cả `/profile`).
 - **DB dev phải làm mới trước khi chạy app** (V10 dừng nếu `articles` có dữ liệu): lệnh ở `docs/RUNBOOK.md` mục “Làm mới DB dev”. Không còn seed SQL bài viết: tạo 3–5 bài qua API theo `server/src/test/resources/seed/HUONG_DAN.md`.
-- **Môi trường:** Docker 29.6.1, `.env` có `CLOUDINARY_CLOUD_NAME`; RUNBOOK có tài khoản dev Moderator.
+- **Môi trường:** Docker 29.6.1. DB dev đã vá checksum V10 (không cần làm mới DB; tài khoản dev còn nguyên, gồm `moderator@techverse.test`). Người dùng đã tạo API key Cloudinary mới (key cũ báo `api_secret mismatch`). Backend người dùng chạy từ IntelliJ (app không tự đọc `.env`).
 
 ## Quyết định người dùng chưa có trong spec
 
-- **2026-11-04 — Cổng UI:** duyệt wireframe `plans/article-flow.wireframe.md` gồm 5 điểm Claude tự chọn (ô số liệu workspace từ `totalElements` theo filter; một nút chính + menu `⋯`; editor có khối metadata thu gọn + tab “Bản công khai vN”; Moderator detail so song song, nút ở header; list Moderator mặc định “Chờ duyệt”).
-- **2026-11-04 — Phong cách:** Reader list/detail/Bài đã lưu bám mẫu javabuilder.online (patterns 4.1–4.4); Author và Moderator không có mẫu, Claude tự thiết kế sinh động nhưng giữ khung chung của web (chi tiết mục “Phong cách” trong file wireframe).
-- **2026-11-04 — Mở rộng Author:** không dựng trước menu/trang tổng quan; khi có tính năng tác giả thứ hai thì đổi mục sidebar “Tác giả” thành nhóm.
+- **2026-11-04 — Task 2a, review vòng 2:** người dùng chọn sửa phát hiện [high] (panel ảnh phải khóa khi đang ghi + chặn thao tác chồng).
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — Task 2a đã nhận
+- Người dùng nhận Task 2a; đánh dấu 8 mục “Xong khi” 2a trong spec, commit WIP, nhờ Codex đồng bộ spec. Tiếp: Task 2b (session mới).
+
+### 2026-11-04 — Upload ảnh bìa báo “Dịch vụ ảnh từ chối tải lên”
+- Người dùng test tay: mọi ảnh (PNG…) báo `ARTICLE_IMAGE_UPLOAD_FAILED`. Script chẩn đoán (scratchpad, gọi đúng chuỗi request của `CloudinaryArticleImageStorage` bằng khóa trong `.env`) → Cloudinary trả `401 api_secret mismatch` cho cả Admin API (`find`) lẫn upload. Không phải lỗi code frontend/backend: cặp `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET` không khớp. Việc người dùng: chép lại API secret đúng từ Cloudinary Console vào `.env` (và cấu hình chạy IntelliJ nếu nhập riêng), khởi động lại backend.
+- Ngoài phạm vi (đề xuất cho Codex): backend gộp 401/403 của Cloudinary vào `ARTICLE_IMAGE_UPLOAD_FAILED` và không log mã/thông báo của provider → khó chẩn đoán; nên log `status + error.message` (không log khóa) và coi lỗi xác thực là `ARTICLE_STORAGE_UNAVAILABLE`.
+
+### 2026-11-04 — Sửa DB dev: checksum V10 lệch
+- Backend không khởi động: `Migration checksum mismatch for migration version 10`. So schema DB dev với schema dựng mới V1→V10 (DB tạm `tv_check`, đã xóa): chỉ lệch `content_fingerprint` `char(64)` (V10 bản nháp Task 1a) so với `varchar(64)` hiện tại, ở `articles` và `article_publication_versions`. Người dùng đồng ý → `ALTER … TYPE varchar(64)` hai cột + cập nhật checksum V10 trong `flyway_schema_history` (một transaction). So lại: schema khớp; Flyway “Successfully validated 11 migrations”.
+- Bài học: đã chạy migration vào DB dev thì không sửa file migration đó; nếu lỡ sửa, so schema với bản dựng mới rồi vá + cập nhật checksum, không cần xóa DB.
+
+### 2026-11-04 — Task 2a: Author workspace + editor
+- Viết lại `/author/blogs` (workspace) + editor mới `/author/blogs/new`, `/:id/edit`; service/types/i18n/badge chung; TagPicker sang Tailwind. Test spec 191/192 (1 lỗi có sẵn của Moderator), build đạt; kiểm mắt bằng API giả lập vì backend không chạy.
+- Bài học: preflight còn tắt nên `<button>` trần nhận nền/viền legacy → luôn thêm `border-0 bg-transparent`. Lỡ chạy Python trong heredoc Bash một lần (trái luật) — dùng Write rồi chạy file.
+- Việc dở: Codex review vòng 1; người dùng nhận.
+
+### 2026-11-04 — Codex đồng bộ cổng wireframe 2a–2d
+- Codex: đã đưa ba quyết định về cổng UI, phong cách và mở rộng Author vào thân spec; xác lập `article-flow.wireframe.md` là tài liệu Task 2a–2d bắt buộc phải theo. Checklist cổng UI đã được đánh dấu `[x]` từ trước nên giữ nguyên.
+
 ### 2026-11-04 — Cổng wireframe 2a–2d đã nhận
 - Tạo `plans/article-flow.wireframe.md` (ma trận hành động Author, mọi màn 2a–2d + loading/empty/error, desktop/mobile). Người dùng duyệt; chốt phong cách: Reader theo javabuilder, Author/Moderator Claude tự thiết kế sinh động trong khung chung. Không sửa code. Tiếp: Task 2a.
 
@@ -148,3 +167,22 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
   - Test 1a `browserMayPreflightDeleteButUnmatchedEndpointsStayDenied` khẳng định `PUT …/saved` bị chặn “tới 1c” → đổi sang `PUT /api/v1/articles/{id}` (vẫn chưa có matcher).
 - **Review vòng 1 (Codex `review`):** “Không phát hiện lỗi mức trung bình hoặc cao”; không sửa, không chạy vòng 2.
 - **Chưa kiểm:** FE chưa dùng `saved`/API lưu (2c/2d); chạy app thật trên DB dev.
+
+## Task 2a — Author workspace + editor (2026-11-04)
+
+- **Đã làm:** `types/articles.ts`, `services/articleService.ts` (API Author + hàm thuần `authorActions` ma trận hành động, `changedFields` PATCH chỉ trường đổi, `isManagedImage`, `replaceImage`/`removeImage` theo source+occurrence, `resolveIssue`, `countImages`), `data/articleI18n.ts` (nhãn enum, mã lỗi vi/en, copy UI), `ArticleStatusBadges`, `ArticlePreview`, `MarkdownContent` thêm `imageAllowed`/placeholder, `TagPicker` sang Tailwind + `language`. `AuthorBlogsPage` = workspace (5 ô số liệu bấm lọc, filter/search/sort, hàng + nút chính + menu `⋯`, AlertDialog, Sheet lịch sử, empty/error/retry). `ArticleEditorPage` mới (header dính, banner trạng thái, metadata thu gọn, panel `imageIssues`, nhập file, chèn ảnh, ảnh bìa, preview/“Bản công khai vN”, mobile tab + Sheet + thanh đáy, chặn rời trang). `App.tsx` thêm 2 route.
+- **Test:** RED đầu (module chưa có). Cuối: `npx vitest run` 8 file của spec → 191/192; lỗi: `App.auth.test.tsx` › routes ["MODERATOR"] (có sẵn trên HEAD). `npm run build` đạt.
+- **Kiểm mắt (Playwright MCP, API giả lập bằng `page.route` đúng shape backend — backend 8080 không chạy, chạy thật cần xóa DB dev):** `/author/blogs` dark 1440 + light đo JS; editor dark 1440 + light (menu `⋯`, metadata mở); mobile 390 cảm ứng (`pointer: coarse` true) cho workspace, editor soạn thảo/xem trước: không cuộn ngang, mọi control ≥44 px, chữ nút không tràn. Preview không request ảnh ngoài (console chỉ có font/logo bị chặn). Sửa sau kiểm: nền/viền legacy trên `<button>` trần, metadata thu gọn với bài đã có (vùng viết từ y≈1043 → 657), header dính dưới topbar mobile, nhãn đóng Sheet “Đóng”.
+- **Lệch khác spec (chi tiết kỹ thuật tự chọn):**
+  - Hook `useArticleActions`, `ArticleActionMenu`, `ArticleHistorySheet` export từ `AuthorBlogsPage.tsx` (spec không có file riêng); 2b có thể dùng lại Sheet.
+  - Định vị ảnh: regex Markdown, che code fence/inline code, lấy lần xuất hiện thứ `occurrence` của `source` và chỉ nhận nếu cùng `line` backend báo; lệch → không sửa, báo “Lưu nháp để cập nhật danh sách ảnh”.
+  - Preview chỉ nạp ảnh `https://res.cloudinary.com/...` có `/<authorId>/<articleId>/` (mô phỏng cú pháp luật managed); còn lại placeholder.
+  - Giới hạn 50 ảnh chỉ kiểm ở client khi “Chèn ảnh” (upload API không đếm; thay ảnh không đổi số lượng). File >5 MiB/sai loại báo tại dòng, không gửi request.
+  - SUBMIT gặp `ARTICLE_IMAGE_INVALID`: tự SAVE phần đổi (hoặc tải lại detail) để lấy `imageIssues` mới.
+  - Hộp thoại “Hủy bản sửa” không ghi số version (list không có `publishedVersion`). 403 không có code → câu `ACCESS_DENIED`.
+  - Filter workspace giữ trong state, không đưa lên URL. Mobile tab dùng nhóm nút `aria-pressed` (không có primitive Tabs). `statusTone` giữ nguyên (AUTHOR_HIDDEN ra slate).
+  - `App.author-session.test.tsx`: thay ca phân trang cũ bằng ca mở editor qua route App; ca 403 nay chặn list và kiểm câu tiếng Việt.
+- **Chưa kiểm:** chạy với backend/DB thật và Cloudinary thật (upload, auto-SAVE, idempotency) — để E2E cuối module; CSS legacy `tag-picker*` còn trong `content.css` tới 2c.
+- **Review vòng 1 (Codex `review`):** 5 phát hiện, sửa cả 5: [P1] form khóa khi đang ghi (`locked = readOnly || busy`, thay ảnh issue cũng khóa) để response cũ không ghi đè chữ mới; [P1] Ẩn/Hiện lại chỉ cập nhật trạng thái, giữ chỉnh sửa chưa lưu; [P2] preview chỉ nạp ảnh vừa khớp hình dạng URL backend (`/image/upload/v<n>/…/<author>/<article>/<id>.png`, không query/port) **vừa** thuộc danh sách tin cậy (ảnh đã lưu không bị liệt kê issue, ảnh bản công khai, ảnh vừa upload); [P2] lỗi tải chủ đề/thẻ có alert + Thử lại; [P2] import >1 MiB báo 413 thay vì 415. Test thêm 4 ca editor + 2 ca service. Chạy lại 7 file liên quan → 79/79, build đạt.
+- **Review vòng 2 (Codex `adversarial-review`, phần sửa):** needs-attention, 1 phát hiện [high]: nút thay/bỏ ảnh, Thử lại, ghép nhiều file trong panel `imageIssues` chưa theo `locked` → khi SAVE chậm, thao tác ảnh có thể bị `apply(saved)` ghi đè; `busy` boolean có thể bị request xong trước đặt về false khi chạy chồng. **Chờ người dùng quyết** (khuyến nghị: sửa — dùng `locked` cho mọi nút panel + guard trong handler, thêm 1 test).
+- **Sửa phát hiện vòng 2 (người dùng chọn sửa, 2026-11-04):** `busy` thành bộ đếm thao tác ghi đang chạy (`begin`/`end`), mọi handler ghi (lưu, thay/bỏ ảnh, ghép nhiều file, chèn ảnh, ảnh bìa, nhập file) dừng nếu đã có thao tác khác; nút thay/bỏ/Thử lại/ghép nhiều file theo `locked`. Test thêm: SAVE treo → nút panel khóa, input file bắn vẫn không upload. Chạy 7 file liên quan → 80/80, build đạt. Hết 2 vòng review theo quy trình; không chạy vòng 3.

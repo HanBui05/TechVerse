@@ -15,11 +15,17 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Codex viết; Claude chỉ ghi 
 - Dữ liệu thật dùng fixture có sẵn trong `server/src/test/resources/seed/`: tạo bài qua UI/API thật, không chèn thẳng bài mẫu vào DB để giả lập luồng kiểm duyệt.
 - Cuối module không chạy local full suite bằng `scripts/verify.sh`; chạy một lượt regression gộp đúng phạm vi Article flow cho Backend và Frontend song song, rồi E2E thật. Full backend/frontend do CI chạy khi mở PR.
 - “Lưu bài” thuộc module này: mọi tài khoản đã đăng nhập có thể lưu/bỏ lưu bài visible; row lưu được giữ khi bài tạm ẩn và tự xuất hiện lại khi bài visible. Không công khai số lượt lưu.
-- Trước khi code Task 2a, Claude phải trình wireframe ASCII/Markdown cho mọi màn 2a–2d và các trạng thái loading/empty/error; chỉ code sau khi người dùng duyệt và quyết định được ghi vào log.
+- Người dùng đã duyệt [`article-flow.wireframe.md`](article-flow.wireframe.md) ngày 2026-11-04; Task 2a–2d phải thực hiện theo file này cùng spec. Năm điểm bố cục đã chốt là: ô số liệu workspace lấy `totalElements` theo filter hiện hành; mỗi bài có một nút chính + menu `⋯`; editor có khối metadata thu gọn + tab “Bản công khai vN”; Moderator detail so sánh song song và đặt nút hành động ở header; list Moderator mặc định “Chờ duyệt”.
+- Phong cách Reader list/detail/Bài đã lưu bám `javabuilder-patterns.md` mục 4.1–4.4; Author/Moderator không có mẫu riêng, được thiết kế sinh động bằng token/Badge tone nhưng giữ khung chung của web và không dùng gradient.
+- Không dựng trước menu/trang tổng quan Author; khi có tính năng tác giả thứ hai mới đổi mục sidebar “Tác giả” thành nhóm.
 
 ## Đường dẫn thuộc module
 
-Chỉ được sửa/tạo các đường dẫn sau. File mới ghi rõ “tạo”; migration cũ V1–V9 không được sửa.
+Các đường dẫn thuộc phạm vi module được liệt kê dưới đây; mục ghi “chỉ đọc” không được sửa trong Task 2a–2d. File mới ghi rõ “tạo”; migration cũ V1–V9 không được sửa.
+
+### Tài liệu thiết kế bắt buộc — chỉ đọc trong Task 2a–2d
+
+- `plans/article-flow.wireframe.md` — wireframe đã được người dùng duyệt ngày 2026-11-04; Task 2a–2d phải code theo file này cùng spec, không tự đổi bố cục/phong cách đã chốt.
 
 ### Backend và schema
 
@@ -237,19 +243,20 @@ Chỉ được sửa/tạo các đường dẫn sau. File mới ghi rõ “tạo
 
 ### Cổng UI trước Task 2a — bắt buộc
 
-- Claude vẽ wireframe ASCII/Markdown cho workspace, editor desktop/mobile, Moderator list/detail, Reader list/detail và Bài đã lưu, gồm loading/empty/error. Người dùng duyệt, Claude ghi quyết định vào log; trước đó không code Task 2a–2d.
-- Wireframe chỉ chốt bố cục trong contract/spec đã duyệt, không tự thêm endpoint/chức năng. Sau cổng này, mỗi task UI vẫn có Codex review, kiểm mắt và người dùng nhận kết quả theo quy trình; không mở vòng phản biện spec riêng cho từng task.
+- Cổng đã được người dùng nhận ngày 2026-11-04 qua [`article-flow.wireframe.md`](article-flow.wireframe.md), bao phủ workspace, editor desktop/mobile, Moderator list/detail, Reader list/detail, Bài đã lưu và các trạng thái loading/empty/error.
+- Task 2a–2d bắt buộc theo wireframe đã duyệt về bố cục/phong cách và theo spec về contract, nghiệp vụ, validation cùng tiêu chí “Xong khi”; wireframe không tạo thêm endpoint/chức năng. Mỗi task UI vẫn có Codex review, kiểm mắt và người dùng nhận kết quả theo quy trình; không mở vòng phản biện spec riêng cho từng task.
 
 ### Task 2a — Author workspace + editor
 
-- `/author/blogs` là workspace tổng quan: số liệu thật, filter/search, hai badge trạng thái, action matrix đầy đủ gồm hide/unhide/delete hard/soft và entry rõ tới tạo/sửa/xem live; không hiện action backend từ chối.
-- `/author/blogs/new` và `/author/blogs/:id/edit` là editor riêng. Desktop có source Markdown/text/import trái + preview bài thật phải; mobile dùng tab “Soạn thảo/Xem trước”. Metadata, toolbar và panel ảnh để Claude bố trí theo UI Guide mà không làm vùng viết chật.
+- `/author/blogs` là workspace tổng quan: các ô số liệu dùng `totalElements` theo filter hiện hành, có filter/search, hai badge trạng thái và action matrix đầy đủ gồm hide/unhide/delete hard/soft; mỗi bài chỉ có một nút chính, action phụ nằm trong menu `⋯`, entry tới tạo/sửa/xem live rõ ràng và không hiện action backend từ chối.
+- `/author/blogs/new` và `/author/blogs/:id/edit` là editor riêng. Desktop có source Markdown/text/import trái + preview bài thật phải; mobile dùng tab “Soạn thảo/Xem trước”. Metadata nằm trong khối thu gọn; bài từng công khai có tab “Bản công khai vN”. Toolbar và panel ảnh theo wireframe/UI Guide mà không làm vùng viết chật.
 - Editor hỗ trợ title/topic/tối đa 10 tag/summary/cover, import, upload, save/submit/withdraw/discard/delete. `imageIssues` hiện callout “N ảnh cần tải lên” và từng dòng alt/source/line-column với “Tải ảnh thay thế” hoặc “Bỏ ảnh”; client thay theo `source + occurrence`, nếu target không còn khớp thì không sửa nhầm và yêu cầu save/reload issue. Bài mới: upload đầu tiên tự POST `action=SAVE` bằng `Idempotency-Key` khi title/topic hợp lệ rồi upload; nếu chưa đủ thì khóa nút với hướng dẫn “Nhập tiêu đề, chủ đề và lưu nháp trước”. Chọn nhiều file tự ghép theo filename; lỗi 429, quá 50 ảnh hoặc file >5 MiB nằm ngay dòng tương ứng. Preview dùng placeholder và tuyệt đối không request URL ngoài; khóa Submit tới khi hết issue. Mobile đặt panel trong Sheet/tab. Dirty navigation dùng `beforeunload` và `AlertDialog` cho link/nút do editor kiểm soát, không đổi `BrowserRouter`.
 - Preview editor dùng cùng typography/composition Reader nhưng ẩn thời gian đọc vì `readingMinutes` chỉ được backend tính và lưu lúc APPROVE; client không tự ước lượng.
+- Sidebar giữ một mục “Tác giả” dẫn thẳng tới workspace; không dựng menu nhóm hay trang tổng quan Author trước khi có tính năng tác giả thứ hai.
 
 ### Task 2b — Moderator UI
 
-- Giữ chuẩn Admin ở dashboard/list; list điều hướng tới route detail riêng `/moderator/articles/:id`, bỏ Sheet detail cũ. Trang detail đủ rộng để so working với snapshot, đánh dấu trường đổi và xử lý review/HIDE/RESTORE/REMOVE bằng `AlertDialog`.
+- Giữ chuẩn Admin ở dashboard/list; list mặc định filter “Chờ duyệt”, điều hướng tới route detail riêng `/moderator/articles/:id` và bỏ Sheet detail cũ. Trang detail so working với snapshot theo hai cột song song, đánh dấu trường đổi; các nút hành động nằm ở header và review/HIDE/RESTORE/REMOVE dùng `AlertDialog`.
 - Hiện eligibility của tác giả. Dialog duyệt chỉ hiện “Lần trước trả về: <note>” khi có REQUEST_CHANGES sau lần APPROVE gần nhất; withdraw/gửi lại giữ note, vòng mới sau APPROVE không hiện note cũ.
 
 ### Task 2c — Reader + preflight + CSS legacy
@@ -355,7 +362,7 @@ Không thêm màu mới; chỉ dùng token đã đo từ `tokens.css` bằng `np
 - Stable article ID/URL; public API không bao giờ trả working copy. Snapshot/version/history bất biến sau commit; mọi approve/publication action là một transaction có pessimistic lock và stale token.
 - Giữ giới hạn/import/upload/idempotency/rate-limit và lock order hiện có. Không làm cleanup mất asset còn được working copy hoặc version lịch sử tham chiếu.
 - Kiểm ảnh Cloudinary thật cần đủ `CLOUDINARY_*` trong `.env`; nếu môi trường thiếu thì ghi rõ “Chưa kiểm” cho phần ảnh, không suy ra đạt từ mock.
-- Giao diện bám [`docs/design/UI_GUIDE.md`](../docs/design/UI_GUIDE.md) và mẫu [`javabuilder-patterns.md`](../docs/design/javabuilder-patterns.md); dark mặc định, light chọn được, Inter, không gradient, không literal màu, control cảm ứng ≥44×44 px, không chỉ dựa vào hover.
+- Mọi giao diện bám [`docs/design/UI_GUIDE.md`](../docs/design/UI_GUIDE.md) và wireframe đã duyệt. Reader list/detail/Bài đã lưu bám [`javabuilder-patterns.md`](../docs/design/javabuilder-patterns.md) mục 4.1–4.4; Author/Moderator dùng thiết kế riêng sinh động trong cùng khung web. Dark mặc định, light chọn được, Inter, không gradient, không literal màu, control cảm ứng ≥44×44 px, không chỉ dựa vào hover.
 - Không thêm CSS trang mới. Bật preflight chỉ sau khi toàn bộ caller legacy trong bản đồ đã biến mất; trang không đổi chỉ kiểm tĩnh selector/class, không đặt tiêu chí so pixel.
 
 ## Xong khi
@@ -395,14 +402,14 @@ Không thêm màu mới; chỉ dùng token đã đo từ `tokens.css` bằng `np
 
 ### Task 2a — Author workspace + editor
 
-- [ ] Workspace/editor thực hiện đúng action matrix, hai badge status, history và live link; hide/unhide/delete hard-soft/withdraw/discard dùng `AlertDialog`, không hiện action backend từ chối.
-- [ ] Desktop source/import trái + preview thật phải; mobile tab/Sheet không tràn ngang. Preview dùng `MarkdownContent`, thay ảnh ngoài bằng placeholder và test xác nhận không phát request tới URL ngoài.
-- [ ] Preview không hiển thị reading time và không tính reading time ở client; Reader chỉ nhận giá trị backend sau APPROVE.
-- [ ] Panel `imageIssues` hiển thị/replace theo source+occurrence/remove/multi-file/retry đúng; target stale không bị thay nhầm. Upload đầu trên bài mới auto-SAVE khi metadata hợp lệ, nếu chưa đủ thì hướng dẫn lưu nháp; 429, >50 ảnh, >5 MiB báo tại dòng; Submit bị khóa tới khi hết issue.
-- [ ] Dirty navigation có `beforeunload` và chặn link/nút trong editor bằng `AlertDialog`; không đổi router. Loading/empty/error/retry, vi/en, keyboard/touch target đạt.
-- [ ] `articleService.test.ts` dùng JSON fixture đúng shape backend đã khẳng định; `articleI18n.test.ts` liệt kê đủ enum/mã lỗi mới bằng vi/en; logic status/action/error test ở hàm thuần.
-- [ ] Chạy `npx vitest run src/services/articleService.test.ts src/data/articleI18n.test.ts src/components/articles/ArticleStatusBadges.test.tsx src/components/TagPicker.test.tsx src/pages/Author/AuthorBlogsPage.test.tsx src/pages/Author/ArticleEditorPage.test.tsx src/App.author-session.test.tsx src/App.auth.test.tsx` rồi `npm run build` trong `app/` đạt; Codex review task 2a.
-- [ ] Kiểm mắt dark/light × desktop 1440 px + mobile 390 px một lượt cho workspace/editor; kết quả ghi log, không kiểm lại trang chưa đổi.
+- [x] Workspace/editor thực hiện đúng action matrix, hai badge status, history và live link; hide/unhide/delete hard-soft/withdraw/discard dùng `AlertDialog`, không hiện action backend từ chối.
+- [x] Desktop source/import trái + preview thật phải; mobile tab/Sheet không tràn ngang. Preview dùng `MarkdownContent`, thay ảnh ngoài bằng placeholder và test xác nhận không phát request tới URL ngoài.
+- [x] Preview không hiển thị reading time và không tính reading time ở client; Reader chỉ nhận giá trị backend sau APPROVE.
+- [x] Panel `imageIssues` hiển thị/replace theo source+occurrence/remove/multi-file/retry đúng; target stale không bị thay nhầm. Upload đầu trên bài mới auto-SAVE khi metadata hợp lệ, nếu chưa đủ thì hướng dẫn lưu nháp; 429, >50 ảnh, >5 MiB báo tại dòng; Submit bị khóa tới khi hết issue.
+- [x] Dirty navigation có `beforeunload` và chặn link/nút trong editor bằng `AlertDialog`; không đổi router. Loading/empty/error/retry, vi/en, keyboard/touch target đạt.
+- [x] `articleService.test.ts` dùng JSON fixture đúng shape backend đã khẳng định; `articleI18n.test.ts` liệt kê đủ enum/mã lỗi mới bằng vi/en; logic status/action/error test ở hàm thuần.
+- [x] Chạy `npx vitest run src/services/articleService.test.ts src/data/articleI18n.test.ts src/components/articles/ArticleStatusBadges.test.tsx src/components/TagPicker.test.tsx src/pages/Author/AuthorBlogsPage.test.tsx src/pages/Author/ArticleEditorPage.test.tsx src/App.author-session.test.tsx src/App.auth.test.tsx` rồi `npm run build` trong `app/` đạt; Codex review task 2a.
+- [x] Kiểm mắt dark/light × desktop 1440 px + mobile 390 px một lượt cho workspace/editor; kết quả ghi log, không kiểm lại trang chưa đổi.
 
 ### Task 2b — Moderator UI
 
