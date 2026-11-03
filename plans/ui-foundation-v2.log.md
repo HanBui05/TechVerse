@@ -9,7 +9,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ui-foundation-v2.
 - **Thứ tự sau đó:** Task 5 (Home + tạo `EmptyState`) → Task 6 (AuthorApply + Admin, Pagination) → Task 7a (Blogs, AuthorBlogs, Moderator, TagPicker, MarkdownContent) → Task 7b (preflight, dọn CSS, gỡ `framer-motion`).
 - **Đã xong — không đọc lại, không làm lại, không kiểm lại:** Task 1 (Tailwind v4, shadcn new-york/Radix, 20 primitive trong `components/ui`, token + 8 tone, `test/setup.ts`, UI_GUIDE/rule/skill). Task 2 (shell `SidebarProvider`, 3 sidebar dùng `SidebarFrame` trong `components/layout/Sidebar.tsx`, `Brand` logo Cloudinary, favicon, xóa `sidebar.css`, vùng chạm 44px). Cả hai đã review đủ 2 vòng. Chưa commit — cố ý, một commit sau Task 7b.
 - **Bỏ qua — không liên quan task tiếp theo:** các trang hoãn của Task 7a và CSS của chúng (`blogs.css`, `moderator.css`, `author.css`); `server/`; các module cũ khác trong `PLAN.md`.
-- **Chưa kiểm còn treo:** Task 2 Moderator bằng mắt, mobile, cảm ứng thật (Admin shell đã thấy đúng khi kiểm Task 3). Profile/Settings đã kiểm ở cổng 3000.
+- **Chưa kiểm còn treo:** thiết bị cảm ứng thật (không giả lập được `pointer: coarse`). Đã kiểm 2026-11-03 qua iframe 390px: Profile mobile (topbar hiện, card xếp dọc 326px, không cuộn ngang), sheet mobile Moderator 320px, menu đúng vai trò, bấm logo thì sheet đóng; Moderator đăng nhập → `/moderator`.
 
 ## Quyết định người dùng chưa có trong spec
 
@@ -30,6 +30,8 @@ Mới nhất ở trên; mỗi phiên ≤ 6 dòng: đã làm, quyết định m�
 ### 2026-11-03 — Luật chung sau Task 3 + 4
 - Thêm `docs/RUNBOOK.md` (cổng/CORS, DB, tài khoản theo vai trò, luồng phiên); chèn tài khoản `moderator@techverse.test` vào DB dev (đăng nhập API 200).
 - Luật mới: commit WIP theo task + squash cuối module; review kèm “Xong khi” + kết quả test, chờ kết quả (`--wait`); bảng quy tắc/mã lỗi cho spec có API (`AGENTS.md`); bài học Windows; bẫy preflight + tự kiểm trước review (`frontend.md`, skill `ui-components`).
+- Bổ sung luật commit WIP: đầu task mới không đọc lại/chạy lại phần đã commit; còn thay đổi chưa commit của task trước thì báo người dùng.
+- Rút gọn luật: thủ tục chuyển sang skill nạp khi cần — `codex-workflow` (review, commit WIP, đồng bộ spec), `visual-check` (kiểm bằng mắt, mobile iframe), `plan-review` (phản biện spec). `CLAUDE.md` 12,7k → 9,9k ký tự, `frontend.md` 6,0k → 4,5k; mục “Giai đoạn chuyển” của `frontend.md` xóa ở Task 7b.
 - Việc tiếp: Task 5 trong session mới.
 
 ### 2026-11-03 — Task 3 + 4

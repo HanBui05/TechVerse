@@ -21,12 +21,8 @@ paths:
 
 ## Kiểm bằng mắt
 
-- Không chụp hay so pixel cho trang không đổi giao diện; chứng minh bằng kiểm tĩnh (grep selector, class dùng chung).
-- Trang có đổi giao diện: tối đa một lượt, đọc tối đa 2 ảnh. Đo bằng `javascript_tool` (`getBoundingClientRect`, `getComputedStyle`, `scrollWidth > innerWidth`) thay vì đọc thêm ảnh.
-- Dev server: `npm run dev -- --port 3000 --strictPort` chạy nền (backend chỉ cho CORS từ `WEB_URL` trong `.env`, hiện `http://localhost:3000`; cổng khác bị preflight 403 nên không đăng nhập được); xong thì tắt tiến trình đang nghe cổng 3000. Không khởi động lại backend của người dùng; backend không chạy hoặc vẫn lỗi thì ghi “chưa kiểm” kèm một dòng nguyên nhân.
-- Chrome MCP không thu nhỏ được viewport (`resize_window` không đổi `innerWidth`): mobile ghi “chưa kiểm” ngay, chỉ dựa test jsdom (`window.innerWidth = 500`). Không tự viết công cụ chụp mới.
-- Đăng nhập theo vai trò: tài khoản Admin/Moderator dev và cách chèn lại ở [`docs/RUNBOOK.md`](../../docs/RUNBOOK.md); vai trò chưa có tài khoản thì ghi “chưa kiểm” cho vai trò đó.
-- Kiểm cả dark và light; ảnh lạ thì kiểm ảnh đúng trang (không phải trang lỗi) trước khi kết luận. Đo thêm chữ: `letter-spacing`, `margin` của `h1` và `p` đầu trang, `borderTopColor` của thẻ/khung (bắt bẫy preflight mà ảnh nhỏ dễ bỏ sót).
+- Thủ tục (dev server cổng 3000, đăng nhập theo vai trò, đo bằng JS, tối đa 2 ảnh, dark/light, mobile qua iframe 390px): skill `visual-check`; môi trường ở [`docs/RUNBOOK.md`](../../docs/RUNBOOK.md).
+- Không khởi động lại backend của người dùng; thiếu môi trường hoặc vai trò thì ghi “chưa kiểm” kèm nguyên nhân, không suy diễn là đạt.
 
 ## Style (shadcn + Tailwind v4)
 

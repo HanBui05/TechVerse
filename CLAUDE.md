@@ -20,21 +20,16 @@ Luật riêng theo vùng tự nạp khi làm việc với file tương ứng: [`
 `Plan → Code → Test → Review → Result`
 
 - Chỉ làm task được giao. Plan chỉ ở `plans/`; không tạo plan tại vị trí khác.
-- **Khi plan:** Codex viết spec trước. Claude không viết hay sửa phần plan; chỉ ghi phản hồi (đúng, sai, thiếu, thừa) vào mục "Phản hồi vòng 1/2" của chính file spec, dùng Ponytail `ultra`. Tối đa 2 vòng rồi người dùng chốt. Không dùng `brainstorming` ở bước phản biện.
-- **Đề xuất ngoài spec (vòng 1):** ngoài đúng/sai/thiếu/thừa, chủ động tìm thứ spec chưa nghĩ tới mà đáng có (chức năng, trải nghiệm, rủi ro tương lai) và ghi tối đa ~3 ý vào mục "Đề xuất ngoài spec". Mỗi ý: lợi ích, công sức ước tính, làm ngay hay tách module sau. Mục này không chặn chốt spec; người dùng chọn ý nào thì Codex đưa vào spec, ý còn lại ghi vào "Câu hỏi mở" của `PLAN.md`. "Thiếu" chỉ dành cho lỗ hổng phải sửa.
+- **Khi plan:** Codex viết spec; Claude không viết/sửa plan, chỉ phản biện trong mục “Phản hồi vòng 1/2” của spec, tối đa 2 vòng rồi người dùng chốt. Thủ tục: skill `plan-review`.
 - Task đã có trong plan: không brainstorming, không tự sửa spec đã chốt. Spec thiếu thì dừng và hỏi.
 - Code: dùng `superpowers:test-driven-development`, Ponytail `full`. Refactor giữ nguyên hành vi: chạy test hiện có lấy mốc xanh, bổ sung test mô tả hành vi cũ nếu thiếu, rồi mới đổi cấu trúc.
 - Test: dùng `superpowers:verification-before-completion` và chỉ báo xong khi có output thật. Sửa lỗi tối đa 3 lần rồi dừng hỏi người dùng. Lỗi test: dùng `superpowers:systematic-debugging`.
-- Review độc lập do Codex chạy `/codex:review --background`; task rủi ro cao dùng `/codex:adversarial-review`. Không dùng `requesting-code-review` song song.
-- **Commit WIP theo task** (người dùng chốt 2026-11-03): người dùng nhận task xong thì commit cục bộ trên nhánh module `wip(<module>): Task <n> — <tên>` (không push), để review task sau chỉ xem diff chưa commit của chính task đó. Cuối module squash các commit WIP thành một commit (giữ quyết định “một commit cuối module”). Không commit lên `main`.
-- **Review có ngữ cảnh nghiệp vụ:** focus của `adversarial-review` nêu mục “Xong khi” của task (đường dẫn spec + tên task) và lệnh test đã chạy kèm kết quả; Codex review đọc các mục đó theo `AGENTS.md`.
-- **Claude tự gọi review, không chờ người dùng** (người dùng chốt 2026-11-03): sau khi test + build đạt và đã ghi log, chạy **chờ kết quả** (`--wait`, không chạy nền: job nền chết khi phiên đóng; trong lúc chờ cũng không có việc song song) bằng **PowerShell** (Git Bash đổi `/PID` của `taskkill` thành đường dẫn nên `cancel` hỏng) `node "<script>" review ""`; adversarial: `adversarial-review "<focus>"`. `<script>` = `~/.claude/plugins/cache/openai-codex/codex/<bản mới nhất>/scripts/codex-companion.mjs`. Trước khi chạy, `node "<script>" status ""`: đã có job review đang chạy (kể cả người dùng tự gõ `/codex:review`) thì chờ job đó, không chạy thêm. Có kết quả thì sửa ngay blocker thuộc diện dưới, chạy lại test liên quan + build, ghi log, rồi tự chạy vòng 2.
-- Nhận góp ý: dùng `superpowers:receiving-code-review`; đánh giá kỹ thuật, không làm theo mù quáng.
-- Review tối đa 2 vòng; vòng 2 luôn dùng `adversarial-review "<focus>"` (focus nêu file/phần sửa sau vòng 1), vì `review` thường không nhận focus (người dùng chốt 2026-11-03). Chỉ sửa blocker cao/trung gắn với “Xong khi”, bug hoặc bảo mật. Gợi ý/style ghi vào “Ngoài phạm vi” của `.log.md`.
-- Sau vòng 1: blocker thuộc diện trên thì **sửa luôn, không hỏi**, rồi báo. Sau vòng 2 còn phát hiện: trình bày kèm đánh giá và một khuyến nghị, người dùng quyết (chạm giới hạn vòng).
-- Review gate (Stop hook của Codex) luôn tắt; review chạy theo luật tự gọi ở trên. Mỗi task là một session mới (`/clear`).
-- Kết thúc: ghi kết quả test/review ngắn vào `plans/<module>.log.md`, cập nhật trạng thái ở `PLAN.md`, rồi chờ người dùng nhận kết quả.
-- **Đồng bộ spec sau khi người dùng nhận task** (người dùng chốt 2026-11-03): Claude không sửa spec; ghi log xong thì chạy nền bằng PowerShell `node "<script>" task --write "<prompt>"` nhờ Codex đồng bộ spec theo log (theo mục “Đồng bộ với Claude” trong `AGENTS.md`), rồi báo người dùng phần Codex đã đổi.
+- **Review do Codex, Claude tự gọi** (không chờ người dùng), sau khi test + build đạt và đã ghi log. Thủ tục (lệnh, `--wait`, focus kèm “Xong khi” + kết quả test, tránh chạy trùng): skill `codex-workflow`. Không dùng `requesting-code-review`.
+- Tối đa 2 vòng: vòng 1 `review` (task rủi ro cao: `adversarial-review`), vòng 2 luôn `adversarial-review` chỉ trên phần sửa. Chỉ sửa blocker cao/trung gắn “Xong khi”, bug hoặc bảo mật; gợi ý/style ghi “Ngoài phạm vi” của log. Nhận góp ý theo `superpowers:receiving-code-review`.
+- Sau vòng 1: blocker thuộc diện trên thì **sửa luôn, không hỏi**, rồi báo. Sau vòng 2 còn phát hiện: trình bày kèm đánh giá và một khuyến nghị, người dùng quyết.
+- Review gate (Stop hook của Codex) luôn tắt. Mỗi task là một session mới (`/clear`).
+- Kết thúc: ghi kết quả test/review ngắn vào log, cập nhật `PLAN.md`, chờ người dùng nhận kết quả.
+- **Người dùng nhận task** → commit WIP cục bộ `wip(<module>): Task <n>` (không push, không `main`; squash một commit cuối module) rồi nhờ Codex đồng bộ spec theo log — thủ tục ở skill `codex-workflow`. Đầu task mới: phần đã commit WIP là đã nhận, không đọc lại/chạy lại test của nó; `git status` còn thay đổi của task trước thì báo người dùng trước.
 
 ## Ngân sách kiểm chứng (chung)
 
@@ -56,7 +51,7 @@ Luật riêng theo vùng tự nạp khi làm việc với file tương ứng: [`
 
 - Công cụ/script tạm: viết một lần bằng file sạch (Write), không vá nhiều lần bằng `sed` hoặc heredoc. Node/Python trên Windows dùng đường dẫn Windows (`D:/...`), không dùng `/d/...` của Git Bash.
 - Chạy song song các bước độc lập; chạy lâu thì để nền. Tắt server sau khi dùng (chỉ server do Claude bật; server của người dùng thì để nguyên).
-- **Windows:** lệnh có cờ dạng `/X` (`taskkill /PID`, `findstr /C`) chạy bằng PowerShell — Git Bash đổi `/X` thành đường dẫn. Script sửa file phải giữ kiểu xuống dòng sẵn có (đọc → bỏ `` → sửa → ghi lại CRLF nếu file vốn CRLF); ghi file từ PowerShell dùng `[IO.File]::WriteAllText(p, t, (New-Object Text.UTF8Encoding $false))`, không `Set-Content -Encoding utf8` (thêm BOM). Lệnh `npm` luôn `cd` đường dẫn tuyệt đối vào `app/` trước.
+- **Windows:** lệnh có cờ `/X` (`taskkill /PID`) chạy bằng PowerShell. Script sửa file giữ kiểu xuống dòng sẵn có (CRLF/LF); PowerShell ghi file không BOM (`[IO.File]::WriteAllText` + `UTF8Encoding $false`). `npm` luôn `cd` đường dẫn tuyệt đối vào `app/`.
 - Công cụ kiểm chứng dùng lại cho nhiều task: đề nghị Codex đưa đường dẫn vào spec rồi mới thêm vào repo; không tự tạo ngoài spec.
 - Luật mới riêng một vùng ghi vào `.claude/rules/<vùng>.md`, không ghi vào file này. Mỗi rule giữ khoảng 30–50 dòng; luật lỗi thời thì xóa.
 
