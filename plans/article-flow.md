@@ -560,4 +560,5 @@ Chỉ soát Task 1c/2d và thiết kế Reader mới thêm; 7 điểm vòng 2 đ
 
 ## Quyết định của người dùng
 
-- 2026-11-03: đã chọn kiến trúc “bản công khai + working copy”; chưa chốt toàn bộ spec, chờ tối đa hai vòng phản biện.
+- 2026-11-03: chọn kiến trúc “bản công khai + working copy”.
+- 2026-11-04: chốt toàn bộ spec `article-flow` sau hai vòng phản biện và lượt phản biện hẹp cho phần mở rộng; triển khai theo thứ tự 1a → 1b → 1c → cổng wireframe → 2a → 2b → 2c → 2d.

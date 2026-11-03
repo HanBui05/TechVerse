@@ -12,13 +12,14 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 
 ## Quyết định người dùng chưa có trong spec
 
-- 2026-11-04: Người dùng chốt toàn bộ spec `article-flow` (spec chờ Codex ghi vào mục “Quyết định của người dùng”).
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+- 2026-11-04 — Codex: đã đưa quyết định chốt toàn bộ spec `article-flow` vào mục “Quyết định của người dùng”; checklist “Xong khi” Task 1a đã được đánh dấu đầy đủ theo kết quả trong log.
+
 ### 2026-11-04 — Task 1a đã nhận
 - Người dùng nhận Task 1a; đánh dấu “Xong khi” 1a trong spec, commit WIP (gồm luật mới), nhờ Codex đồng bộ spec. Tiếp: Task 1b, session mới.
 
