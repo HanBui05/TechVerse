@@ -21,10 +21,16 @@ public class UpdateTopicRequest {
 	@Schema(description = "Omit to preserve; null or blank clears the description")
 	private String description;
 
+	@Pattern(regexp = "^[a-z0-9]{1,64}$", message = "Topic icon must be a lowercase simple-icons slug")
+	@Schema(description = "Omit to preserve; null or blank clears the icon", example = "docker")
+	private String icon;
+
 	@JsonIgnore
 	private boolean nameProvided;
 	@JsonIgnore
 	private boolean descriptionProvided;
+	@JsonIgnore
+	private boolean iconProvided;
 
 	@JsonSetter(value = "name", nulls = Nulls.FAIL)
 	public void setName(String name) {
@@ -38,9 +44,15 @@ public class UpdateTopicRequest {
 		this.description = description == null || description.isBlank() ? null : description.strip();
 	}
 
+	@JsonSetter("icon")
+	public void setIcon(String icon) {
+		this.iconProvided = true;
+		this.icon = icon == null || icon.isBlank() ? null : icon.strip();
+	}
+
 	@JsonIgnore
-	@AssertTrue(message = "Provide at least one of name or description")
+	@AssertTrue(message = "Provide at least one of name, description or icon")
 	public boolean isUpdateProvided() {
-		return nameProvided || descriptionProvided;
+		return nameProvided || descriptionProvided || iconProvided;
 	}
 }

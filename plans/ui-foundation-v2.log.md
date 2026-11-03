@@ -4,21 +4,38 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ui-foundation-v2.
 
 ## Bắt đầu từ đây (cập nhật 2026-11-03)
 
-- **Task 1–7a đã nhận, đã commit WIP** — không đọc lại, không làm lại, không kiểm lại.
-- **Task 1–7b đã nhận, module hoàn tất (2026-11-03)**; mọi “Xong khi” trong spec đã đánh dấu theo yêu cầu người dùng. Việc tiếp: người dùng giao nhiệm vụ sửa lỗi riêng cho phần đã có. Squash các WIP chỉ khi người dùng yêu cầu commit/PR cuối module (chi tiết: mục “Task 7b” cuối file). Sau khi nhận: commit WIP `wip(ui-foundation-v2): Task 7b`, review cuối module rồi squash các WIP thành một commit (spec “Ràng buộc”).
-- **Chưa kiểm bằng mắt (Task 7b):** các route cần đăng nhập — `/profile` (avatar), Admin, `/author/apply`, và smoke-check `/author/blogs`, `/blogs`, `/blogs/:id`, `/moderator/articles` — vì phiên không đọc được mật khẩu dev trong `.env` (bị chặn quyền). Người dùng test tay hoặc cho phép đọc.
-- **Đã tách sang module `article-flow`:** `AuthorBlogsPage`, `TagPicker`, Blogs/Learner, Moderator, `MarkdownContent`, wrapper `Pagination`, bật preflight + xóa reset chuyển tiếp/`.tw-page`/lớp CSS tương thích/alias token cũ.
-- **Môi trường kiểm:** Playwright MCP có trong phiên. Dữ liệu mẫu Admin: `scripts/dev-seed-admin.sql` (RUNBOOK).
-- **Ngoài phạm vi:** link logo “TechVerse” ở Auth/topbar mobile < 44px (Task 2/4 đã nhận); nút “Trước/Tiếp” wrapper `Pagination` 40px (`article-flow`); comment `data/navigation.ts` trỏ `sidebar.css` đã xóa (không được sửa `data/**`).
+- **Module `ui-foundation-v2` hoàn tất và đã merge vào `main`** (Task 1–7b + nhiệm vụ sửa UI Admin/Moderator trên `refactor/admin-ui`, vòng 1–3 đã nhận 2026-11-03). Module đang làm chuyển sang `article-flow` (xem `plans/article-flow.log.md`).
+- Đã có trên `main`: Admin Người dùng/Chủ đề/Thẻ/Hồ sơ tác giả theo ảnh `docs/image_admin_page/` (ghi chú `README.md`), `AdminPagination` 12/trang, `adminErrorText` (dịch theo `code`), icon chủ đề (V9 `topics.icon`, `simple-icons`), Moderator `/moderator` + `/moderator/articles` cùng khung Admin.
+- **Chưa kiểm:** logo thật lưu qua backend (backend người dùng cần khởi động lại cho V9); Moderator với bài thật (DB dev không có bài); mobile Hồ sơ tác giả.
+- **Ngoài phạm vi:** link logo Auth/topbar mobile < 44px.
 
 ## Quyết định người dùng chưa có trong spec
 
+- 2026-11-03 (branch `refactor/admin-ui`, sau vòng 3): người dùng đồng ý sửa phát hiện vòng 2 (bio dài trong Sheet Hồ sơ tác giả); yêu cầu bảng chọn icon Chủ đề có **nhiều icon hơn** (hiện chỉ ≤ 24 gợi ý theo tên, ô trống thì không có gì).
+- 2026-11-03 (branch `refactor/admin-ui`, vòng 3): người dùng đồng ý làm ngay **giao diện Moderator theo chuẩn Admin** trên branch này (đổi D-027 cho phần trình bày): `/moderator` (đầu trang + thẻ số), `/moderator/articles` (card lọc + chip trạng thái, danh sách bảng/thẻ, `AdminPagination`, khung đọc bài + nhận xét bằng primitive, `AlertDialog` thay `window.confirm`). Giữ nguyên chức năng/API, không thêm tính năng; `article-flow` sau này cắm chức năng vào khung này.
+
+- 2026-11-03 (branch `refactor/admin-ui`, vòng 2): (1) Chủ đề có **icon thật**: thêm cột `icon` (slug của `simple-icons`) cho topic — migration + API tạo/sửa/đọc + validate slug; form Chủ đề có bảng chọn icon (tìm + gợi ý theo tên), không chọn thì hiện chữ cái đầu; người dùng cho làm thẳng trên branch (không chờ spec Codex). Màu: dùng màu thương hiệu thật trên nền ô sáng nhẹ (khuyến nghị của Claude, người dùng không phản đối). (2) Bỏ hàng nút Sửa/Ẩn trên card Chủ đề/Thẻ — bấm cả card mở form (form có nút Ẩn/Kích hoạt); Thẻ giữ lưới như hiện tại (không làm bố cục 4 cột). (3) `/admin/author-applications` làm lại cho đồng bộ với `/admin/users` (thẻ số, card lọc, danh sách cùng kiểu). (4) Kiểm UI Moderator so với chuẩn Admin, muốn một chuẩn chung — báo kết quả kiểm trước khi sửa vì Moderator đang thuộc `article-flow` (D-027).
+- 2026-11-03 (branch `refactor/admin-ui`): người dùng giao thẳng nhiệm vụ sửa UI Admin theo ảnh `docs/image_admin_page/` (ghi chú từng ảnh: `docs/image_admin_page/README.md`): (1) `/admin/users` theo `admin-user-management.png`; (2) `/admin/topics`, `/admin/tags` đẹp hơn theo `admin-interview-questions.png`; (3) lỗi trùng tên ở tiếng Việt hiện câu tiếng Anh — kiểm cả hai trang; (4) số mục mỗi trang (người dùng gợi ý 9 hoặc 12) + kiểm nút chuyển trang. Đã chốt 2026-11-03: 12 mục/trang (Người dùng, Topic, Tag); thông báo lỗi dịch theo mã HTTP ở cả 4 trang Admin (không sửa backend); trang Người dùng: thẻ số Tổng/Hoạt động/Đã khóa/Tác giả, card lọc + Làm mới, bảng (mobile thành thẻ), giữ chọn nhiều + khóa hàng loạt, bỏ tạo/sửa/xóa/MFA/khoảng ngày; phân trang số riêng cho Admin. Làm Người dùng trước, rồi Topic/Tag.
+- 2026-11-03: giao diện Admin bám bố cục ảnh mẫu nhưng vẫn theo luật FE (`.claude/rules/frontend.md`, skill `ui-components`): shadcn + token TechVerse (bảng màu D-010, dark mặc định, Inter, vùng chạm 44px), copy vi/en tự viết, không chép chữ/logo/code của trang mẫu.
 - 2026-11-03 (sau Task 7b): người dùng nhận Task 7b và yêu cầu đánh dấu hoàn thành toàn bộ Task 1–7 trong spec (Claude tự đánh dấu theo yêu cầu, kể cả mục còn ghi “chưa kiểm”). Phần sửa lỗi tiếp theo là nhiệm vụ riêng người dùng giao thẳng cho Claude, không cần quy trình phức tạp.
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-03 — Nhận Admin UI vòng 2 + 3, merge `main`
+- Người dùng nhận toàn bộ việc trên `refactor/admin-ui`; commit, push các nhánh, merge vào `main` qua PR (merge commit theo `docs/GIT_WORKFLOW.md`, không push thẳng `main`). Chuyển module đang làm sang `article-flow` (chờ Codex viết spec).
+### 2026-11-03 — Moderator theo chuẩn Admin
+- `/moderator` + `/moderator/articles` dựng lại cùng khung Admin (thẻ số thật, card lọc, bảng/thẻ, `AdminPagination` 12/trang, Sheet đọc bài, `AlertDialog`); xóa `moderator.css`; lỗi `ARTICLE_*` dịch vi/en; chặn race thống kê ở 3 trang. 50/50, build đạt.
+- Việc dở: phát hiện vòng 2 (bio dài) chờ người dùng; người dùng nhận cả vòng 2 + 3 rồi commit cục bộ.
+### 2026-11-03 — Admin UI vòng 2
+- Icon chủ đề: V9 `topics.icon` (slug simple-icons, CHECK), API tạo/sửa/đọc, form có bảng chọn (gợi ý theo tên, bí danh java→openjdk); card Chủ đề/Thẻ bấm cả card để sửa; Hồ sơ tác giả cùng khung Quản lý người dùng; `Textarea` primitive `font-sans`. Backend Topic 18/18, FE 86/86, build đạt.
+- Moderator: chưa theo chuẩn Admin (CSS cũ, `window.confirm`) — chờ người dùng quyết vì đang thuộc `article-flow` (D-027).
+### 2026-11-03 — Admin UI theo ảnh mẫu
+- Người dùng/Topic/Tag dựng lại theo ảnh; `ApiError.code` + `adminErrorText` (dịch theo mã lỗi → HTTP → câu mặc định) cho 4 trang Admin; `AdminPagination` số trang; 12 mục/trang. 43/43, build đạt; kiểm thật: trùng tên vi/en, phân trang Tag 13 mục.
+- Bài học: chạy `npx vitest` trong lệnh có `&` phải `cd` riêng (đã chạy nhầm ở thư mục gốc). Review vòng 1: 3 × P2 đã sửa; vòng 2 approve. Việc dở: người dùng nhận.
+### 2026-11-03 — Mở branch `refactor/admin-ui`
+- Đọc 21 ảnh mẫu, ghi `docs/image_admin_page/README.md`. Nguyên nhân lỗi tiếng Anh: backend trả `message` tiếng Anh (`Topic/Tag name already exists`, 409), FE hiện nguyên `e.message`; cùng kiểu ở `AdminUsersPage`, `AuthorApplicationsPage`; thông báo lưu thành công Taxonomy luôn tiếng Việt. Page size hiện 20 (backend cho 1–100, trả `totalPages`). Việc dở: chờ người dùng chốt đề xuất.
 ### 2026-11-03 — Nhận Task 7b, đóng module
 - Người dùng nhận Task 7b; đánh dấu toàn bộ “Xong khi” Task 1–7 + module trong spec; commit WIP Task 7b. Việc tiếp: nhiệm vụ sửa lỗi do người dùng giao.
 - Luật mới (`CLAUDE.md`): nhận task xong thì đánh dấu ở cả spec (`[x]` “Xong khi”) lẫn log/`PLAN.md`; nhiệm vụ sửa lỗi không spec ghi vào log module.
@@ -252,3 +269,43 @@ Mới nhất ở trên; mỗi phiên ≤ 6 dòng: đã làm, quyết định m�
 | Test | `npx vitest run` theme-bootstrap, styles/tokens, ui/focus, ui/labels, PlaceholderPage, Profile/ProfilePage, layout/Sidebar, `src/pages/Admin` (4), App.author-session, StaffPreferences: **13 files 187/187**. `npm run build` đạt (cảnh báo chunk > 500 kB có từ trước). Không chạy `App.auth.test.tsx` (chỉ đổi class wrapper Auth) và full suite theo luật ngân sách. |
 | Kiểm bằng mắt | Playwright MCP, dev 3000 + backend của người dùng, khách: `/courses` (Placeholder) desktop 1440 dark + light (màu token đổi đúng, h1 tracking normal/margin 0, không cuộn ngang); mobile cảm ứng 390 `/courses`, `/`, `/login`, `/settings/theme`: coarse, không cuộn ngang, control ≥ 44px (trừ link logo Auth — có từ trước), chữ nút không tràn. **Chưa kiểm:** route cần đăng nhập (Profile, Admin, AuthorApply, smoke `/author/blogs`, `/blogs`, `/blogs/:id`, `/moderator/articles`) — không đọc được mật khẩu dev. |
 | Review vòng 1 | `review --wait`: không lỗi chức năng; 1 × P2 — thư mục `.playwright-mcp/` (artifact Playwright MCP của phiên) chưa track có thể bị `git add -A` đưa vào commit → đã xóa; `.claude/settings.local.json` đã bị git ignore toàn cục. Không đổi code nên không chạy vòng 2. Ngoài phạm vi: đề nghị thêm `.playwright-mcp/` vào `.gitignore` (không thuộc đường dẫn module). |
+
+## Admin UI (refactor/admin-ui)
+
+| Mục | Nội dung |
+|---|---|
+| Code | `services/api/client.ts`: `ApiError.code` (từ body `code`). `pages/Admin/adminErrors.ts` + test: dịch 15 mã lỗi Admin vi/en, rồi theo HTTP 400/403/404/409/429/5xx, còn lại câu mặc định của trang; áp 10 chỗ `catch` ở Users/AuthorApplications/Taxonomy. `pages/Admin/AdminPagination.tsx` + test: “Hiển thị a–b trong n”, nút số (`pageItems`: đầu, cuối, hiện tại ±1, dấu …), khung primitive `ui/pagination` + `Button`. `AdminUsersPage`: header + Làm mới, 4 thẻ số (đếm bằng `size=1`: tổng, `active=true/false`, `role=AUTHOR`), card Bộ lọc (chip trạng thái thay select “Tài khoản”, tìm, vai trò, hồ sơ tác giả, sắp xếp, thứ tự), bảng lưới 7 cột (md+) / thẻ (mobile), nút “Xem” + khóa/mở khóa từng hàng (AlertDialog), giữ chọn nhiều. `TaxonomyPage`: 3 thẻ số (tổng/hoạt động/ẩn), card Bộ lọc (chip trạng thái), lưới 3 cột card có hàng nút Sửa/Ẩn-Bật, thông báo thành công vi/en (trước luôn vi), bật/tắt trực tiếp từ card. Size 20 → 12. |
+| Lệch / quyết định | Bỏ phần ảnh có mà backend chưa có (tạo/sửa/xóa người dùng, MFA, lọc ngày). Nhãn bật/tắt en: “Deactivate/Activate” (bản dịch cũ “Inactive”). Test cũ tìm nút theo `/Trần Minh/`, `/Java/` đổi sang tên chính xác vì có thêm nút trên hàng/card. |
+| Test | `npx vitest run src/pages/Admin src/pages/Author/AuthorApplyPage.test.tsx`: **7 files 43/43**. `npm run build` đạt (cảnh báo chunk có từ trước). Không chạy full suite. |
+| Kiểm bằng mắt | Playwright MCP, dev 3000 + backend người dùng, admin demo: `/admin/users` light + dark desktop, `/admin/topics` dark; mobile cảm ứng 390 `/admin/users`, `/admin/topics`, `/admin/tags`: không cuộn ngang, control ≥ 44px, chữ nút không tràn. Thật với backend: tạo trùng chủ đề (vi) → “Tên chủ đề đã tồn tại. Hãy chọn tên khác.”; trùng thẻ (en) → “A tag with this name already exists…”; Tag 13 mục: trang 1 = 12, trang 2 = 1, Trang sau khóa ở cuối, quay lại đúng. Users chỉ 9 người, Topic 8 → một trang (phân trang nhiều trang chỉ kiểm qua test + Tag). |
+| Review vòng 1 | `review --wait`: 3 × P2, đều nhận và sửa. (1) Phân trang 5+ trang tràn ở 390px → dưới `sm` chỉ còn mũi tên + “trang / tổng”. (2) Trang hiện tại vượt tổng sau khi khóa/ẩn bản ghi cuối → `load` kẹp về trang cuối còn tồn tại (Users, Taxonomy). (3) Bảng Users bị cắt ở 768–1279px vì sidebar → lưới 7 cột từ `xl`, dưới đó là thẻ. +2 test. `npx vitest run src/pages/Admin` **36/36** (+ AuthorApply 7 trước đó), build đạt. Playwright: 768/1024 thẻ, 1280 bảng, 0 nút bị cắt; mobile Tag “1 / 2”, Trang sau → trang 2. |
+| Review vòng 2 | `adversarial-review --wait` chỉ phần sửa vòng 1: **approve**, không phát hiện. Hết 2 vòng. |
+
+## Admin UI vòng 2 (refactor/admin-ui)
+
+| Mục | Nội dung |
+|---|---|
+| Backend | `V9__add_topic_icon.sql`: `topics.icon varchar(64)` + CHECK `^[a-z0-9]{1,64}$`. `Topic.icon` + `updateIcon`; `CreateTopicRequest.icon` (@Pattern, rỗng → null); `UpdateTopicRequest.icon` (có cờ `iconProvided`; null/rỗng xóa; đủ điều kiện “có cập nhật”); `AdminTopicResponse`/`AdminTopicSummaryResponse` thêm `icon`; service tạo/sửa/đọc/danh sách. Không đổi API Tag hay API bài viết công khai. |
+| Frontend | `simple-icons` (CC0, nạp lười một lần, chunk riêng). `pages/Admin/topicIcons.tsx`: `searchIcons` (slug/tên chính xác → tiền tố → chứa; bí danh `java→openjdk`), `iconFill` (giữ màu thương hiệu, gần đen/gần trắng thì theo màu chữ theme), `initials`, `useBrandIcons`, `TopicIcon`. `TaxonomyPage`: card bấm cả card mở form (bỏ hàng Sửa/Ẩn, bỏ bật/tắt từ card), Chủ đề hiện logo hoặc chữ cái, Thẻ giữ ô `#`; form Chủ đề có fieldset Icon (xem trước, tìm, lưới gợi ý 24, Bỏ icon), gửi `icon` (Thẻ không gửi). `AuthorApplicationsPage`: cùng khung `/admin/users` (header + Làm mới, 4 thẻ số theo trạng thái bằng `size=1`, card Bộ lọc có chip trạng thái, lưới 6 cột từ `xl`/thẻ dưới `xl`, nút “Xem”, `AdminPagination`, 12/trang, kẹp trang). `ui/textarea.tsx`: `font-sans` (preflight tắt → textarea ra monospace). |
+| Lệch / quyết định | Màu logo: thương hiệu thật trên ô nền `background`; logo gần đen/trắng dùng màu chữ theme. Test cũ “bật/tắt từ card” bỏ theo quyết định bỏ hàng nút. |
+| Test | Backend: `./gradlew test --tests 'com.techverse.server.admin.AdminTopicIntegrationTest'` **18/18** (+1 ca icon: set/giữ/đổi/xóa, từ chối `Docker`, `spring-boot`, URL, `<svg/>`, 65 ký tự). FE: `npx vitest run src/pages/Admin src/components/ui src/pages/Author/AuthorApplyPage.test.tsx` **13 files 86/86**; `npm run build` đạt (chunk `simple-icons` 5,3 MB / 2,2 MB gzip, chỉ tải ở trang Chủ đề). |
+| Kiểm bằng mắt | Playwright, backend cũ của người dùng (chưa có V9): `/admin/topics` card chữ cái + form có fieldset Icon (dark); `/admin/author-applications` desktop dark: 4 thẻ số, bảng 6 cột, không cuộn ngang. Sửa sau ảnh: textarea monospace, gợi ý Java. **Chưa kiểm:** logo thật trên card và lưu icon qua backend (cần khởi động lại backend để chạy V9); mobile Hồ sơ tác giả. |
+| Review vòng 1 (vòng 2 công việc) | `review --wait`: 2 × P2, nhận và sửa. (1) Phân trang số vẫn hiện ở 768px có sidebar → dạng gọn “trang / tổng” tới `lg`. (2) Chuyển nhanh Chủ đề ↔ Thẻ, thống kê cũ đè thống kê mới → `loadStats` đánh số request + reset khi đổi `kind`; +1 test (đỏ “99” → xanh). `npx vitest run src/pages/Admin` **44/44**, build đạt. |
+| Review vòng 2 (vòng 2 công việc) | `adversarial-review --wait` chỉ phần sửa: **approve**, không phát hiện. Hết 2 vòng. |
+
+## Moderator theo chuẩn Admin (refactor/admin-ui, vòng 3)
+
+| Mục | Nội dung |
+|---|---|
+| Frontend | `pages/Moderator/ArticleStats.tsx` (`useArticleStats` đếm bằng `size=1` theo PENDING/PUBLISHED/CHANGES_REQUESTED/HIDDEN + `ArticleStats` thẻ số). `ModeratorDashboardPage`: `tw-page`, header, 4 thẻ số thật (bỏ 3 thẻ giả “—” bình luận/báo cáo vì chưa có chức năng), card “Hàng đợi kiểm duyệt” (số bài chờ) + nút mở danh sách. `ModeratorArticlesPage`: header + Làm mới, thẻ số, card Bộ lọc (chip 5 trạng thái + Tất cả, tìm động debounce), danh sách 6 cột từ `xl`/thẻ dưới `xl`, `AdminPagination` 12/trang (trước 20) + kẹp trang, chi tiết trong `Sheet` (khung đọc Markdown `role=region` tabIndex 0, nhận xét trước, Textarea + đếm ký tự), `AlertDialog` thay `window.confirm`; yêu cầu chỉnh sửa thiếu nhận xét → báo ngay ở ô. Payload PATCH giữ nguyên. `adminErrors.ts` +6 mã `ARTICLE_*`. Xóa `styles/pages/moderator.css` + import + 2 rule `.moderation-*` trong `content.css`. Chân phân trang ẩn khi 0 kết quả (Users, Hồ sơ tác giả, Moderator — trước còn dải viền trống). |
+| Test | `npx vitest run src/pages/Moderator src/pages/Admin` **8 files 49/49** (Moderator +4 ca: thẻ số/12/trang/Trang 3, xác nhận bằng dialog không `window.confirm`, thiếu nhận xét, 409 `ARTICLE_REVIEW_STALE` tiếng Việt); `npm run build` đạt. |
+| Kiểm bằng mắt | Playwright, tài khoản `moderator@techverse.test` (RUNBOOK): `/moderator`, `/moderator/articles` dark 1440 + 390 (không cuộn ngang). DB dev không có bài viết → **chưa kiểm** bảng có dữ liệu, Sheet đọc bài, duyệt thật. |
+| Review vòng 1 (vòng 3 công việc) | `review --wait`: 3 × P2, nhận và sửa. (1) Thống kê: lượt cũ trả muộn đè số mới → request id ở `useArticleStats`, `AdminUsersPage.loadStats`, `AuthorApplicationsPage.loadStats`; +1 test Moderator (đỏ khi bỏ chặn → xanh). (2) `ARTICLE_ASSOCIATION_INACTIVE` thêm câu “Chủ đề hoặc thẻ của bài đã bị ẩn…”. (3) Chữ dài không khoảng trắng: `[overflow-wrap:anywhere]` cho tóm tắt/nhận xét/mô tả/thẻ trong Sheet Moderator, Badge chuyên môn + ghi chú/lịch sử trong Sheet Hồ sơ tác giả. `npx vitest run src/pages/Moderator src/pages/Admin` **50/50**, build đạt. |
+| Review vòng 2 (vòng 3 công việc) | `adversarial-review --wait` phần sửa: **needs-attention**, 1 × medium: đoạn giới thiệu (`selected.bio`) trong Sheet Hồ sơ tác giả chưa có `overflow-wrap` → bio liền 2.000 ký tự có thể cuộn ngang trên mobile. Hết 2 vòng — chờ người dùng quyết (khuyến nghị: thêm `[overflow-wrap:anywhere]`, 1 class). |
+
+## Sau vòng 3: bio + thêm icon (refactor/admin-ui)
+
+| Mục | Nội dung |
+|---|---|
+| Sửa | Phát hiện vòng 2: đoạn Giới thiệu trong Sheet Hồ sơ tác giả có `[overflow-wrap:anywhere]`. Bảng chọn icon: `topicIcons.suggestIcons` — có từ khóa thì tìm toàn bộ (tối đa 120, trước 24); ô trống thì logo khớp tên trước rồi bộ `POPULAR` 85 logo công nghệ (đã kiểm từng slug có trong simple-icons; thư viện không có AWS/Azure/C#/OpenAI/Playwright). Dòng đếm “N logo · gõ để tìm trong 3.467 logo”, khung cuộn `max-h-64`. |
+| Test | `npx vitest run src/pages/Admin src/pages/Moderator` **52/52** (+2 ca `suggestIcons`), build đạt. Playwright: form “Tạo chủ đề mới” trống hiện 87 icon. Thay đổi nhỏ theo yêu cầu người dùng sau khi hết 2 vòng review — không gọi Codex thêm. |

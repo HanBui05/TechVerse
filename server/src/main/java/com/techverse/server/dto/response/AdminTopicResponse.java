@@ -6,6 +6,6 @@ import lombok.Builder;
 
 @Builder
 public record AdminTopicResponse(
-		UUID id, String name, String description, boolean active,
+		UUID id, String name, String description, String icon, boolean active,
 		Instant createdAt, UUID createdBy, Instant updatedAt, UUID updatedBy
 ) { }

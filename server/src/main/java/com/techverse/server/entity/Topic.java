@@ -25,13 +25,17 @@ public class Topic extends BaseEntity {
 	@Column(length = 500)
 	private String description;
 
+	@Column(length = 64)
+	private String icon;
+
 	@Column(name = "is_active", nullable = false)
 	private boolean active = true;
 
 	@Builder
-	private Topic(String name, String description) {
+	private Topic(String name, String description, String icon) {
 		this.name = name;
 		this.description = description;
+		this.icon = icon;
 	}
 
 	public void updateName(String name) {
@@ -40,6 +44,10 @@ public class Topic extends BaseEntity {
 
 	public void updateDescription(String description) {
 		this.description = description;
+	}
+
+	public void updateIcon(String icon) {
+		this.icon = icon;
 	}
 
 	public void updateActiveStatus(boolean active) {

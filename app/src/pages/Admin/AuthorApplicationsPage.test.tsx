@@ -104,3 +104,28 @@ it('shows expertise as separate chips and the real avatar in the detail sheet', 
   expect(within(skills).getAllByRole('listitem').map(item => item.textContent)).toEqual(['Java', 'Spring Boot'])
   expect(within(sheet).getByRole('img', { name: /Lê Hoa/ }).getAttribute('src')).toBe('https://cdn.example.com/hoa.png')
 })
+
+// Same frame as user management: per-status counts (size=1 queries), 12 per page, a "View" action on each row.
+it('shows per-status statistics, pages 12 at a time and opens a row from its View button', async () => {
+  const calls: Call[] = []
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input)
+    calls.push({ url })
+    const params = new URL(url).searchParams
+    const counts: Record<string, number> = { PENDING: 4, APPROVED: 9, REJECTED: 2, SUSPENDED: 1 }
+    const data = url.includes('/author-applications/a1') ? { ...app, bio: 'Viết về JVM', reviewHistory: [] }
+      : { content: [app], hasNext: false, totalElements: params.get('size') === '1' ? counts[params.get('status') || ''] ?? 0 : 1 }
+    return new Response(JSON.stringify({ status: 200, data }))
+  }))
+  setAccessToken('admin-test')
+  const user = userEvent.setup()
+  render(<AuthorApplicationsPage />)
+  const stat = (label: string) => screen.getByText(label, { selector: 'dt' }).parentElement!.querySelector('dd')!.textContent
+  await waitFor(() => expect(stat('Chờ duyệt')).toBe('4'))
+  expect(stat('Đã duyệt')).toBe('9')
+  expect(stat('Từ chối')).toBe('2')
+  expect(stat('Tạm ngưng')).toBe('1')
+  expect(calls.some(call => call.url.includes('size=12') && call.url.includes('status=PENDING'))).toBe(true)
+  await user.click(screen.getByRole('button', { name: 'Xem hồ sơ Lê Hoa' }))
+  expect(within(await screen.findByRole('dialog')).getByText('Viết về JVM')).toBeTruthy()
+})

@@ -135,6 +135,28 @@ class AdminTopicIntegrationTest {
                 .andExpect(jsonPath("$.data.active").value(false));
     }
 
+    // The icon is an optional simple-icons slug chosen by the admin; only lowercase letters/digits are stored, never URLs or markup.
+    @Test
+    void iconIsAnOptionalSlugThatPatchCanSetPreserveAndClear() throws Exception {
+        UUID id = idOf(create(adminToken, Map.of("name", "Docker", "icon", "  docker  ")).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.icon").value("docker")).andReturn());
+        detail(id).andExpect(jsonPath("$.data.icon").value("docker"));
+        list().andExpect(jsonPath("$.data.content[0].icon").value("docker"));
+        update(adminToken, id, Map.of("description", "Containers")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.icon").value("docker"));
+        update(adminToken, id, Map.of("icon", "kubernetes")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.icon").value("kubernetes"))
+                .andExpect(jsonPath("$.data.name").value("Docker"));
+        sendPatch(ROOT + "/" + id, adminToken, "{\"icon\":null}").andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.icon").isEmpty());
+        create(adminToken, Map.of("name", "Plain")).andExpect(status().isCreated()).andExpect(jsonPath("$.data.icon").isEmpty());
+        for (String icon : List.of("Docker", "spring-boot", "https://x.io/a.svg", "<svg/>", "a".repeat(65))) {
+            create(adminToken, Map.of("name", "Bad " + icon.length(), "icon", icon)).andExpect(status().isBadRequest());
+            update(adminToken, id, Map.of("icon", icon)).andExpect(status().isBadRequest());
+        }
+        detail(id).andExpect(jsonPath("$.data.icon").isEmpty());
+    }
+
     @Test
     void createRejectsInvalidNamesAndOversizedDescriptionsButAcceptsBoundaries() throws Exception {
         for (String body : List.of("{}", "{\"name\":null}", "{\"name\":\"  \"}",

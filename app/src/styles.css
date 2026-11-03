@@ -14,7 +14,6 @@
 @import './styles/components/forms.css';
 @import './styles/components/content.css';
 @import './styles/pages/admin.css';
-@import './styles/pages/moderator.css';
 @import './styles/pages/blogs.css';
 
 /* Until article-flow turns preflight on (then delete this block): the slice of preflight that shadcn primitives need.

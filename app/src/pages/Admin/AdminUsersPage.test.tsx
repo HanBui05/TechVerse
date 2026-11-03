@@ -58,7 +58,7 @@ it('opens account details in a side sheet', async () => {
   stubUsers([])
   const user = userEvent.setup()
   render(<AdminUsersPage />)
-  await user.click(await screen.findByRole('button', { name: /Trần Minh/ }))
+  await user.click(await screen.findByRole('button', { name: 'Xem chi tiết Trần Minh' }))
   const sheet = await screen.findByRole('dialog')
   expect(within(sheet).getByText('0900')).toBeTruthy()
   expect(within(sheet).getByRole('button', { name: 'Khóa tài khoản' })).toBeTruthy()
@@ -82,6 +82,72 @@ it('searches as the admin types and shows the real avatar', async () => {
   expect((await screen.findByRole('img', { name: /Trần Minh/ })).getAttribute('src')).toBe('https://cdn.example.com/minh.png')
   fireEvent.change(screen.getByLabelText('Tìm theo tên hoặc email'), { target: { value: 'min' } })
   await waitFor(() => expect(calls.some(call => call.url.includes('keyword=min'))).toBe(true))
+})
+
+const json = (data: unknown, status = 200) => new Response(JSON.stringify(status < 400 ? { status, data } : { status, ...(data as object) }), { status })
+
+// 12 users per page; the numbered pagination asks the API for the chosen zero-based page.
+it('requests 12 users per page and jumps to a numbered page', async () => {
+  const urls: string[] = []
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    urls.push(String(input))
+    return json({ content: [minh], hasNext: true, totalElements: 30 })
+  }))
+  setAccessToken('admin-test')
+  const user = userEvent.setup()
+  render(<AdminUsersPage />)
+  expect(await screen.findByText('Hiển thị 1–12 trong 30')).toBeTruthy()
+  expect(urls.some(url => url.includes('size=12') && url.includes('page=0'))).toBe(true)
+  await user.click(screen.getByRole('button', { name: 'Trang 2' }))
+  await waitFor(() => expect(urls.some(url => url.includes('size=12') && url.includes('page=1'))).toBe(true))
+})
+
+// Statistic cards come from count-only queries (size=1) with the matching filter.
+it('shows account statistics from count queries', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const params = new URL(String(input)).searchParams
+    const count = params.get('size') !== '1' ? 1 : params.get('active') === 'true' ? 25 : params.get('active') === 'false' ? 5 : params.get('role') === 'AUTHOR' ? 7 : 30
+    return json({ content: [minh], hasNext: false, totalElements: count })
+  }))
+  setAccessToken('admin-test')
+  render(<AdminUsersPage />)
+  const stat = (label: string) => screen.getByText(label, { selector: 'dt' }).parentElement!.querySelector('dd')!.textContent
+  await waitFor(() => expect(stat('Tổng người dùng')).toBe('30'))
+  expect(stat('Đang hoạt động')).toBe('25')
+  expect(stat('Đã khóa')).toBe('5')
+  expect(stat('Tác giả')).toBe('7')
+})
+
+// The backend message is English; in Vietnamese the admin must see a Vietnamese reason.
+it('locks one user from its row and explains a refusal in Vietnamese', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => String(input).includes('bulk-status')
+    ? json({ code: 'ADMIN_SELF_LOCK_NOT_ALLOWED', message: 'An administrator cannot lock their own account' }, 409)
+    : json({ content: [minh], hasNext: false, totalElements: 1 })))
+  setAccessToken('admin-test')
+  const user = userEvent.setup()
+  render(<AdminUsersPage />)
+  await user.click(await screen.findByRole('button', { name: 'Khóa Trần Minh' }))
+  const dialog = await screen.findByRole('alertdialog')
+  expect(within(dialog).getByText('Khóa 1 tài khoản đã chọn?')).toBeTruthy()
+  await user.click(within(dialog).getByRole('button', { name: 'Khóa tài khoản' }))
+  expect((await screen.findByRole('alert')).textContent).toBe('Bạn không thể tự khóa tài khoản của mình.')
+  expect(screen.queryByText(/cannot lock/)).toBeNull()
+})
+
+// After locking the last user of the last filtered page, the page index must fall back to the last page that still exists.
+it('moves back to the last existing page when the current page empties', async () => {
+  const urls: string[] = []
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    urls.push(String(input))
+    const page = new URL(String(input)).searchParams.get('page')
+    return json(page === '1' ? { content: [], hasNext: false, totalElements: 12 } : { content: [minh], hasNext: true, totalElements: 13 })
+  }))
+  setAccessToken('admin-test')
+  const user = userEvent.setup()
+  render(<AdminUsersPage />)
+  await user.click(await screen.findByRole('button', { name: 'Trang 2' }))
+  await waitFor(() => expect(urls.filter(url => url.includes('size=12') && url.includes('page=0')).length).toBe(2))
+  expect(screen.queryByText(/13–12/)).toBeNull()
 })
 
 // A slow response for an older keyword must not replace the newer results (admin could lock the wrong account).

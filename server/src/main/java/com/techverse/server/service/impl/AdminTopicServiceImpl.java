@@ -38,7 +38,7 @@ public class AdminTopicServiceImpl implements AdminTopicService {
 		if (topics.existsByNameIgnoreCase(request.name())) {
 			throw new CustomException(ErrorCode.TOPIC_EXISTED);
 		}
-		Topic topic = Topic.builder().name(request.name()).description(request.description()).build();
+		Topic topic = Topic.builder().name(request.name()).description(request.description()).icon(request.icon()).build();
 		try {
 			topics.saveAndFlush(topic);
 		} catch (DataIntegrityViolationException exception) {
@@ -56,8 +56,8 @@ public class AdminTopicServiceImpl implements AdminTopicService {
 				.and(Sort.by(filter.getDirection(), "id"));
 		var page = topics.findAll(specification, PageRequest.of(filter.getPage(), filter.getSize(), sort));
 		return PageResponse.from(page, page.getContent().stream().map(topic -> AdminTopicSummaryResponse.builder()
-				.id(topic.getId()).name(topic.getName()).description(topic.getDescription()).active(topic.isActive())
-				.createdAt(topic.getCreatedAt()).updatedAt(topic.getUpdatedAt()).build()).toList());
+				.id(topic.getId()).name(topic.getName()).description(topic.getDescription()).icon(topic.getIcon())
+				.active(topic.isActive()).createdAt(topic.getCreatedAt()).updatedAt(topic.getUpdatedAt()).build()).toList());
 	}
 
 	@Override
@@ -78,6 +78,7 @@ public class AdminTopicServiceImpl implements AdminTopicService {
 			topic.updateName(request.getName());
 		}
 		if (request.isDescriptionProvided()) topic.updateDescription(request.getDescription());
+		if (request.isIconProvided()) topic.updateIcon(request.getIcon());
 		flushTopic();
 		return toResponse(topic);
 	}
@@ -130,7 +131,7 @@ public class AdminTopicServiceImpl implements AdminTopicService {
 
 	private AdminTopicResponse toResponse(Topic topic) {
 		return AdminTopicResponse.builder().id(topic.getId()).name(topic.getName())
-				.description(topic.getDescription()).active(topic.isActive())
+				.description(topic.getDescription()).icon(topic.getIcon()).active(topic.isActive())
 				.createdAt(topic.getCreatedAt()).createdBy(topic.getCreatedBy())
 				.updatedAt(topic.getUpdatedAt()).updatedBy(topic.getUpdatedBy()).build();
 	}
