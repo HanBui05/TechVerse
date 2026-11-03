@@ -20,6 +20,9 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — Codex đồng bộ Task 1c
+- Codex: đã đối chiếu kết quả Task 1c trong log với checklist spec; toàn bộ 6 mục “Xong khi” 1c đã được đánh dấu `[x]`. Bảng “Quyết định người dùng chưa có trong spec” đang trống nên không có quyết định nào cần đưa vào thân spec.
+
 ### 2026-11-04 — Task 1c đã nhận
 - Người dùng nhận Task 1c; đánh dấu “Xong khi” 1c trong spec, commit WIP, nhờ Codex đồng bộ spec. Backend xong. Tiếp: cổng wireframe 2a–2d, session mới.
 
