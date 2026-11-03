@@ -255,7 +255,7 @@ describe('avatar', () => {
     const user = userEvent.setup()
     const { onProfileChange } = renderPage()
     const fileInput = screen.getByLabelText(t.changeAvatar) as HTMLInputElement
-    expect(fileInput.closest('label')?.querySelector('.user-avatar')).not.toBeNull()
+    expect(fileInput.closest('label')?.querySelector('[data-slot="user-avatar"]')).not.toBeNull()
     await user.upload(fileInput, png())
     expect(fileInput.disabled).toBe(true)
     expect(screen.getByRole('status').textContent).toBe(t.avatarUploading)

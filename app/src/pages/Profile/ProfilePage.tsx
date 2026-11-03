@@ -81,7 +81,7 @@ export function ProfilePage({ language, profile, onLogout, onLogoutAll, onProfil
     <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
       <Card className="gap-4 rounded-2xl p-5">
         <div className="flex min-w-0 items-center gap-3">
-          <UserAvatar className="avatar-large" name={profile.fullName} url={profile.avatarUrl} />
+          <UserAvatar className="size-17 text-xl" name={profile.fullName} url={profile.avatarUrl} />
           <div className="flex min-w-0 flex-col"><strong className="truncate text-base">{profile.fullName}</strong><span className="truncate text-xs text-muted-foreground">{profile.email}</span></div>
         </div>
         {canChangePassword && <nav className="flex flex-col gap-1" aria-label={t.navLabel}>

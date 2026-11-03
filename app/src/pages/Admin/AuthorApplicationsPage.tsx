@@ -124,7 +124,7 @@ export function AuthorApplicationsPage({ language = 'vi' }: { language?: Languag
       <SheetContent closeLabel={vi ? 'Đóng' : 'Close'} className="w-full gap-0 overflow-y-auto sm:max-w-lg">
         {selected && <>
           <SheetHeader className="flex-row items-center gap-4 border-b border-border p-6 pr-14">
-            <UserAvatar className="avatar-large" name={selected.fullName} url={selected.avatarUrl} />
+            <UserAvatar className="size-17 text-xl" name={selected.fullName} url={selected.avatarUrl} />
             <div className="flex min-w-0 flex-col gap-1">
               <SheetTitle className="text-xl font-bold">{selected.fullName}</SheetTitle>
               <SheetDescription className="truncate">{selected.email}</SheetDescription>

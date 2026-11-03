@@ -1,43 +1,6 @@
-.app-shell {
-  min-height: 100vh;
-}
-
 /* The shadcn sidebar-gap reserves the sidebar width; legacy pages keep only their own padding. */
 .page-content {
   min-height: 100vh;
   transition: background-color .28s ease, color .28s ease, border-color .28s ease, box-shadow .28s ease;
 }
 
-.placeholder-icon {
-  align-items: center;
-  background: color-mix(in srgb, var(--accent-text) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-text) 25%, transparent);
-  border-radius: 13px;
-  color: var(--accent-text);
-  display: flex;
-  height: 51px;
-  justify-content: center;
-  width: 51px;
-}
-
-.placeholder-page {
-  align-items: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 40px;
-  text-align: center;
-}
-
-.placeholder-page h1 {
-  font-size: 44px;
-  letter-spacing: -2px;
-  margin: 18px 0 10px;
-}
-
-.placeholder-page p {
-  color: var(--muted-foreground);
-  line-height: 1.7;
-  max-width: 500px;
-}

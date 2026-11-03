@@ -33,7 +33,9 @@ paths:
 - Shell: `App` bọc trang bằng `SidebarProvider` (controlled `techverse-sidebar`); trang tự có `<main>` nên không dùng `SidebarInset`. Sidebar mới ghép bằng `SidebarFrame`/`SidebarAccount`/`activeLink` trong `components/layout/Sidebar.tsx`.
 - Test bám role/label/state, không assert class Tailwind (ngoại lệ: test quét nguồn cho QĐ a11y); Radix cần polyfill trong `src/test/setup.ts`.
 
-## Giai đoạn chuyển (preflight tắt, tới Task 7b của `ui-foundation-v2`)
+## Giai đoạn chuyển (preflight tắt, tới khi module `article-flow` chuyển xong Blogs/Moderator/AuthorBlogs)
+
+- CSS legacy chỉ còn lớp tương thích cho luồng bài viết; không thêm class/rule legacy mới, không dùng class legacy ở trang đã chuyển.
 
 - CSS legacy unlayered thắng mọi utility. Không thêm CSS unlayered chạm element trần (`a`, `button`, `ul`…): `base.css` đã nạp vào `layer(base)` vì `a { color: inherit }` từng đè màu utility trên link.
 - Primitive shadcn dựa vào reset `[data-slot]` cuối `styles.css` (border, nút, `ul`, margin `h1–h4/p`); xóa khi bật preflight.

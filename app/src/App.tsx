@@ -38,9 +38,11 @@ function AuthRoute({ authenticated, children }: { authenticated: boolean; childr
   return authenticated ? children : <Navigate to="/login" replace />
 }
 
+const LOADING_MAIN = 'tw-page flex min-h-svh flex-col items-center justify-center p-10 text-center text-muted-foreground'
+
 function RoleRoute({ authenticated, roles, allowed, children }: { authenticated: boolean; roles: string[]; allowed: string[]; children: ReactNode }) {
   if (!authenticated) return <Navigate to="/login" replace />
-  if (roles.length === 0) return <main className="page-content placeholder-page"><p>Đang kiểm tra quyền truy cập...</p></main>
+  if (roles.length === 0) return <main className={LOADING_MAIN}><p>Đang kiểm tra quyền truy cập...</p></main>
   return roles.some(role => allowed.includes(role)) ? children : <Navigate to="/profile" replace />
 }
 
@@ -130,7 +132,7 @@ export default function App() {
     navigate('/login', { replace: true })
   }
   const routes = authenticated && !profile && !isAuthPage
-      ? <main className="page-content placeholder-page"><p role="status">Đang đồng bộ phiên đăng nhập và quyền truy cập...</p></main>
+      ? <main className={LOADING_MAIN}><p role="status">Đang đồng bộ phiên đăng nhập và quyền truy cập...</p></main>
       : <Routes>
       <Route path="/" element={<HomePage t={t} />} />
       <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><BlogsPage /></AuthRoute>} />
@@ -155,14 +157,14 @@ export default function App() {
       <Route path="/settings/language" element={<LanguagePage language={language} setLanguage={setLanguage} t={t} />} />
       <Route path="*" element={<PlaceholderPage t={t} language={language} />} />
     </Routes>
-  if (isAuthPage) return <div className="app-shell">{routes}</div>
+  if (isAuthPage) return <div className="min-h-svh">{routes}</div>
   const roles = profile?.roles || []
   const sidebar = authenticated && roles.includes('MODERATOR') && (isModeratorPage || !roles.includes('ADMIN'))
     ? <ModeratorSidebar language={language} profile={profile} onLogout={logout} />
     : roles.includes('ADMIN')
       ? <AdminSidebar language={language} profile={profile} onLogout={logout} isModerator={roles.includes('MODERATOR')} />
       : <Sidebar language={language} t={t} authenticated={authenticated} roles={roles} profile={profile} onLogout={logout} />
-  // SidebarProvider is controlled by techverse-sidebar; its sidebar-gap reserves the desktop width, so .page-content has no margin.
+  // SidebarProvider is controlled by techverse-sidebar; its sidebar-gap reserves the desktop width, so pages need no margin.
   return <SidebarProvider open={!collapsed} onOpenChange={setSidebarOpen}>
     {sidebar}
     <div className="flex min-w-0 flex-1 flex-col">

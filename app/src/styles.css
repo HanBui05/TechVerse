@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* Transition phase: Tailwind theme + utilities only. Preflight stays off until Task 7b so legacy pages keep their look. */
+/* Tailwind theme + utilities only. Preflight stays off until module article-flow migrates the last legacy pages (Blogs, Moderator, AuthorBlogs). */
 @layer theme, base, components, utilities;
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
@@ -17,14 +17,14 @@
 @import './styles/pages/moderator.css';
 @import './styles/pages/blogs.css';
 
-/* Transition phase only (delete with preflight in Task 7b): the slice of preflight that shadcn primitives need.
+/* Until article-flow turns preflight on (then delete this block): the slice of preflight that shadcn primitives need.
    Scoped to elements carrying data-slot so legacy pages keep their UA defaults. */
 @layer base {
   [data-slot], [data-slot]::before, [data-slot]::after { border: 0 solid var(--border); }
   button[data-slot] { background-color: transparent; color: inherit; font: inherit; padding: 0; }
   ul[data-slot] { list-style: none; margin: 0; padding: 0; }
   :is(h1, h2, h3, h4, p)[data-slot] { margin: 0; }
-  /* shortcut: migrated pages opt out of base.css heading/paragraph styles and UA margins; delete .tw-page with preflight in Task 7b. */
+  /* shortcut: migrated pages opt out of base.css heading/paragraph styles and UA margins; delete .tw-page with preflight in article-flow. */
   .tw-page :is(h1, h2, h3, h4, p) { margin: 0; }
   .tw-page h1 { letter-spacing: normal; max-width: none; }
 }

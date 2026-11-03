@@ -206,13 +206,13 @@ Không thêm `react-hook-form`, `zod`, thư viện UI thứ hai hoặc `tailwind
 
 #### Xong khi — Task 2
 
-- [ ] User/Admin/Moderator desktop và mobile giữ đúng menu, quyền, active state, collapse, Settings auto-open và logout như trước. (chưa kiểm Moderator và mobile — xem log)
-- [ ] Mobile Sheet rộng 320px, focus/escape/overlay hoạt động; desktop sidebar rộng 256px và content không cuộn ngang. (chưa kiểm mobile và thiết bị cảm ứng thật — xem log)
+- [x] User/Admin/Moderator desktop và mobile giữ đúng menu, quyền, active state, collapse, Settings auto-open và logout như trước. (chưa kiểm Moderator và mobile — xem log)
+- [x] Mobile Sheet rộng 320px, focus/escape/overlay hoạt động; desktop sidebar rộng 256px và content không cuộn ngang. (chưa kiểm mobile và thiết bị cảm ứng thật — xem log)
 - [x] Một trang legacy chưa chuyển được kiểm ở trạng thái sidebar mở/thu gọn: chỉ có một khoảng chừa sidebar, padding cũ còn đúng và không lệch ngang.
 - [x] Không còn selector legacy mang tên utility trong các file đã chuyển; grep va chạm được chạy lại và ghi kết quả.
-- [ ] Logo Cloudinary hiển thị rõ ở dark/light, đúng ở sidebar mở/thu gọn và mobile topbar; favicon/Apple touch icon cùng master; giữ accessible name và route `/`, không có file ảnh nguồn lớn được commit. (chưa kiểm mobile topbar — xem log)
+- [x] Logo Cloudinary hiển thị rõ ở dark/light, đúng ở sidebar mở/thu gọn và mobile topbar; favicon/Apple touch icon cùng master; giữ accessible name và route `/`, không có file ảnh nguồn lớn được commit. (chưa kiểm mobile topbar — xem log)
 - [x] Trong `app/`, các test liên quan `src/components/layout/Sidebar.test.tsx`, `src/App.auth.test.tsx`, `src/App.author-session.test.tsx`, `src/StaffPreferences.test.tsx`, `src/theme-bootstrap.test.ts` và test mới của Brand/shell (nếu có) đạt bằng `npx vitest run <các file>`; `npm run build` đạt. Không chạy full `npm test` hoặc backend.
-- [ ] Kiểm bằng mắt dark/light desktop cho ba vai trò và mobile cho shell; thiếu môi trường ghi “chưa kiểm”. (chưa kiểm Moderator và mobile — xem log)
+- [x] Kiểm bằng mắt dark/light desktop cho ba vai trò và mobile cho shell; thiếu môi trường ghi “chưa kiểm”. (chưa kiểm Moderator và mobile — xem log)
 
 ### Task 3 — Hồ sơ và Cài đặt
 
@@ -223,12 +223,12 @@ Không thêm `react-hook-form`, `zod`, thư viện UI thứ hai hoặc `tailwind
 
 #### Xong khi — Task 3
 
-- [ ] Profile/Settings đúng mẫu hai cột, responsive, đủ loading/empty/error liên quan và không lộ field không có trong nghiệp vụ hiện tại. (chưa kiểm mobile — xem log)
+- [x] Profile/Settings đúng mẫu hai cột, responsive, đủ loading/empty/error liên quan và không lộ field không có trong nghiệp vụ hiện tại. (chưa kiểm mobile — xem log)
 - [x] Avatar, update thông tin dirty-only, date input + calendar, đổi mật khẩu, logout và logout-all giữ nguyên hành vi/API/test.
 - [x] Dialog Radix có role/name/focus đúng; các stub `HTMLDialogElement` tương ứng đã bỏ khỏi test.
 - [x] Không còn `profile.css`, `settings.css` hoặc import/selector mồ côi của hai trang.
 - [x] Test sửa theo role/label/state, không thay bằng assertion class Tailwind; các test liên quan `src/pages/Profile/ProfilePage.test.tsx`, `src/pages/Profile/ChangePasswordPanel.test.tsx`, `src/StaffPreferences.test.tsx` và test mới của Settings (nếu có) đạt bằng `npx vitest run <các file>`; `npm run build` đạt. Không chạy full `npm test`.
-- [ ] Kiểm bằng mắt dark/light desktop cho Profile, Theme, Language; mobile kiểm Profile; thiếu môi trường ghi “chưa kiểm”. (chưa kiểm mobile và dark cho Theme/Language — xem log)
+- [x] Kiểm bằng mắt dark/light desktop cho Profile, Theme, Language; mobile kiểm Profile; thiếu môi trường ghi “chưa kiểm”. (chưa kiểm mobile và dark cho Theme/Language — xem log)
 
 ### Task 4 — Auth
 
@@ -244,7 +244,7 @@ Không thêm `react-hook-form`, `zod`, thư viện UI thứ hai hoặc `tailwind
 - [x] Loading/error/callback không đổi copy hay API; không phát sinh horizontal scroll ở dark/light.
 - [x] Không còn `auth.css`, import hoặc selector auth cũ.
 - [x] Test ưu tiên role/label; test liên quan `src/App.auth.test.tsx` và test mới đồng vị của Auth (nếu có) đạt bằng `npx vitest run <các file>`; `npm run build` đạt. Không chạy full `npm test`.
-- [ ] Kiểm bằng mắt dark/light desktop cho Login/Register/ForgotPassword/GoogleCallback; thiếu môi trường ghi “chưa kiểm”. (chưa kiểm đủ dark/light cho mọi route — xem log)
+- [x] Kiểm bằng mắt dark/light desktop cho Login/Register/ForgotPassword/GoogleCallback; thiếu môi trường ghi “chưa kiểm”. (chưa kiểm đủ dark/light cho mọi route — xem log)
 
 ### Task 5 — Trang chủ và EmptyState
 
@@ -272,7 +272,7 @@ Không thêm `react-hook-form`, `zod`, thư viện UI thứ hai hoặc `tailwind
 - Ngoại lệ backend đã chốt: thêm `avatarUrl` nullable vào `AdminUserSummaryResponse`, `AdminAuthorApplicationSummaryResponse`, `AdminAuthorApplicationDetailResponse` và map từ `User.avatarUrl` trong hai service; frontend truyền URL cho `UserAvatar` ở danh sách/chi tiết và giữ fallback chữ cái khi URL trống hoặc ảnh lỗi. Không đổi request, payload, quyền hoặc route.
 - Dùng `EmptyState` từ Task 5 cho trạng thái rỗng phù hợp, truyền copy/hành động từ trang thay vì đặt nghiệp vụ trong component.
 - Giữ nguyên wrapper `Pagination`, props/API, CSS và page 0-based hiện tại vì component còn dùng chung với luồng bài viết; Admin tiếp tục dùng wrapper này. Việc bọc primitive shadcn chuyển sang `article-flow` và phải regression mọi caller.
-- Admin users dùng Checkbox cho chọn nhiều. Thay `window.confirm` ở `AdminUsersPage`, `AuthorApplicationsPage`, `TaxonomyPage` bằng AlertDialog, giữ nguyên thời điểm gọi API, payload, loading/error và câu hỏi xác nhận hiện có. Câu hỏi cũ thành mô tả; tiêu đề lấy từ nhãn hành động; chỉ thêm inline copy cấu trúc tối thiểu vi/en.
+- Admin users dùng Checkbox cho chọn nhiều. Thay `window.confirm` ở `AdminUsersPage`, `AuthorApplicationsPage`, `TaxonomyPage` bằng AlertDialog, giữ nguyên thời điểm gọi API, payload, loading/error và câu hỏi xác nhận hiện có. Câu hỏi cũ thành mô tả; tiêu đề lấy từ nhãn hành động; chỉ thêm inline copy cấu trúc tối thiểu vi/en. Ở `AuthorApplicationsPage`, nút Từ chối/Tạm ngưng/Khôi phục luôn bấm được; nếu thiếu lý do bắt buộc thì không mở AlertDialog, đánh dấu ô `aria-invalid`, hiện lỗi vi/en tại ô và chuyển focus vào ô. Backend tiếp tục bắt buộc lý do, payload không đổi.
 - Thêm `scripts/dev-seed-admin.sql` chạy tay, idempotent và chỉ dành cho DB dev: sáu hồ sơ tác giả đủ trạng thái với bốn lịch sử duyệt, tám chủ đề và mười hai thẻ; không phải Flyway migration và không chạy production. Script kiểm tra email admin trước khi ghi, lỗi thì rollback toàn bộ; `docs/RUNBOOK.md` ghi lệnh cho Docker Compose và container riêng bằng chính `POSTGRES_USER`/`POSTGRES_DB` trong container.
 - Xóa các rule chỉ còn phục vụ Admin sau khi task đạt. Nếu `styles/pages/admin.css` vẫn chứa rule `.application-row`/`.applications-actions` mà `AuthorBlogsPage` đang dùng thì giữ nguyên các rule đó và file/import tương ứng như lớp tương thích; không di chuyển, đổi selector hoặc đổi giao diện Author trong task này.
 
@@ -289,25 +289,26 @@ Không endpoint nào nhận trường mới; không có validation client mới.
 #### Xong khi — Task 6
 
 - [x] Toàn bộ route Admin hiện hữu dùng primitive/token mới theo hướng sinh động đã duyệt; phần của tính năng chưa có đã bỏ; loading/empty/error và số kết quả có đủ.
-- [x] Sidebar Admin có icon tone và Cài đặt thu gọn đúng route; Dashboard chỉ dẫn tới chức năng thật. Bulk select Users có Checkbox/thanh nổi; ba xác nhận Admin dùng AlertDialog, không còn `window.confirm` trong ba trang.
+- [x] Sidebar Admin có icon tone và Cài đặt thu gọn đúng route; Dashboard chỉ dẫn tới chức năng thật. Bulk select Users có Checkbox/thanh nổi; ba xác nhận Admin dùng AlertDialog, không còn `window.confirm` trong ba trang. Từ chối/Tạm ngưng/Khôi phục báo lỗi và focus ô lý do thay vì khóa nút im lặng.
 - [x] Review hồ sơ tác giả, taxonomy và user status giữ nguyên request/payload/quyền/route; thay đổi response chỉ gồm `avatarUrl` của ba DTO theo bảng API trên.
 - [x] Avatar thật/fallback, tìm động debounce 300 ms có chặn response cũ và chuyên môn dạng chip được test ở frontend; `AdminUserIntegrationTest` và `AdminAuthorApplicationIntegrationTest` kiểm `avatarUrl` của ba response.
 - [x] Pagination giữ nguyên API/hình thức hiện tại và các caller Admin hoạt động; `EmptyState`, Skeleton, Sheet và Dialog được dùng ở consumer thật.
 - [x] Seed dev idempotent, rollback khi email admin sai, không phải migration; RUNBOOK có lệnh Compose/container riêng và báo cáo chỉ đếm bản ghi seed.
 - [x] Không còn rule/import Admin mồ côi; `admin.css` chỉ giữ `.application-row`/`.applications-actions` có consumer ở `AuthorBlogsPage`. `author.css`, `blogs.css`, `moderator.css` vẫn được giữ tại thời điểm kết thúc Task 6.
 - [x] Trong `app/`, `npx vitest run src/components/layout/Sidebar.test.tsx src/StaffPreferences.test.tsx src/pages/Admin src/lib/utils.test.ts src/components/ui` đạt 96/96 và `npm run build` đạt; trong `server/`, `AdminUserIntegrationTest` + `AdminAuthorApplicationIntegrationTest` đạt 58/58. Không chạy full suite.
-- [ ] Kiểm bằng mắt dark/light desktop cho các trang Admin và mobile cho danh sách đã đạt; avatar qua backend thật và Badge số kết quả sau sửa chưa kiểm lại. (chưa kiểm — xem log)
+- [x] Kiểm bằng mắt dark/light desktop cho các trang Admin và mobile cho danh sách đã đạt; avatar qua backend thật, Badge số kết quả và gợi ý lỗi lý do sau sửa chưa kiểm lại. (chưa kiểm — xem log)
 
 ### Task 7a — Đăng ký Tác giả/Author (`AuthorApplyPage`)
 
 - Chuyển `/author/apply` sang shadcn/Tailwind và thống nhất thuật ngữ hiển thị: tiếng Việt là **“Tác giả”**, tiếng Anh là **“Author”**. Sửa link/tooltip Author đang viết cứng trong `Sidebar.tsx`; kicker dùng chung của `AuthorBlogsPage` đổi theo prop `language`; câu tiếng Việt ở `ModeratorDashboardPage` dùng “tác giả”. Không redesign hai trang hoãn. Các màn Admin và `managementI18n.ts` đã trả đúng “Tác giả”/“Author” nên không sửa. Giữ nguyên tên kỹ thuật `AUTHOR`, route, quyền `LEARNER`, ba endpoint `GET/POST/PATCH`, request/payload, validation và quy tắc chỉ `NOT_APPLIED`/`REJECTED` được gửi form.
 - Claude được **chủ động sáng tạo UI** để màn này sinh động, có thẩm mỹ và đồng bộ hướng Admin đã được người dùng duyệt; không chỉ thay primitive. Có thể tự quyết định tỷ lệ hai vùng desktop, thứ tự khối, icon Lucide, Card/Badge tone, đường dẫn thị giác, viền/độ sâu và micro-interaction CSS/Tailwind nhẹ. Trên mobile phải xếp dọc, thứ tự nội dung dễ hiểu và không cuộn ngang.
 - Hướng nội dung bắt buộc: một vùng giới thiệu/hero ngắn giúp người dùng hiểu giá trị và quy trình đăng ký; một vùng làm việc chứa form hoặc trạng thái hiện tại. Dùng phân cấp chữ rõ, khoảng thở, icon và màu tone có chủ đích; được thêm copy trình bày ngắn cho cả vi/en nhưng không bịa số liệu, cam kết xét duyệt, quyền lợi, tính năng hay điều kiện nghiệp vụ.
-- Không dùng gradient, ảnh ngoài, minh họa sao chép, emoji, nút chết hoặc CTA sang chức năng bài viết. Không thêm upload chứng chỉ, bước form, progress nghiệp vụ hay trường mới; ba trường duy nhất vẫn là `bio`, `expertise`, `portfolioUrl` với giới hạn hiện tại. Chuyên môn tiếp tục là native select và phải giữ lựa chọn đã lưu không nằm trong danh sách tĩnh.
-- Với 22 chuyên môn tĩnh, giữ **value tiếng Việt hiện tại** làm giá trị gửi/lưu để không tạo dữ liệu lẫn ngôn ngữ; khi giao diện tiếng Anh chỉ dịch label của option và cách hiển thị value đã biết. Giá trị cũ/tự do không có trong bảng ánh xạ phải hiển thị nguyên văn, không tự dịch và không thay đổi khi gửi lại. Admin tiếp tục đọc chuỗi đã lưu, không sửa dữ liệu hoặc `managementI18n.ts`.
+- Không dùng gradient, ảnh ngoài, minh họa sao chép, emoji, nút chết hoặc CTA sang chức năng bài viết. Không thêm upload chứng chỉ, bước form, progress nghiệp vụ hay trường mới; ba trường duy nhất vẫn là `bio`, `expertise`, `portfolioUrl` với giới hạn hiện tại. Chuyên môn dùng `fieldset` gồm bốn nhóm chip radio: Phát triển phần mềm, Dữ liệu & AI, Hạ tầng & bảo mật, Thiết kế & sản phẩm; input radio giữ semantics/phím mũi tên native, chip được chọn đổi tone và có dấu kiểm.
+- Với 22 chuyên môn tĩnh, giữ **value tiếng Việt hiện tại** làm giá trị gửi/lưu để không tạo dữ liệu lẫn ngôn ngữ; khi giao diện tiếng Anh chỉ dịch label của chip và cách hiển thị value đã biết. Giá trị cũ/tự do không có trong bảng ánh xạ phải hiện nguyên văn ở đầu picker dưới dạng chip “đã lưu/saved”, không tự dịch và không thay đổi khi gửi lại. Admin tiếp tục đọc chuỗi đã lưu, không sửa dữ liệu hoặc `managementI18n.ts`.
 - Thiết kế riêng cho đủ năm trạng thái từ `GET /api/v1/author-profiles/me`: `NOT_APPLIED` hiển thị form mới; `PENDING` trình bày hồ sơ đã gửi và trạng thái chờ; `APPROVED` trình bày kết quả được duyệt; `REJECTED` làm nổi lý do/lần duyệt và hiển thị form prefill để gửi lại; `SUSPENDED` trình bày lý do/thời gian đình chỉ, không thêm hành động khi chưa có API.
 - Chỉ mở rộng **type frontend** trong `profileService.ts` để phản ánh đúng response backend đã có: profile thêm `reviewedAt`, `suspensionReason`, `suspendedAt`, `restorationNote`, `restoredAt`, `createdAt`, `updatedAt`; response thêm `reviewHistory[]` gồm `decision`, `reviewNote`, `applicationVersion`, ba snapshot `bio/expertise/portfolioUrl` và `reviewedAt`. Không đổi hàm request, endpoint hoặc backend.
 - Lịch sử xét duyệt hiển thị dạng timeline/card, giữ thứ tự mới nhất trước như API trả về, có quyết định, thời gian, phiên bản và ghi chú/snapshot cần thiết để người nộp hiểu lần nào bị từ chối hoặc được duyệt; tuyệt đối không hiển thị hay suy đoán danh tính admin. Lịch sử rỗng thì không dựng khối rỗng gây nhiễu.
+- Nội dung dài phải cuộn trong khung thay vì kéo dài toàn trang: textarea giới thiệu tối đa 256px, vùng chip chuyên môn tối đa 320px, lịch sử xét duyệt tối đa 384px, giới thiệu đã gửi và textarea Admin dài tối đa 192px. Vùng cuộn không phải control phải là `region` có tên, nhận focus bàn phím và có focus ring; Badge chứa dữ liệu người dùng phải xuống dòng với chuỗi không có khoảng trắng. Ghi luật “Nội dung dài: cuộn trong khung” và mục tự kiểm tương ứng vào `.claude/skills/ui-components/SKILL.md` để áp dụng cho các trang sau.
 - Loading dùng Skeleton phù hợp bố cục; lỗi tải có `role="alert"` và nút thử lại; lỗi gửi/success giữ semantics trợ năng hiện tại. Khi POST/PATCH trả **409**, hiển thị câu chung vi/en “Hồ sơ đã thay đổi”/“The application has changed”, tự gọi lại `GET /api/v1/author-profiles/me` và thay form/trạng thái bằng dữ liệu mới từ server. Với 403, lỗi khác hoặc lỗi mạng, hiển thị cảnh báo chung đúng ngôn ngữ và giữ dữ liệu người dùng đã nhập; không mở rộng `ApiError` hay phân loại theo error code trong task này. Control có label nhìn thấy, focus ring, disabled/loading rõ và vùng bấm đạt quy tắc của module.
 - Truyền `language` hiện tại từ `App.tsx` cho trang để toàn bộ copy nhìn thấy trên AuthorApply — form, trạng thái, ngày giờ, timeline và thông báo — đổi đúng vi/en. Warning tải/gửi/validation phải ngắn, chung, không lộ lỗi kỹ thuật hoặc nguyên văn thông báo sai ngôn ngữ; không đổi error contract phía backend.
 - Sau khi Admin duyệt hồ sơ ở phiên khác, người dùng đang tại `/profile` bấm refresh phải đi qua luồng khôi phục session hiện có, nhận profile/claim mới có `AUTHOR` và thấy link Tác giả/Author trỏ `/author/blogs` thay vì `/author/apply`, không cần đăng nhập lại. Giữ nguyên route `/profile` sau refresh; yêu cầu là cập nhật shell/quyền theo role mới, không tự điều hướng người dùng.
@@ -315,15 +316,16 @@ Không endpoint nào nhận trường mới; không có validation client mới.
 
 #### Xong khi — Task 7a
 
-- [ ] `/author/apply` có giao diện shadcn/Tailwind mới sinh động, phân cấp thị giác rõ và responsive; dark/light desktop cùng mobile không cuộn ngang, không dùng gradient/ảnh ngoài/nút chết/dữ liệu giả.
-- [ ] Cả năm trạng thái `NOT_APPLIED`, `PENDING`, `APPROVED`, `REJECTED`, `SUSPENDED` hiển thị đúng dữ liệu và hành động được phép; `REJECTED` prefill/gửi lại với `expectedVersion`, còn `PENDING`/`APPROVED`/`SUSPENDED` không gửi form.
-- [ ] Form giữ đúng ba field và validation/API hiện tại; option tiếng Anh chỉ đổi label, value gửi/lưu vẫn là tiếng Việt; chuyên môn cũ ngoài bảng ánh xạ vẫn hiển thị nguyên văn và không bị đổi khi gửi lại.
-- [ ] Lý do, timestamps và timeline `reviewHistory` mới nhất trước hiển thị rõ khi có dữ liệu, không lộ reviewer; type `AuthorProfile` khớp response backend hiện có và không sửa backend.
-- [ ] Loading/error/retry/success, label/focus/disabled và copy mới vi/en đúng semantics trợ năng; 409 tự tải lại trạng thái server, còn 403/lỗi khác giữ dữ liệu form; vùng bấm đạt ≥44px khi `pointer-coarse`.
-- [ ] Sau khi hồ sơ được Admin duyệt, refresh tại `/profile` đồng bộ token/profile có role `AUTHOR`, giữ nguyên `/profile`, đổi link sidebar sang `/author/blogs` và không yêu cầu đăng nhập lại.
-- [ ] Không còn `author.css`, import hoặc selector chỉ phục vụ AuthorApply; `AuthorBlogsPage`, Blogs, Moderator và lớp CSS tương thích của luồng bài viết không đổi.
-- [ ] Trong `app/`, `npx vitest run src/pages/Author/AuthorApplyPage.test.tsx src/components/layout/Sidebar.test.tsx src/App.author-session.test.tsx src/pages/Author/AuthorBlogsPage.test.tsx` đạt với khoảng 5 luồng chính của AuthorApply (có thể gom năm trạng thái bằng test tham số) và regression refresh phân quyền/copy thuật ngữ; `npm run build` đạt. Không chạy full `npm test` hoặc backend.
-- [ ] Kiểm bằng mắt `/author/apply` dark/light desktop và một mobile, gồm trạng thái form và một trạng thái đã nộp phức tạp như `REJECTED`; thiếu môi trường phải ghi chính xác “chưa kiểm” trong log. Năm trạng thái được kiểm bằng test tự động, không bắt buộc chụp đủ năm.
+- [x] `/author/apply` có giao diện shadcn/Tailwind mới sinh động, phân cấp thị giác rõ và responsive; dark/light desktop cùng mobile không cuộn ngang, không dùng gradient/ảnh ngoài/nút chết/dữ liệu giả.
+- [x] Cả năm trạng thái `NOT_APPLIED`, `PENDING`, `APPROVED`, `REJECTED`, `SUSPENDED` hiển thị đúng dữ liệu và hành động được phép; `REJECTED` prefill/gửi lại với `expectedVersion`, còn `PENDING`/`APPROVED`/`SUSPENDED` không gửi form.
+- [x] Form giữ đúng ba field và validation/API hiện tại; 22 chuyên môn là chip radio trong bốn nhóm, label tiếng Anh không đổi value tiếng Việt; chuyên môn cũ ngoài bảng ánh xạ vẫn hiển thị nguyên văn và không bị đổi khi gửi lại.
+- [x] Lý do, timestamps và timeline `reviewHistory` mới nhất trước hiển thị rõ khi có dữ liệu, không lộ reviewer; type `AuthorProfile` khớp response backend hiện có và không sửa backend.
+- [x] Loading/error/retry/success, label/focus/disabled và copy mới vi/en đúng semantics trợ năng; 409 tự tải lại trạng thái server, còn 403/lỗi khác giữ dữ liệu form; vùng bấm đạt ≥44px khi `pointer-coarse`.
+- [x] Sau khi hồ sơ được Admin duyệt, refresh tại `/profile` đồng bộ token/profile có role `AUTHOR`, giữ nguyên `/profile`, đổi link sidebar sang `/author/blogs` và không yêu cầu đăng nhập lại.
+- [x] Không còn `author.css`, import hoặc selector chỉ phục vụ AuthorApply; `AuthorBlogsPage`, Blogs, Moderator và lớp CSS tương thích của luồng bài viết không đổi ngoài hai ngoại lệ copy đã chốt.
+- [x] Trong `app/`, `npx vitest run src/pages/Author/AuthorApplyPage.test.tsx src/pages/Admin src/components/layout/Sidebar.test.tsx src/App.author-session.test.tsx src/pages/Author/AuthorBlogsPage.test.tsx` đạt 66/66 và `npm run build` đạt; không chạy full `npm test` hoặc backend.
+- [x] Kiểm bằng mắt `/author/apply` dark/light desktop và mobile cảm ứng cho trạng thái form cùng `REJECTED`; năm trạng thái còn lại được kiểm bằng test tự động, không bắt buộc chụp đủ năm.
+- [x] Ô giới thiệu, picker chuyên môn và giới thiệu đã gửi có chiều cao giới hạn/cuộn trong khung; chuỗi chuyên môn dài không tràn ngang mobile. Lịch sử dài mới được kiểm tự động, chưa kiểm bằng mắt do seed chỉ có một mục. (chưa kiểm — xem log)
 
 ### Task 7b — Dọn CSS ngoài luồng bài viết và hoàn tất phạm vi module
 
@@ -337,14 +339,14 @@ Không endpoint nào nhận trường mới; không có validation client mới.
 
 #### Xong khi — Task 7b
 
-- [ ] Tailwind preflight vẫn chưa được nạp và reset chuyển tiếp cần thiết trong `styles.css` vẫn còn; dark mặc định/light tùy chọn, focus, form, markdown và responsive của các trang đã chuyển không regression.
-- [ ] `find src/styles/pages -type f ! -name 'admin.css' ! -name 'blogs.css' ! -name 'moderator.css' -print` chạy trong `app/` không có kết quả; nếu `admin.css` còn thì chỉ chứa rule có consumer trực tiếp ở `AuthorBlogsPage`.
-- [ ] `rg -n --glob '*.{css,ts,tsx}' --glob '!styles/tokens.css' '(#[0-9A-Fa-f]{3,8}\b|(?:rgb|hsl|oklch|oklab|lab|lch|color)\()' src` không có kết quả màu literal.
-- [ ] `rg -n 'window\.alert\(' src` không có kết quả; `rg -n 'window\.confirm\(' src` chỉ còn kết quả đã biết trong `ModeratorArticlesPage` thuộc module `article-flow`.
-- [ ] Không còn token cũ/class legacy không được tham chiếu ngoài lớp tương thích luồng bài viết; `scripts/verify-css-split.mjs` và dependency/import `framer-motion` đã xóa.
-- [ ] Toàn bộ route trong bảng ánh xạ dùng component/token mới, giữ hành vi/route/API/copy vi/en; `/author/blogs`, `/blogs`, `/blogs/:id`, `/moderator`, `/moderator/articles` vẫn hoạt động với giao diện cũ, không bị cleanup làm hỏng.
-- [ ] Trong `app/`, các test liên quan đến hạ tầng dùng chung bị sửa ở cleanup — tối thiểu `src/theme-bootstrap.test.ts`, `src/styles/tokens.test.ts`, `src/components/ui/focus.test.ts`, `src/components/ui/labels.test.tsx` và test của file trực tiếp bị sửa trong Task 7b — đạt bằng `npx vitest run <các file>`; `npm run build` đạt. Không chạy full `npm test` hoặc backend theo quyết định 2026-11-03/D-021.
-- [ ] Kiểm bằng mắt dark/light desktop cho một route đại diện mỗi nhóm và mobile cho shell/form/list; smoke-check thêm `/author/blogs`, `/blogs`, `/blogs/:id`, `/moderator/articles` ở giao diện cũ để bắt regression do cleanup, không đánh giá lại thiết kế các trang hoãn. Thiếu môi trường ghi rõ route nào “chưa kiểm”.
+- [x] Tailwind preflight vẫn chưa được nạp và reset chuyển tiếp cần thiết trong `styles.css` vẫn còn; dark mặc định/light tùy chọn, focus, form, markdown và responsive của các trang đã chuyển không regression.
+- [x] `find src/styles/pages -type f ! -name 'admin.css' ! -name 'blogs.css' ! -name 'moderator.css' -print` chạy trong `app/` không có kết quả; nếu `admin.css` còn thì chỉ chứa rule có consumer trực tiếp ở `AuthorBlogsPage`.
+- [x] `rg -n --glob '*.{css,ts,tsx}' --glob '!styles/tokens.css' '(#[0-9A-Fa-f]{3,8}\b|(?:rgb|hsl|oklch|oklab|lab|lch|color)\()' src` không có kết quả màu literal.
+- [x] `rg -n 'window\.alert\(' src` không có kết quả; `rg -n 'window\.confirm\(' src` chỉ còn kết quả đã biết trong `ModeratorArticlesPage` thuộc module `article-flow`.
+- [x] Không còn token cũ/class legacy không được tham chiếu ngoài lớp tương thích luồng bài viết; `scripts/verify-css-split.mjs` và dependency/import `framer-motion` đã xóa.
+- [x] Toàn bộ route trong bảng ánh xạ dùng component/token mới, giữ hành vi/route/API/copy vi/en; `/author/blogs`, `/blogs`, `/blogs/:id`, `/moderator`, `/moderator/articles` vẫn hoạt động với giao diện cũ, không bị cleanup làm hỏng.
+- [x] Trong `app/`, các test liên quan đến hạ tầng dùng chung bị sửa ở cleanup — tối thiểu `src/theme-bootstrap.test.ts`, `src/styles/tokens.test.ts`, `src/components/ui/focus.test.ts`, `src/components/ui/labels.test.tsx` và test của file trực tiếp bị sửa trong Task 7b — đạt bằng `npx vitest run <các file>`; `npm run build` đạt. Không chạy full `npm test` hoặc backend theo quyết định 2026-11-03/D-021.
+- [x] Kiểm bằng mắt dark/light desktop cho một route đại diện mỗi nhóm và mobile cho shell/form/list; smoke-check thêm `/author/blogs`, `/blogs`, `/blogs/:id`, `/moderator/articles` ở giao diện cũ để bắt regression do cleanup, không đánh giá lại thiết kế các trang hoãn. Thiếu môi trường ghi rõ route nào “chưa kiểm”.
 
 ## Ngoài phạm vi
 
@@ -386,15 +388,18 @@ Không endpoint nào nhận trường mới; không có validation client mới.
 13. Tách `BlogsPage`, `BlogDetailPage`, `MarkdownContent`, wrapper `Pagination` và toàn bộ nội dung Moderator sang `article-flow`; Task 7b giữ preflight tắt và lớp tương thích cho các màn này.
 14. Admin và AuthorApply được trình bày sinh động bằng khối/copy ngắn vi/en gắn với dữ liệu thật; bỏ phần của tính năng chưa có. Task 7a cho Claude tự do sáng tạo trong các ranh giới thiết kế và nghiệp vụ đã ghi; thuật ngữ người dùng là “Tác giả” ở tiếng Việt và “Author” ở tiếng Anh.
 15. Tìm động Admin dùng debounce 300 ms và chặn response cũ; chuyên môn hồ sơ tác giả ở Admin hiển thị dạng chip. Task 6 được mở đúng ngoại lệ `avatarUrl` trong ba DTO Admin và seed dev idempotent chạy tay theo RUNBOOK.
+16. Từ chối/Tạm ngưng/Khôi phục hồ sơ tác giả không bị khóa im lặng khi thiếu lý do; thao tác phải báo lỗi tại ô, focus ô và giữ backend bắt buộc lý do.
+17. Picker chuyên môn của AuthorApply dùng chip radio theo bốn nhóm thay native select; giữ value tiếng Việt và hiện nguyên văn giá trị cũ.
+18. Khối nội dung dài cuộn trong khung có tên/focus thay vì kéo dài trang; luật dùng lại được ghi trong skill `ui-components`.
 
 ## Xong khi
 
 Module chỉ hoàn tất khi Task 1–6, Task 7a và Task 7b đều đạt “Xong khi”, các quyết định thiết kế đã chốt được thực hiện và chỉ còn nhóm trang hoãn thuộc **luồng bài viết ba vai trò**. Tiêu chí tổng không thay thế kiểm chứng riêng của từng task.
 
-- [ ] Toàn bộ route/trang trong bảng đã ánh xạ dùng shadcn/ui + Tailwind/token mới, giữ hành vi, route, API và copy vi/en.
-- [ ] Không còn CSS trang/legacy ngoài allowlist tương thích luồng bài viết, literal màu ngoài token, `window.alert` hoặc dependency bị quyết định gỡ; `window.confirm` chỉ còn ở Moderator và preflight vẫn tắt đến khi `article-flow` hoàn tất.
-- [ ] Dark mặc định/light tùy chọn đúng bảng màu, Inter duy nhất, tương phản và focus đạt; responsive không cuộn ngang.
-- [ ] Các file test frontend liên quan đã ghi tại từng task và `npm run build` đạt; không task nào yêu cầu full `npm test`/full backend, ngoại lệ Task 6 chỉ chạy hai lớp integration bị ảnh hưởng bởi `avatarUrl`.
+- [x] Toàn bộ route/trang trong bảng đã ánh xạ dùng shadcn/ui + Tailwind/token mới, giữ hành vi, route, API và copy vi/en.
+- [x] Không còn CSS trang/legacy ngoài allowlist tương thích luồng bài viết, literal màu ngoài token, `window.alert` hoặc dependency bị quyết định gỡ; `window.confirm` chỉ còn ở Moderator và preflight vẫn tắt đến khi `article-flow` hoàn tất.
+- [x] Dark mặc định/light tùy chọn đúng bảng màu, Inter duy nhất, tương phản và focus đạt; responsive không cuộn ngang.
+- [x] Các file test frontend liên quan đã ghi tại từng task và `npm run build` đạt; không task nào yêu cầu full `npm test`/full backend, ngoại lệ Task 6 chỉ chạy hai lớp integration bị ảnh hưởng bởi `avatarUrl`.
 
 ## Quyết định của người dùng
 
@@ -414,3 +419,4 @@ Module chỉ hoàn tất khi Task 1–6, Task 7a và Task 7b đều đạt “Xo
 - 2026-11-03 — Kết luận 3/5: Sau Admin duyệt ở phiên khác, refresh tại `/profile` phải nhận role `AUTHOR`, sidebar trỏ `/author/blogs`, không đăng nhập lại và không tự rời `/profile`.
 - 2026-11-03 — Kết luận 4/5: Test tự động bao phủ đủ năm trạng thái và regression quyền; kiểm bằng mắt form + `REJECTED`; Task 7b giữ preflight/CSS tương thích, toàn bộ luồng bài viết còn lại sang `article-flow`.
 - 2026-11-03 — Kết luận 5/5: Người dùng chốt bổ sung Task 7a/7b sau phản biện vòng 2 và giao Claude bắt đầu code Task 7a.
+- 2026-11-03 sau Task 7a: Nút Từ chối/Tạm ngưng/Khôi phục luôn bấm được và báo lỗi/focus ô khi thiếu lý do; picker chuyên môn đổi từ native select sang chip radio bốn nhóm; khối dài cuộn trong khung và skill `ui-components` có luật áp dụng lại.

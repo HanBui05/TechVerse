@@ -79,18 +79,6 @@
   gap: 6px;
 }
 
-.article-preview {
-  background: var(--surface-2);
-  border-radius: 8px;
-  font: inherit;
-  line-height: 1.6;
-  max-height: 450px;
-  overflow: auto;
-  padding: 15px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
 .article-error {
   color: var(--danger);
 }

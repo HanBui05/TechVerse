@@ -1,5 +1,5 @@
 /* Design tokens. Dark is the default; light is selected with data-theme='light'.
-   shadcn tokens hold the real values; legacy names alias them until Task 7 removes the legacy CSS. */
+   shadcn tokens are canonical. The legacy aliases below serve only the article-flow compatibility CSS; delete them with it. */
 :root {
   color-scheme: dark;
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -38,13 +38,12 @@
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 
-  /* Legacy aliases (transition only) */
+  /* Legacy aliases: only for article-flow compatibility CSS (Blogs, Moderator, AuthorBlogs) */
   --bg: var(--background);
   --surface: var(--card);
   --surface-2: var(--secondary);
   --text: var(--foreground);
   --on-primary: var(--primary-foreground);
-  --text-2: #cbd5e1;
 
   /* Status and accents */
   --accent-text: #38bdf8;
@@ -82,15 +81,7 @@
   --tone-slate-border: #cbd5e14d;
 
   /* Effects */
-  --shadow-color: rgba(0, 0, 0, .35);
-  --shadow-soft: rgba(0, 0, 0, .12);
   --scrim: rgba(2, 6, 23, .65);
-
-  /* Fixed colors: theme previews, third-party brand marks */
-  --preview-dark: #0f172a;
-  --preview-light: #ffffff;
-  --brand-google: #4285f4;
-  --brand-linkedin: #0a66c2;
 
   /* Code blocks and syntax highlighting */
   --code-bg: #0b1220;
@@ -125,7 +116,6 @@
   --input: #e5e7eb;
   --ring: #0056d2;
 
-  --text-2: #4b5563;
 
   --accent-text: #0056d2;
   --info: #075985;
@@ -161,8 +151,6 @@
   --tone-slate-fg: #334155;
   --tone-slate-border: #e2e8f0;
 
-  --shadow-color: rgba(17, 24, 39, .12);
-  --shadow-soft: rgba(17, 24, 39, .05);
   --scrim: rgba(15, 23, 42, .45);
 
   --code-bg: #f3f4f6;

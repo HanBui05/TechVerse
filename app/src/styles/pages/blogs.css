@@ -103,8 +103,7 @@
 }
 
 .blogs-card p,
-.blogs-card-meta,
-.blogs-reader-meta {
+.blogs-card-meta {
   color: var(--muted-foreground);
   font-size: 13px;
   line-height: 1.6;
@@ -159,24 +158,6 @@
   color: var(--muted-foreground);
   font-size: 12px;
   padding: 5px 9px;
-}
-
-.blogs-markdown {
-  color: var(--text);
-  line-height: 1.8;
-  overflow-wrap: anywhere;
-}
-
-.blogs-markdown p {
-  white-space: pre-wrap;
-}
-
-.blogs-markdown pre {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow-x: auto;
-  padding: 15px;
 }
 
 .blogs-related {

@@ -35,7 +35,7 @@ export function AvatarUpload({ profile, onProfileChange, language }: { profile: 
 
   return <div className="flex items-center gap-4">
     <label className={cn('relative shrink-0 cursor-pointer rounded-full has-focus-visible:ring-[3px] has-focus-visible:ring-ring', busy && 'cursor-wait opacity-60')}>
-      <UserAvatar className="avatar-large" name={profile.fullName} url={profile.avatarUrl} />
+      <UserAvatar className="size-17 text-xl" name={profile.fullName} url={profile.avatarUrl} />
       <span className="absolute right-0 bottom-0 flex size-6 items-center justify-center rounded-full border-2 border-card bg-primary text-primary-foreground" aria-hidden="true"><Camera size={12} /></span>
       <input className="sr-only" type="file" accept={TYPES.join(',')} aria-label={t.changeAvatar} disabled={busy}
         onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void upload(file) }} />

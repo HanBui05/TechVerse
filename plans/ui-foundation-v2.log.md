@@ -4,27 +4,30 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ui-foundation-v2.
 
 ## Bắt đầu từ đây (cập nhật 2026-11-03)
 
-- **Task 1–7a đã nhận, đã commit WIP** (Task 7a nhận 2026-11-03) — không đọc lại, không làm lại, không kiểm lại. Codex đang/đã đồng bộ spec theo log (3 quyết định người dùng sau Task 7a).
-- **Task tiếp theo: Task 7b** (spec mục “Task 7b”) trong session mới.
-- **Task 7b:** dọn CSS ngoài luồng bài viết, giữ preflight tắt, gỡ `framer-motion`; `author.css` đã xóa ở Task 7a.
-- **Đã tách sang module `article-flow`:** `AuthorBlogsPage`, `TagPicker`, Blogs/Learner, Moderator, `MarkdownContent`, wrapper `Pagination` và cleanup/preflight phụ thuộc chúng. Task 7a chỉ có ngoại lệ thuật ngữ: kicker AuthorBlogs đổi theo `language`, câu vi của Moderator dùng “tác giả”; không sửa bố cục, logic hoặc CSS.
-- **Thuật ngữ — 3 chỗ phải sửa (đã đối chiếu code):** `Sidebar.tsx:95` link + tooltip “Author” → vi “Tác giả”/en “Author” (copy inline theo `language`, không sửa `data/**`); kicker `AuthorBlogsPage.tsx:227` “TechVerse Author” dùng chung hai ngôn ngữ → hiển thị theo prop `language` sẵn có (vi “Tác giả”, en “Author”), ghi “Lệch khác spec” vì spec nói “nhánh tiếng Việt”; `ModeratorDashboardPage.tsx:15` câu vi. `Sidebar.test.tsx:58` đang assert link “Author” ở tiếng Việt → đổi sang “Tác giả”.
-- **Spec 7a/7b đã chốt:** phản biện dài đã được Codex rút khỏi spec, kết luận nằm trong “Quyết định của người dùng”. Thay đổi chưa commit trong `plans/` là cập nhật spec/log, **không phải code task trước** — đi chung commit WIP Task 7a.
-- **Bỏ qua — không liên quan Task 7a:** trang Admin (đã nhận), mọi phần khác của AuthorBlogs/Blogs/Moderator, `server/` và các module cũ khác trong `PLAN.md`.
-- **Môi trường kiểm:** Playwright MCP (`.mcp.json`) nạp sau khi khởi động lại phiên — phiên Task 6 không có, đã dùng script tạm. Dữ liệu mẫu Admin: `scripts/dev-seed-admin.sql` (RUNBOOK). Avatar thật trong danh sách Admin cần backend chạy code mới (khởi động lại backend).
-- **Ngoài phạm vi Task 7a:** link logo topbar mobile 32×32px thuộc Task 2 đã nhận; nút “Trước/Tiếp” wrapper `Pagination` 40px thuộc `article-flow`. Không tự sửa trong Task 7a.
+- **Task 1–7a đã nhận, đã commit WIP** — không đọc lại, không làm lại, không kiểm lại.
+- **Task 1–7b đã nhận, module hoàn tất (2026-11-03)**; mọi “Xong khi” trong spec đã đánh dấu theo yêu cầu người dùng. Việc tiếp: người dùng giao nhiệm vụ sửa lỗi riêng cho phần đã có. Squash các WIP chỉ khi người dùng yêu cầu commit/PR cuối module (chi tiết: mục “Task 7b” cuối file). Sau khi nhận: commit WIP `wip(ui-foundation-v2): Task 7b`, review cuối module rồi squash các WIP thành một commit (spec “Ràng buộc”).
+- **Chưa kiểm bằng mắt (Task 7b):** các route cần đăng nhập — `/profile` (avatar), Admin, `/author/apply`, và smoke-check `/author/blogs`, `/blogs`, `/blogs/:id`, `/moderator/articles` — vì phiên không đọc được mật khẩu dev trong `.env` (bị chặn quyền). Người dùng test tay hoặc cho phép đọc.
+- **Đã tách sang module `article-flow`:** `AuthorBlogsPage`, `TagPicker`, Blogs/Learner, Moderator, `MarkdownContent`, wrapper `Pagination`, bật preflight + xóa reset chuyển tiếp/`.tw-page`/lớp CSS tương thích/alias token cũ.
+- **Môi trường kiểm:** Playwright MCP có trong phiên. Dữ liệu mẫu Admin: `scripts/dev-seed-admin.sql` (RUNBOOK).
+- **Ngoài phạm vi:** link logo “TechVerse” ở Auth/topbar mobile < 44px (Task 2/4 đã nhận); nút “Trước/Tiếp” wrapper `Pagination` 40px (`article-flow`); comment `data/navigation.ts` trỏ `sidebar.css` đã xóa (không được sửa `data/**`).
 
 ## Quyết định người dùng chưa có trong spec
 
-- 2026-11-03 (sau Task 7a): (1) Admin “Hồ sơ tác giả” — người dùng không bấm được “Từ chối”: nút bị khóa khi ô lý do trống mà không có giải thích → nút luôn bấm được, thiếu lý do thì báo lỗi tại ô và focus vào ô (áp cho Từ chối/Tạm ngưng/Khôi phục); backend vẫn bắt buộc lý do. (2) Thiết kế lại chọn chuyên môn ở `/author/apply` cho đẹp → thay native select (spec ghi “tiếp tục là native select”) bằng nhóm chip radio theo 4 lĩnh vực; value vẫn tiếng Việt, giá trị cũ vẫn hiện nguyên văn. Spec chờ Codex cập nhật. (3) 2026-11-03: ở `/author/apply`, ô giới thiệu, vùng chọn chuyên môn và lịch sử xét duyệt (cùng khối giới thiệu đã gửi) phải có chiều cao giới hạn + cuộn bên trong, không bày dài cả trang; luật chung ghi vào skill `ui-components` để tự áp ở các trang sau.
-
+- 2026-11-03 (sau Task 7b): người dùng nhận Task 7b và yêu cầu đánh dấu hoàn thành toàn bộ Task 1–7 trong spec (Claude tự đánh dấu theo yêu cầu, kể cả mục còn ghi “chưa kiểm”). Phần sửa lỗi tiếp theo là nhiệm vụ riêng người dùng giao thẳng cho Claude, không cần quy trình phức tạp.
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-03 — Nhận Task 7b, đóng module
+- Người dùng nhận Task 7b; đánh dấu toàn bộ “Xong khi” Task 1–7 + module trong spec; commit WIP Task 7b. Việc tiếp: nhiệm vụ sửa lỗi do người dùng giao.
+### 2026-11-03 — Task 7b
+- Dọn CSS ngoài luồng bài viết: `UserAvatar`, `PlaceholderPage`, màn chờ `App.tsx` sang Tailwind; xóa rule mồ côi, token không dùng, `framer-motion`, `verify-css-split.mjs`; comment/luật “tới Task 7b” → `article-flow`. 187/187, build đạt.
+- Bài học: hit màu literal còn lại chỉ là giá trị mong đợi trong `tokens.test.ts`; class `hljs-*`/`task-list-item` do rehype sinh, `published`/`changes_requested` ghép động — không coi là mồ côi.
+- Review vòng 1: không lỗi chức năng; xóa artifact `.playwright-mcp/`. Việc dở: người dùng nhận; kiểm bằng mắt route cần đăng nhập (chưa có mật khẩu dev).
 ### 2026-11-03 — Nhận Task 7a
 - Người dùng test tay và nhận Task 7a; commit WIP `wip(ui-foundation-v2): Task 7a`; nhờ Codex đồng bộ spec theo log. Việc tiếp: Task 7b.
+- Codex: đã đưa ba quyết định người dùng sau Task 7a vào spec, xóa chúng khỏi bảng quyết định trong log và đánh dấu “Xong khi” Task 7a theo kết quả/chưa kiểm đã ghi.
 
 ### 2026-11-03 — Task 7a: cuộn trong khung
 - Người dùng: khối dài (giới thiệu, chuyên môn, lịch sử) phải cuộn trong khung, không kéo dài trang; tự áp ở các trang sau → luật “Nội dung dài: cuộn trong khung” trong skill `ui-components` + mục tự kiểm.
@@ -236,3 +239,15 @@ Mới nhất ở trên; mỗi phiên ≤ 6 dòng: đã làm, quyết định m�
 | Cuộn trong khung (người dùng yêu cầu) | `AuthorApplyPage`: textarea giới thiệu `max-h-64` (256px) rồi cuộn; vùng chip chuyên môn `max-h-80` + dòng “Đang chọn: <chip>” (`aria-live`) ngoài khung; lịch sử `max-h-96`; giới thiệu đã gửi `max-h-48`; vùng cuộn là `region` có tên, `tabIndex=0`, focus ring. Admin: textarea lý do và mô tả Taxonomy `max-h-48`. Skill `ui-components` thêm luật + mục tự kiểm. Test: `AuthorApplyPage`, `src/pages/Admin` (4 file), `Sidebar`, `App.author-session`, `AuthorBlogsPage` **66/66**; build đạt. Playwright: bio dài 1869 ký tự → textarea 256px cuộn; chuyên môn 320px cuộn; trang form mobile 1755px; không cuộn ngang. Chưa kiểm bằng mắt lịch sử dài (seed chỉ 1 mục, chỉ test). |
 | Review cuộn trong khung | `adversarial-review --wait`: 1 × medium, nhận — chuyên môn cũ 255 ký tự không khoảng trắng trong Badge `whitespace-nowrap` (dòng “Đang chọn”) tràn ngang mobile. Sửa `wrapBadge` (`max-w-full shrink whitespace-normal [overflow-wrap:anywhere]`) cho cả Badge “Đang chọn”, hồ sơ đã gửi, snapshot lịch sử + chip `max-w-full min-w-0`. Playwright mobile 390, GET giả lập 255 ký tự `X`: REJECTED và PENDING không cuộn ngang, không phần tử vượt mép. **66/66**, build đạt. |
 | Review vòng 2 (cuộn trong khung) | `adversarial-review --wait` chỉ phần sửa `wrapBadge`: **approve**, không phát hiện. |
+
+## Task 7b — Dọn CSS ngoài luồng bài viết
+
+| Mục | Nội dung |
+|---|---|
+| Code | `UserAvatar` Tailwind + `data-slot="user-avatar"` (38px mặc định, caller `size-17 text-xl` thay `avatar-large` ở Admin×2/Profile×2). `PlaceholderPage` Tailwind + `Button asChild` (ô icon tone sky, kicker, h1, mô tả). `App.tsx`: màn chờ quyền/phiên dùng `LOADING_MAIN` (Tailwind), wrapper Auth `min-h-svh` thay `app-shell`. |
+| CSS | Xóa `.avatar*`, `.user-avatar*` (content), `.button-ghost` (controls), `.article-preview` (forms), `.app-shell`/`.placeholder-*` (shell), `.blogs-reader-meta`/`.blogs-markdown*` (blogs), `.moderator-avatar`/`.moderation-markdown` (moderator) — grep không còn consumer. Giữ lớp tương thích luồng bài viết; `admin.css` chỉ `.application-row`/`.applications-actions` (AuthorBlogs). Token: xóa `--text-2`, `--shadow-*`, `--preview-*`, `--brand-*`; giữ alias `--bg/--surface/--surface-2/--text/--on-primary` (CSS tương thích còn dùng). Preflight vẫn tắt, reset chuyển tiếp + `.tw-page` giữ, comment trỏ `article-flow`. |
+| Gỡ | `framer-motion` (+`motion-dom`, `motion-utils` trong lock), `app/scripts/verify-css-split.mjs`. `frontend.md`, `UI_GUIDE.md`: giai đoạn chuyển kéo tới `article-flow`. |
+| Lệch khác spec | Lệnh grep màu của spec còn khớp `src/styles/tokens.test.ts` (giá trị hex mong đợi của bảng màu để test tương phản) — giữ, không phải màu UI. `window.confirm` chỉ còn `ModeratorArticlesPage`. Thêm `src/pages/PlaceholderPage.test.tsx` (2 ca, mốc hành vi trước khi chuyển). `ProfilePage.test.tsx` đổi selector `.user-avatar` → `[data-slot="user-avatar"]` (đỏ trước khi sửa). |
+| Test | `npx vitest run` theme-bootstrap, styles/tokens, ui/focus, ui/labels, PlaceholderPage, Profile/ProfilePage, layout/Sidebar, `src/pages/Admin` (4), App.author-session, StaffPreferences: **13 files 187/187**. `npm run build` đạt (cảnh báo chunk > 500 kB có từ trước). Không chạy `App.auth.test.tsx` (chỉ đổi class wrapper Auth) và full suite theo luật ngân sách. |
+| Kiểm bằng mắt | Playwright MCP, dev 3000 + backend của người dùng, khách: `/courses` (Placeholder) desktop 1440 dark + light (màu token đổi đúng, h1 tracking normal/margin 0, không cuộn ngang); mobile cảm ứng 390 `/courses`, `/`, `/login`, `/settings/theme`: coarse, không cuộn ngang, control ≥ 44px (trừ link logo Auth — có từ trước), chữ nút không tràn. **Chưa kiểm:** route cần đăng nhập (Profile, Admin, AuthorApply, smoke `/author/blogs`, `/blogs`, `/blogs/:id`, `/moderator/articles`) — không đọc được mật khẩu dev. |
+| Review vòng 1 | `review --wait`: không lỗi chức năng; 1 × P2 — thư mục `.playwright-mcp/` (artifact Playwright MCP của phiên) chưa track có thể bị `git add -A` đưa vào commit → đã xóa; `.claude/settings.local.json` đã bị git ignore toàn cục. Không đổi code nên không chạy vòng 2. Ngoài phạm vi: đề nghị thêm `.playwright-mcp/` vào `.gitignore` (không thuộc đường dẫn module). |

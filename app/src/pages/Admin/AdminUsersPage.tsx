@@ -129,7 +129,7 @@ export function AdminUsersPage({ language = 'vi' }: { language?: Language } = {}
         {selected && <>
           <SheetHeader className="items-center gap-3 border-b border-border p-6 text-center">
             <span className="sr-only">{t("Thông tin tài khoản")}</span>
-            <UserAvatar className="avatar-large" name={selected.fullName} url={selected.avatarUrl} />
+            <UserAvatar className="size-17 text-xl" name={selected.fullName} url={selected.avatarUrl} />
             <SheetTitle className="text-xl font-bold">{selected.fullName}</SheetTitle>
             <SheetDescription>{selected.email}</SheetDescription>
             <div className="flex flex-wrap justify-center gap-1">{roleBadges(selected.roles)}{statusBadge(selected)}</div>

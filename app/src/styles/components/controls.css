@@ -22,14 +22,12 @@
   color: var(--on-primary);
 }
 
-.button-outline,
-.button-ghost {
+.button-outline {
   background: var(--surface-2);
   border-color: var(--border);
   color: var(--text);
 }
 
-.button-ghost:hover,
 .button-outline:hover {
   border-color: color-mix(in srgb, var(--accent-text) 50%, transparent);
 }

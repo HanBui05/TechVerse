@@ -1,4 +1,4 @@
-/* Compatibility layer: only rules AuthorBlogsPage still uses (Admin pages moved to shadcn in Task 6). Delete with author-ui-shadcn. */
+/* Compatibility layer: only rules AuthorBlogsPage still uses (Admin pages moved to shadcn in Task 6). Delete when article-flow migrates AuthorBlogsPage. */
 
 .application-row {
   display: flex;

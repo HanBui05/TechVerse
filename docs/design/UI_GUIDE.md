@@ -10,7 +10,7 @@ Danh mục component, ví dụ ghép trang và điều cấm chi tiết: skill [
 - shadcn style `new-york`, base Radix (gói hợp nhất `radix-ui`), icon `lucide-react`, primitive ở `app/src/components/ui/`, alias `@/*` → `src/*`.
 - Ghép class bằng `cn` (gói `cn`, thay `clsx` + `tailwind-merge`).
 - Thêm primitive: `npx shadcn@latest add <tên>` trong `app/`, **chỉ khi có trang dùng**. Sau khi add, gỡ mọi khối `:root`/`.dark` CLI tự chèn vào `styles.css` và đưa token vào `tokens.css`.
-- Giai đoạn chuyển (tới Task 7 module UI foundation v2): chỉ nạp theme + utilities, **chưa bật preflight**; CSS legacy vẫn chạy và (không nằm trong layer) thắng utility khi trùng thuộc tính.
+- Giai đoạn chuyển (tới khi module `article-flow` chuyển xong luồng bài viết): chỉ nạp theme + utilities, **chưa bật preflight**; CSS legacy vẫn chạy và (không nằm trong layer) thắng utility khi trùng thuộc tính.
 
 ## Theme và token
 
