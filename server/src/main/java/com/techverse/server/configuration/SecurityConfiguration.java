@@ -71,7 +71,7 @@ public class SecurityConfiguration {
 						.requestMatchers(HttpMethod.PATCH, "/api/v1/author-profiles/me/resubmit").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/author-profiles/me").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
-						.requestMatchers(HttpMethod.PATCH, "/api/v1/users/me", "/api/v1/users/me/avatar").authenticated()
+						.requestMatchers(HttpMethod.PATCH, "/api/v1/users/me", "/api/v1/users/me/avatar", "/api/v1/users/me/password").authenticated()
 						.requestMatchers("/api/v1/admin/**").authenticated()
 						.requestMatchers("/api/v1/author/articles", "/api/v1/author/articles/**").authenticated()
 						.requestMatchers("/api/v1/moderator/articles", "/api/v1/moderator/articles/**").authenticated()

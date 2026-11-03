@@ -95,6 +95,39 @@ class JwtTokenServiceIntegrationTest {
 	}
 
 	@Test
+	void deleteOtherSessionsKeepsOnlyTheCurrentSession() {
+		UUID userId = UUID.randomUUID();
+		JwtDetails[] current = issueSession(userId);
+		JwtDetails[] other = issueSession(userId);
+		JwtDetails[] third = issueSession(userId);
+		UUID otherUser = UUID.randomUUID();
+		JwtDetails[] foreign = issueSession(otherUser);
+
+		tokenService.deleteOtherSessions(userId, current[0].getSessionId());
+
+		assertThat(jwtDecoder.decode(current[1].getValue()).getId()).isEqualTo(current[1].getJwtId());
+		assertThat(tokenRepository.findById(current[0].getJwtId())).isPresent();
+		for (JwtDetails[] revoked : new JwtDetails[][] {other, third}) {
+			assertThat(sessionRepository.findById(revoked[0].getSessionId())).isEmpty();
+			assertThat(tokenRepository.findById(revoked[0].getJwtId())).isEmpty();
+			assertThatThrownBy(() -> jwtDecoder.decode(revoked[1].getValue())).isInstanceOf(JwtValidationException.class);
+		}
+		assertThat(redisTemplate.opsForZSet().range("auth:user-sessions:" + userId, 0, -1))
+				.containsExactly(current[0].getSessionId());
+		assertThat(jwtDecoder.decode(foreign[1].getValue()).getId()).isEqualTo(foreign[1].getJwtId());
+	}
+
+	private JwtDetails[] issueSession(UUID userId) {
+		String sid = UUID.randomUUID().toString();
+		JwtDetails refresh = tokenService.generateRefreshToken(userId, Set.of(), sid);
+		tokenService.createSession(userId, refresh);
+		tokenService.saveToken(refresh, userId, TokenType.REFRESH);
+		JwtDetails access = tokenService.generateAccessToken(userId, Set.of(RoleName.LEARNER), sid);
+		tokenService.saveToken(access, userId, TokenType.ACCESS);
+		return new JwtDetails[] {refresh, access};
+	}
+
+	@Test
 	void sessionLifetimeCoversAccessIssuedNearTheOriginalRefreshExpiry() {
 		UUID userId = UUID.randomUUID();
 		String sid = UUID.randomUUID().toString();

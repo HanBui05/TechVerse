@@ -283,7 +283,9 @@ class AuthorProfileIntegrationTest {
 				.andExpect(jsonPath("$.status").value(200))
 				.andExpect(jsonPath("$.message").value("Author profile retrieved successfully"))
 				.andExpect(jsonPath("$.data.applicationStatus").value("NOT_APPLIED"))
-				.andExpect(jsonPath("$.data.profile").value(nullValue()));
+				.andExpect(jsonPath("$.data.profile").value(nullValue()))
+				.andExpect(jsonPath("$.data.reviewHistory").isArray())
+				.andExpect(jsonPath("$.data.reviewHistory").isEmpty());
 	}
 
 	@Test

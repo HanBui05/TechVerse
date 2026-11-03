@@ -1,6 +1,11 @@
-import { Check } from 'lucide-react'
 import type { Translation } from '../../data/i18n'
 import type { Language } from '../../types/preferences'
-import { SettingsLayout } from './SettingsLayout'
+import { PreferenceOption, SettingsLayout } from './SettingsLayout'
 
-export function LanguagePage({ language, setLanguage, t }: { language: Language; setLanguage: (language: Language) => void; t: Translation }) { const options = [{ value: 'vi' as Language, flag: '🇻🇳', title: t.vietnamese, code: 'VI', desc: t.vietnameseDesc }, { value: 'en' as Language, flag: '🇺🇸', title: t.english, code: 'EN', desc: t.englishDesc }]; return <SettingsLayout title={t.languageTitle} description={t.languageDescription}><div className="preference-grid language-grid">{options.map(({ value, flag, title, code, desc }) => <button key={value} className={`preference-card language-card ${language === value ? 'is-selected' : ''}`} onClick={() => setLanguage(value)}><span className="flag-icon">{flag}</span><span className="preference-copy"><strong>{title} <em>{code}</em></strong><small>{desc}</small></span>{language === value && <span className="selected-check"><Check size={14} /></span>}</button>)}</div></SettingsLayout> }
+export function LanguagePage({ language, setLanguage, t }: { language: Language; setLanguage: (language: Language) => void; t: Translation }) {
+  const options = [{ value: 'vi' as Language, flag: '🇻🇳', title: t.vietnamese, code: 'VI', desc: t.vietnameseDesc }, { value: 'en' as Language, flag: '🇺🇸', title: t.english, code: 'EN', desc: t.englishDesc }]
+  return <SettingsLayout title={t.languageTitle} description={t.languageDescription}>
+    {options.map(({ value, flag, title, code, desc }) => <PreferenceOption key={value} selected={language === value} onSelect={() => setLanguage(value)} icon={flag}
+      title={<>{title} <em className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold not-italic text-muted-foreground">{code}</em></>} description={desc} />)}
+  </SettingsLayout>
+}

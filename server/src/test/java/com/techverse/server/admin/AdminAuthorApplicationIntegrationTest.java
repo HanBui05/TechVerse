@@ -1,6 +1,7 @@
 package com.techverse.server.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -27,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestComponent;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
@@ -96,17 +98,20 @@ class AdminAuthorApplicationIntegrationTest {
 
     @Test
     void adminListsAndReadsPendingApplicationWithoutReviewerOrSensitiveFields() throws Exception {
+        jdbc.update("UPDATE techverse.users SET avatar_url = ? WHERE id = ?", "https://cdn.example.com/applicant.png", applicantId);
         mvc.perform(get(ROOT).header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .param("status", "PENDING").param("keyword", "APPLICANT").param("active", "true")
                         .param("page", "0").param("size", "1"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].id").value(applicationId.toString()))
                 .andExpect(jsonPath("$.data.content[0].version").value(0))
+                .andExpect(jsonPath("$.data.content[0].avatarUrl").value("https://cdn.example.com/applicant.png"))
                 .andExpect(jsonPath("$.data.content[0].bio").doesNotExist())
                 .andExpect(jsonPath("$.data.content[0].password").doesNotExist());
         detail(applicationId).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.bio").value(BIO))
                 .andExpect(jsonPath("$.data.userId").value(applicantId.toString()))
+                .andExpect(jsonPath("$.data.avatarUrl").value("https://cdn.example.com/applicant.png"))
                 .andExpect(jsonPath("$.data.reviewedBy").isEmpty())
                 .andExpect(jsonPath("$.data.reviewedAt").isEmpty())
                 .andExpect(jsonPath("$.data.password").doesNotExist());
@@ -134,6 +139,7 @@ class AdminAuthorApplicationIntegrationTest {
         review(adminToken, applicationId, "REJECTED", "Another decision", 1)
                 .andExpect(status().isConflict());
         assertThat(roleCount("AUTHOR")).isEqualTo(1);
+        assertThat(historyCount()).isEqualTo(1);
     }
 
     @Test
@@ -154,7 +160,75 @@ class AdminAuthorApplicationIntegrationTest {
         detail(applicationId).andExpect(status().isOk()).andExpect(jsonPath("$.data.reviewedBy").isEmpty());
         review(adminToken, applicationId, "APPROVED", "Old tab", 0)
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("AUTHOR_APPLICATION_STALE_VERSION"));
+        assertThat(historyCount()).isEqualTo(1);
         review(adminToken, applicationId, "APPROVED", "New application reviewed", 2).andExpect(status().isOk());
+        assertThat(historyCount()).isEqualTo(2);
+    }
+
+    @Test
+    void reviewHistoryKeepsEveryDecisionAcrossResubmissionNewestFirstAndHidesAdminFromOwner() throws Exception {
+        review(adminToken, applicationId, "REJECTED", "  Need a fuller portfolio.  ", 0)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reviewHistory.length()").value(1))
+                .andExpect(jsonPath("$.data.reviewHistory[0].decision").value("REJECTED"))
+                .andExpect(jsonPath("$.data.reviewHistory[0].reviewNote").value("Need a fuller portfolio."))
+                .andExpect(jsonPath("$.data.reviewHistory[0].applicationVersion").value(0))
+                .andExpect(jsonPath("$.data.reviewHistory[0].bioSnapshot").value(BIO))
+                .andExpect(jsonPath("$.data.reviewHistory[0].expertiseSnapshot").value("Java Backend"))
+                .andExpect(jsonPath("$.data.reviewHistory[0].portfolioUrlSnapshot").value("https://example.com/portfolio"))
+                .andExpect(jsonPath("$.data.reviewHistory[0].reviewedBy").value(adminId.toString()))
+                .andExpect(jsonPath("$.data.reviewHistory[0].reviewerNameSnapshot").value("Admin Reviewer"));
+        // Compare values read back from the database (microsecond precision) for the shared business timestamp.
+        var stored = mapper.readTree(detail(applicationId).andReturn().getResponse().getContentAsString()).at("/data");
+        String rejectedAt = stored.at("/reviewedAt").asText();
+        assertThat(stored.at("/reviewHistory/0/reviewedAt").asText()).isEqualTo(rejectedAt);
+
+        resubmit(applicantToken, 1, BIO + " Updated portfolio.").andExpect(status().isOk());
+        String owner = mvc.perform(get("/api/v1/author-profiles/me").header(HttpHeaders.AUTHORIZATION, bearer(applicantToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.profile.reviewNote").isEmpty())
+                .andExpect(jsonPath("$.data.reviewHistory.length()").value(1))
+                .andExpect(jsonPath("$.data.reviewHistory[0].reviewNote").value("Need a fuller portfolio."))
+                .andExpect(jsonPath("$.data.reviewHistory[0].reviewedAt").value(rejectedAt))
+                .andExpect(jsonPath("$.data.reviewHistory[0].reviewedBy").doesNotExist())
+                .andExpect(jsonPath("$.data.reviewHistory[0].reviewerNameSnapshot").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(owner).doesNotContain(adminId.toString()).doesNotContain("Admin Reviewer");
+
+        String secondToken = access(login("second.reviewer@example.com"));
+        review(secondToken, applicationId, "APPROVED", "Looks good now", 2).andExpect(status().isOk());
+        changeAuthorStatus("suspend", adminToken, applicationId, "Violation", 3).andExpect(status().isOk());
+        changeAuthorStatus("restore", adminToken, applicationId, "Resolved", 4)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reviewHistory.length()").value(2))
+                .andExpect(jsonPath("$.data.reviewHistory[0].decision").value("APPROVED"))
+                .andExpect(jsonPath("$.data.reviewHistory[0].applicationVersion").value(2))
+                .andExpect(jsonPath("$.data.reviewHistory[0].bioSnapshot").value(BIO + " Updated portfolio."))
+                .andExpect(jsonPath("$.data.reviewHistory[0].portfolioUrlSnapshot").value("https://example.com/new-portfolio"))
+                .andExpect(jsonPath("$.data.reviewHistory[0].reviewedBy").value(secondAdminId.toString()))
+                .andExpect(jsonPath("$.data.reviewHistory[1].decision").value("REJECTED"))
+                .andExpect(jsonPath("$.data.reviewHistory[1].bioSnapshot").value(BIO))
+                .andExpect(jsonPath("$.data.reviewHistory[1].reviewedAt").value(rejectedAt));
+        mvc.perform(get(ROOT).header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[0].reviewHistory").doesNotExist());
+    }
+
+    @Test
+    void databaseRejectsInvalidOrDuplicateHistoryAndCascadesWithTheProfileOwner() throws Exception {
+        String insert = "INSERT INTO techverse.author_application_reviews(author_profile_id, application_version, decision, "
+                + "review_note, reviewed_at, reviewed_by, reviewer_name_snapshot, bio_snapshot, expertise_snapshot) "
+                + "VALUES (?, ?, ?, ?, now(), ?, 'Admin Reviewer', 'bio', 'Java')";
+        for (String note : new String[] {null, "", "   "}) {
+            assertThatThrownBy(() -> jdbc.update(insert, applicationId, 0, "REJECTED", note, adminId))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        }
+        assertThatThrownBy(() -> jdbc.update(insert, applicationId, 0, "SUSPENDED", null, adminId))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        jdbc.update(insert, applicationId, 0, "APPROVED", null, adminId);
+        assertThatThrownBy(() -> jdbc.update(insert, applicationId, 0, "REJECTED", "Duplicate version", adminId))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        users.deleteAll();
+        assertThat(historyCount()).isZero();
     }
 
     @Test
@@ -171,6 +245,7 @@ class AdminAuthorApplicationIntegrationTest {
         }
         assertThat(profiles.findById(applicationId).orElseThrow().getStatus().name()).isEqualTo("PENDING");
         assertThat(roleCount("AUTHOR")).isZero();
+        assertThat(historyCount()).isZero();
         sendPatch(ROOT + "/" + applicationId + "/review", adminToken,
                 Map.of("decision", "APPROVED", "expectedVersion", 0)).andExpect(status().isOk());
     }
@@ -197,6 +272,7 @@ class AdminAuthorApplicationIntegrationTest {
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("USER_INACTIVE"));
         detail(UUID.randomUUID()).andExpect(status().isNotFound());
         review(adminToken, UUID.randomUUID(), "APPROVED", "", 0).andExpect(status().isNotFound());
+        assertThat(historyCount()).isZero();
     }
 
     @Test
@@ -249,6 +325,8 @@ class AdminAuthorApplicationIntegrationTest {
         assertThat(roleCount("AUTHOR")).isEqualTo(currentStatus.equals("APPROVED") ? 1 : 0);
         UUID reviewer = jdbc.queryForObject("SELECT reviewed_by FROM techverse.author_profiles WHERE id=?", UUID.class, applicationId);
         assertThat(reviewer).isEqualTo(results.get(0).getResponse().getStatus() == 200 ? adminId : secondAdminId);
+        assertThat(jdbc.queryForList("SELECT decision FROM techverse.author_application_reviews", String.class))
+                .containsExactly(currentStatus);
     }
 
     @Test
@@ -279,6 +357,7 @@ class AdminAuthorApplicationIntegrationTest {
             assertThat(profiles.findById(applicationId).orElseThrow().getStatus().name()).isEqualTo("PENDING");
             detail(applicationId).andExpect(status().isOk()).andExpect(jsonPath("$.data.version").value(0))
                     .andExpect(jsonPath("$.data.reviewedBy").isEmpty());
+            assertThat(historyCount()).isZero();
         } finally {
             jdbc.update("INSERT INTO techverse.roles(id,name) VALUES (?, 'AUTHOR')", authorRole);
         }
@@ -520,10 +599,32 @@ class AdminAuthorApplicationIntegrationTest {
                     changeAuthorStatus("suspend", adminToken, applicationId, "Violation", 1).andExpect(status().isOk());
                 }
             }
+            assertThat(historyCount()).isEqualTo(1);
         } finally {
             jdbc.execute("DROP TRIGGER IF EXISTS test_reject_author_status ON techverse.author_profiles");
             jdbc.execute("DROP FUNCTION techverse.test_reject_author_status()");
         }
+    }
+
+    @Test
+    void reviewFlushFailureRollsBackHistory() throws Exception {
+        jdbc.execute("""
+                CREATE FUNCTION techverse.test_reject_author_review() RETURNS trigger LANGUAGE plpgsql AS $$
+                BEGIN RAISE EXCEPTION 'simulated author review write failure'; END; $$
+                """);
+        jdbc.execute("CREATE TRIGGER test_reject_author_review BEFORE UPDATE ON techverse.author_profiles "
+                + "FOR EACH ROW EXECUTE FUNCTION techverse.test_reject_author_review()");
+        try {
+            review(adminToken, applicationId, "REJECTED", "Not yet", 0).andExpect(status().isInternalServerError());
+            assertThat(historyCount()).isZero();
+        } finally {
+            jdbc.execute("DROP TRIGGER IF EXISTS test_reject_author_review ON techverse.author_profiles");
+            jdbc.execute("DROP FUNCTION techverse.test_reject_author_review()");
+        }
+    }
+
+    private int historyCount() {
+        return jdbc.queryForObject("SELECT count(*) FROM techverse.author_application_reviews", Integer.class);
     }
 
     private ResultActions changeAuthorStatus(String action, String token, UUID id, String note, long version) throws Exception {

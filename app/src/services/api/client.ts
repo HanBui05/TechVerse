@@ -1,10 +1,12 @@
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '')
 
-type ApiEnvelope<T> = { status: number; message: string; data: T }
+type ApiEnvelope<T> = { status: number; message: string; code?: string; data: T }
 
 export class ApiError extends Error {
   status: number
-  constructor(message: string, status: number) { super(message); this.status = status }
+  // Backend ErrorCode (e.g. TOPIC_EXISTED); the UI translates by code because `message` is always English.
+  code?: string
+  constructor(message: string, status: number, code?: string) { super(message); this.status = status; this.code = code }
 }
 
 let accessToken = sessionStorage.getItem('techverse-access-token')
@@ -61,6 +63,6 @@ export async function request<T>(path: string, options: RequestInit = {}, retry 
     if (token && version === sessionVersion) return request<T>(path, options, false)
   }
   const body = await response.json().catch(() => null) as ApiEnvelope<T> | null
-  if (!response.ok) throw new ApiError(body?.message || 'Request failed', response.status)
+  if (!response.ok) throw new ApiError(body?.message || 'Request failed', response.status, body?.code)
   return body?.data as T
 }

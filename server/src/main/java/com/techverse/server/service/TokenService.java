@@ -23,6 +23,8 @@ public interface TokenService {
 
 	void deleteSession(UUID userId, String sessionId);
 
+	void deleteOtherSessions(UUID userId, String currentSessionId);
+
 	void deleteToken(String jwtId);
 
 	void deleteAllTokensByUserId(UUID userId);

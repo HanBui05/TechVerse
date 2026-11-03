@@ -3,8 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b1020" />
+    <link rel="icon" type="image/png" href="https://res.cloudinary.com/baxlqjtt/image/upload/c_crop,x_545,y_490,w_960,h_960/c_scale,w_64/v1793638005/techverse/brand/logo.png" />
+    <link rel="apple-touch-icon" href="https://res.cloudinary.com/baxlqjtt/image/upload/c_crop,x_545,y_490,w_960,h_960/c_scale,w_180/v1793638005/techverse/brand/logo.png" />
     <title>TechVerse — Explore Technology. Build Your Future.</title>
+    <script>
+      // Apply the saved theme before React renders so light users do not see a dark flash. Dark is the fallback.
+      try {
+        var saved = localStorage.getItem('techverse-theme')
+        document.documentElement.dataset.theme = saved === 'light' || saved === 'dark' ? saved : 'dark'
+      } catch (error) {
+        document.documentElement.dataset.theme = 'dark'
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

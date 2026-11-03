@@ -1,16 +1,46 @@
 import { Link } from 'react-router-dom'
+import { ArrowRight, BookOpen, Languages, Palette, Tag, UserCheck, Users } from 'lucide-react'
 import { managementText } from '../../data/managementI18n'
 import type { Language } from '../../types/preferences'
-import { Activity, BarChart3, BookOpen, CreditCard, Users } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
-const stats = [
-  { label: 'Tổng người dùng', icon: Users },
-  { label: 'Người dùng mới hôm nay', icon: Users },
-  { label: 'Khóa học hoạt động', icon: BookOpen },
-  { label: 'Doanh thu tháng này', icon: CreditCard },
-  { label: 'Học viên mới tháng này', icon: Users },
+// Tile colours follow the matching sidebar icon so each admin area keeps one colour across the shell.
+const shortcuts = [
+  { path: '/admin/author-applications', icon: UserCheck, tile: 'border-tone-purple-border bg-tone-purple-bg text-tone-purple-fg', title: { vi: 'Hồ sơ tác giả', en: 'Author applications' }, text: { vi: 'Duyệt, từ chối, đình chỉ hoặc khôi phục quyền tác giả.', en: 'Approve, reject, suspend or restore author access.' } },
+  { path: '/admin/users', icon: Users, tile: 'border-tone-rose-border bg-tone-rose-bg text-tone-rose-fg', title: { vi: 'Quản lý người dùng', en: 'Manage users' }, text: { vi: 'Tìm kiếm, xem chi tiết và khóa hoặc mở khóa tài khoản.', en: 'Search, view details and lock or unlock accounts.' } },
+  { path: '/admin/topics', icon: BookOpen, tile: 'border-tone-amber-border bg-tone-amber-bg text-tone-amber-fg', title: { vi: 'Chủ đề', en: 'Topics' }, text: { vi: 'Tạo, sửa và bật tắt chủ đề cho bài viết.', en: 'Create, edit and toggle article topics.' } },
+  { path: '/admin/tags', icon: Tag, tile: 'border-tone-green-border bg-tone-green-bg text-tone-green-fg', title: { vi: 'Thẻ', en: 'Tags' }, text: { vi: 'Tạo, sửa và bật tắt thẻ gắn cho bài viết.', en: 'Create, edit and toggle article tags.' } },
 ]
 
 export function AdminDashboardPage({ language = 'vi' }: { language?: Language } = {}) {
   const t = (message: string) => managementText(message, language)
- return <main className="page-content admin-page"><header className="admin-topbar"><div><span className="section-kicker">{t("TechVerse administration")}</span><h1>{t("Trang chủ")}</h1></div><div className="admin-topbar-actions"><Link to="/settings/language">{language === 'vi' ? 'Tiếng Việt' : 'English'}</Link><Link to="/settings/theme">{language === 'vi' ? 'Giao diện' : 'Appearance'}</Link></div></header><div className="admin-content"><h2>{t("Chào mừng trở lại!")}</h2><p className="admin-subtitle">{t("Đây là tổng quan về hoạt động của hệ thống TechVerse hôm nay.")}</p><div className="admin-stat-grid">{stats.map(({ label, icon: Icon }) => <article className="admin-stat-card" key={label}><div className="admin-stat-icon"><Icon size={21} /></div><span>{t(label)}</span><strong>—</strong></article>)}</div><div className="admin-dashboard-grid"><section className="admin-activity-card"><header><div><h3><Activity size={17} />{t("Hoạt động gần đây")}</h3><p>{t("Các hoạt động mới nhất trên hệ thống")}</p></div><span className="empty-badge">{t("Chưa có dữ liệu")}</span></header><div className="admin-table"><div className="admin-table-head"><span>{t("KHÁCH HÀNG")}</span><span>{t("NỘI DUNG HOẠT ĐỘNG")}</span><span>{t("SỐ TIỀN")}</span><span>{t("THỜI GIAN")}</span><span>{t("TRẠNG THÁI")}</span></div><div className="admin-empty"><BarChart3 size={25} /><strong>{t("Chưa có hoạt động")}</strong><span>{t("Dữ liệu hoạt động sẽ xuất hiện khi hệ thống có giao dịch.")}</span></div></div></section><section className="admin-online-card"><header><div><h3><i />{t("Thành viên trực tuyến")}</h3><p>{t("Danh sách người dùng đang hoạt động thực tế")}</p></div><span className="empty-badge">{t("— online")}</span></header><div className="admin-empty"><Users size={25} /><strong>{t("Chưa có dữ liệu")}</strong><span>{t("Danh sách thành viên sẽ được cập nhật từ backend.")}</span></div></section></div></div></main> }
+  const vi = language === 'vi'
+  return <main className="tw-page mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-8 lg:px-8">
+    <header className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-col gap-1">
+        <span className="text-[11px] font-semibold uppercase tracking-[.05em] text-accent-text">{t('TechVerse administration')}</span>
+        <h1 className="text-2xl font-bold">{t('Chào mừng trở lại!')}</h1>
+        <p className="text-sm text-muted-foreground">{vi ? 'Chọn một khu vực để bắt đầu quản trị TechVerse.' : 'Pick an area to start managing TechVerse.'}</p>
+      </div>
+      <div className="flex gap-2">
+        <Button asChild variant="outline" size="sm"><Link to="/settings/language"><Languages />{vi ? 'Tiếng Việt' : 'English'}</Link></Button>
+        <Button asChild variant="outline" size="sm"><Link to="/settings/theme"><Palette />{vi ? 'Giao diện' : 'Appearance'}</Link></Button>
+      </div>
+    </header>
+    <section aria-labelledby="admin-shortcuts" className="flex flex-col gap-4">
+      <h2 id="admin-shortcuts" className="text-xl font-bold">{vi ? 'Khu vực quản trị' : 'Admin areas'}</h2>
+      <ul data-slot="admin-shortcuts" className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        {shortcuts.map(({ path, icon: Icon, tile, title, text }) => <li key={path} className="flex">
+          <Link to={path} className="group flex w-full flex-col gap-4 rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm outline-none transition hover:-translate-y-0.5 hover:border-ring hover:shadow-lg focus-visible:ring-[3px] focus-visible:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+            <span className={`flex size-12 items-center justify-center rounded-xl border ${tile}`}><Icon aria-hidden className="size-6" /></span>
+            <span className="flex flex-col gap-1">
+              <span className="text-base font-bold">{title[language]}</span>
+              <span className="text-sm text-muted-foreground">{text[language]}</span>
+            </span>
+            <span aria-hidden className="mt-auto inline-flex items-center gap-1 text-sm font-semibold text-accent-text">{vi ? 'Mở' : 'Open'}<ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></span>
+          </Link>
+        </li>)}
+      </ul>
+    </section>
+  </main>
+}

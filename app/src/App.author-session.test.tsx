@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import App from './App'
 import { getAccessToken, setAccessToken } from './services/api/client'
 
@@ -91,4 +91,18 @@ it('preserves real 403 errors without a refresh retry loop', async () => {
   reloadAuthorPage()
   expect((await screen.findByRole('alert')).textContent).toMatch(/permission/)
   expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/auth/refresh'))).toHaveLength(1)
+})
+
+// Approval happens in another session: F5 on /profile must pick up AUTHOR without leaving the page.
+it('F5 on /profile after approval switches the sidebar to author blogs and stays on /profile', async () => {
+  fetchMock.mockImplementation(async (input, options) => String(input).endsWith('/auth/refresh')
+    ? response({ accessToken: 'test-author-access', expiresAt: '', expiresIn: 900 }) : authorApi(input, options))
+  let path = ''
+  function Where() { path = useLocation().pathname; return null }
+  render(<StrictMode><MemoryRouter initialEntries={['/profile']}><App /><Where /></MemoryRouter></StrictMode>)
+  const link = await screen.findByRole('link', { name: 'Tác giả' })
+  expect(link.getAttribute('href')).toBe('/author/blogs')
+  expect(path).toBe('/profile')
+  expect(screen.queryByRole('heading', { name: 'Chào mừng trở lại!' })).toBeNull()
+  expect(getAccessToken()).toBe('test-author-access')
 })

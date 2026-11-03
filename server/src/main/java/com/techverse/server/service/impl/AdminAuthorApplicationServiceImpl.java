@@ -6,7 +6,9 @@ import com.techverse.server.dto.request.SuspendAuthorRequest;
 import com.techverse.server.dto.request.RestoreAuthorRequest;
 import com.techverse.server.dto.response.AdminAuthorApplicationDetailResponse;
 import com.techverse.server.dto.response.AdminAuthorApplicationSummaryResponse;
+import com.techverse.server.dto.response.AdminAuthorReviewHistoryResponse;
 import com.techverse.server.dto.response.PageResponse;
+import com.techverse.server.entity.AuthorApplicationReview;
 import com.techverse.server.entity.AuthorProfile;
 import com.techverse.server.entity.User;
 import com.techverse.server.enums.AuthorProfileStatus;
@@ -14,6 +16,7 @@ import com.techverse.server.enums.AuthorReviewDecision;
 import com.techverse.server.enums.RoleName;
 import com.techverse.server.exception.CustomException;
 import com.techverse.server.exception.ErrorCode;
+import com.techverse.server.repository.AuthorApplicationReviewRepository;
 import com.techverse.server.repository.AuthorProfileRepository;
 import com.techverse.server.repository.RoleRepository;
 import com.techverse.server.repository.UserRepository;
@@ -36,6 +39,7 @@ public class AdminAuthorApplicationServiceImpl implements AdminAuthorApplication
 	private final AuthorProfileRepository profiles;
 	private final UserRepository users;
 	private final RoleRepository roles;
+	private final AuthorApplicationReviewRepository reviews;
 
 	@Override
 	@Transactional(readOnly = true)
@@ -88,7 +92,12 @@ public class AdminAuthorApplicationServiceImpl implements AdminAuthorApplication
 			applicant.addRole(roles.findByName(RoleName.AUTHOR)
 					.orElseThrow(() -> new CustomException(ErrorCode.INTERNAL_ERROR)));
 		}
-		profile.review(AuthorProfileStatus.valueOf(request.decision().name()), actor, request.reviewNote(), Instant.now());
+		Instant reviewedAt = Instant.now();
+		// One normalized note for both the current review fields and the history record.
+		String note = request.reviewNote() == null || request.reviewNote().isBlank() ? null : request.reviewNote().trim();
+		// Snapshot before the profile mutates; history commits or rolls back with the review and role change.
+		reviews.save(AuthorApplicationReview.of(profile, request.decision(), actor, note, reviewedAt));
+		profile.review(AuthorProfileStatus.valueOf(request.decision().name()), actor, note, reviewedAt);
 		profiles.flush();
 		return toDetail(profile);
 	}
@@ -148,7 +157,7 @@ public class AdminAuthorApplicationServiceImpl implements AdminAuthorApplication
 	private AdminAuthorApplicationSummaryResponse toSummary(AuthorProfile profile) {
 		User user = profile.getUser();
 		return AdminAuthorApplicationSummaryResponse.builder()
-				.id(profile.getId()).userId(user.getId()).fullName(user.getFullName()).email(user.getEmail())
+				.id(profile.getId()).userId(user.getId()).fullName(user.getFullName()).email(user.getEmail()).avatarUrl(user.getAvatarUrl())
 				.active(user.isActive()).expertise(profile.getExpertise()).status(profile.getStatus())
 				.version(profile.getVersion()).createdAt(profile.getCreatedAt()).updatedAt(profile.getUpdatedAt()).build();
 	}
@@ -157,7 +166,7 @@ public class AdminAuthorApplicationServiceImpl implements AdminAuthorApplication
 		User user = profile.getUser();
 		User reviewer = profile.getReviewedBy();
 		return AdminAuthorApplicationDetailResponse.builder()
-				.id(profile.getId()).userId(user.getId()).fullName(user.getFullName()).email(user.getEmail())
+				.id(profile.getId()).userId(user.getId()).fullName(user.getFullName()).email(user.getEmail()).avatarUrl(user.getAvatarUrl())
 				.active(user.isActive()).bio(profile.getBio()).expertise(profile.getExpertise())
 				.portfolioUrl(profile.getPortfolioUrl()).status(profile.getStatus()).version(profile.getVersion())
 				.reviewNote(profile.getReviewNote()).reviewedBy(reviewer == null ? null : reviewer.getId())
@@ -167,6 +176,8 @@ public class AdminAuthorApplicationServiceImpl implements AdminAuthorApplication
 				.suspendedAt(profile.getSuspendedAt()).restorationNote(profile.getRestorationNote())
 				.restoredBy(profile.getRestoredBy() == null ? null : profile.getRestoredBy().getId())
 				.restoredAt(profile.getRestoredAt())
+				.reviewHistory(reviews.findByAuthorProfile_IdOrderByReviewedAtDescApplicationVersionDesc(profile.getId()).stream()
+						.map(AdminAuthorReviewHistoryResponse::from).toList())
 				.createdAt(profile.getCreatedAt()).updatedAt(profile.getUpdatedAt()).build();
 	}
 }

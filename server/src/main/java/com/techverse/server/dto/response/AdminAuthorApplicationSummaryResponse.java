@@ -7,6 +7,6 @@ import lombok.Builder;
 
 @Builder
 public record AdminAuthorApplicationSummaryResponse(
-		UUID id, UUID userId, String fullName, String email, boolean active,
+		UUID id, UUID userId, String fullName, String email, String avatarUrl, boolean active,
 		String expertise, AuthorProfileStatus status, long version, Instant createdAt, Instant updatedAt
 ) { }

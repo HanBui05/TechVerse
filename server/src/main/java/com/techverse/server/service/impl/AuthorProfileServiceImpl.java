@@ -4,6 +4,7 @@ import com.techverse.server.dto.request.ApplyAuthorProfileRequest;
 import com.techverse.server.dto.request.ResubmitAuthorProfileRequest;
 import com.techverse.server.enums.AuthorProfileStatus;
 import com.techverse.server.dto.response.AuthorProfileResponse;
+import com.techverse.server.dto.response.AuthorReviewHistoryResponse;
 import com.techverse.server.dto.response.MyAuthorProfileResponse;
 import com.techverse.server.entity.AuthorProfile;
 import com.techverse.server.entity.User;
@@ -11,9 +12,11 @@ import com.techverse.server.enums.AuthorApplicationStatus;
 import com.techverse.server.enums.RoleName;
 import com.techverse.server.exception.CustomException;
 import com.techverse.server.exception.ErrorCode;
+import com.techverse.server.repository.AuthorApplicationReviewRepository;
 import com.techverse.server.repository.AuthorProfileRepository;
 import com.techverse.server.repository.UserRepository;
 import com.techverse.server.service.AuthorProfileService;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +28,7 @@ public class AuthorProfileServiceImpl implements AuthorProfileService {
 
 	private final AuthorProfileRepository authorProfileRepository;
 	private final UserRepository userRepository;
+	private final AuthorApplicationReviewRepository reviewRepository;
 
 	@Override
 	@Transactional
@@ -60,10 +64,13 @@ public class AuthorProfileServiceImpl implements AuthorProfileService {
 				.map(authorProfile -> MyAuthorProfileResponse.builder()
 						.applicationStatus(AuthorApplicationStatus.valueOf(authorProfile.getStatus().name()))
 						.profile(toResponse(authorProfile))
+						.reviewHistory(reviewRepository.findByAuthorProfile_IdOrderByReviewedAtDescApplicationVersionDesc(authorProfile.getId())
+								.stream().map(AuthorReviewHistoryResponse::from).toList())
 						.build())
 				.orElseGet(() -> MyAuthorProfileResponse.builder()
 						.applicationStatus(AuthorApplicationStatus.NOT_APPLIED)
 						.profile(null)
+						.reviewHistory(List.of())
 						.build());
 	}
 

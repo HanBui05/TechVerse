@@ -5,18 +5,21 @@ import { Menu, Moon } from 'lucide-react'
 import { Brand } from './components/brand/Brand'
 import { Sidebar } from './components/layout/Sidebar'
 import { ModeratorSidebar } from './components/layout/ModeratorSidebar'
+import { AdminSidebar } from './components/layout/AdminSidebar'
+import { SidebarProvider, useSidebar } from '@/components/ui/sidebar'
+import { Button } from '@/components/ui/button'
 import { copy } from './data/i18n'
 import { HomePage } from './pages/Home/HomePage'
 import { BlogsPage, BlogDetailPage } from './pages/Blogs/BlogsPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
 import { ThemePage } from './pages/Settings/ThemePage'
+import { AuthLayout } from './components/auth/AuthLayout'
 import { LoginPage } from './pages/Login/LoginPage'
 import { GoogleCallbackPage } from './pages/Login/GoogleCallbackPage'
 import { ForgotPasswordPage } from './pages/Login/ForgotPasswordPage'
 import { RegisterPage } from './pages/Register/RegisterPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { ProfilePage } from './pages/Profile/ProfilePage'
-import { AvatarUpload } from './pages/Profile/AvatarUpload'
 import { AdminDashboardPage } from './pages/Admin/AdminDashboardPage'
 import { AuthorApplicationsPage } from './pages/Admin/AuthorApplicationsPage'
 import { AdminUsersPage } from './pages/Admin/AdminUsersPage'
@@ -35,15 +38,16 @@ function AuthRoute({ authenticated, children }: { authenticated: boolean; childr
   return authenticated ? children : <Navigate to="/login" replace />
 }
 
+const LOADING_MAIN = 'tw-page flex min-h-svh flex-col items-center justify-center p-10 text-center text-muted-foreground'
+
 function RoleRoute({ authenticated, roles, allowed, children }: { authenticated: boolean; roles: string[]; allowed: string[]; children: ReactNode }) {
   if (!authenticated) return <Navigate to="/login" replace />
-  if (roles.length === 0) return <main className="page-content placeholder-page"><p>Đang kiểm tra quyền truy cập...</p></main>
+  if (roles.length === 0) return <main className={LOADING_MAIN}><p>Đang kiểm tra quyền truy cập...</p></main>
   return roles.some(role => allowed.includes(role)) ? children : <Navigate to="/profile" replace />
 }
 
 export default function App() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('techverse-sidebar') === 'collapsed')
-  const [mobileOpen, setMobileOpen] = useState(false)
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('techverse-theme') as Theme) === 'light' ? 'light' : 'dark')
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('techverse-language') as Language) === 'en' ? 'en' : 'vi')
   const [authenticated, setAuthenticated] = useState(() => localStorage.getItem('techverse-authenticated') === 'true')
@@ -86,13 +90,13 @@ export default function App() {
     void restore()
     return () => { cancelled = true }
   }, [authenticated, isGoogleCallback, profile])
-  const toggleSidebar = () => setCollapsed(value => { localStorage.setItem('techverse-sidebar', value ? 'expanded' : 'collapsed'); return !value })
+  const setSidebarOpen = useCallback((open: boolean) => { localStorage.setItem('techverse-sidebar', open ? 'expanded' : 'collapsed'); setCollapsed(!open) }, [])
   // Share verified profile state and role routing between password login and Google login.
   const acceptProfile = useCallback((nextProfile: UserProfile) => {
     setProfile(nextProfile)
     localStorage.setItem('techverse-authenticated', 'true')
     setAuthenticated(true)
-    return nextProfile.roles.includes('ADMIN') ? '/admin' : nextProfile.roles.includes('MODERATOR') ? '/moderator' : '/profile'
+    return nextProfile.roles.includes('ADMIN') ? '/admin' : nextProfile.roles.includes('MODERATOR') ? '/moderator' : '/'
   }, [])
   // A callback must start clean, even when another account was previously signed in in this tab.
   const resetGoogleSession = useCallback(() => {
@@ -119,25 +123,27 @@ export default function App() {
       navigate('/login', { replace: true })
     }
   }
+  // Confirmation and errors live in the profile dialog; a failure must reject so the dialog stays open.
   const logoutAll = async () => {
-    if (!window.confirm(language === 'vi' ? 'Đăng xuất khỏi tất cả thiết bị?' : 'Log out from all devices?')) return
-    try { await logoutAllFromApi(); localStorage.removeItem('techverse-authenticated'); setAuthenticated(false); setProfile(null); navigate('/login', { replace: true }) }
-    catch (error) { window.alert(error instanceof Error ? error.message : 'Không thể đăng xuất khỏi tất cả thiết bị.') }
+    await logoutAllFromApi()
+    localStorage.removeItem('techverse-authenticated')
+    setAuthenticated(false)
+    setProfile(null)
+    navigate('/login', { replace: true })
   }
-  return <div className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''} ${isAuthPage ? 'login-mode' : ''}`}>
-    {!isAuthPage && (authenticated && profile?.roles.includes('MODERATOR') && (isModeratorPage || !profile.roles.includes('ADMIN')) ? <ModeratorSidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} profile={profile} onLogout={logout} /> : <Sidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} t={t} authenticated={authenticated} roles={profile?.roles || []} profile={profile} onLogout={logout} />)}
-    {!isAuthPage && <header className="mobile-topbar"><button className="icon-button" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu size={20} /></button><Brand /><Link className="icon-button" to="/settings/theme" aria-label="Theme settings"><Moon size={18} /></Link></header>}
-    {authenticated && !profile && !isAuthPage
-      ? <main className="page-content placeholder-page"><p role="status">Đang đồng bộ phiên đăng nhập và quyền truy cập...</p></main>
+  const routes = authenticated && !profile && !isAuthPage
+      ? <main className={LOADING_MAIN}><p role="status">Đang đồng bộ phiên đăng nhập và quyền truy cập...</p></main>
       : <Routes>
       <Route path="/" element={<HomePage t={t} />} />
       <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><BlogsPage /></AuthRoute>} />
       <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><BlogDetailPage /></AuthRoute>} />
-      <Route path="/login" element={<LoginPage t={t} onLogin={login} />} />
-      <Route path="/register" element={<RegisterPage t={t} onRegister={register} />} />
+      <Route element={<AuthLayout t={t} />}>
+        <Route path="/login" element={<LoginPage t={t} onLogin={login} />} />
+        <Route path="/register" element={<RegisterPage t={t} onRegister={register} />} />
+      </Route>
       <Route path="/auth/callback" element={<GoogleCallbackPage key={location.search} onAuthenticated={acceptGoogleSession} onResetSession={resetGoogleSession} />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/profile" element={<AuthRoute authenticated={authenticated}><ProfilePage language={language} profile={profile} onLogout={logout} onProfileChange={setProfile} /><AvatarUpload profile={profile} onProfileChange={setProfile} language={language} /><div className="page-content logout-all-panel"><button className="button button-outline" onClick={() => void logoutAll()}>{language === 'vi' ? 'Đăng xuất khỏi tất cả thiết bị' : 'Log out from all devices'}</button></div></AuthRoute>} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage t={t} />} />
+      <Route path="/profile" element={<AuthRoute authenticated={authenticated}>{profile && <ProfilePage language={language} profile={profile} onLogout={logout} onLogoutAll={logoutAll} onProfileChange={setProfile} />}</AuthRoute>} />
       <Route path="/admin" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminDashboardPage language={language} /></RoleRoute>} />
       <Route path="/moderator" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorDashboardPage language={language} /></RoleRoute>} />
       <Route path="/moderator/articles" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorArticlesPage language={language} /></RoleRoute>} />
@@ -145,11 +151,38 @@ export default function App() {
       <Route path="/admin/users" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminUsersPage language={language} /></RoleRoute>} />
       <Route path="/admin/topics" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="topics" language={language} /></RoleRoute>} />
       <Route path="/admin/tags" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="tags" language={language} /></RoleRoute>} />
-      <Route path="/author/apply" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['LEARNER']}><AuthorApplyPage /></RoleRoute>} />
+      <Route path="/author/apply" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['LEARNER']}><AuthorApplyPage language={language} /></RoleRoute>} />
       <Route path="/author/blogs" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AuthorBlogsPage language={language} /></RoleRoute>} />
       <Route path="/settings/theme" element={<ThemePage theme={theme} setTheme={setTheme} t={t} />} />
       <Route path="/settings/language" element={<LanguagePage language={language} setLanguage={setLanguage} t={t} />} />
       <Route path="*" element={<PlaceholderPage t={t} language={language} />} />
-    </Routes>}
-  </div>
+    </Routes>
+  if (isAuthPage) return <div className="min-h-svh">{routes}</div>
+  const roles = profile?.roles || []
+  const sidebar = authenticated && roles.includes('MODERATOR') && (isModeratorPage || !roles.includes('ADMIN'))
+    ? <ModeratorSidebar language={language} profile={profile} onLogout={logout} />
+    : roles.includes('ADMIN')
+      ? <AdminSidebar language={language} profile={profile} onLogout={logout} isModerator={roles.includes('MODERATOR')} />
+      : <Sidebar language={language} t={t} authenticated={authenticated} roles={roles} profile={profile} onLogout={logout} />
+  // SidebarProvider is controlled by techverse-sidebar; its sidebar-gap reserves the desktop width, so pages need no margin.
+  return <SidebarProvider open={!collapsed} onOpenChange={setSidebarOpen}>
+    {sidebar}
+    <div className="flex min-w-0 flex-1 flex-col">
+      <MobileTopbar />
+      {routes}
+    </div>
+  </SidebarProvider>
+}
+
+// Mobile-only bar (< md): opens the sidebar sheet; the sheet itself handles focus, Escape and overlay.
+function MobileTopbar() {
+  const { setOpenMobile } = useSidebar()
+  const { pathname } = useLocation()
+  // Any navigation (menu link, logo, account link) closes the mobile sheet.
+  useEffect(() => { setOpenMobile(false) }, [pathname, setOpenMobile])
+  return <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border bg-sidebar px-4 md:hidden">
+    <Button variant="ghost" size="icon" onClick={() => setOpenMobile(true)} aria-label="Open menu"><Menu /></Button>
+    <Brand compact />
+    <Button asChild variant="ghost" size="icon"><Link to="/settings/theme" aria-label="Theme settings"><Moon /></Link></Button>
+  </header>
 }

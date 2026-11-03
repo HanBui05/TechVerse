@@ -1,0 +1,2 @@
+# Seed fixtures are compared byte-for-byte by ArticleSeedFixtureTest; keep LF on every OS.
+server/src/test/resources/seed/** text eol=lf

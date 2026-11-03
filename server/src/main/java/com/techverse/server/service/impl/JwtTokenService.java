@@ -136,6 +136,18 @@ public class JwtTokenService implements TokenService {
 	}
 
 	@Override
+	public void deleteOtherSessions(UUID userId, String currentSessionId) {
+		// Caller holds the user row lock; iterate a snapshot because deleteSession mutates the index.
+		Set<String> sessionIds = stringRedisTemplate.opsForZSet().range(USER_SESSIONS_KEY_PREFIX + userId, 0, -1);
+		if (sessionIds == null) {
+			return;
+		}
+		sessionIds.stream()
+				.filter(sessionId -> !sessionId.equals(currentSessionId))
+				.forEach(sessionId -> deleteSession(userId, sessionId));
+	}
+
+	@Override
 	public void deleteToken(String jwtId) {
 		tokenRepository.findById(jwtId).ifPresent(token -> {
 			tokenRepository.delete(token);
