@@ -1,5 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
+import { cn } from 'cn'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { profileCopy, type ProfileTranslation } from '../../data/profile'
 import { changeMyPassword } from '../../services/profileService'
 import { ApiError } from '../../services/api/client'
@@ -49,24 +53,22 @@ export function ChangePasswordPanel({ language }: { language: Language }) {
     }
   }
 
-  return <form className="profile-form" noValidate onSubmit={event => void submit(event)}>
-    <div className="profile-fields">
-      {KEYS.map(key => <div className="profile-field" key={key}>
-        <label htmlFor={`profile-${key}`}>{t[key]}</label>
-        <div className="profile-password">
-          <input id={`profile-${key}`} type={visible[key] ? 'text' : 'password'} autoComplete={key === 'currentPassword' ? 'current-password' : 'new-password'}
-            value={values[key]} disabled={pending} onChange={event => setValues(current => ({ ...current, [key]: event.target.value }))}
-            aria-invalid={errors[key] ? true : undefined} aria-describedby={errors[key] ? `profile-${key}-error` : undefined} />
-          <button type="button" className="password-toggle" onClick={() => setVisible(current => ({ ...current, [key]: !current[key] }))} aria-label={visible[key] ? t.hidePassword : t.showPassword}>
-            {visible[key] ? <EyeOff size={19} /> : <Eye size={19} />}
-          </button>
-        </div>
-        {errors[key] && <p className="profile-field-error" id={`profile-${key}-error`}>{errors[key]}</p>}
-      </div>)}
-    </div>
-    {result && <p className={result.ok ? 'profile-notice is-success' : 'profile-notice is-error'} role={result.ok ? 'status' : 'alert'}>{result.text}</p>}
-    <div className="profile-form-actions">
-      <button className="button button-primary" type="submit" disabled={pending}>{pending ? t.changingPassword : t.changePassword}</button>
+  return <form className="flex max-w-md flex-col gap-4" noValidate onSubmit={event => void submit(event)}>
+    {KEYS.map(key => <div className="flex flex-col gap-2" key={key}>
+      <Label htmlFor={`profile-${key}`} className="text-[11px] font-semibold uppercase tracking-[.05em] text-muted-foreground">{t[key]}</Label>
+      <div className="relative">
+        <Input id={`profile-${key}`} className="pr-11 pointer-coarse:h-11" type={visible[key] ? 'text' : 'password'} autoComplete={key === 'currentPassword' ? 'current-password' : 'new-password'}
+          value={values[key]} disabled={pending} onChange={event => setValues(current => ({ ...current, [key]: event.target.value }))}
+          aria-invalid={errors[key] ? true : undefined} aria-describedby={errors[key] ? `profile-${key}-error` : undefined} />
+        <Button type="button" variant="ghost" size="icon-sm" className="absolute top-1/2 right-1 -translate-y-1/2" onClick={() => setVisible(current => ({ ...current, [key]: !current[key] }))} aria-label={visible[key] ? t.hidePassword : t.showPassword}>
+          {visible[key] ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+        </Button>
+      </div>
+      {errors[key] && <p className="text-xs text-danger" id={`profile-${key}-error`}>{errors[key]}</p>}
+    </div>)}
+    {result && <p className={cn('text-sm', result.ok ? 'text-success' : 'text-danger')} role={result.ok ? 'status' : 'alert'}>{result.text}</p>}
+    <div className="flex justify-end">
+      <Button type="submit" disabled={pending}>{pending ? t.changingPassword : t.changePassword}</Button>
     </div>
   </form>
 }

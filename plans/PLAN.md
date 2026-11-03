@@ -2,6 +2,10 @@
 
 Đọc [`PROJECT_CONTEXT.md`](../docs/PROJECT_CONTEXT.md) trước khi nhận task. Mỗi module có đúng một spec `plans/<module>.md` và một nhật ký `plans/<module>.log.md`.
 
+Module đang làm: [ui-foundation-v2](ui-foundation-v2.md)
+
+<!-- Hook SessionStart của Claude đọc đúng dòng trên (dạng `[slug](slug.md)`, “—” nếu không có) để tự nạp mục “Bắt đầu từ đây” của log. Đổi module thì sửa dòng này. -->
+
 ## Trạng thái module
 
 | Module | Spec | Trạng thái | Người thực hiện | Task hiện tại | Xong khi | Nhật ký |
@@ -16,7 +20,7 @@
 | Forgot password UI | — (làn nhẹ, người dùng chọn 2026-11-02) | Đang review | Claude | `ForgotPasswordPage` dùng khung `.auth-layout`/`.auth-card`: brand, tiêu đề có chữ nhấn, label nhìn thấy cho Email/OTP/mật khẩu mới/xác nhận, khoảng cách theo gap; bước cuối có nút “Đăng nhập”. Copy vi/en qua `i18n.ts` theo ngôn ngữ đang chọn (người dùng yêu cầu thêm). Giữ nguyên request, 3 bước, validation native. Lỗi không còn hiện câu gốc: 400/401/409 → câu kiểm tra thông tin, còn lại → câu hệ thống, theo vi/en. Xóa CSS mồ côi `.login-back`, `.login-submit`, `.register-spaced`. +6 test, đều đỏ trước khi sửa. `npm test` 165/165, build đạt; xem ảnh dark desktop | Giao diện đồng bộ Login/Register; luồng reset không đổi | — |
 | Docs + `.claude` restructure | — (làn nhẹ, người dùng chọn 2026-11-02) | Chờ người dùng nhận kết quả | Claude | `docs/README.md` (mục lục); `final.sql` → `docs/technical/db/`, `UI_GUIDE.md` → `docs/design/`; sửa đường dẫn ở 8 file. `CLAUDE.md` chỉ giữ luật chung; luật vùng ở `.claude/rules/frontend.md` (`app/**`), `.claude/rules/backend.md` (`server/**`); skill `.claude/skills/backend-test`. Không đổi nội dung luật. Kiểm tĩnh: mọi đường dẫn mới tồn tại | Không còn đường dẫn cũ; `CLAUDE.md` ngắn, luật vùng tự nạp theo file | — |
 | Sidebar + login redirect | — (làn nhẹ, người dùng yêu cầu 2026-11-02) | Chờ người dùng nhận kết quả | Claude | (1) Mục “Cài đặt” sidebar đóng mặc định, tự mở khi đang ở `/profile` hoặc `/settings/*`, có `aria-expanded`. (2) Icon menu có tông màu từ token (`.nav-icon[data-tone]`: Trang chủ xanh dương, Bài viết xanh lá, Author tím, Cài đặt vàng; mục con cũng có tông). (3) Đăng nhập (mật khẩu + Google) với LEARNER/AUTHOR vào `/` thay vì `/profile`; Admin/Moderator giữ nguyên. +2 test Sidebar, sửa 9 kỳ vọng `App.auth`. `npm test` 210/210, build đạt. Codex review: 1 P2 (mục Cài đặt không tự mở khi chuyển trang bằng link, chỉ mở lúc mount) đã sửa bằng `useEffect` theo `pathname`, +1 test đỏ trước khi sửa. Chưa xem bằng mắt | Cài đặt đóng mặc định; icon có màu; login vào trang chủ | — |
-| UI foundation v2 (shadcn) | [`plans/ui-foundation-v2.md`](ui-foundation-v2.md) | Đã chốt | Claude | Người dùng chốt spec sau 2 vòng (câu 1A pointer-coarse, 2A, 3B, 4A, 5A, 6B, 7A; nhận EmptyState; không UI kit; amber/green sáng bậc 800). Sẵn sàng Task 1 (cài đặt, token, primitive, skill) trong session mới | Mọi trang dùng shadcn/ui + Tailwind/token mới; không còn CSS trang/legacy, màu literal ngoài token hay confirm/alert trình duyệt; dark/light đúng bảng màu; từng task test/build đạt | — |
+| UI foundation v2 (shadcn) | [`plans/ui-foundation-v2.md`](ui-foundation-v2.md) | Đang thực hiện (Task 5 kế tiếp) | Claude | Task 1–4 đã nhận; Task 3 + 4 đủ 2 vòng review, test liên quan + build đạt (chưa commit vì một commit cuối module). Chưa kiểm: mobile, Moderator. **Tiếp theo:** Task 5. Trạng thái, quyết định chưa vào spec và chi tiết: [log — mục “Bắt đầu từ đây”](ui-foundation-v2.log.md) | Mọi trang dùng shadcn/ui + Tailwind/token mới; không còn CSS trang/legacy, màu literal ngoài token hay confirm/alert trình duyệt; dark/light đúng bảng màu; từng task có test liên quan + build đạt | — |
 
 Trạng thái hợp lệ: `Đề xuất` → `Đang lập kế hoạch` → `Chờ người dùng chốt` → `Đã chốt` → `Đang thực hiện` → `Đang review` → `Chờ người dùng nhận kết quả` → `Hoàn tất`; dùng `Bị chặn` khi không thể tạo ra kết quả để bàn giao vì cần quyết định hoặc môi trường bên ngoài.
 

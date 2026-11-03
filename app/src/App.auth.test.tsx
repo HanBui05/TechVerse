@@ -323,8 +323,14 @@ async function fillRegister(user: User, lang: Lang, values: Partial<Record<'name
 }
 
 async function fillLogin(user: User, lang: Lang, email = 'learner@example.com', password = 'Password123!') {
-  if (email) await user.type(screen.getByLabelText(labels[lang].email), email)
-  if (password) await user.type(screen.getByLabelText(labels[lang].password, { exact: true }), password)
+  if (email) await enter(user, screen.getByLabelText(labels[lang].email), email)
+  if (password) await enter(user, screen.getByLabelText(labels[lang].password, { exact: true }), password)
+}
+// Long strings are pasted: typing 255 characters alone nears the 5 s test timeout.
+async function enter(user: User, field: HTMLElement, value: string) {
+  if (value.length <= 20) return user.type(field, value)
+  await user.click(field)
+  await user.paste(value)
 }
 
 // Answer the submitting endpoint with a status (or network failure) carrying a backend message that must never be shown.
@@ -347,18 +353,17 @@ describe('Auth layout and tabs', () => {
   it('shares one mounted layout between login and register tabs', async () => {
     const user = userEvent.setup()
     renderApp('/login')
-    const tabs = document.querySelector('.auth-layout .auth-tabs')
-    const panel = document.querySelector('.auth-form-panel')
-    expect(tabs).toBeTruthy()
-    expect(panel).toBeTruthy()
+    // The tab nav survives the route change; the form panel (its heading) remounts.
+    const tabs = screen.getByRole('navigation', { name: 'Đăng nhập hoặc đăng ký' })
+    const panel = screen.getByRole('heading', { level: 1 })
     expect(screen.getByRole('link', { name: 'Đăng nhập' }).getAttribute('aria-current')).toBe('page')
     expect(screen.getByRole('link', { name: 'Đăng ký' }).getAttribute('aria-current')).toBeNull()
     await user.click(screen.getByRole('link', { name: 'Đăng ký' }))
     expect(screen.getByTestId('location').textContent).toBe('/register')
     expect(screen.getByRole('link', { name: 'Đăng ký' }).getAttribute('aria-current')).toBe('page')
     expect(screen.getByRole('link', { name: 'Đăng nhập' }).getAttribute('aria-current')).toBeNull()
-    expect(document.querySelector('.auth-layout .auth-tabs')).toBe(tabs)
-    expect(document.querySelector('.auth-form-panel')).not.toBe(panel)
+    expect(screen.getByRole('navigation', { name: 'Đăng nhập hoặc đăng ký' })).toBe(tabs)
+    expect(screen.getByRole('heading', { level: 1 })).not.toBe(panel)
     await user.click(screen.getByRole('link', { name: 'Đăng nhập ngay' }))
     expect(screen.getByTestId('location').textContent).toBe('/login')
     await user.click(screen.getByRole('link', { name: 'Đăng ký ngay' }))
@@ -375,7 +380,7 @@ describe('Auth layout and tabs', () => {
     renderApp(path)
     const heading = screen.getByRole('heading', { level: 1 })
     expect(heading.textContent).toBe(title)
-    expect(heading.querySelector('.auth-title-accent')?.textContent).toBe(accent)
+    expect(heading.querySelector('span')?.textContent).toBe(accent)
   })
 
   it.each([['vi', '/login'], ['vi', '/register'], ['en', '/login'], ['en', '/register']] as const)('%s %s shows visible labels and disables native validation', (lang, path) => {
@@ -558,7 +563,7 @@ describe('Forgot password', () => {
     fetchMock.mockImplementation(async input => String(input).endsWith('/verify-reset-otp') ? apiResponse({ resetToken: 'reset-token' }) : apiResponse(null))
     const user = userEvent.setup()
     renderApp('/forgot-password')
-    expect(document.querySelector('.auth-layout .auth-card')).toBeTruthy()
+    expect(screen.getByRole('main').querySelector('[data-slot="card"]')).toBeTruthy()
     expect(screen.getByRole('link', { name: /Quay lại đăng nhập/ }).getAttribute('href')).toBe('/login')
     await user.type(screen.getByLabelText('Email'), 'learner@example.com')
     await user.click(screen.getByRole('button', { name: 'Tiếp tục' }))

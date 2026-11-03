@@ -5,6 +5,9 @@ import { Menu, Moon } from 'lucide-react'
 import { Brand } from './components/brand/Brand'
 import { Sidebar } from './components/layout/Sidebar'
 import { ModeratorSidebar } from './components/layout/ModeratorSidebar'
+import { AdminSidebar } from './components/layout/AdminSidebar'
+import { SidebarProvider, useSidebar } from '@/components/ui/sidebar'
+import { Button } from '@/components/ui/button'
 import { copy } from './data/i18n'
 import { HomePage } from './pages/Home/HomePage'
 import { BlogsPage, BlogDetailPage } from './pages/Blogs/BlogsPage'
@@ -43,7 +46,6 @@ function RoleRoute({ authenticated, roles, allowed, children }: { authenticated:
 
 export default function App() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('techverse-sidebar') === 'collapsed')
-  const [mobileOpen, setMobileOpen] = useState(false)
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('techverse-theme') as Theme) === 'light' ? 'light' : 'dark')
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('techverse-language') as Language) === 'en' ? 'en' : 'vi')
   const [authenticated, setAuthenticated] = useState(() => localStorage.getItem('techverse-authenticated') === 'true')
@@ -86,7 +88,7 @@ export default function App() {
     void restore()
     return () => { cancelled = true }
   }, [authenticated, isGoogleCallback, profile])
-  const toggleSidebar = () => setCollapsed(value => { localStorage.setItem('techverse-sidebar', value ? 'expanded' : 'collapsed'); return !value })
+  const setSidebarOpen = useCallback((open: boolean) => { localStorage.setItem('techverse-sidebar', open ? 'expanded' : 'collapsed'); setCollapsed(!open) }, [])
   // Share verified profile state and role routing between password login and Google login.
   const acceptProfile = useCallback((nextProfile: UserProfile) => {
     setProfile(nextProfile)
@@ -127,10 +129,7 @@ export default function App() {
     setProfile(null)
     navigate('/login', { replace: true })
   }
-  return <div className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''} ${isAuthPage ? 'login-mode' : ''}`}>
-    {!isAuthPage && (authenticated && profile?.roles.includes('MODERATOR') && (isModeratorPage || !profile.roles.includes('ADMIN')) ? <ModeratorSidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} profile={profile} onLogout={logout} /> : <Sidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} language={language} t={t} authenticated={authenticated} roles={profile?.roles || []} profile={profile} onLogout={logout} />)}
-    {!isAuthPage && <header className="mobile-topbar"><button className="icon-button" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu size={20} /></button><Brand /><Link className="icon-button" to="/settings/theme" aria-label="Theme settings"><Moon size={18} /></Link></header>}
-    {authenticated && !profile && !isAuthPage
+  const routes = authenticated && !profile && !isAuthPage
       ? <main className="page-content placeholder-page"><p role="status">Đang đồng bộ phiên đăng nhập và quyền truy cập...</p></main>
       : <Routes>
       <Route path="/" element={<HomePage t={t} />} />
@@ -155,6 +154,33 @@ export default function App() {
       <Route path="/settings/theme" element={<ThemePage theme={theme} setTheme={setTheme} t={t} />} />
       <Route path="/settings/language" element={<LanguagePage language={language} setLanguage={setLanguage} t={t} />} />
       <Route path="*" element={<PlaceholderPage t={t} language={language} />} />
-    </Routes>}
-  </div>
+    </Routes>
+  if (isAuthPage) return <div className="app-shell">{routes}</div>
+  const roles = profile?.roles || []
+  const sidebar = authenticated && roles.includes('MODERATOR') && (isModeratorPage || !roles.includes('ADMIN'))
+    ? <ModeratorSidebar language={language} profile={profile} onLogout={logout} />
+    : roles.includes('ADMIN')
+      ? <AdminSidebar language={language} profile={profile} onLogout={logout} isModerator={roles.includes('MODERATOR')} />
+      : <Sidebar language={language} t={t} authenticated={authenticated} roles={roles} profile={profile} onLogout={logout} />
+  // SidebarProvider is controlled by techverse-sidebar; its sidebar-gap reserves the desktop width, so .page-content has no margin.
+  return <SidebarProvider open={!collapsed} onOpenChange={setSidebarOpen}>
+    {sidebar}
+    <div className="flex min-w-0 flex-1 flex-col">
+      <MobileTopbar />
+      {routes}
+    </div>
+  </SidebarProvider>
+}
+
+// Mobile-only bar (< md): opens the sidebar sheet; the sheet itself handles focus, Escape and overlay.
+function MobileTopbar() {
+  const { setOpenMobile } = useSidebar()
+  const { pathname } = useLocation()
+  // Any navigation (menu link, logo, account link) closes the mobile sheet.
+  useEffect(() => { setOpenMobile(false) }, [pathname, setOpenMobile])
+  return <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border bg-sidebar px-4 md:hidden">
+    <Button variant="ghost" size="icon" onClick={() => setOpenMobile(true)} aria-label="Open menu"><Menu /></Button>
+    <Brand compact />
+    <Button asChild variant="ghost" size="icon"><Link to="/settings/theme" aria-label="Theme settings"><Moon /></Link></Button>
+  </header>
 }

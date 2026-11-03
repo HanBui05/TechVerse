@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import type { Translation } from '../../data/i18n'
 import { GoogleAuthButton } from '../../components/GoogleAuthButton'
-import { alertFor, AUTH_ALERT_ID, fieldState, isEmail, type AuthAlert } from '../../components/auth/AuthLayout'
+import { alertFor, AUTH_ALERT_ID, AuthAlertText, AuthDivider, AuthField, AuthInput, AuthIntro, AuthSubmit, AuthSwitch, fieldState, isEmail, PasswordInput, type AuthAlert } from '../../components/auth/AuthLayout'
 
 // Offer local registration or Google OAuth; new Google accounts are created by the backend.
 export function RegisterPage({ t, onRegister }: { t: Translation; onRegister: (data: { fullName: string; email: string; password: string; confirmPassword: string }) => Promise<void> }) {
@@ -12,7 +11,6 @@ export function RegisterPage({ t, onRegister }: { t: Translation; onRegister: (d
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [alert, setAlert] = useState<AuthAlert>('')
   const [invalid, setInvalid] = useState<string[]>([])
@@ -36,36 +34,26 @@ export function RegisterPage({ t, onRegister }: { t: Translation; onRegister: (d
   }
 
   return <>
-    <header className="auth-intro">
-      <h1 className="auth-heading">{t.registerTitleLead} <span className="auth-title-accent">{t.registerTitleAccent}</span></h1>
-      <p className="auth-subtitle">{t.registerSubtitle}</p>
-    </header>
-    <form className="auth-form" noValidate onSubmit={event => { event.preventDefault(); void submit() }}>
-      <div className="auth-field">
-        <label className="auth-field-label" htmlFor="register-name">{t.username}</label>
-        <input className="login-input" id="register-name" placeholder={t.username} autoComplete="name" value={fullName} onChange={event => setFullName(event.target.value)} {...fieldState(invalid, 'name')} />
-      </div>
-      <div className="auth-field">
-        <label className="auth-field-label" htmlFor="register-email">{t.email}</label>
-        <input className="login-input" id="register-email" type="email" placeholder={t.email} autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} {...fieldState(invalid, 'email')} />
-      </div>
-      <div className="auth-field">
-        <label className="auth-field-label" htmlFor="register-password">{t.password}</label>
-        <div className="auth-password">
-          <input className="login-input" id="register-password" type={showPassword ? 'text' : 'password'} placeholder={t.password} autoComplete="new-password" value={password} onChange={event => setPassword(event.target.value)} {...fieldState(invalid, 'password')} />
-          <button type="button" className="password-toggle" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? t.hidePassword : t.showPassword}>{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button>
-        </div>
-      </div>
-      <div className="auth-field">
-        <label className="auth-field-label" htmlFor="register-confirm">{t.confirmPassword}</label>
-        <input className="login-input" id="register-confirm" type="password" placeholder={t.confirmPassword} autoComplete="new-password" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} {...fieldState(invalid, 'confirm')} />
-      </div>
-      {alert && <p className="auth-alert" id={AUTH_ALERT_ID} role="alert">{alert === 'system' ? t.systemAlert : t.registerAlert}</p>}
-      <button className="auth-submit" type="submit" disabled={loading}>{loading ? '...' : t.createAccount}</button>
+    <AuthIntro lead={t.registerTitleLead} accent={t.registerTitleAccent} subtitle={t.registerSubtitle} />
+    <form className="flex flex-col gap-4" noValidate onSubmit={event => { event.preventDefault(); void submit() }}>
+      <AuthField id="register-name" label={t.username}>
+        <AuthInput id="register-name" placeholder={t.username} autoComplete="name" value={fullName} onChange={event => setFullName(event.target.value)} {...fieldState(invalid, 'name')} />
+      </AuthField>
+      <AuthField id="register-email" label={t.email}>
+        <AuthInput id="register-email" type="email" placeholder={t.email} autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} {...fieldState(invalid, 'email')} />
+      </AuthField>
+      <AuthField id="register-password" label={t.password}>
+        <PasswordInput id="register-password" showLabel={t.showPassword} hideLabel={t.hidePassword} placeholder={t.password} autoComplete="new-password" value={password} onChange={event => setPassword(event.target.value)} {...fieldState(invalid, 'password')} />
+      </AuthField>
+      <AuthField id="register-confirm" label={t.confirmPassword}>
+        <AuthInput id="register-confirm" type="password" placeholder={t.confirmPassword} autoComplete="new-password" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} {...fieldState(invalid, 'confirm')} />
+      </AuthField>
+      {alert && <AuthAlertText id={AUTH_ALERT_ID}>{alert === 'system' ? t.systemAlert : t.registerAlert}</AuthAlertText>}
+      <AuthSubmit type="submit" disabled={loading}>{loading ? '...' : t.createAccount}</AuthSubmit>
     </form>
-    <p className="auth-terms">{t.terms}</p>
-    <div className="auth-divider"><span>{t.or}</span></div>
-    <div className="social-login-grid"><GoogleAuthButton /></div>
-    <p className="auth-switch">{t.haveAccount} <Link to="/login">{t.loginNow}</Link></p>
+    <p className="text-center text-xs text-muted-foreground">{t.terms}</p>
+    <AuthDivider label={t.or} />
+    <GoogleAuthButton />
+    <AuthSwitch text={t.haveAccount} to="/login" label={t.loginNow} />
   </>
 }

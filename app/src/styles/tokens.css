@@ -1,21 +1,52 @@
-/* Design tokens. Dark is the default; light is selected with data-theme='light'. */
+/* Design tokens. Dark is the default; light is selected with data-theme='light'.
+   shadcn tokens hold the real values; legacy names alias them until Task 7 removes the legacy CSS. */
 :root {
   color-scheme: dark;
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --radius: 0.625rem;
 
-  /* Surfaces, borders and text */
-  --bg: #0f172a;
-  --sidebar: var(--bg);
-  --surface: #1e293b;
-  --surface-2: #334155;
+  /* shadcn surfaces and text */
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --popover: #1e293b;
+  --popover-foreground: #f1f5f9;
+  --secondary: #334155;
+  --secondary-foreground: #f1f5f9;
+  --muted: #334155;
+  --muted-foreground: #a8b4c8;
+  --accent: #334155;
+  --accent-foreground: #f1f5f9;
   --border: #334155;
-  --text: #f1f5f9;
-  --text-2: #cbd5e1;
-  --muted: #a8b4c8;
+  --input: #334155;
 
-  /* Brand and status. --primary is a fill (white text on it); use --accent-text for text, icons and focus. */
+  /* Brand, focus and danger. --primary is a fill; use --accent-text for text, icons and links. */
   --primary: #0056d2;
-  --on-primary: #ffffff;
+  --primary-foreground: #ffffff;
+  --ring: #38bdf8;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
+
+  /* shadcn Sidebar */
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--secondary);
+  --sidebar-accent-foreground: var(--secondary-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+
+  /* Legacy aliases (transition only) */
+  --bg: var(--background);
+  --surface: var(--card);
+  --surface-2: var(--secondary);
+  --text: var(--foreground);
+  --on-primary: var(--primary-foreground);
+  --text-2: #cbd5e1;
+
+  /* Status and accents */
   --accent-text: #38bdf8;
   --info: #38bdf8;
   --success: #4ade80;
@@ -23,6 +54,32 @@
   --danger: #fca5a5;
   --violet: #c4b5fd;
   --rose: #fda4af;
+
+  /* Badge tones: 900 fill at 25%, 300 text, 300 border at 30% */
+  --tone-blue-bg: #1e3a8a40;
+  --tone-blue-fg: #93c5fd;
+  --tone-blue-border: #93c5fd4d;
+  --tone-green-bg: #14532d40;
+  --tone-green-fg: #86efac;
+  --tone-green-border: #86efac4d;
+  --tone-purple-bg: #581c8740;
+  --tone-purple-fg: #d8b4fe;
+  --tone-purple-border: #d8b4fe4d;
+  --tone-amber-bg: #78350f40;
+  --tone-amber-fg: #fcd34d;
+  --tone-amber-border: #fcd34d4d;
+  --tone-rose-bg: #88133740;
+  --tone-rose-fg: #fda4af;
+  --tone-rose-border: #fda4af4d;
+  --tone-sky-bg: #0c4a6e40;
+  --tone-sky-fg: #7dd3fc;
+  --tone-sky-border: #7dd3fc4d;
+  --tone-cyan-bg: #164e6340;
+  --tone-cyan-fg: #67e8f9;
+  --tone-cyan-border: #67e8f94d;
+  --tone-slate-bg: #0f172a40;
+  --tone-slate-fg: #cbd5e1;
+  --tone-slate-border: #cbd5e14d;
 
   /* Effects */
   --shadow-color: rgba(0, 0, 0, .35);
@@ -52,13 +109,23 @@
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --bg: #ffffff;
-  --surface: #f9fafb;
-  --surface-2: #f3f4f6;
+  --background: #ffffff;
+  --foreground: #111827;
+  --card: #f9fafb;
+  --card-foreground: #111827;
+  --popover: #f9fafb;
+  --popover-foreground: #111827;
+  --secondary: #f3f4f6;
+  --secondary-foreground: #111827;
+  --muted: #f3f4f6;
+  --muted-foreground: #4b5563;
+  --accent: #f3f4f6;
+  --accent-foreground: #111827;
   --border: #e5e7eb;
-  --text: #111827;
+  --input: #e5e7eb;
+  --ring: #0056d2;
+
   --text-2: #4b5563;
-  --muted: #4b5563;
 
   --accent-text: #0056d2;
   --info: #075985;
@@ -67,6 +134,32 @@
   --danger: #991b1b;
   --violet: #6d28d9;
   --rose: #be123c;
+
+  /* Badge tones: 100 fill, 700 text (green/amber 800 for margin), 200 border */
+  --tone-blue-bg: #dbeafe;
+  --tone-blue-fg: #1d4ed8;
+  --tone-blue-border: #bfdbfe;
+  --tone-green-bg: #dcfce7;
+  --tone-green-fg: #166534;
+  --tone-green-border: #bbf7d0;
+  --tone-purple-bg: #f3e8ff;
+  --tone-purple-fg: #7e22ce;
+  --tone-purple-border: #e9d5ff;
+  --tone-amber-bg: #fef3c7;
+  --tone-amber-fg: #92400e;
+  --tone-amber-border: #fde68a;
+  --tone-rose-bg: #ffe4e6;
+  --tone-rose-fg: #be123c;
+  --tone-rose-border: #fecdd3;
+  --tone-sky-bg: #e0f2fe;
+  --tone-sky-fg: #0369a1;
+  --tone-sky-border: #bae6fd;
+  --tone-cyan-bg: #cffafe;
+  --tone-cyan-fg: #0e7490;
+  --tone-cyan-border: #a5f3fc;
+  --tone-slate-bg: #f1f5f9;
+  --tone-slate-fg: #334155;
+  --tone-slate-border: #e2e8f0;
 
   --shadow-color: rgba(17, 24, 39, .12);
   --shadow-soft: rgba(17, 24, 39, .05);

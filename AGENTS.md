@@ -1,6 +1,15 @@
 # Vai trò Codex: Planner và Reviewer
 
-Trước mọi task, đọc [`PLAN.md`](plans/PLAN.md), `plans/<module>.md` và [`PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) mục 1–3 và 7 (mục khác chỉ khi liên quan). Module lấy từ `PLAN.md` hoặc từ người dùng.
+Trước mọi task, đọc [`PLAN.md`](plans/PLAN.md) (dòng “Module đang làm” + bảng), `plans/<module>.md`, **phần đầu của `plans/<module>.log.md`** (“Bắt đầu từ đây”, “Quyết định người dùng chưa có trong spec”, “Câu hỏi mở”, “Nhật ký phiên”) và [`PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) mục 1–3 và 7 (mục khác chỉ khi liên quan). Module lấy từ `PLAN.md` hoặc từ người dùng.
+
+## Đồng bộ với Claude (log là kênh chung)
+
+- Claude ghi log ngay khi người dùng quyết điều mới hoặc xong code/test/review. Log mới hơn spec thì quyết định trong log là bản mới nhất.
+- Khi đưa một quyết định từ “Quyết định người dùng chưa có trong spec” vào thân spec: xóa dòng đó khỏi bảng trong log và ghi một dòng vào “Nhật ký phiên” (ngày, “Codex: đã đưa … vào spec”). Không sửa phần kết quả Task, “Bắt đầu từ đây” hay ghi chú của Claude.
+- Khi Claude nhờ đồng bộ sau một task người dùng đã nhận: đánh dấu `[x]` các mục “Xong khi” của task đó mà log ghi đạt; mục log ghi “chưa kiểm” thì để `[ ]` và thêm “(chưa kiểm — xem log)”. Đồng thời đưa các dòng còn hiệu lực của bảng quyết định trong log vào thân spec theo quy tắc trên. Không sửa log ngoài việc xóa dòng bảng và thêm dòng nhật ký.
+- Đổi module đang làm thì sửa dòng `Module đang làm: [slug](slug.md)` trong `PLAN.md` (hook của Claude đọc dòng này).
+- Review: đọc “Đã xong” và “Lệch khác spec” trong log để không báo lại điều đã quyết; kết quả review do Claude ghi vào log. Đối chiếu thay đổi với mục “Xong khi” của task đang làm (task ghi ở “Bắt đầu từ đây” của log hoặc trong focus) và kết quả test trong log: báo cả tiêu chí nghiệm thu chưa đạt, không chỉ lỗi code. Diff chưa commit là của task đang làm; task trước đã nằm trong commit `wip(...)`.
+- Spec có đụng API (tạo/sửa endpoint hoặc frontend gọi endpoint): ghi bảng “Quy tắc nghiệp vụ và mã lỗi” — trường, ràng buộc (độ dài, định dạng, khoảng giá trị), mã HTTP/mã lỗi và câu hiển thị tương ứng. Validation phía client và test frontend dẫn chiếu bảng này; đổi quy tắc ở backend thì sửa bảng cùng lúc.
 
 ## Planner
 
@@ -25,7 +34,7 @@ Trước mọi task, đọc [`PLAN.md`](plans/PLAN.md), `plans/<module>.md` và 
 
 Mục tiêu: đúng nhưng nhanh; mỗi tiêu chí phải bắt được một lỗi thật, không thêm kiểm chứng “cho chắc”.
 
-- **Lệnh kiểm theo phần bị sửa.** Task chỉ sửa `app/`: “Xong khi” ghi `npm test` + `npm run build` trong `app/`, không ghi `scripts/verify.sh`. Task có sửa `server/`: “Xong khi” ghi danh sách lớp test bị ảnh hưởng (lớp của task + regression + lớp gọi code dùng chung bị sửa), không ghi `scripts/verify.sh`; full backend do CI (`.github/workflows/ci.yml`) chạy khi mở PR. Không ghi chạy test backend cho task chỉ sửa giao diện.
+- **Lệnh kiểm theo phần bị sửa.** Task chỉ sửa `app/`: “Xong khi” ghi các file test frontend liên quan (test của component/trang bị sửa + nơi dùng trực tiếp) + `npm run build` trong `app/`; không ghi full `npm test` hay `scripts/verify.sh` (người dùng chốt 2026-11-03: full suite chậm, phần lớn không liên quan). Task có sửa `server/`: “Xong khi” ghi danh sách lớp test bị ảnh hưởng (lớp của task + regression + lớp gọi code dùng chung bị sửa), không ghi `scripts/verify.sh`; full backend do CI (`.github/workflows/ci.yml`) chạy khi mở PR. Không ghi chạy test backend cho task chỉ sửa giao diện.
 - **Mức test.** Logic thuần (phân loại lỗi, validation, format, mapping) yêu cầu unit test gọi thẳng hàm; ma trận (ngôn ngữ × status × màn) đặt ở đây. Test tích hợp render cả `App` chỉ cho luồng chính, khoảng 5 ca mỗi màn. Không yêu cầu ma trận ở mức tích hợp.
 - **Backend.** “Xong khi” ghi tên lớp test cụ thể cần thêm/sửa và mức test: validator/mapper/service → unit test không Spring; validation/status controller → `@WebMvcTest`; `@SpringBootTest` + Testcontainers chỉ cho luồng cần DB/security thật, khoảng 3–5 ca mỗi endpoint, ưu tiên thêm vào lớp tích hợp có sẵn. Không yêu cầu lớp tích hợp mới chỉ để kiểm validation. Không yêu cầu `scripts/verify.sh` trên máy (D-021).
 - **Giao diện.** Chỉ yêu cầu kiểm các trang thực sự đổi, tối đa dark/light × một desktop + một mobile, một lượt. Trang không đổi: kiểm tĩnh.

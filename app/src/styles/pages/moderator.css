@@ -37,7 +37,7 @@
 .moderator-heading p,
 .moderator-queue-heading p,
 .moderator-empty p {
-  color: var(--muted);
+  color: var(--muted-foreground);
   line-height: 1.5;
 }
 
@@ -83,7 +83,7 @@
 }
 
 .moderator-card span {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 14px;
 }
 
@@ -115,7 +115,7 @@
 .moderator-queue-heading > span {
   background: var(--surface-2);
   border-radius: 8px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 12px;
   padding: 7px 10px;
   white-space: nowrap;
@@ -123,7 +123,7 @@
 
 .moderator-empty {
   align-items: center;
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -180,7 +180,7 @@
 .moderation-panel-title p,
 .moderation-detail-head p,
 .moderation-detail-empty p {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 14px;
   margin: 0;
 }
@@ -217,7 +217,7 @@
 }
 
 .moderation-toolbar > label {
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: grid;
   font-size: 12px;
   gap: 6px;
@@ -228,7 +228,7 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 9px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: flex;
   flex: 1;
   gap: 8px;
@@ -324,7 +324,7 @@
 
 .moderation-item small,
 .moderation-item-summary {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 12px;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -382,13 +382,13 @@
 }
 
 .moderation-detail-body p {
-  color: var(--muted);
+  color: var(--muted-foreground);
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
 
 .moderation-detail-body h3 small {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 11px;
   font-weight: 400;
 }
@@ -402,7 +402,7 @@
 .moderation-tags span {
   background: var(--surface-2);
   border-radius: 6px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 12px;
   padding: 5px 8px;
 }
@@ -436,7 +436,7 @@
 
 .moderation-review label,
 .moderation-review small {
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: block;
   font-size: 12px;
   margin-bottom: 8px;
@@ -477,14 +477,14 @@
 }
 
 .moderation-empty {
-  color: var(--muted);
+  color: var(--muted-foreground);
   padding: 24px;
   text-align: center;
 }
 
 .moderation-detail-empty {
   align-items: center;
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -521,7 +521,7 @@
   overflow: auto;
   overscroll-behavior: contain;
   padding: clamp(15px, 2vw, 24px);
-  scrollbar-color: var(--muted) transparent;
+  scrollbar-color: var(--muted-foreground) transparent;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
 }
@@ -537,7 +537,7 @@
 }
 
 .moderation-article-scroll::-webkit-scrollbar-thumb {
-  background: var(--muted);
+  background: var(--muted-foreground);
   border: 2px solid var(--bg);
   border-radius: 8px;
 }

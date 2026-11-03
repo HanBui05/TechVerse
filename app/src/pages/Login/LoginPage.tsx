@@ -1,13 +1,11 @@
 import { useState } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Translation } from '../../data/i18n'
 import { GoogleAuthButton } from '../../components/GoogleAuthButton'
-import { alertFor, AUTH_ALERT_ID, fieldState, type AuthAlert } from '../../components/auth/AuthLayout'
+import { alertFor, AUTH_ALERT_ID, AuthAlertText, AuthDivider, AuthField, AuthInput, AuthIntro, authLinkClass, AuthSubmit, AuthSwitch, fieldState, PasswordInput, type AuthAlert } from '../../components/auth/AuthLayout'
 
 // Present password login and the shared browser-based Google signup/login entry point.
 export function LoginPage({ t, onLogin }: { t: Translation; onLogin: (email: string, password: string) => Promise<string> }) {
-  const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -29,28 +27,20 @@ export function LoginPage({ t, onLogin }: { t: Translation; onLogin: (email: str
   }
 
   return <>
-    <header className="auth-intro">
-      <h1 className="auth-heading">{t.loginTitleLead} <span className="auth-title-accent">{t.loginTitleAccent}</span></h1>
-      <p className="auth-subtitle">{t.loginSubtitle}</p>
-    </header>
-    <form className="auth-form" noValidate onSubmit={event => { event.preventDefault(); void submit() }}>
-      <div className="auth-field">
-        <label className="auth-field-label" htmlFor="login-email">{t.email}</label>
-        <input className="login-input" id="login-email" type="email" placeholder={t.email} autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} {...fieldState(invalid, 'email')} />
-      </div>
-      <div className="auth-field">
-        <label className="auth-field-label" htmlFor="login-password">{t.password}</label>
-        <div className="auth-password">
-          <input className="login-input" id="login-password" type={showPassword ? 'text' : 'password'} placeholder={t.password} autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} {...fieldState(invalid, 'password')} />
-          <button type="button" className="password-toggle" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? t.hidePassword : t.showPassword}>{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button>
-        </div>
-      </div>
-      <Link className="auth-forgot" to="/forgot-password">{t.forgotPassword}</Link>
-      {alert && <p className="auth-alert" id={AUTH_ALERT_ID} role="alert">{alert === 'system' ? t.systemAlert : t.loginAlert}</p>}
-      <button className="auth-submit" type="submit" disabled={loading}>{loading ? '...' : t.login}</button>
+    <AuthIntro lead={t.loginTitleLead} accent={t.loginTitleAccent} subtitle={t.loginSubtitle} />
+    <form className="flex flex-col gap-4" noValidate onSubmit={event => { event.preventDefault(); void submit() }}>
+      <AuthField id="login-email" label={t.email}>
+        <AuthInput id="login-email" type="email" placeholder={t.email} autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} {...fieldState(invalid, 'email')} />
+      </AuthField>
+      <AuthField id="login-password" label={t.password}>
+        <PasswordInput id="login-password" showLabel={t.showPassword} hideLabel={t.hidePassword} placeholder={t.password} autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} {...fieldState(invalid, 'password')} />
+      </AuthField>
+      <Link className={authLinkClass} to="/forgot-password">{t.forgotPassword}</Link>
+      {alert && <AuthAlertText id={AUTH_ALERT_ID}>{alert === 'system' ? t.systemAlert : t.loginAlert}</AuthAlertText>}
+      <AuthSubmit type="submit" disabled={loading}>{loading ? '...' : t.login}</AuthSubmit>
     </form>
-    <div className="auth-divider"><span>{t.or}</span></div>
-    <div className="social-login-grid"><GoogleAuthButton /></div>
-    <p className="auth-switch">{t.noAccount} <Link to="/register">{t.registerNow}</Link></p>
+    <AuthDivider label={t.or} />
+    <GoogleAuthButton />
+    <AuthSwitch text={t.noAccount} to="/register" label={t.registerNow} />
   </>
 }

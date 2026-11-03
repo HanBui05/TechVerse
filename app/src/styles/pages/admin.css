@@ -22,7 +22,7 @@
 
 .admin-topbar-actions {
   align-items: center;
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: flex;
   font-size: 11px;
   gap: 20px;
@@ -40,7 +40,7 @@
 }
 
 .admin-subtitle {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 11px;
   margin: 0;
 }
@@ -74,7 +74,7 @@
 }
 
 .admin-stat-card span {
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: block;
   font-size: 10px;
   margin-bottom: 9px;
@@ -134,7 +134,7 @@
 
 .admin-activity-card header p,
 .admin-online-card header p {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 10px;
   margin: 0;
 }
@@ -142,7 +142,7 @@
 .admin-table-head {
   border-bottom: 1px solid var(--border);
   border-top: 1px solid var(--border);
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: grid;
   font-size: 9px;
   gap: 12px;
@@ -152,7 +152,7 @@
 
 .admin-empty {
   align-items: center;
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -163,7 +163,7 @@
 }
 
 .admin-empty svg {
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .admin-empty strong {
@@ -294,7 +294,7 @@
 }
 
 .applications-panel p {
-  color: var(--muted);
+  color: var(--muted-foreground);
   line-height: 1.6;
 }
 
@@ -314,7 +314,7 @@
 
 .application-row small {
   display: block;
-  color: var(--muted);
+  color: var(--muted-foreground);
   margin-top: 5px;
 }
 
@@ -328,7 +328,7 @@
 .applications-note {
   display: grid;
   gap: 8px;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .applications-note textarea {
@@ -353,7 +353,7 @@
 .admin-filters label {
   display: grid;
   gap: 5px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 13px;
 }
 
@@ -412,7 +412,7 @@
 }
 
 .admin-account-copy small {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 10px;
   margin-top: 3px;
 }
@@ -455,6 +455,6 @@
 }
 
 .application-row small {
-  color: var(--muted);
+  color: var(--muted-foreground);
   line-height: 1.6;
 }

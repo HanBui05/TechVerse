@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { latestBirthDate, ProfilePage } from './ProfilePage'
 import { profileCopy } from '../../data/profile'
@@ -36,9 +36,6 @@ const shown = (iso: string) => iso.split('-').reverse().join('/')
 beforeEach(() => {
   fetchMock.mockReset()
   vi.stubGlobal('fetch', fetchMock)
-  // jsdom has no modal dialog support; mirror open/close so the app logic can be observed.
-  HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) { this.setAttribute('open', '') }
-  HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) { this.removeAttribute('open') }
 })
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
@@ -87,16 +84,38 @@ describe('personal information', () => {
     expect(screen.getByRole('button', { name: t.edit })).toBeTruthy()
   })
 
-  it('fills the birth date from the calendar picker', () => {
-    const showPicker = vi.fn()
-    HTMLInputElement.prototype.showPicker = showPicker
-    renderEditing({ ...local, dateOfBirth: null })
-    fireEvent.click(screen.getByRole('button', { name: t.pickDate }))
-    expect(showPicker).toHaveBeenCalledTimes(1)
-    const picker = document.querySelector('input[type="date"]') as HTMLInputElement
-    expect(picker.max).toBe(yearsAgo(6))
-    fireEvent.change(picker, { target: { value: '2005-02-20' } })
-    expect(input(t.dob).value).toBe('20/02/2005')
+  it('fills the birth date from the calendar popover, opened on the typed month', async () => {
+    const user = userEvent.setup()
+    renderEditing()
+    await user.click(screen.getByRole('button', { name: t.pickDate }))
+    const grid = await screen.findByRole('grid')
+    await user.click(within(grid).getByText('20').closest('button')!)
+    expect(input(t.dob).value).toBe('20/05/2000')
+    await waitFor(() => expect(screen.queryByRole('grid')).toBeNull())
+  })
+
+  it('names calendar months in the app language, not the browser locale', async () => {
+    const user = userEvent.setup()
+    renderEditing()
+    await user.click(screen.getByRole('button', { name: t.pickDate }))
+    await screen.findByRole('grid')
+    const months = [...document.querySelectorAll('[data-slot="popover-content"] select option')].map(option => option.textContent)
+    expect(months).toContain(new Date(2000, 4).toLocaleString('vi', { month: 'short' }))
+    expect(months).not.toContain(new Date(2000, 4).toLocaleString('en-US', { month: 'short' }))
+  })
+
+  it('disables calendar days after the 6-year cutoff', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 10, 3, 12))
+    try {
+      const user = userEvent.setup()
+      renderEditing({ ...local, dateOfBirth: null })
+      await user.click(screen.getByRole('button', { name: t.pickDate }))
+      const grid = await screen.findByRole('grid')
+      // Cutoff is 03/11/2020: that day is selectable, the next is not ([0] skips December outside days).
+      expect(within(grid).getAllByText('3')[0].closest('button')!.disabled).toBe(false)
+      expect(within(grid).getAllByText('4')[0].closest('button')!.disabled).toBe(true)
+    } finally { vi.useRealTimers() }
   })
 
   it('shows only real fields with a read-only email', () => {
@@ -261,8 +280,7 @@ describe('avatar', () => {
 
 describe('logout from all devices', () => {
   const opener = () => screen.getByRole('button', { name: t.logoutAll })
-  const dialog = () => document.querySelector('dialog') as HTMLDialogElement
-  const cancelEvent = () => { const event = new Event('cancel', { cancelable: true }); fireEvent(dialog(), event); return event }
+  const dialog = () => screen.queryByRole('alertdialog')
 
   it('places log out above log out everywhere and never uses browser dialogs', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm')
@@ -271,8 +289,8 @@ describe('logout from all devices', () => {
     const logout = screen.getByRole('button', { name: t.logout })
     expect(logout.compareDocumentPosition(opener()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     await user.click(opener())
-    expect(dialog().open).toBe(true)
-    expect(dialog().textContent).toContain(t.logoutAllBody)
+    const open = await screen.findByRole('alertdialog', { name: t.logoutAllTitle })
+    expect(open.textContent).toContain(t.logoutAllBody)
     expect(document.activeElement?.textContent).toBe(t.cancel)
     expect(confirmSpy).not.toHaveBeenCalled()
   })
@@ -281,12 +299,13 @@ describe('logout from all devices', () => {
     const user = userEvent.setup()
     const { onLogoutAll } = renderPage()
     await user.click(opener())
-    await user.click(screen.getByRole('button', { name: t.cancel }))
-    expect(dialog().open).toBe(false)
+    await user.click(await screen.findByRole('button', { name: t.cancel }))
+    await waitFor(() => expect(dialog()).toBeNull())
     expect(document.activeElement).toBe(opener())
     await user.click(opener())
-    expect(cancelEvent().defaultPrevented).toBe(true)
-    expect(dialog().open).toBe(false)
+    await screen.findByRole('alertdialog')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(dialog()).toBeNull())
     expect(document.activeElement).toBe(opener())
     expect(onLogoutAll).not.toHaveBeenCalled()
   })
@@ -297,14 +316,14 @@ describe('logout from all devices', () => {
     const user = userEvent.setup()
     renderPage(local, onLogoutAll)
     await user.click(opener())
-    const confirm = screen.getByRole('button', { name: t.confirmLogoutAll })
+    const confirm = await screen.findByRole('button', { name: t.confirmLogoutAll })
     await user.click(confirm)
     fireEvent.click(screen.getByRole('button', { name: t.loggingOut }))
     expect(onLogoutAll).toHaveBeenCalledTimes(1)
-    cancelEvent()
-    expect(dialog().open).toBe(true)
+    await user.keyboard('{Escape}')
+    expect(dialog()).not.toBeNull()
     reject(new Error('Raw backend detail'))
     expect((await screen.findByRole('alert')).textContent).toBe(t.logoutAllError)
-    expect(dialog().open).toBe(true)
+    expect(dialog()).not.toBeNull()
   })
 })

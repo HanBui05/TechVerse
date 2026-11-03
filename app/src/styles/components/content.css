@@ -39,7 +39,7 @@
 }
 
 .tag-picker-heading small {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 12px;
 }
 
@@ -74,7 +74,7 @@
 }
 
 .tag-picker-placeholder {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 12px;
 }
 
@@ -102,7 +102,7 @@
   background: transparent;
   border: 0;
   border-radius: 4px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   cursor: pointer;
   display: flex;
   flex-shrink: 0;
@@ -130,7 +130,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 7px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   cursor: pointer;
   display: inline-flex;
   font: inherit;
@@ -171,7 +171,7 @@
 
 .tag-picker-options p,
 .tag-picker-hint {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 11px;
   line-height: 1.6;
   margin: 0;
@@ -255,7 +255,7 @@
   background: color-mix(in srgb, var(--accent-text) 6%, transparent);
   border-left: 3px solid var(--accent-text);
   border-radius: 0 10px 10px 0;
-  color: var(--muted);
+  color: var(--muted-foreground);
   margin: 24px 0;
   padding: 16px 20px;
 }
@@ -550,7 +550,7 @@
 
 .pagination-current {
   align-items: center;
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: inline-flex;
   font-size: 12px;
   gap: 8px;

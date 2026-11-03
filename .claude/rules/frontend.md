@@ -8,25 +8,38 @@ paths:
 ## Giao diện
 
 - Task có “Đổi giao diện: Có”: bám [`docs/design/UI_GUIDE.md`](../../docs/design/UI_GUIDE.md). Chỉ nạp `ui-ux-pro-max` khi spec còn quyết định thiết kế bỏ ngỏ; spec đã chốt bố cục/màu/chữ thì bám spec.
-- Không dùng `ui-styling`, `banner-design`, `brand`, `slides`, `design`. Không thêm Tailwind hay thư viện UI mới nếu spec không yêu cầu.
+- Không dùng `ui-styling`, `banner-design`, `brand`, `slides`, `design`. Không thêm thư viện UI/form thứ hai ngoài shadcn/ui + Tailwind (D-024).
+- Ghép trang theo skill `ui-components` (danh mục primitive, mẫu bố cục, Badge tone, điều cấm).
 
 ## Ngân sách test
 
+- **Chỉ chạy test liên quan, không full `npm test`** (người dùng chốt 2026-11-03). Liên quan = file test của component/trang bị sửa + nơi dùng trực tiếp (grep import). Cuối task: các file đó + `npm run build` một lần, song song; log ghi tên file đã chạy. Full suite chỉ khi người dùng yêu cầu; “Xong khi” ghi `npm test` thì hiểu theo luật này.
+- Bảng chọn nhanh: sửa sidebar/shell/`App.tsx` → `components/layout/Sidebar.test.tsx`, `StaffPreferences.test.tsx`, `components/ui/{sidebar,labels,focus}`; sửa `components/ui/*` → `components/ui/*.test.*` + test trang dùng primitive đó. `App.auth.test.tsx` (~60 giây) chỉ chạy khi đụng Auth, `AuthLayout`, redirect hoặc định tuyến.
 - Test tích hợp render cả `App` chỉ cho luồng chính: mỗi màn khoảng 5 ca (thành công, một lỗi validation, một lỗi API, regression đã biết).
 - Chuỗi dài hơn 20 ký tự trong test: dùng `user.paste` hoặc `fireEvent.change`, không dùng `user.type`.
-- Chạy một file: `cd app && npx vitest run <file> [-t "<tên>"]`; cần chi tiết thì thêm `--reporter=verbose` ngay lần đầu.
+- Chạy: `cd app && npx vitest run <file...> [-t "<tên>"]`; cần chi tiết thì thêm `--reporter=verbose` ngay lần đầu.
 
-## Ảnh chụp
+## Kiểm bằng mắt
 
 - Không chụp hay so pixel cho trang không đổi giao diện; chứng minh bằng kiểm tĩnh (grep selector, class dùng chung).
-- Trang có đổi giao diện: tối đa một lượt chụp các trạng thái spec yêu cầu, đọc tối đa 2 ảnh. Không tự viết công cụ chụp mới; thiếu công cụ thì ghi “chưa kiểm”.
-- Ảnh có nhiễu: không kết luận từ một lần; kiểm tra ảnh thật là trang đúng (không phải trang lỗi) trước khi tin số liệu so sánh.
-- Chrome headless bằng `--window-size` không thu nhỏ được dưới khoảng 500px; viewport mobile cần giả lập thiết bị.
-- Công cụ Chrome (MCP) chỉ nạp khi phiên bắt đầu: nếu chưa thấy sau khi cài, báo người dùng khởi động lại.
+- Trang có đổi giao diện: tối đa một lượt, đọc tối đa 2 ảnh. Đo bằng `javascript_tool` (`getBoundingClientRect`, `getComputedStyle`, `scrollWidth > innerWidth`) thay vì đọc thêm ảnh.
+- Dev server: `npm run dev -- --port 3000 --strictPort` chạy nền (backend chỉ cho CORS từ `WEB_URL` trong `.env`, hiện `http://localhost:3000`; cổng khác bị preflight 403 nên không đăng nhập được); xong thì tắt tiến trình đang nghe cổng 3000. Không khởi động lại backend của người dùng; backend không chạy hoặc vẫn lỗi thì ghi “chưa kiểm” kèm một dòng nguyên nhân.
+- Chrome MCP không thu nhỏ được viewport (`resize_window` không đổi `innerWidth`): mobile ghi “chưa kiểm” ngay, chỉ dựa test jsdom (`window.innerWidth = 500`). Không tự viết công cụ chụp mới.
+- Đăng nhập theo vai trò: tài khoản Admin/Moderator dev và cách chèn lại ở [`docs/RUNBOOK.md`](../../docs/RUNBOOK.md); vai trò chưa có tài khoản thì ghi “chưa kiểm” cho vai trò đó.
+- Kiểm cả dark và light; ảnh lạ thì kiểm ảnh đúng trang (không phải trang lỗi) trước khi kết luận. Đo thêm chữ: `letter-spacing`, `margin` của `h1` và `p` đầu trang, `borderTopColor` của thẻ/khung (bắt bẫy preflight mà ảnh nhỏ dễ bỏ sót).
 
-## CSS
+## Style (shadcn + Tailwind v4)
 
-- Tách/di chuyển CSS: kiểm tra các class cùng nằm trên một phần tử (kể cả truyền qua prop `className`), vì đổi thứ tự nạp file làm đổi cascade mà ảnh chụp có thể không thấy.
-- Màu đi qua token trong `app/src/styles/tokens.css`; không viết literal màu trong component/CSS trang.
-- Style mới của một trang scope dưới class riêng của trang; không đổi class dùng chung với trang khác.
-- Task giữ nguyên hành vi: inventory + kiểm tra tĩnh thứ tự cascade + các trang spec yêu cầu; chỉ mở rộng khi kiểm tra tĩnh báo lỗi.
+- Ưu tiên primitive trong `src/components/ui/` (import `@/components/ui/...`), rồi utility Tailwind theo token; không viết CSS trang mới. Thiếu primitive thì `npx shadcn@latest add` khi đã có trang dùng.
+- `components/ui/*` chỉ trình bày: không gọi API, route, copy hay quy tắc nghiệp vụ. Composite nghiệp vụ đặt ngoài `ui/`. Nhãn truyền qua prop.
+- Màu chỉ qua token trong `app/src/styles/tokens.css`; không hex/rgb/hsl, `text-white`, `bg-black` trong component. Tone chọn bằng `toneFor`/`statusTone` (`@/lib/utils`). Không class `.dark`; `dark:` gắn với `data-theme`.
+- Vùng chạm (QĐ 1A): mọi control/mục điều hướng có `pointer-coarse:min-h-11 pointer-coarse:min-w-11`, kể cả trạng thái thu gọn; primitive mới thêm vào thì giữ test quét nguồn như `ui/sidebar.test.tsx`, `ui/focus.test.ts`.
+- Shell: `App` bọc trang bằng `SidebarProvider` (controlled `techverse-sidebar`); trang tự có `<main>` nên không dùng `SidebarInset`. Sidebar mới ghép bằng `SidebarFrame`/`SidebarAccount`/`activeLink` trong `components/layout/Sidebar.tsx`.
+- Test bám role/label/state, không assert class Tailwind (ngoại lệ: test quét nguồn cho QĐ a11y); Radix cần polyfill trong `src/test/setup.ts`.
+
+## Giai đoạn chuyển (preflight tắt, tới Task 7b của `ui-foundation-v2`)
+
+- CSS legacy unlayered thắng mọi utility. Không thêm CSS unlayered chạm element trần (`a`, `button`, `ul`…): `base.css` đã nạp vào `layer(base)` vì `a { color: inherit }` từng đè màu utility trên link.
+- Primitive shadcn dựa vào reset `[data-slot]` cuối `styles.css` (border, nút, `ul`, margin `h1–h4/p`); xóa khi bật preflight.
+- Trang đã chuyển: `<main>` có class `tw-page` (bỏ `letter-spacing`/margin của `base.css` và margin UA cho `h1–h4/p`). Phần tử không `data-slot` dùng `border*` phải kèm `border-border` (không thì viền lấy màu chữ). Chữ lỗi dùng `text-danger`, không `text-destructive` (~3:1 trên nền tối).
+- Class legacy trùng tên utility: đổi sang utility hoặc prefix `legacy-` trước khi dùng utility đó. Sửa CSS legacy: kiểm các class cùng nằm trên một phần tử vì đổi thứ tự nạp làm đổi cascade.

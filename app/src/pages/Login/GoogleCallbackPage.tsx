@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Brand } from '../../components/brand/Brand'
 import { GoogleAuthButton } from '../../components/GoogleAuthButton'
+import { AuthAlertText, authInlineLink as linkClass, AuthShell } from '../../components/auth/AuthLayout'
 import { ApiError } from '../../services/api/client'
 import { completeGoogleSignIn, type GoogleSession } from '../../services/authService'
 
@@ -56,14 +56,13 @@ export function GoogleCallbackPage({ onAuthenticated, onResetSession }: {
     return () => { active = false }
   }, [initialError, onAuthenticated, onResetSession, navigate])
 
-  return <main className="login-page"><section className="login-card google-callback-card">
-    <div className="login-brand"><Brand /><span>GOOGLE AUTHENTICATION</span></div>
-    <h1>{error ? 'Chưa thể đăng nhập' : 'Đang kết nối Google'}</h1>
+  return <AuthShell tagline="GOOGLE AUTHENTICATION" compactBrand>
+    <h1 className="text-center text-2xl font-bold">{error ? 'Chưa thể đăng nhập' : 'Đang kết nối Google'}</h1>
     {error ? <>
-      <p className="form-error google-callback-message" role="alert">{error}</p>
-      <div className="social-login-grid"><GoogleAuthButton /></div>
-      <p className="login-register"><Link to="/login">Đăng nhập bằng mật khẩu</Link></p>
-      <p className="login-register"><Link to="/register">Quay lại đăng ký</Link></p>
-    </> : <p className="login-subtitle google-callback-message" role="status">Đang xác thực phiên và tải hồ sơ của bạn. Vui lòng chờ...</p>}
-  </section></main>
+      <AuthAlertText>{error}</AuthAlertText>
+      <GoogleAuthButton />
+      <p className="text-center text-sm"><Link className={linkClass} to="/login">Đăng nhập bằng mật khẩu</Link></p>
+      <p className="text-center text-sm"><Link className={linkClass} to="/register">Quay lại đăng ký</Link></p>
+    </> : <p className="text-center text-sm leading-relaxed text-muted-foreground" role="status">Đang xác thực phiên và tải hồ sơ của bạn. Vui lòng chờ...</p>}
+  </AuthShell>
 }

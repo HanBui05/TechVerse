@@ -55,7 +55,7 @@
 }
 
 .author-intro {
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: 12px;
   line-height: 1.6;
   margin: 0 0 24px;
@@ -125,7 +125,7 @@
 }
 
 .author-apply-card label small {
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: block;
   font-size: 12px;
   margin-top: 5px;
@@ -144,7 +144,7 @@
 
 .author-upload-note {
   align-items: center;
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: flex;
   font-size: 10px;
   gap: 7px;

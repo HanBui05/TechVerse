@@ -25,7 +25,7 @@
 
 .article-header p,
 .article-panel p {
-  color: var(--muted);
+  color: var(--muted-foreground);
   line-height: 1.5;
 }
 
@@ -113,7 +113,7 @@
 }
 
 .article-cover > small {
-  color: var(--muted);
+  color: var(--muted-foreground);
   line-height: 1.6;
 }
 
@@ -137,7 +137,7 @@
 .article-form .tag-picker-search {
   align-items: center;
   border-block: 1px solid var(--border);
-  color: var(--muted);
+  color: var(--muted-foreground);
   display: flex;
   gap: 7px;
   padding: 0 12px;

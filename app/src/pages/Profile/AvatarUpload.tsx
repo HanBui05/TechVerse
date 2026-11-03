@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Camera } from 'lucide-react'
+import { cn } from 'cn'
 import { ApiError, request } from '../../services/api/client'
 import type { UserProfile } from '../../services/profileService'
 import type { Language } from '../../types/preferences'
@@ -32,18 +33,18 @@ export function AvatarUpload({ profile, onProfileChange, language }: { profile: 
     }
   }
 
-  return <div className="profile-avatar-upload">
-    <label className={`profile-avatar-label${busy ? ' is-busy' : ''}`}>
-      <UserAvatar className="avatar avatar-large" name={profile.fullName} url={profile.avatarUrl} />
-      <span className="avatar-camera" aria-hidden="true"><Camera size={14} /></span>
+  return <div className="flex items-center gap-4">
+    <label className={cn('relative shrink-0 cursor-pointer rounded-full has-focus-visible:ring-[3px] has-focus-visible:ring-ring', busy && 'cursor-wait opacity-60')}>
+      <UserAvatar className="avatar-large" name={profile.fullName} url={profile.avatarUrl} />
+      <span className="absolute right-0 bottom-0 flex size-6 items-center justify-center rounded-full border-2 border-card bg-primary text-primary-foreground" aria-hidden="true"><Camera size={12} /></span>
       <input className="sr-only" type="file" accept={TYPES.join(',')} aria-label={t.changeAvatar} disabled={busy}
         onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void upload(file) }} />
     </label>
-    <div className="profile-avatar-text">
-      <strong>{t.avatarTitle}</strong>
-      <p className="profile-avatar-hint">{t.avatarHint}</p>
-      {busy && <p className="profile-avatar-status" role="status">{t.avatarUploading}</p>}
-      {notice && <p className={`profile-avatar-status ${notice.ok ? 'is-success' : 'is-error'}`} role={notice.ok ? 'status' : 'alert'}>{notice.text}</p>}
+    <div className="flex min-w-0 flex-col gap-1">
+      <strong className="text-sm font-semibold">{t.avatarTitle}</strong>
+      <p className="text-xs text-muted-foreground">{t.avatarHint}</p>
+      {busy && <p className="text-xs text-muted-foreground" role="status">{t.avatarUploading}</p>}
+      {notice && <p className={cn('text-xs', notice.ok ? 'text-success' : 'text-danger')} role={notice.ok ? 'status' : 'alert'}>{notice.text}</p>}
     </div>
   </div>
 }

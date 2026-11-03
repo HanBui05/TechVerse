@@ -1,12 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { BookOpen, ChevronDown, FileText, KeyRound, LayoutDashboard, LogIn, UserCheck, Users, X } from 'lucide-react'
+import { BookOpen, FileText, KeyRound, LayoutDashboard, UserCheck, Users } from 'lucide-react'
 import type { Language } from '../../types/preferences'
-import { Brand } from '../brand/Brand'
-import { AccountIdentity } from './AccountIdentity'
 import { StaffSettingsLinks } from './StaffSettingsLinks'
+import { activeLink, SidebarAccount, SidebarFrame, useSidebarNav } from './Sidebar'
 import type { UserProfile } from '../../services/profileService'
+import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
 
-type Props = { collapsed: boolean; onToggle: () => void; mobileOpen: boolean; onMobileClose: () => void; language: Language; profile: UserProfile | null; onLogout: () => void; isModerator?: boolean }
+type Props = { language: Language; profile: UserProfile | null; onLogout: () => void; isModerator?: boolean }
 const groups = [
   { label: { vi: 'Tổng quan', en: 'Overview' }, items: [
     { label: { vi: 'Trang chủ', en: 'Dashboard' }, path: '/admin', icon: LayoutDashboard },
@@ -22,11 +22,17 @@ const groups = [
   ] },
 ]
 
-export function AdminSidebar({ collapsed, onToggle, mobileOpen, onMobileClose, language, profile, onLogout, isModerator = false }: Props) {
-  return <><div className={`mobile-scrim ${mobileOpen ? 'is-visible' : ''}`} onClick={onMobileClose} /><aside className={`sidebar admin-sidebar ${collapsed ? 'is-collapsed' : ''} ${mobileOpen ? 'is-mobile-open' : ''}`}>
-    <div className="admin-sidebar-header"><Brand compact={collapsed} /><button className="admin-sidebar-close mobile-only" onClick={onMobileClose} aria-label="Close admin menu"><X size={19} /></button><button className="admin-sidebar-collapse desktop-only" onClick={onToggle} aria-label="Toggle admin menu"><ChevronDown size={17} /></button></div>
-    <nav className="admin-sidebar-nav">{isModerator && <NavLink to="/moderator/articles" onClick={onMobileClose} className="admin-nav-link" title={language === 'vi' ? 'Kiểm duyệt bài viết' : 'Review articles'}><FileText size={17} /><span>{language === 'vi' ? 'Kiểm duyệt bài viết' : 'Review articles'}</span></NavLink>}{groups.map(group => <section className="admin-nav-group" key={group.label.en}><div className="admin-nav-group-title"><span>{group.label[language]}</span><ChevronDown size={14} /></div>{group.items.map(({ label, path, icon: Icon }) => <NavLink key={path} to={path} end={path === '/admin' || path === '/'} onClick={onMobileClose} className={({ isActive }) => `admin-nav-link ${isActive ? 'is-active' : ''}`}><Icon size={17} /><span>{label[language]}</span></NavLink>)}</section>)}</nav>
-    <StaffSettingsLinks language={language} onNavigate={onMobileClose} />
-    <div className="admin-sidebar-account"><AccountIdentity profile={profile} /><button onClick={onLogout} aria-label={language === 'vi' ? 'Đăng xuất' : 'Log out'}><LogIn size={17} /></button></div>
-  </aside></>
+export function AdminSidebar({ language, profile, onLogout, isModerator = false }: Props) {
+  const { close } = useSidebarNav()
+  const review = language === 'vi' ? 'Kiểm duyệt bài viết' : 'Review articles'
+  return <SidebarFrame mobileTitle="Admin management" toggleLabel="Toggle admin menu" closeLabel="Close admin menu" footer={<SidebarAccount profile={profile} onLogout={onLogout} logoutLabel={language === 'vi' ? 'Đăng xuất' : 'Log out'} />}>
+    {isModerator && <SidebarGroup><SidebarMenu><SidebarMenuItem><SidebarMenuButton asChild tooltip={review} className={activeLink}><NavLink to="/moderator/articles" onClick={close}><FileText /><span>{review}</span></NavLink></SidebarMenuButton></SidebarMenuItem></SidebarMenu></SidebarGroup>}
+    {groups.map(group => <SidebarGroup key={group.label.en}>
+      <SidebarGroupLabel className="uppercase tracking-[.05em]">{group.label[language]}</SidebarGroupLabel>
+      <SidebarMenu>
+        {group.items.map(({ label, path, icon: Icon }) => <SidebarMenuItem key={path}><SidebarMenuButton asChild tooltip={label[language]} className={activeLink}><NavLink to={path} end={path === '/admin' || path === '/'} onClick={close}><Icon /><span>{label[language]}</span></NavLink></SidebarMenuButton></SidebarMenuItem>)}
+      </SidebarMenu>
+    </SidebarGroup>)}
+    <StaffSettingsLinks language={language} onNavigate={close} />
+  </SidebarFrame>
 }

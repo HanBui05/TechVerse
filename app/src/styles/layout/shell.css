@@ -2,14 +2,10 @@
   min-height: 100vh;
 }
 
+/* The shadcn sidebar-gap reserves the sidebar width; legacy pages keep only their own padding. */
 .page-content {
-  margin-left: 250px;
   min-height: 100vh;
-  transition: margin-left .3s ease;
-}
-
-.sidebar-collapsed .page-content {
-  margin-left: 76px;
+  transition: background-color .28s ease, color .28s ease, border-color .28s ease, box-shadow .28s ease;
 }
 
 .placeholder-icon {
@@ -41,61 +37,7 @@
 }
 
 .placeholder-page p {
-  color: var(--muted);
+  color: var(--muted-foreground);
   line-height: 1.7;
   max-width: 500px;
-}
-
-.mobile-topbar {
-  display: none;
-}
-
-.mobile-scrim {
-  display: none;
-}
-
-@media (max-width: 700px) {
-  .mobile-topbar {
-    display: flex;
-  }
-
-  .mobile-topbar {
-    align-items: center;
-    background: var(--sidebar);
-    border-bottom: 1px solid var(--border);
-    height: 64px;
-    justify-content: space-between;
-    padding: 0 16px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-
-  .mobile-scrim.is-visible {
-    background: var(--scrim);
-    bottom: 0;
-    display: block;
-    left: 0;
-    position: fixed;
-    right: 0;
-    top: 0;
-    z-index: 15;
-  }
-
-  .page-content,
-  .sidebar-collapsed .page-content {
-    margin-left: 0;
-  }
-}
-
-.page-content,
-.mobile-topbar {
-  transition: background-color .28s ease, color .28s ease, border-color .28s ease, box-shadow .28s ease;
-}
-
-@media (min-width: 701px) {
-  .page-content {
-    transition: margin-left .68s cubic-bezier(.22, .8, .24, 1);
-    will-change: margin-left;
-  }
 }
