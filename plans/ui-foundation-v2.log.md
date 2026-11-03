@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ui-foundation-v2.
 
 ## Bắt đầu từ đây (cập nhật 2026-11-03)
 
-- **Module `ui-foundation-v2` hoàn tất và đã merge vào `main`** (Task 1–7b + nhiệm vụ sửa UI Admin/Moderator trên `refactor/admin-ui`, vòng 1–3 đã nhận 2026-11-03). Module đang làm chuyển sang `article-flow` (xem `plans/article-flow.log.md`).
+- **Module `ui-foundation-v2` hoàn tất; `refactor/admin-ui` đã push, người dùng tự mở PR → `main` (merge commit) vì tài khoản `gh` trên máy không phải cộng tác viên repo** (Task 1–7b + nhiệm vụ sửa UI Admin/Moderator trên `refactor/admin-ui`, vòng 1–3 đã nhận 2026-11-03). Module đang làm chuyển sang `article-flow` (xem `plans/article-flow.log.md`).
 - Đã có trên `main`: Admin Người dùng/Chủ đề/Thẻ/Hồ sơ tác giả theo ảnh `docs/image_admin_page/` (ghi chú `README.md`), `AdminPagination` 12/trang, `adminErrorText` (dịch theo `code`), icon chủ đề (V9 `topics.icon`, `simple-icons`), Moderator `/moderator` + `/moderator/articles` cùng khung Admin.
 - **Chưa kiểm:** logo thật lưu qua backend (backend người dùng cần khởi động lại cho V9); Moderator với bài thật (DB dev không có bài); mobile Hồ sơ tác giả.
 - **Ngoài phạm vi:** link logo Auth/topbar mobile < 44px.
