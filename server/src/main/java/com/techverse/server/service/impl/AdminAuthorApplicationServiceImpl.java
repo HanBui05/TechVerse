@@ -157,7 +157,7 @@ public class AdminAuthorApplicationServiceImpl implements AdminAuthorApplication
 	private AdminAuthorApplicationSummaryResponse toSummary(AuthorProfile profile) {
 		User user = profile.getUser();
 		return AdminAuthorApplicationSummaryResponse.builder()
-				.id(profile.getId()).userId(user.getId()).fullName(user.getFullName()).email(user.getEmail())
+				.id(profile.getId()).userId(user.getId()).fullName(user.getFullName()).email(user.getEmail()).avatarUrl(user.getAvatarUrl())
 				.active(user.isActive()).expertise(profile.getExpertise()).status(profile.getStatus())
 				.version(profile.getVersion()).createdAt(profile.getCreatedAt()).updatedAt(profile.getUpdatedAt()).build();
 	}
@@ -166,7 +166,7 @@ public class AdminAuthorApplicationServiceImpl implements AdminAuthorApplication
 		User user = profile.getUser();
 		User reviewer = profile.getReviewedBy();
 		return AdminAuthorApplicationDetailResponse.builder()
-				.id(profile.getId()).userId(user.getId()).fullName(user.getFullName()).email(user.getEmail())
+				.id(profile.getId()).userId(user.getId()).fullName(user.getFullName()).email(user.getEmail()).avatarUrl(user.getAvatarUrl())
 				.active(user.isActive()).bio(profile.getBio()).expertise(profile.getExpertise())
 				.portfolioUrl(profile.getPortfolioUrl()).status(profile.getStatus()).version(profile.getVersion())
 				.reviewNote(profile.getReviewNote()).reviewedBy(reviewer == null ? null : reviewer.getId())

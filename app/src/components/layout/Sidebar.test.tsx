@@ -71,6 +71,30 @@ it('lists only routable entries in the admin sidebar and keeps the moderator lin
   for (const name of ['Trang chủ', 'Về trang người dùng', 'Hồ sơ tác giả', 'Quản lý người dùng', 'Chủ đề', 'Thẻ', 'Kiểm duyệt bài viết']) expect(screen.queryByRole('link', { name })).not.toBeNull()
 })
 
+// Staff sidebars match the user sidebar: coloured icons, settings collapsed until opened or visited.
+it.each([
+  ['admin', <AdminSidebar language="vi" profile={profile} onLogout={props.onLogout} isModerator />],
+  ['moderator', <ModeratorSidebar language="vi" profile={profile} onLogout={props.onLogout} />],
+])('%s sidebar keeps settings collapsed until opened', (_, sidebar) => {
+  render(<Shell>{sidebar}</Shell>)
+  const trigger = screen.getByRole('button', { name: 'Cài đặt' })
+  expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  expect(screen.queryByRole('link', { name: 'Giao diện' })).toBeNull()
+  fireEvent.click(trigger)
+  expect(screen.queryByRole('link', { name: 'Giao diện' })).not.toBeNull()
+  cleanup()
+  render(<Shell route="/settings/theme">{sidebar}</Shell>)
+  expect(screen.queryByRole('link', { name: 'Ngôn ngữ' })).not.toBeNull()
+})
+
+it('colours every admin menu icon and drops labels of features that do not exist', () => {
+  render(<Shell><AdminSidebar language="vi" profile={profile} onLogout={props.onLogout} isModerator /></Shell>)
+  const links = within(screen.getByRole('navigation')).getAllByRole('link')
+  expect(links.length).toBeGreaterThanOrEqual(7)
+  for (const link of links) expect(link.querySelector('svg[data-tone]')).not.toBeNull()
+  for (const text of [/học viên/i, /bài giảng/i, /learners/i, /lessons/i]) expect(screen.queryByText(text)).toBeNull()
+})
+
 it('keeps settings collapsed until opened, unless the current page is a settings page', () => {
   render(<Shell><Sidebar {...props} profile={profile} /></Shell>)
   const trigger = screen.getByRole('button', { name: 'Cài đặt' })

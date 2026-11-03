@@ -12,6 +12,9 @@ export function toneFor(name: string): BadgeTone {
 
 const STATUS_TONES: Record<string, BadgeTone> = {
   PUBLISHED: 'green',
+  // Account states shown on admin pages (derived from `active`, not an API enum).
+  ACTIVE: 'green',
+  LOCKED: 'rose',
   APPROVED: 'green',
   PENDING: 'amber',
   CHANGES_REQUESTED: 'sky',

@@ -8,7 +8,7 @@ import lombok.Builder;
 
 @Builder
 public record AdminAuthorApplicationDetailResponse(
-		UUID id, UUID userId, String fullName, String email, boolean active,
+		UUID id, UUID userId, String fullName, String email, String avatarUrl, boolean active,
 		String bio, String expertise, String portfolioUrl, AuthorProfileStatus status, long version,
 		String reviewNote, UUID reviewedBy, String reviewerName, Instant reviewedAt,
 		String suspensionReason, UUID suspendedBy, Instant suspendedAt,

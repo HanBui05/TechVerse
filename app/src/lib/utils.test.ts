@@ -24,6 +24,7 @@ describe('statusTone', () => {
     ['PUBLISHED', 'green'], ['APPROVED', 'green'],
     ['PENDING', 'amber'], ['CHANGES_REQUESTED', 'sky'],
     ['REJECTED', 'rose'], ['REMOVED', 'rose'], ['SUSPENDED', 'rose'],
+    ['ACTIVE', 'green'], ['LOCKED', 'rose'],
     ['DRAFT', 'slate'], ['HIDDEN', 'slate'], ['NOT_APPLIED', 'slate'],
   ] as const)('%s → %s', (status, tone) => {
     expect(statusTone(status)).toBe(tone)

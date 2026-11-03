@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { ArrowRight, ChevronDown, LogOut, Settings, UserRound, UserRoundPlus, X } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { navItems, settingsItems } from '../../data/navigation'
 import type { Language } from '../../types/preferences'
 import type { Translation } from '../../data/i18n'
@@ -17,7 +18,7 @@ import {
 // NavLink sets aria-current on the active route; style it instead of re-matching paths.
 export const activeLink = 'aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-semibold aria-[current=page]:text-accent-text'
 // Icons keep their tone on hover/active; `!` beats SidebarMenuSubButton's `[&>svg]:text-*`.
-const toneText: Record<string, string> = { blue: 'text-info!', green: 'text-success!', violet: 'text-violet!', amber: 'text-warning!' }
+export const toneText: Record<string, string> = { blue: 'text-info!', green: 'text-success!', violet: 'text-violet!', amber: 'text-warning!', rose: 'text-tone-rose-fg!', cyan: 'text-tone-cyan-fg!' }
 
 // Collapse state (desktop) and the mobile sheet live in the SidebarProvider that App controls.
 export function useSidebarNav() {
@@ -42,6 +43,29 @@ export function SidebarFrame({ mobileTitle, toggleLabel, closeLabel, footer, chi
   </UiSidebar>
 }
 
+type SettingsLink = { path: string; icon: LucideIcon; tone: string; label: string }
+// Collapsed by default; opens whenever the current page is one of its links so the active link stays visible.
+export function SettingsMenu({ label, links, className }: { label: string; links: SettingsLink[]; className?: string }) {
+  const { pathname } = useLocation()
+  const { iconOnly, close } = useSidebarNav()
+  const { setOpen } = useSidebar()
+  const inSettings = links.some(link => link.path === pathname)
+  const [open, setSettingsOpen] = useState(inSettings)
+  useEffect(() => { if (inSettings) setSettingsOpen(true) }, [inSettings])
+  return <SidebarGroup className={className}>
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton tooltip={label} aria-expanded={open} onClick={() => { if (iconOnly) { setOpen(true); setSettingsOpen(true) } else setSettingsOpen(!open) }}>
+          <Settings className={toneText.amber} data-tone="amber" /><span>{label}</span><ChevronDown className={`ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
+        </SidebarMenuButton>
+        {open && !iconOnly && <SidebarMenuSub className="animate-in fade-in slide-in-from-top-1">
+          {links.map(({ path, icon: Icon, tone, label }) => <SidebarMenuSubItem key={path}><SidebarMenuSubButton asChild className={activeLink}><NavLink to={path} onClick={close}><Icon className={toneText[tone]} data-tone={tone} /><span>{label}</span></NavLink></SidebarMenuSubButton></SidebarMenuSubItem>)}
+        </SidebarMenuSub>}
+      </SidebarMenuItem>
+    </SidebarMenu>
+  </SidebarGroup>
+}
+
 export function SidebarAccount({ profile, onLogout, logoutLabel }: { profile: UserProfile | null; onLogout: () => void; logoutLabel: string }) {
   return <div className="flex min-w-0 items-center gap-2 group-data-[collapsible=icon]:flex-col">
     <AccountIdentity profile={profile} />
@@ -51,13 +75,7 @@ export function SidebarAccount({ profile, onLogout, logoutLabel }: { profile: Us
 
 type Props = { language: Language; t: Translation; authenticated: boolean; roles: string[]; profile: UserProfile | null; onLogout: () => void }
 export function Sidebar({ language, t, authenticated, roles, profile, onLogout }: Props) {
-  const { pathname } = useLocation()
   const { iconOnly, close } = useSidebarNav()
-  const { setOpen } = useSidebar()
-  // Collapsed by default; open whenever the current page lives inside Settings so the active link stays visible.
-  const inSettings = pathname === '/profile' || pathname.startsWith('/settings/')
-  const [settingsOpen, setSettingsOpen] = useState(inSettings)
-  useEffect(() => { if (inSettings) setSettingsOpen(true) }, [inSettings])
   const isAuthor = roles.includes('AUTHOR')
   const subLinks = [
     ...(authenticated ? [{ path: '/profile', icon: UserRound, tone: 'blue', label: language === 'vi' ? 'Thông tin cá nhân' : 'Personal information' }] : []),
@@ -78,17 +96,6 @@ export function Sidebar({ language, t, authenticated, roles, profile, onLogout }
       </SidebarMenu>
     </SidebarGroup>
     {authenticated && <SidebarSeparator />}
-    <SidebarGroup>
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton tooltip={t.settings} aria-expanded={settingsOpen} onClick={() => { if (iconOnly) { setOpen(true); setSettingsOpen(true) } else setSettingsOpen(!settingsOpen) }}>
-            <Settings className={toneText.amber} data-tone="amber" /><span>{t.settings}</span><ChevronDown className={`ml-auto transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
-          </SidebarMenuButton>
-          {settingsOpen && !iconOnly && <SidebarMenuSub className="animate-in fade-in slide-in-from-top-1">
-            {subLinks.map(({ path, icon: Icon, tone, label }) => <SidebarMenuSubItem key={path}><SidebarMenuSubButton asChild className={activeLink}><NavLink to={path} onClick={close}><Icon className={toneText[tone]} /><span>{label}</span></NavLink></SidebarMenuSubButton></SidebarMenuSubItem>)}
-          </SidebarMenuSub>}
-        </SidebarMenuItem>
-      </SidebarMenu>
-    </SidebarGroup>
+    <SettingsMenu label={t.settings} links={subLinks} />
   </SidebarFrame>
 }

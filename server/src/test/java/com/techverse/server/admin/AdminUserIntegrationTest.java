@@ -154,6 +154,7 @@ class AdminUserIntegrationTest {
 	@Test
 	void adminListsTheIntersectionOfAllSupportedFiltersWithPagination() throws Exception {
 		String adminAccessToken = loginAndGetAccessToken("admin@example.com");
+		jdbcTemplate.update("UPDATE techverse.users SET avatar_url = ? WHERE id = ?", "https://cdn.example.com/pending.png", pendingAuthorId);
 
 		mockMvc.perform(get("/api/v1/admin/users")
 				.header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
@@ -173,6 +174,7 @@ class AdminUserIntegrationTest {
 				.andExpect(jsonPath("$.data.content[0].roles[0]").value("LEARNER"))
 				.andExpect(jsonPath("$.data.content[0].active").value(true))
 				.andExpect(jsonPath("$.data.content[0].authorProfileStatus").value("PENDING"))
+				.andExpect(jsonPath("$.data.content[0].avatarUrl").value("https://cdn.example.com/pending.png"))
 				.andExpect(jsonPath("$.data.page").value(0))
 				.andExpect(jsonPath("$.data.size").value(20))
 				.andExpect(jsonPath("$.data.totalElements").value(1))

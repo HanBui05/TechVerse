@@ -21,7 +21,7 @@
 |---|---|---|---|
 | ADMIN (+LEARNER) | `INITIAL_ADMIN_EMAIL` | `INITIAL_ADMIN_PASSWORD` | `.env`, mặc định trong `application-dev.yaml`; tạo bởi `InitialAdminInitializer` |
 | MODERATOR (+LEARNER) | `moderator@techverse.test` | giống `INITIAL_ADMIN_PASSWORD` (chép hash từ admin) | Chèn tay vào DB dev 2026-11-03; không có trong migration — DB mới thì chèn lại bằng lệnh dưới |
-| AUTHOR | chưa có | — | Cần thì tạo learner rồi duyệt hồ sơ Author bằng Admin |
+| AUTHOR | `bao.author@techverse.test` (đã duyệt), `huy.author@techverse.test` (đang đình chỉ) | giống `INITIAL_ADMIN_PASSWORD` | Seed dev `scripts/dev-seed-admin.sql` (mục dưới) |
 
 ```sql
 -- Chạy trong psql (schema techverse); idempotent.
@@ -32,6 +32,19 @@ insert into user_roles (user_id, role_id)
   select u.id, r.id from users u, roles r where u.email = 'moderator@techverse.test' and r.name in ('LEARNER', 'MODERATOR')
   on conflict do nothing;
 ```
+
+## Dữ liệu mẫu cho trang Admin (chỉ DB dev)
+
+`scripts/dev-seed-admin.sql` (thêm 2026-11-03 theo yêu cầu người dùng): 6 learner `*.author@techverse.test` (1 bị khóa), hồ sơ tác giả đủ trạng thái PENDING/APPROVED/REJECTED/SUSPENDED + lịch sử duyệt, 8 chủ đề, 12 thẻ (mỗi loại 1 mục ngừng hoạt động). Không phải migration Flyway, không chạy ở production. Idempotent; mật khẩu chép hash từ admin.
+
+```bash
+# Compose (service postgres):
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -v admin_email=<INITIAL_ADMIN_EMAIL>' < scripts/dev-seed-admin.sql
+# Container chạy riêng (máy hiện tại: tên `techverse`):
+docker exec -i techverse sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -v admin_email=<INITIAL_ADMIN_EMAIL>' < scripts/dev-seed-admin.sql
+```
+
+User/DB lấy từ biến môi trường trong container (Compose mặc định `techverse`, container hiện tại `root`). Không tìm thấy admin → seed báo lỗi và rollback toàn bộ. Console Windows có thể hiển thị lỗi vài ký tự tiếng Việt khi in kết quả; dữ liệu lưu đúng UTF-8.
 
 ## Luồng phiên đăng nhập (frontend)
 

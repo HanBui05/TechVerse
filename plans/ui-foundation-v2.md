@@ -248,12 +248,12 @@ Không thêm `react-hook-form`, `zod`, thư viện UI thứ hai hoặc `tailwind
 
 #### Xong khi — Task 5
 
-- [ ] Home khớp mẫu đầu trang/section/card ở desktop, xếp hợp lý trên mobile và giữ nguyên route/copy/hành vi.
-- [ ] Không khôi phục Featured/khóa học/community đã bỏ; không sao chép nội dung/ảnh/logo/code của JavaBuilder.
-- [ ] `EmptyState` có API trình bày chung, test role/nội dung/hành động tùy chọn và không chứa copy nghiệp vụ.
-- [ ] Không còn `home.css`, import hoặc selector Home mồ côi; CSS của các trang hoãn vẫn nguyên vẹn.
-- [ ] Trong `app/`, test liên quan `src/pages/Home/HomePage.test.tsx` và test mới của `EmptyState` đạt bằng `npx vitest run <các file>`; `npm run build` đạt. Không chạy full `npm test` hoặc backend.
-- [ ] Kiểm bằng mắt Home dark/light desktop và mobile; thiếu môi trường ghi “chưa kiểm”.
+- [x] Home khớp mẫu đầu trang/section/card ở desktop, xếp hợp lý trên mobile và giữ nguyên route/copy/hành vi.
+- [x] Không khôi phục Featured/khóa học/community đã bỏ; không sao chép nội dung/ảnh/logo/code của JavaBuilder.
+- [x] `EmptyState` có API trình bày chung, test role/nội dung/hành động tùy chọn và không chứa copy nghiệp vụ.
+- [x] Không còn `home.css`, import hoặc selector Home mồ côi; CSS của các trang hoãn vẫn nguyên vẹn.
+- [x] Trong `app/`, test liên quan `src/pages/Home/HomePage.test.tsx` và test mới của `EmptyState` đạt bằng `npx vitest run <các file>`; `npm run build` đạt. Không chạy full `npm test` hoặc backend.
+- [x] Kiểm bằng mắt Home dark/light desktop và mobile; thiếu môi trường ghi “chưa kiểm”.
 
 ### Task 6 — Admin
 

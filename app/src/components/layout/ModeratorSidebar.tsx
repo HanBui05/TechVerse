@@ -23,6 +23,6 @@ export function ModeratorSidebar({ language, profile, onLogout }: Props) {
         {links.map(({ path, end, icon: Icon, label }) => <SidebarMenuItem key={path}><SidebarMenuButton asChild tooltip={label} className={activeLink}><NavLink to={path} end={end} onClick={close}><Icon /><span>{label}</span></NavLink></SidebarMenuButton></SidebarMenuItem>)}
       </SidebarMenu>
     </SidebarGroup>
-    <StaffSettingsLinks language={language} onNavigate={close} />
+    <StaffSettingsLinks language={language} />
   </SidebarFrame>
 }

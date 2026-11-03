@@ -216,6 +216,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 				.id(user.getId())
 				.fullName(user.getFullName())
 				.email(user.getEmail())
+				.avatarUrl(user.getAvatarUrl())
 				.roles(roles)
 				.active(user.isActive())
 				.authorProfileStatus(authorProfileStatus)

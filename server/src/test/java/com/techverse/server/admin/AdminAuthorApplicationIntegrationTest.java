@@ -98,17 +98,20 @@ class AdminAuthorApplicationIntegrationTest {
 
     @Test
     void adminListsAndReadsPendingApplicationWithoutReviewerOrSensitiveFields() throws Exception {
+        jdbc.update("UPDATE techverse.users SET avatar_url = ? WHERE id = ?", "https://cdn.example.com/applicant.png", applicantId);
         mvc.perform(get(ROOT).header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
                         .param("status", "PENDING").param("keyword", "APPLICANT").param("active", "true")
                         .param("page", "0").param("size", "1"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].id").value(applicationId.toString()))
                 .andExpect(jsonPath("$.data.content[0].version").value(0))
+                .andExpect(jsonPath("$.data.content[0].avatarUrl").value("https://cdn.example.com/applicant.png"))
                 .andExpect(jsonPath("$.data.content[0].bio").doesNotExist())
                 .andExpect(jsonPath("$.data.content[0].password").doesNotExist());
         detail(applicationId).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.bio").value(BIO))
                 .andExpect(jsonPath("$.data.userId").value(applicantId.toString()))
+                .andExpect(jsonPath("$.data.avatarUrl").value("https://cdn.example.com/applicant.png"))
                 .andExpect(jsonPath("$.data.reviewedBy").isEmpty())
                 .andExpect(jsonPath("$.data.reviewedAt").isEmpty())
                 .andExpect(jsonPath("$.data.password").doesNotExist());

@@ -15,6 +15,7 @@ public class AdminUserSummaryResponse {
 	private final UUID id;
 	private final String fullName;
 	private final String email;
+	private final String avatarUrl;
 	private final List<RoleName> roles;
 	private final boolean active;
 	private final AuthorProfileStatus authorProfileStatus;

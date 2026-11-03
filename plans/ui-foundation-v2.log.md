@@ -4,22 +4,50 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ui-foundation-v2.
 
 ## Bắt đầu từ đây (cập nhật 2026-11-03)
 
-- **Task 1–5 đã nhận, đã commit WIP** (Task 5 nhận 2026-11-03) — không đọc lại, không làm lại, không kiểm lại. **Task tiếp theo: Task 6** (Admin), session mới; dùng Playwright MCP để kiểm bằng mắt.
-- **Thứ tự sau đó:** Task 6 (chỉ Admin; consumer đầu tiên của `components/EmptyState.tsx`) → Task 7a (chỉ Moderator) → Task 7b (dọn CSS ngoài Author/Blogs, giữ preflight tắt, gỡ `framer-motion`).
-- **Đã tách sang module riêng:** Author (`AuthorApplyPage`, `AuthorBlogsPage`, `TagPicker`) → `author-ui-shadcn`; Blogs (`BlogsPage`, `BlogDetailPage`, `MarkdownContent`, wrapper `Pagination`) → `blogs-ui-shadcn`. Không sửa hoặc redesign các trang/component này trong Task 6/7.
-- **Bỏ qua — không liên quan Task 6:** trang/CSS Author và Blogs; trang Moderator + `moderator.css` thuộc Task 7a; `server/`; các module cũ khác trong `PLAN.md`.
-- **Kiểm bằng mắt từ nay dùng Playwright MCP** (`.mcp.json`, nạp sau khi khởi động lại phiên; giả lập điện thoại cảm ứng được — `pointer: coarse` khớp). Thủ tục: skill `visual-check`.
-- **Phát hiện chờ người dùng quyết:** link logo trên topbar mobile chỉ 32×32px khi cảm ứng (< 44px, QĐ 1A) — thuộc Task 2 đã nhận, chưa sửa.
+- **Task 1–6 đã nhận, đã commit WIP** (Task 6 nhận 2026-11-03) — không đọc lại, không làm lại, không kiểm lại. **Task tiếp theo: Task 7a** (chỉ Moderator), session mới.
+- **Cho Task 7a:** làm theo hướng giao diện Admin đã duyệt (header icon, Card filter, hàng trong Card, Badge tone, Skeleton, `EmptyState`, Sheet chi tiết, AlertDialog); tìm động thì dùng `hooks/use-debounced-value.ts` + chặn response cũ (`latest` ref như 3 trang Admin); icon màu sidebar Moderator (`toneText`); phần tử thô `button`/`ul`/`dd` gắn `data-slot` hoặc `m-0`. Spec Task 7a chưa ghi hướng “sinh động” — nếu người dùng muốn thì Codex cập nhật spec trước.
+- **Sau đó:** Task 7b (dọn CSS ngoài Author/Blogs, giữ preflight tắt, gỡ `framer-motion`).
+- **Đã tách sang module riêng:** Author (`AuthorApplyPage`, `AuthorBlogsPage`, `TagPicker`) → `author-ui-shadcn`; Blogs (`BlogsPage`, `BlogDetailPage`, `MarkdownContent`, wrapper `Pagination`) → `blogs-ui-shadcn`. Không sửa hoặc redesign các trang/component này trong Task 7.
+- **Bỏ qua — không liên quan Task 7a:** trang Admin (đã nhận), trang/CSS Author và Blogs; `server/` trừ khi spec 7a đòi; các module cũ khác trong `PLAN.md`.
+- **Môi trường kiểm:** Playwright MCP (`.mcp.json`) nạp sau khi khởi động lại phiên — phiên Task 6 không có, đã dùng script tạm. Dữ liệu mẫu Admin: `scripts/dev-seed-admin.sql` (RUNBOOK). Avatar thật trong danh sách Admin cần backend chạy code mới (khởi động lại backend).
+- **Phát hiện chờ người dùng quyết:** link logo trên topbar mobile chỉ 32×32px khi cảm ứng (< 44px, QĐ 1A) — thuộc Task 2 đã nhận, chưa sửa. Nút “Trước/Tiếp” wrapper `Pagination` 40px cảm ứng — thuộc `blogs-ui-shadcn`.
 
 ## Quyết định người dùng chưa có trong spec
 
-- (không có)
+- **2026-11-03 — Task 6 thiết kế sinh động hơn, không chỉ đổi primitive** (spec chờ Codex cập nhật; đứng trên “không thêm copy/khối” của spec cho riêng Admin):
+  - Được thêm khối/copy ngắn vi/en thuần trình bày: đầu trang có icon + mô tả + số kết quả; hàng danh sách có avatar, Badge màu, icon meta, hover; Skeleton khi tải; `EmptyState` có icon; chi tiết trong Sheet phải; Users có thanh hành động nổi khi chọn nhiều; Author applications có chip lọc nhanh theo trạng thái sẵn có; Taxonomy dạng card màu + form trong Dialog. Hiệu ứng chỉ CSS/Tailwind.
+  - **Bỏ mọi thứ của tính năng chưa có:** thẻ số liệu giả Dashboard (khóa học, doanh thu, học viên…), nhãn nhóm “học viên/bài giảng”; Dashboard thay bằng lời chào + thẻ lối tắt tới các trang Admin thật. Không bịa số liệu.
+  - **Sidebar Admin giống sidebar user:** icon mỗi mục có màu tone (`toneText` của `Sidebar.tsx`); nhóm Cài đặt là mục thu gọn, **mặc định đóng**, tự mở khi đang ở trang cài đặt. `StaffSettingsLinks` dùng chung với Moderator nên Moderator đổi theo.
+  - Giữ nguyên API/payload/quyền/route/bảng màu/font/wrapper `Pagination`. Làm Dashboard + Users trước, chụp dark/light cho người dùng duyệt hướng rồi mới làm 2 trang còn lại.
+  - **2026-11-03 — Chỉnh sau khi người dùng test Task 6:** (1) avatar trong danh sách/chi tiết Users và Author applications phải là avatar thật của người dùng (đang hiện chữ cái/sai); (2) ô tìm kiếm Admin tìm động khi gõ (không cần Enter); (3) phần chuyên môn trong hồ sơ tác giả trình bày đẹp hơn dạng chữ thường.
+  - **2026-11-03 — Seed dev cho Admin:** người dùng yêu cầu thêm dữ liệu mẫu hồ sơ tác giả/chủ đề/thẻ để test → `scripts/dev-seed-admin.sql` (SQL idempotent chạy tay vào DB dev, không phải migration; cách chạy ở `docs/RUNBOOK.md`). Đã chạy vào DB dev.
+  - **2026-11-03 — Người dùng duyệt hướng** (Dashboard + Users): “khá ưng”, được tự do sáng tạo cho Author applications + Taxonomy miễn hợp bối cảnh quản trị.
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-03 — Nhận Task 6
+- Người dùng nhận Task 6; commit WIP `wip(ui-foundation-v2): Task 6`; nhờ Codex đồng bộ spec theo log (gồm quyết định thiết kế sinh động, sửa `server/` avatar, seed dev).
+
+### 2026-11-03 — Review bổ sung Task 6
+- Người dùng yêu cầu review lại phần sửa sau vòng 2: 3 × medium (race tìm động, lệnh seed sai Compose, seed commit một phần) — đã sửa hết, 96/96, build đạt.
+- Bài học: tìm động/đổi filter nhanh cần chặn response cũ (request id) — áp dụng khi làm Moderator 7a.
+
+### 2026-11-03 — Chỉnh Task 6 sau khi người dùng test
+- Avatar danh sách sai do API thiếu `avatarUrl` → thêm vào 3 DTO admin (sửa `server/`, test tích hợp đỏ → xanh). Tìm động debounce 300 ms. Chuyên môn thành chip màu.
+- Bài học: heredoc Python trong Git Bash dễ vỡ dấu nháy → script sửa file viết bằng Write rồi chạy.
+
+### 2026-11-03 — Seed dev Admin
+- Thêm `scripts/dev-seed-admin.sql` (6 hồ sơ tác giả đủ trạng thái + 4 lịch sử duyệt, 8 chủ đề, 12 thẻ) theo yêu cầu người dùng; chạy 2 lần vào DB dev, số bản ghi không đổi; API Admin trả đúng. RUNBOOK có mục “Dữ liệu mẫu”.
+
+### 2026-11-03 — Task 6 phần 1
+- Người dùng muốn Admin sinh động hơn, bỏ thứ của tính năng chưa có, sidebar Admin giống user (icon màu, Cài đặt thu gọn) → ghi ở “Quyết định người dùng”.
+- Xong sidebar (`SettingsMenu` dùng chung), Dashboard lối tắt, Users (Sheet, thanh chọn nhiều, AlertDialog). 84/84, build đạt.
+- Bài học: `button`/`ul`/`dd` thô trong trang đã chuyển cần `data-slot` hoặc `m-0`, không thì dính style legacy/UA.
+- Người dùng duyệt hướng (“khá ưng”); xong Author applications, Taxonomy, dọn `admin.css`. Review vòng 1: 2 × P2 (số kết quả đầu trang, `PLAN.md` cũ) đã sửa; vòng 2 approve. 91/91, build đạt. Việc dở: người dùng nhận Task 6.
+
 ### 2026-11-03 — Nhận Task 5
 - Người dùng nhận Task 5; commit WIP `wip(ui-foundation-v2): Task 5`; nhờ Codex đồng bộ spec theo log.
 - Việc dở: quyết sửa logo topbar mobile 32px trong Task 6 hay không.
@@ -140,6 +168,24 @@ Mới nhất ở trên; mỗi phiên ≤ 6 dòng: đã làm, quyết định m�
 | Review vòng 2 | `adversarial-review --wait` chỉ trên phần sửa: **approve**, không phát hiện. Hết 2 vòng. |
 | Sau review | Playwright giả lập điện thoại cảm ứng bắt lỗi nút hero co lại/chữ tràn → `max-sm:w-full` (thay `max-sm:min-w-44 max-sm:flex-1`). Home test **5/5**, build đạt; đo lại 2 nút 342×44px, không tràn, không cuộn ngang. Sửa nhỏ sau vòng 2, chưa review lại. |
 | Kiểm bằng mắt | Chrome, cổng 3000 (phiên Moderator có sẵn): `/` light + dark desktop — H1 48/48 700, tracking normal, `ul` không bullet/padding, nền section đổi theo theme, không cuộn ngang. Mobile iframe 390px: H1 30px, 2 nút xếp dọc 324px, tag xuống dòng, không cuộn ngang. Chưa kiểm cảm ứng thật. |
+
+## Task 6 — Admin
+
+| Mục | Kết quả |
+|---|---|
+| Code (phần 1) | Sidebar: `SettingsMenu` dùng chung trong `Sidebar.tsx` (thu gọn mặc định, tự mở khi route là một link của nó) cho user + `StaffSettingsLinks` (Admin/Moderator); `toneText` export, thêm `rose`/`cyan`. `AdminSidebar`: icon tone từng mục, nhóm “Người dùng”/“Nội dung” (bỏ “học viên/bài giảng”), Thẻ dùng icon `Tag`. Dashboard: bỏ thẻ số liệu giả + bảng hoạt động/online; lời chào + 4 thẻ lối tắt (tone theo icon sidebar) + 2 nút ngôn ngữ/giao diện cũ. Users: header icon, Card filter (Input + 5 NativeSelect), danh sách hàng (avatar chữ cái, email/ngày tham gia, Badge vai trò `toneFor`, hồ sơ tác giả `statusTone`, trạng thái), Skeleton, `EmptyState`, thanh chọn nhiều nổi, chi tiết trong Sheet phải, AlertDialog thay `window.confirm` (mô tả = câu hỏi cũ, payload giữ nguyên). |
+| Lệch khác spec | Type nội bộ `User` của trang thêm `createdAt`, `authorProfileStatus`, `avatarUrl` (API đã trả sẵn). `statusTone` thêm `ACTIVE`/`LOCKED` (suy từ `active`). `ui/sheet.tsx` nút đóng thêm `data-slot` + 32px/44px cảm ứng (trước đó bị viền legacy). Phần tử thô mới (`ul`, `button` hàng) gắn `data-slot` để nhận reset. |
+| Test | TDD đỏ → xanh. `npx vitest run src/components/layout/Sidebar.test.tsx src/StaffPreferences.test.tsx src/pages/Admin src/lib/utils.test.ts src/components/ui`: **84/84** (10 file); build đạt. |
+| Kiểm bằng mắt | Playwright script tạm (MCP chưa nạp trong phiên), admin dev, desktop 1440 dark + light: `/admin`, `/admin/users` (chọn 2 → thanh nổi; Sheet 448px), không cuộn ngang. Mobile cảm ứng 390: `coarse` khớp, không cuộn ngang, checkbox hàng 44×44; nút “Trước/Tiếp” của wrapper `Pagination` 40px (có từ trước, thuộc `blogs-ui-shadcn`). |
+| Code (phần 2) | Người dùng duyệt hướng. `AuthorApplicationsPage`: chip lọc trạng thái (`aria-pressed`, thay select “Hồ sơ”, cùng tham số `status`, mặc định PENDING), Card filter, hàng (avatar, email, chuyên môn, ngày nộp, Badge `statusTone`, “Đã khóa”), Sheet chi tiết (chuyên môn, giới thiệu, portfolio, ghi chú, lịch sử duyệt từ `reviewHistory`), Textarea + Phê duyệt/Từ chối/Tạm ngưng/Khôi phục → AlertDialog (câu hỏi cũ), payload giữ nguyên. `TaxonomyPage`: lưới card (ô `#` màu `toneFor(name)`, Badge Hoạt động/Ẩn, card ẩn mờ), nút Tạo mới ở header + `EmptyState`, form tạo/sửa trong Dialog (đóng khi lưu xong, thông báo `role=status`), bật/tắt → AlertDialog. `ui/dialog.tsx` nút đóng 32px/44px cảm ứng. `admin.css` chỉ còn `.application-row`/`.applications-actions` (AuthorBlogsPage). |
+| Lệch khác spec (2) | Type nội bộ `Application` thêm `active`, `createdAt`, `suspensionReason`, `reviewHistory` (API trả sẵn). Câu hỏi bật/tắt Taxonomy thêm bản en (trước chỉ vi). Thông báo lưu Taxonomy giữ chỉ vi như cũ. |
+| Test (cuối) | `npx vitest run src/components/layout/Sidebar.test.tsx src/StaffPreferences.test.tsx src/pages/Admin src/lib/utils.test.ts src/components/ui`: **91/91** (12 file); `npm run build` đạt. Không chạy `App.auth.test.tsx` (định tuyến không đổi). |
+| Kiểm bằng mắt (2) | Playwright script, admin dev, **API Admin giả lập bằng `ctx.route`** (DB dev trống, không ghi DB): `/admin/author-applications` + Sheet 512px, `/admin/topics` + Dialog 512px, dark + light 1440, không cuộn ngang. Mobile cảm ứng 390: không cuộn ngang, nút trong Sheet ≥ 44px, nút đóng Sheet/Dialog 44×44. `/admin/tags` dùng chung component, không chụp riêng. |
+| Review vòng 1 | `codex-companion review --wait`: 2 × P2, đều nhận. (1) Đầu trang Users/Author applications/Taxonomy thiếu số kết quả đã chốt → `Page.totalElements` (API trả sẵn) → Badge “N kết quả/results” cạnh H1; test 3 trang assert. (2) `PLAN.md` dòng module còn ghi “chờ duyệt hướng” → đổi “đang review”. Test liên quan **91/91**, build đạt. |
+| Review vòng 2 | `adversarial-review --wait` chỉ phần sửa vòng 1: **approve**, không phát hiện. Hết 2 vòng. |
+| Sau review (người dùng test) | (1) **Avatar:** API danh sách không trả avatar → `server/`: thêm `avatarUrl` vào `AdminUserSummaryResponse`, `AdminAuthorApplicationSummaryResponse`, `AdminAuthorApplicationDetailResponse` (+ builder trong 2 service impl); frontend truyền `url` cho `UserAvatar` ở hàng + Sheet Author applications. (2) **Tìm động:** hook `hooks/use-debounced-value.ts` (300 ms) ở 3 trang, bỏ nút “Tìm”, Enter vẫn áp ngay, ô `type=search`. (3) **Chuyên môn:** tách chuỗi theo `,;\n` thành chip `Badge toneFor` (hàng: tối đa 3 + “+n”; Sheet: card tím có đếm kỹ năng), giới thiệu thành đoạn có viền trái. Test FE: +4 ca; liên quan **95/95**, build đạt. BE: `AdminUserIntegrationTest` + `AdminAuthorApplicationIntegrationTest` (đỏ → xanh 2 ca avatar); cả 2 lớp **58/58** (29 + 29). Kiểm bằng mắt: Playwright, API giả lập với avatar Cloudinary thật (backend người dùng chạy code cũ, không khởi động lại) — ảnh tải được ở Users + Sheet, gõ “han” chỉ 1 request, 5 chip, dark + light. Chưa review lại (đã hết 2 vòng). |
+| Review bổ sung (người dùng yêu cầu) | `adversarial-review --wait` trên phần sửa sau vòng 2: needs-attention, 3 × medium, đều nhận. (1) Race tìm động: response cũ về sau đè kết quả mới → `latest` ref, chỉ request mới nhất cập nhật data/error/loading ở 3 trang; test đảo thứ tự response (đỏ → xanh). (2) Lệnh seed giả định container `techverse` + user `root` → `sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'` cho cả Compose (`docker compose exec -T postgres`) và container riêng. (3) Seed commit một phần khi email admin sai → `DO` block `raise exception` ngay sau `begin` (đã thử: email sai → lỗi, không ghi gì); báo cáo chỉ đếm bản ghi seed. FE liên quan **96/96**, build đạt. Chưa kiểm: lệnh Compose (máy không dùng Compose, `.env` thiếu `POSTGRES_PASSWORD`). Không chạy thêm vòng review. |
+| Chưa kiểm / ghi nhận | Avatar qua backend thật chưa kiểm (cần khởi động lại backend). Badge số kết quả chưa chụp lại (chỉ test). Nút “Trước/Tiếp” wrapper `Pagination` 40px cảm ứng (có từ trước, thuộc `blogs-ui-shadcn`). Moderator sidebar chỉ đổi phần Cài đặt; icon màu mục chính để Task 7a. Spec chờ Codex cập nhật theo “Quyết định người dùng” 2026-11-03. |
 
 ## Ghi nhận khác
 
