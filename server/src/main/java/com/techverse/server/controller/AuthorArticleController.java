@@ -100,6 +100,55 @@ public class AuthorArticleController {
         return ok("Article updated successfully", service.update(actor(jwt), id, request));
     }
 
+    @PostMapping("/{id}/withdraw")
+    @PreAuthorize("hasRole('AUTHOR')")
+    @Operation(summary = "Withdraw a pending revision back to DRAFT; public snapshot unchanged")
+    public ApiResponse<ArticleResponse> withdraw(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return ok("Article withdrawn", service.withdraw(actor(jwt), id));
+    }
+
+    @PostMapping("/{id}/discard")
+    @PreAuthorize("hasRole('AUTHOR')")
+    @Operation(summary = "Discard an unsubmitted revision and restore the published snapshot")
+    public ApiResponse<ArticleResponse> discard(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return ok("Revision discarded", service.discard(actor(jwt), id));
+    }
+
+    @PatchMapping("/{id}/publication")
+    @PreAuthorize("hasRole('AUTHOR')")
+    @Operation(summary = "Author HIDE/UNHIDE of the published snapshot")
+    public ApiResponse<ArticleResponse> publication(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @Valid @RequestBody ArticlePublicationRequest request) {
+        return ok("Publication updated", service.publication(actor(jwt), id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+            summary =
+                    "Hard-delete a never-published draft or soft-delete a published article;"
+                            + " suspended Authors may delete")
+    public ApiResponse<Void> delete(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        service.delete(actor(jwt), id);
+        return ok("Article deleted", null);
+    }
+
+    @GetMapping("/{id}/history")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Moderation/publication history, newest first; only page/size apply")
+    public ApiResponse<PageResponse<ArticleModerationHistoryResponse>> history(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @Valid @ParameterObject @ModelAttribute ArticleFilter f) {
+        return ok(
+                "Article history retrieved",
+                service.history(actor(jwt), id, f.getPage(), f.getSize()));
+    }
+
     @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('AUTHOR')")
     @Operation(

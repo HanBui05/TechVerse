@@ -3,7 +3,7 @@ package com.techverse.server.repository.specification;
 import com.techverse.server.dto.request.PublishedArticleFilter;
 import com.techverse.server.entity.Article;
 import com.techverse.server.entity.ArticleTag;
-import com.techverse.server.enums.ArticleStatus;
+import com.techverse.server.enums.ArticlePublicationStatus;
 
 import jakarta.persistence.criteria.Predicate;
 
@@ -21,7 +21,7 @@ public final class PublishedArticleSpecification {
     public static Specification<Article> filter(PublishedArticleFilter filter) {
         return (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
-            predicates.add(cb.equal(root.get("status"), ArticleStatus.PUBLISHED));
+            predicates.add(cb.equal(root.get("publicationStatus"), ArticlePublicationStatus.PUBLISHED));
             if (filter.getTopicId() != null)
                 predicates.add(cb.equal(root.get("topic").get("id"), filter.getTopicId()));
             if (filter.getKeyword() != null && !filter.getKeyword().isBlank())

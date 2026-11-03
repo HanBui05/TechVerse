@@ -64,8 +64,8 @@ class AuthorArticleIntegrationTest {
     @MockitoSpyBean ArticleCreationRepository receipts;
     @Autowired org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     final Map<String, ArticleImageAsset> cloud = new ConcurrentHashMap<>();
-    UUID author, other, learner, topic, tag;
-    String token, otherToken, learnerToken;
+    UUID author, other, learner, moderator, topic, tag;
+    String token, otherToken, learnerToken, modToken;
 
     @BeforeEach
     void setup() throws Exception {
@@ -79,6 +79,12 @@ class AuthorArticleIntegrationTest {
         token = login("author@example.com");
         otherToken = login("other@example.com");
         learnerToken = login("learner@example.com");
+        moderator = user("moderator@example.com", false);
+        jdbc.update(
+                "INSERT INTO techverse.user_roles(user_id,role_id) SELECT ?,id FROM"
+                        + " techverse.roles WHERE name='MODERATOR'",
+                moderator);
+        modToken = login("moderator@example.com");
         topic =
                 jdbc.queryForObject(
                         "INSERT INTO techverse.topics(name) VALUES ('Backend') RETURNING id",
@@ -152,7 +158,10 @@ class AuthorArticleIntegrationTest {
                                 UUID.randomUUID(),
                                 Map.of("title", "  Intro  ", "topicId", topic, "action", "SAVE"))
                         .andExpect(status().isCreated())
-                        .andExpect(jsonPath("$.data.status").value("DRAFT"))
+                        .andExpect(jsonPath("$.data.workflowStatus").value("DRAFT"))
+                        .andExpect(jsonPath("$.data.publicationStatus").value("UNPUBLISHED"))
+                        .andExpect(jsonPath("$.data.hasUnpublishedChanges").value(false))
+                        .andExpect(jsonPath("$.data.publishedVersion").isEmpty())
                         .andExpect(jsonPath("$.data.title").value("Intro"))
                         .andExpect(jsonPath("$.data.summary").value(""))
                         .andExpect(jsonPath("$.data.createdBy").value(author.toString()))
@@ -224,7 +233,7 @@ class AuthorArticleIntegrationTest {
                 .andExpect(status().isBadRequest());
         detail(token, id)
                 .andExpect(jsonPath("$.data.title").value("Title"))
-                .andExpect(jsonPath("$.data.status").value("DRAFT"));
+                .andExpect(jsonPath("$.data.workflowStatus").value("DRAFT"));
         update(
                         id,
                         Map.of(
@@ -239,7 +248,7 @@ class AuthorArticleIntegrationTest {
                 .andExpect(status().isOk());
         update(id, Map.of("action", "SUBMIT"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("PENDING"));
+                .andExpect(jsonPath("$.data.workflowStatus").value("PENDING"));
         update(id, Map.of("action", "SAVE", "title", "Illegal")).andExpect(status().isConflict());
         update(id, Map.of("action", "SUBMIT")).andExpect(status().isConflict());
     }
@@ -303,7 +312,7 @@ class AuthorArticleIntegrationTest {
         mvc.perform(get(ROOT).header("Authorization", bearer(token)).param("keyword", "%"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(0));
-        for (String query : List.of("size=101", "page=-1", "status=APPROVE", "sortBy=content")) {
+        for (String query : List.of("size=101", "page=-1", "workflowStatus=APPROVE", "publicationStatus=LIVE", "sortBy=content")) {
             mvc.perform(get(ROOT + "?" + query).header("Authorization", bearer(token)))
                     .andExpect(status().isBadRequest());
         }
@@ -435,30 +444,242 @@ class AuthorArticleIntegrationTest {
     }
 
     @Test
-    void resubmissionPreservesReviewNoteAndPublishedArticlesAreReadOnly() throws Exception {
-        UUID id =
-                id(
-                        create(UUID.randomUUID(), full("SAVE"))
-                                .andExpect(status().isCreated())
-                                .andReturn());
-        jdbc.update(
-                "UPDATE techverse.articles SET status='CHANGES_REQUESTED',moderation_note='Add"
-                        + " examples' WHERE id=?",
-                id);
+    void resubmissionPreservesReviewNote() throws Exception {
+        UUID id = submitted();
+        review(id, "REQUEST_CHANGES", "Add examples").andExpect(status().isOk());
         update(id, Map.of("action", "SAVE", "title", "Revised"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("CHANGES_REQUESTED"));
+                .andExpect(jsonPath("$.data.workflowStatus").value("CHANGES_REQUESTED"));
         update(id, Map.of("action", "SUBMIT"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.moderationNote").value("Add examples"));
-        jdbc.update(
-                "UPDATE techverse.articles SET status='PUBLISHED',published_at=now() WHERE id=?",
-                id);
-        update(id, Map.of("action", "SAVE", "title", "Not allowed"))
-                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void publishedArticleIsRevisedWithoutTouchingItsSnapshot() throws Exception {
+        UUID id = published();
         detail(token, id)
+                .andExpect(jsonPath("$.data.workflowStatus").value("PUBLISHED"))
+                .andExpect(jsonPath("$.data.publicationStatus").value("PUBLISHED"))
+                .andExpect(jsonPath("$.data.publishedVersion.versionNumber").value(1))
+                .andExpect(jsonPath("$.data.publishedVersion.readingMinutes").value(1))
+                .andExpect(jsonPath("$.data.hasUnpublishedChanges").value(false));
+        // Saving identical data is a no-op that keeps the published workflow.
+        update(id, Map.of("action", "SAVE", "title", "Title"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.title").value("Revised"));
+                .andExpect(jsonPath("$.data.workflowStatus").value("PUBLISHED"));
+        update(id, Map.of("action", "SAVE", "title", "Revised"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.workflowStatus").value("DRAFT"))
+                .andExpect(jsonPath("$.data.publicationStatus").value("PUBLISHED"))
+                .andExpect(jsonPath("$.data.publishedVersion.title").value("Title"))
+                .andExpect(jsonPath("$.data.hasUnpublishedChanges").value(true));
+        mvc.perform(get(ROOT).header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$.data.content[0].hasUnpublishedChanges").value(true))
+                .andExpect(jsonPath("$.data.content[0].publicationStatus").value("PUBLISHED"));
+        update(id, Map.of("action", "SUBMIT")).andExpect(status().isOk());
+        update(id, Map.of("action", "SAVE", "title", "Locked"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ARTICLE_NOT_EDITABLE"));
+        action(id, "withdraw")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.workflowStatus").value("DRAFT"));
+        action(id, "withdraw")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ARTICLE_NOT_WITHDRAWABLE"));
+        action(id, "discard")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.title").value("Title"))
+                .andExpect(jsonPath("$.data.tags.length()").value(1))
+                .andExpect(jsonPath("$.data.workflowStatus").value("PUBLISHED"))
+                .andExpect(jsonPath("$.data.hasUnpublishedChanges").value(false));
+        action(id, "discard")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ARTICLE_NOT_DISCARDABLE"));
+        update(id, Map.of("action", "SUBMIT"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ARTICLE_NO_CHANGES"));
+        update(id, Map.of("action", "SUBMIT", "title", "Second")).andExpect(status().isOk());
+        review(id, "APPROVE", null).andExpect(status().isOk());
+        detail(token, id)
+                .andExpect(jsonPath("$.data.publishedVersion.versionNumber").value(2))
+                .andExpect(jsonPath("$.data.publishedVersion.title").value("Second"));
+        history(token, id)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.content[0].action").value("APPROVE"))
+                .andExpect(jsonPath("$.data.content[0].versionNumber").value(2))
+                .andExpect(jsonPath("$.data.content[1].versionNumber").value(1));
+        history(otherToken, id).andExpect(status().isNotFound());
+        assertThat(jdbc.queryForObject(
+                        "SELECT title FROM techverse.article_publication_versions WHERE version_number=1",
+                        String.class))
+                .isEqualTo("Title");
+    }
+
+    @Test
+    void authorHidesAndUnhidesButCannotUndoModeratorHide() throws Exception {
+        UUID id = published();
+        publication(token, id, "HIDE")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.publicationStatus").value("AUTHOR_HIDDEN"))
+                .andExpect(jsonPath("$.data.workflowStatus").value("PUBLISHED"));
+        publication(token, id, "HIDE")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ARTICLE_PUBLICATION_TRANSITION_INVALID"));
+        publication(token, id, "UNHIDE")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.publicationStatus").value("PUBLISHED"));
+        publication(token, id, "RESTORE").andExpect(status().isBadRequest());
+        publication(otherToken, id, "HIDE").andExpect(status().isNotFound());
+        history(token, id)
+                .andExpect(jsonPath("$.data.content[0].action").value("AUTHOR_UNHIDE"))
+                .andExpect(jsonPath("$.data.content[1].action").value("AUTHOR_HIDE"));
+        jdbc.update(
+                "UPDATE techverse.articles SET publication_status='HIDDEN',"
+                        + " hidden_from_publication_status='PUBLISHED' WHERE id=?",
+                id);
+        publication(token, id, "UNHIDE")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ARTICLE_AUTHOR_UNHIDE_NOT_ALLOWED"));
+        publication(token, draft(), "HIDE")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ARTICLE_PUBLICATION_TRANSITION_INVALID"));
+    }
+
+    @Test
+    void hardDeleteIsTombstonedSoRetryCannotResurrectIt() throws Exception {
+        UUID key = UUID.randomUUID();
+        UUID id = id(create(key, full("SAVE")).andExpect(status().isCreated()).andReturn());
+        delete(token, id).andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.articles", Integer.class))
+                .isZero();
+        create(key, full("SAVE"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ARTICLE_KEY_CONFLICT"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.articles", Integer.class))
+                .isZero();
+        delete(token, id).andExpect(status().isNotFound());
+        UUID pending = submitted();
+        delete(token, pending)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ARTICLE_NOT_DELETABLE"));
+        delete(otherToken, pending).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void suspendedAuthorSoftDeletesPublishedArticleWhichDisappearsButKeepsAudit() throws Exception {
+        UUID id = published();
+        update(id, Map.of("action", "SUBMIT", "title", "Pending revision")).andExpect(status().isOk());
+        jdbc.update(
+                "UPDATE techverse.author_profiles SET status='SUSPENDED' WHERE user_id=?", author);
+        jdbc.update(
+                "DELETE FROM techverse.user_roles WHERE user_id=? AND role_id=(SELECT id FROM"
+                        + " techverse.roles WHERE name='AUTHOR')",
+                author);
+        // Moderator-hidden articles can still be soft-deleted (hidden source must be cleared).
+        jdbc.update(
+                "UPDATE techverse.articles SET publication_status='HIDDEN',"
+                        + " hidden_from_publication_status='PUBLISHED' WHERE id=?",
+                id);
+        delete(token, id).andExpect(status().isOk());
+        detail(token, id).andExpect(status().isNotFound());
+        history(token, id).andExpect(status().isNotFound());
+        mvc.perform(get(ROOT).header("Authorization", bearer(token)))
+                .andExpect(jsonPath("$.data.totalElements").value(0));
+        assertThat(jdbc.queryForMap(
+                        "SELECT publication_status, workflow_status FROM techverse.articles WHERE id=?",
+                        id))
+                .containsEntry("publication_status", "AUTHOR_DELETED")
+                .containsEntry("workflow_status", "PENDING");
+        assertThat(jdbc.queryForObject(
+                        "SELECT count(*) FROM techverse.article_moderation_history"
+                                + " WHERE article_id=? AND action='AUTHOR_DELETE'",
+                        Integer.class,
+                        id))
+                .isEqualTo(1);
+        mvc.perform(get("/api/v1/moderator/articles").header("Authorization", bearer(modToken)))
+                .andExpect(jsonPath("$.data.totalElements").value(0));
+    }
+
+    @Test
+    void removedArticleIsReadOnlyForItsAuthor() throws Exception {
+        UUID id = published();
+        jdbc.update("UPDATE techverse.articles SET publication_status='REMOVED' WHERE id=?", id);
+        detail(token, id).andExpect(status().isOk());
+        update(id, Map.of("action", "SAVE", "title", "x")).andExpect(status().isConflict());
+        delete(token, id)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ARTICLE_NOT_DELETABLE"));
+        publication(token, id, "HIDE").andExpect(status().isConflict());
+        action(id, "discard").andExpect(status().isConflict());
+    }
+
+    @Test
+    void draftKeepsPendingImagesAsIssuesButSubmitRequiresUploads() throws Exception {
+        var body = new HashMap<>(full("SAVE"));
+        body.put("content", "Intro\n\n![first](./a.png)\n![again](./a.png)");
+        UUID id =
+                id(
+                        create(UUID.randomUUID(), body)
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.data.imageIssues.length()").value(2))
+                                .andExpect(jsonPath("$.data.imageIssues[0].type").value("LOCAL_FILE"))
+                                .andExpect(jsonPath("$.data.imageIssues[0].alt").value("first"))
+                                .andExpect(jsonPath("$.data.imageIssues[0].line").value(3))
+                                .andExpect(jsonPath("$.data.imageIssues[1].occurrence").value(2))
+                                .andExpect(jsonPath("$.data.imageIssues[1].filename").value("a.png"))
+                                .andReturn());
+        update(id, Map.of("action", "SUBMIT"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("ARTICLE_IMAGE_INVALID"));
+        update(id, Map.of("action", "SAVE", "coverImageUrl", "https://example.com/c.png"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("ARTICLE_IMAGE_INVALID"));
+        // The 50-image cap counts every image, even repeats of one URL.
+        update(id, Map.of("action", "SAVE", "content", "![x](./a.png)\n".repeat(51)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("ARTICLE_IMAGE_INVALID"));
+        String url =
+                mapper.readTree(
+                                upload(token, id, UUID.randomUUID(), png(2))
+                                        .andExpect(status().isOk())
+                                        .andReturn()
+                                        .getResponse()
+                                        .getContentAsString())
+                        .at("/data/url")
+                        .asText();
+        update(id, Map.of("action", "SAVE", "content", "![first](" + url + ")\n![again](./a.png)"))
+                .andExpect(status().isOk());
+        detail(token, id)
+                .andExpect(jsonPath("$.data.imageIssues.length()").value(1))
+                .andExpect(jsonPath("$.data.imageIssues[0].line").value(2));
+        update(id, Map.of("action", "SUBMIT", "content", "![first](" + url + ")"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.imageIssues.length()").value(0));
+        mvc.perform(
+                        multipart(ROOT + "/import")
+                                .file(
+                                        new MockMultipartFile(
+                                                "file", "post.md", "text/plain", "![x](x.png)".getBytes()))
+                                .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.imageIssues[0].source").value("x.png"));
+    }
+
+    @Test
+    void browserMayPreflightDeleteButUnmatchedEndpointsStayDenied() throws Exception {
+        mvc.perform(
+                        options(ROOT + "/" + UUID.randomUUID())
+                                .header("Origin", "http://localhost:3000")
+                                .header("Access-Control-Request-Method", "DELETE")
+                                .header("Access-Control-Request-Headers", "Authorization"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Methods", org.hamcrest.Matchers.containsString("DELETE")));
+        mvc.perform(
+                        put("/api/v1/articles/" + UUID.randomUUID() + "/saved")
+                                .header("Authorization", bearer(token)))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -512,9 +733,16 @@ class AuthorArticleIntegrationTest {
         UUID otherDraft = draft();
         update(otherDraft, Map.of("action", "SAVE", "coverImageUrl", url))
                 .andExpect(status().isBadRequest());
-        update(id, Map.of("action", "SAVE", "content", "![evil](https://example.com/evil.png)"))
-                .andExpect(status().isBadRequest());
-        detail(token, id).andExpect(jsonPath("$.data.content").value("![image](" + url + ")"));
+        // Drafts may keep an external image as an issue; only SUBMIT requires managed uploads.
+        update(id, Map.of("action", "SAVE", "content", "![ext](https://example.com/ext.png)"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.imageIssues[0].type").value("EXTERNAL_URL"));
+        update(id, Map.of("action", "SUBMIT", "summary", "S"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("ARTICLE_IMAGE_INVALID"));
+        detail(token, id)
+                .andExpect(jsonPath("$.data.content").value("![ext](https://example.com/ext.png)"))
+                .andExpect(jsonPath("$.data.workflowStatus").value("DRAFT"));
     }
 
     @Test
@@ -926,6 +1154,60 @@ class AuthorArticleIntegrationTest {
                 "Summary",
                 "content",
                 "# Content\n```java\n  int i = 1;\n```");
+    }
+
+    private UUID submitted() throws Exception {
+        return id(create(UUID.randomUUID(), full("SUBMIT")).andExpect(status().isCreated()).andReturn());
+    }
+
+    /** Publishes through the real Moderator API, not by writing statuses into the database. */
+    private UUID published() throws Exception {
+        UUID id = submitted();
+        review(id, "APPROVE", null).andExpect(status().isOk());
+        return id;
+    }
+
+    private ResultActions review(UUID id, String decision, String note) throws Exception {
+        String reviewToken =
+                mapper.readTree(
+                                mvc.perform(
+                                                get("/api/v1/moderator/articles/" + id)
+                                                        .header("Authorization", bearer(modToken)))
+                                        .andExpect(status().isOk())
+                                        .andReturn()
+                                        .getResponse()
+                                        .getContentAsString())
+                        .at("/data/reviewToken")
+                        .asText();
+        var body = new HashMap<String, Object>(Map.of("decision", decision, "reviewToken", reviewToken));
+        if (note != null) body.put("moderationNote", note);
+        return mvc.perform(
+                patch("/api/v1/moderator/articles/" + id + "/review")
+                        .header("Authorization", bearer(modToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(body)));
+    }
+
+    private ResultActions action(UUID id, String name) throws Exception {
+        return mvc.perform(post(ROOT + "/" + id + "/" + name).header("Authorization", bearer(token)));
+    }
+
+    private ResultActions publication(String t, UUID id, String action) throws Exception {
+        return mvc.perform(
+                patch(ROOT + "/" + id + "/publication")
+                        .header("Authorization", bearer(t))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("action", action))));
+    }
+
+    private ResultActions delete(String t, UUID id) throws Exception {
+        return mvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(ROOT + "/" + id)
+                        .header("Authorization", bearer(t)));
+    }
+
+    private ResultActions history(String t, UUID id) throws Exception {
+        return mvc.perform(get(ROOT + "/" + id + "/history").header("Authorization", bearer(t)));
     }
 
     private UUID draft() throws Exception {

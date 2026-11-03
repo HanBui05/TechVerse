@@ -47,14 +47,34 @@ public class ArticleAccessService {
             throw new CustomException(ErrorCode.ACCESS_DENIED);
     }
 
-    public Article lockEditable(UUID actor, UUID id) {
+    /** Active account only; a suspended Author keeps this (e.g. to delete own articles). */
+    public User lockActiveUser(UUID actor) {
+        User user =
+                users.findByIdForAuthentication(actor)
+                        .orElseThrow(() -> new CustomException(ErrorCode.ACCESS_DENIED));
+        entityManager.refresh(user);
+        if (!user.isActive()) throw new CustomException(ErrorCode.ACCESS_DENIED);
+        return user;
+    }
+
+    /** Locks the actor's own article; soft-deleted ones no longer exist for the author. */
+    public Article lockOwned(UUID actor, UUID id) {
         Article article =
                 articles.findByIdForUpdate(id)
                         .orElseThrow(() -> new CustomException(ErrorCode.ARTICLE_NOT_FOUND));
         entityManager.refresh(article);
-        if (!article.getAuthor().getId().equals(actor))
-            throw new CustomException(ErrorCode.ARTICLE_NOT_FOUND);
-        if (!article.isEditable()) throw new CustomException(ErrorCode.ARTICLE_NOT_EDITABLE);
+        if (!isOwnedVisible(article, actor)) throw new CustomException(ErrorCode.ARTICLE_NOT_FOUND);
         return article;
+    }
+
+    public Article lockEditable(UUID actor, UUID id) {
+        Article article = lockOwned(actor, id);
+        article.ensureEditable();
+        return article;
+    }
+
+    public boolean isOwnedVisible(Article article, UUID actor) {
+        return article.getAuthor().getId().equals(actor)
+                && article.getPublicationStatus() != ArticlePublicationStatus.AUTHOR_DELETED;
     }
 }

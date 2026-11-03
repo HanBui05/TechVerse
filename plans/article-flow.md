@@ -360,13 +360,13 @@ Không thêm màu mới; chỉ dùng token đã đo từ `tokens.css` bằng `np
 
 ### Task 1a — Backend nền tảng + Author API
 
-- [ ] V10 tạo đúng working/version/history model, fingerprint, reading time, `hidden_from_publication_status` và index saved list; CHECK/FK/cascade-or-RESTRICT/index đúng, V1–V9 không đổi. Testcontainers chạy Flyway V1→V10, chặn trạng thái sai; V10 gặp `articles` có dữ liệu fail với thông báo rõ.
-- [ ] `docs/technical/db/final.sql`, `PROJECT_CONTEXT.md` và `RUNBOOK.md` phản ánh schema/API mới cùng bước reset schema + Redis.
-- [ ] Unit state machine bao phủ no-op SAVE, fingerprint canonical ổn định/tag không xét thứ tự, no-change SUBMIT, HIDE nguồn `PUBLISHED/AUTHOR_HIDDEN`, RESTORE/APPROVE về đúng nguồn, author-deleted/removed terminal và transition sai không đổi entity.
-- [ ] Author create/save/submit/update published/withdraw/discard/history/HIDE/UNHIDE/DELETE giữ ownership, transaction; AuthorProfile suspended vẫn DELETE được; hard delete tombstone receipt và retry cùng key không hồi sinh bài.
-- [ ] Import/detail/save trả `imageIssues` có alt/source/occurrence/line-column; SAVE cho ảnh Markdown chưa managed, cover luôn managed, SUBMIT chỉ trả `ARTICLE_IMAGE_INVALID` theo `ErrorResponse` và detail reload trả issue mới.
-- [ ] `AuthorArticleIntegrationTest` kiểm browser preflight cho DELETE; CORS allowed methods có PUT/DELETE từ 1a nhưng security vẫn deny endpoint chưa được matcher cho phép.
-- [ ] Chạy bằng Git Bash: `cd server && ./gradlew test --tests 'com.techverse.server.article.ArticlePublicationMigrationTest' --tests 'com.techverse.server.article.ArticleLifecycleTest' --tests 'com.techverse.server.author.AuthorArticleIntegrationTest' --tests 'com.techverse.server.author.ArticleContentServiceTest'` đạt (cần Docker), rồi Codex review task 1a.
+- [x] V10 tạo đúng working/version/history model, fingerprint, reading time, `hidden_from_publication_status` và index saved list; CHECK/FK/cascade-or-RESTRICT/index đúng, V1–V9 không đổi. Testcontainers chạy Flyway V1→V10, chặn trạng thái sai; V10 gặp `articles` có dữ liệu fail với thông báo rõ.
+- [x] `docs/technical/db/final.sql`, `PROJECT_CONTEXT.md` và `RUNBOOK.md` phản ánh schema/API mới cùng bước reset schema + Redis.
+- [x] Unit state machine bao phủ no-op SAVE, fingerprint canonical ổn định/tag không xét thứ tự, no-change SUBMIT, HIDE nguồn `PUBLISHED/AUTHOR_HIDDEN`, RESTORE/APPROVE về đúng nguồn, author-deleted/removed terminal và transition sai không đổi entity.
+- [x] Author create/save/submit/update published/withdraw/discard/history/HIDE/UNHIDE/DELETE giữ ownership, transaction; AuthorProfile suspended vẫn DELETE được; hard delete tombstone receipt và retry cùng key không hồi sinh bài.
+- [x] Import/detail/save trả `imageIssues` có alt/source/occurrence/line-column; SAVE cho ảnh Markdown chưa managed, cover luôn managed, SUBMIT chỉ trả `ARTICLE_IMAGE_INVALID` theo `ErrorResponse` và detail reload trả issue mới.
+- [x] `AuthorArticleIntegrationTest` kiểm browser preflight cho DELETE; CORS allowed methods có PUT/DELETE từ 1a nhưng security vẫn deny endpoint chưa được matcher cho phép.
+- [x] Chạy bằng Git Bash: `cd server && ./gradlew test --tests 'com.techverse.server.article.ArticlePublicationMigrationTest' --tests 'com.techverse.server.article.ArticleLifecycleTest' --tests 'com.techverse.server.author.AuthorArticleIntegrationTest' --tests 'com.techverse.server.author.ArticleContentServiceTest'` đạt (cần Docker), rồi Codex review task 1a.
 
 ### Task 1b — Moderator + Public + cleanup + fixture
 

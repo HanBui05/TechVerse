@@ -10,3 +10,5 @@ description: Thủ tục Claude phản biện spec do Codex viết trong plans/<
 - Đối chiếu spec với code thật trước khi viết (đường dẫn, số lượng, tên component); ghi “Đúng/Sai/Thiếu/Thừa” kèm bằng chứng ngắn.
 - Spec đòi kiểm chứng vượt ngân sách trong `CLAUDE.md` thì nêu ra ở phản hồi.
 - Spec có đụng API mà thiếu bảng “Quy tắc nghiệp vụ và mã lỗi” (xem `AGENTS.md`) thì ghi vào “Thiếu”.
+- **Ranh giới task:** với mỗi kiểu/cột/enum spec xóa hoặc đổi tên, grep caller thật; caller thuộc task sau mà task trước buộc phải sửa tạm để biên dịch, hoặc ràng buộc DB/test của task trước cần chức năng của task sau (vd. CHECK bắt bài PUBLISHED có snapshot trong khi APPROVE tạo snapshot thuộc task sau), thì ghi “Thiếu”: spec phải nói rõ phần nào làm sớm và lớp test nào được phép hỏng tới task nào.
+- **Chi tiết để ngỏ:** chỉ ra chỗ spec nêu kết quả mà không nêu cách hoặc chi phí (vd. kiểm “ảnh managed” có gọi dịch vụ ngoài không, tham số phân trang dùng DTO nào, field cũ còn giữ cho UI cũ không) để Codex chốt trước, tránh Claude tự chọn khi code.

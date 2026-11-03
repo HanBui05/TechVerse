@@ -3,7 +3,7 @@ package com.techverse.server.repository.specification;
 import com.techverse.server.dto.request.ModeratorArticleFilter;
 import com.techverse.server.entity.Article;
 import com.techverse.server.entity.ArticleTag;
-import com.techverse.server.enums.ArticleStatus;
+import com.techverse.server.enums.*;
 
 import jakarta.persistence.criteria.Predicate;
 
@@ -19,8 +19,22 @@ public final class ModeratorArticleSpecification {
     public static Specification<Article> filter(ModeratorArticleFilter f) {
         return (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
-            predicates.add(cb.notEqual(root.get("status"), ArticleStatus.DRAFT));
-            if (f.getStatus() != null) predicates.add(cb.equal(root.get("status"), f.getStatus()));
+            // Private never-submitted drafts and author-deleted articles never enter the queue.
+            predicates.add(
+                    cb.not(
+                            cb.and(
+                                    cb.equal(
+                                            root.get("publicationStatus"),
+                                            ArticlePublicationStatus.UNPUBLISHED),
+                                    cb.equal(
+                                            root.get("workflowStatus"),
+                                            ArticleWorkflowStatus.DRAFT))));
+            predicates.add(
+                    cb.notEqual(root.get("publicationStatus"), ArticlePublicationStatus.AUTHOR_DELETED));
+            if (f.getWorkflowStatus() != null)
+                predicates.add(cb.equal(root.get("workflowStatus"), f.getWorkflowStatus()));
+            if (f.getPublicationStatus() != null)
+                predicates.add(cb.equal(root.get("publicationStatus"), f.getPublicationStatus()));
             if (f.getAuthorId() != null)
                 predicates.add(cb.equal(root.get("author").get("id"), f.getAuthorId()));
             if (f.getTopicId() != null)

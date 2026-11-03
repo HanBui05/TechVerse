@@ -3,7 +3,7 @@ package com.techverse.server.repository;
 import com.techverse.server.dto.internal.PublishedArticleRow;
 import com.techverse.server.dto.response.*;
 import com.techverse.server.entity.*;
-import com.techverse.server.enums.ArticleStatus;
+import com.techverse.server.enums.ArticlePublicationStatus;
 import com.techverse.server.repository.specification.PublishedArticleSpecification;
 
 import jakarta.persistence.EntityManager;
@@ -68,7 +68,7 @@ public class PublishedArticleRepository {
         selectArticle(query, root, true);
         query.where(
                 cb.equal(root.get("id"), id),
-                cb.equal(root.get("status"), ArticleStatus.PUBLISHED));
+                cb.equal(root.get("publicationStatus"), ArticlePublicationStatus.PUBLISHED));
         return entityManager.createQuery(query).getResultStream().map(this::articleRow).findFirst();
     }
 
@@ -85,7 +85,7 @@ public class PublishedArticleRepository {
                 tag.get("name").alias("name"));
         query.where(
                 root.get("article").get("id").in(ids),
-                cb.equal(root.get("article").get("status"), ArticleStatus.PUBLISHED));
+                cb.equal(root.get("article").get("publicationStatus"), ArticlePublicationStatus.PUBLISHED));
         query.orderBy(cb.asc(tag.get("name")), cb.asc(tag.get("id")));
         Map<UUID, List<ArticleTaxonomyResponse>> tags = new HashMap<>();
         for (Tuple tuple : entityManager.createQuery(query).getResultList())
@@ -105,7 +105,7 @@ public class PublishedArticleRepository {
                 .select(sourceLink.get("tag").get("id"))
                 .where(
                         cb.equal(sourceLink.get("article").get("id"), sourceId),
-                        cb.equal(sourceLink.get("article").get("status"), ArticleStatus.PUBLISHED));
+                        cb.equal(sourceLink.get("article").get("publicationStatus"), ArticlePublicationStatus.PUBLISHED));
         var matchingTags = root.join("articleTags", JoinType.LEFT);
         matchingTags.on(matchingTags.get("tag").get("id").in(sourceTags));
         var sharedCount = cb.count(matchingTags.get("id"));
@@ -116,7 +116,7 @@ public class PublishedArticleRepository {
                 root.get("publishedAt").alias("publishedAt"),
                 sharedCount.alias("sharedCount"));
         query.where(
-                cb.equal(root.get("status"), ArticleStatus.PUBLISHED),
+                cb.equal(root.get("publicationStatus"), ArticlePublicationStatus.PUBLISHED),
                 cb.equal(root.get("topic").get("id"), topicId),
                 cb.notEqual(root.get("id"), sourceId));
         query.groupBy(
@@ -191,13 +191,13 @@ public class PublishedArticleRepository {
             usage.select(article.get("id"))
                     .where(
                             cb.equal(article.get("topic").get("id"), root.get("id")),
-                            cb.equal(article.get("status"), ArticleStatus.PUBLISHED));
+                            cb.equal(article.get("publicationStatus"), ArticlePublicationStatus.PUBLISHED));
         } else {
             var link = usage.from(ArticleTag.class);
             usage.select(link.get("id"))
                     .where(
                             cb.equal(link.get("tag").get("id"), root.get("id")),
-                            cb.equal(link.get("article").get("status"), ArticleStatus.PUBLISHED));
+                            cb.equal(link.get("article").get("publicationStatus"), ArticlePublicationStatus.PUBLISHED));
         }
         var publishedUsage = cb.exists(usage);
         if (keyword == null || keyword.isBlank()) return publishedUsage;

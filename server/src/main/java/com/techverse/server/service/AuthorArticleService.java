@@ -15,4 +15,14 @@ public interface AuthorArticleService {
     PageResponse<ArticleSummaryResponse> list(UUID actor, ArticleFilter filter);
 
     ArticleOptionsResponse options(UUID actor, ArticleOptionsFilter filter);
+
+    ArticleResponse withdraw(UUID actor, UUID id);
+
+    ArticleResponse discard(UUID actor, UUID id);
+
+    ArticleResponse publication(UUID actor, UUID id, ArticlePublicationRequest request);
+
+    void delete(UUID actor, UUID id);
+
+    PageResponse<ArticleModerationHistoryResponse> history(UUID actor, UUID id, int page, int size);
 }

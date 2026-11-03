@@ -3,6 +3,7 @@ package com.techverse.server.repository.specification;
 import com.techverse.server.dto.request.ArticleFilter;
 import com.techverse.server.entity.Article;
 import com.techverse.server.entity.ArticleTag;
+import com.techverse.server.enums.ArticlePublicationStatus;
 
 import org.springframework.data.jpa.domain.Specification;
 
@@ -16,7 +17,13 @@ public final class ArticleSpecification {
         return (root, query, cb) -> {
             var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
             predicates.add(cb.equal(root.get("author").get("id"), owner));
-            if (f.getStatus() != null) predicates.add(cb.equal(root.get("status"), f.getStatus()));
+            // Soft-deleted articles disappear from the author's workspace.
+            predicates.add(
+                    cb.notEqual(root.get("publicationStatus"), ArticlePublicationStatus.AUTHOR_DELETED));
+            if (f.getWorkflowStatus() != null)
+                predicates.add(cb.equal(root.get("workflowStatus"), f.getWorkflowStatus()));
+            if (f.getPublicationStatus() != null)
+                predicates.add(cb.equal(root.get("publicationStatus"), f.getPublicationStatus()));
             if (f.getTopicId() != null)
                 predicates.add(cb.equal(root.get("topic").get("id"), f.getTopicId()));
             if (f.getKeyword() != null && !f.getKeyword().isBlank()) {

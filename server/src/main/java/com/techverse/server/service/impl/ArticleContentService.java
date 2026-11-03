@@ -1,9 +1,11 @@
 package com.techverse.server.service.impl;
 
+import com.techverse.server.dto.response.ArticleImageIssueResponse;
 import com.techverse.server.dto.response.ArticleImportResponse;
 import com.techverse.server.exception.*;
 
 import org.commonmark.node.*;
+import org.commonmark.parser.IncludeSourceSpans;
 import org.commonmark.parser.Parser;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,11 +14,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.*;
 import java.util.*;
+import java.util.function.Predicate;
 
 @Service
 public class ArticleContentService {
     public static final int MAX_CONTENT_BYTES = 1024 * 1024;
-    private final Parser parser = Parser.builder().build();
+    private final Parser parser =
+            Parser.builder().includeSourceSpans(IncludeSourceSpans.BLOCKS_AND_INLINES).build();
 
     public ArticleImportResponse importFile(MultipartFile file) {
         if (file.getSize() > MAX_CONTENT_BYTES)
@@ -58,6 +62,8 @@ public class ArticleContentService {
                 .filename(safeName)
                 .content(text)
                 .warnings(warnings)
+                // Nothing is uploaded for an import yet, so every image needs an upload.
+                .imageIssues(imageIssues(text, url -> false))
                 .build();
     }
 
@@ -101,13 +107,114 @@ public class ArticleContentService {
 
                             @Override
                             public void visit(Image image) {
-                                if (!image.getDestination().startsWith("https://")) invalid();
+                                // Drafts may keep local/external images; SUBMIT checks managed.
+                                if (!safeLink(image.getDestination())) invalid();
                             }
 
                             private void invalid() {
                                 throw new CustomException(ErrorCode.ARTICLE_CONTENT_INVALID);
                             }
                         });
+    }
+
+    /** Every image not accepted by {@code managed}, in document order. */
+    public List<ArticleImageIssueResponse> imageIssues(String text, Predicate<String> managed) {
+        var issues = new ArrayList<ArticleImageIssueResponse>();
+        var seen = new HashMap<String, Integer>();
+        parser.parse(text)
+                .accept(
+                        new AbstractVisitor() {
+                            @Override
+                            public void visit(Image image) {
+                                String source = image.getDestination();
+                                int occurrence = seen.merge(source, 1, Integer::sum);
+                                if (!managed.test(source)) {
+                                    var span = image.getSourceSpans().getFirst();
+                                    issues.add(
+                                            ArticleImageIssueResponse.builder()
+                                                    .type(issueType(source))
+                                                    .alt(altText(image))
+                                                    .source(source)
+                                                    .occurrence(occurrence)
+                                                    .line(span.getLineIndex() + 1)
+                                                    .column(span.getColumnIndex() + 1)
+                                                    .filename(filename(source))
+                                                    .build());
+                                }
+                                visitChildren(image);
+                            }
+                        });
+        return issues;
+    }
+
+    /** max(1, ceil(words / 200)) over prose and code literals. */
+    public int readingMinutes(String text) {
+        int[] words = {0};
+        parser.parse(text)
+                .accept(
+                        new AbstractVisitor() {
+                            @Override
+                            public void visit(Text node) {
+                                words[0] += count(node.getLiteral());
+                            }
+
+                            @Override
+                            public void visit(Code node) {
+                                words[0] += count(node.getLiteral());
+                            }
+
+                            @Override
+                            public void visit(FencedCodeBlock node) {
+                                words[0] += count(node.getLiteral());
+                            }
+
+                            @Override
+                            public void visit(IndentedCodeBlock node) {
+                                words[0] += count(node.getLiteral());
+                            }
+                        });
+        return Math.max(1, (words[0] + 199) / 200);
+    }
+
+    private static int count(String literal) {
+        String trimmed = literal.strip();
+        return trimmed.isEmpty() ? 0 : trimmed.split("\\s+").length;
+    }
+
+    private static String altText(Image image) {
+        var alt = new StringBuilder();
+        image.accept(
+                new AbstractVisitor() {
+                    @Override
+                    public void visit(Text text) {
+                        alt.append(text.getLiteral());
+                    }
+                });
+        return alt.toString();
+    }
+
+    private static ArticleImageIssueResponse.Type issueType(String source) {
+        try {
+            var uri = java.net.URI.create(source);
+            if (uri.getScheme() == null) return ArticleImageIssueResponse.Type.LOCAL_FILE;
+            return "res.cloudinary.com".equalsIgnoreCase(uri.getHost())
+                    ? ArticleImageIssueResponse.Type.UNMANAGED_ASSET
+                    : ArticleImageIssueResponse.Type.EXTERNAL_URL;
+        } catch (IllegalArgumentException e) {
+            return ArticleImageIssueResponse.Type.LOCAL_FILE;
+        }
+    }
+
+    /** Display hint for matching an uploaded file; never used as a filesystem path. */
+    private static String filename(String source) {
+        String path = source.replaceFirst("[?#].*$", "").replace('\\', '/');
+        String name = path.substring(path.lastIndexOf('/') + 1);
+        try {
+            name = java.net.URLDecoder.decode(name.replace("+", "%2B"), StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ignored) {
+            // keep the raw name when it is not valid percent-encoding
+        }
+        return name.isBlank() ? "image" : name;
     }
 
     private boolean safeLink(String url) {

@@ -125,7 +125,7 @@ public class SecurityConfiguration {
 	CorsConfigurationSource corsConfigurationSource(OAuth2Properties oauth2Properties) {
 		CorsConfiguration corsConfiguration = new CorsConfiguration();
 		corsConfiguration.setAllowedOrigins(List.of(oauth2Properties.webUrl()));
-		corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PATCH", "OPTIONS"));
+		corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		corsConfiguration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "Upload-Key"));
 		corsConfiguration.setAllowCredentials(true);
 

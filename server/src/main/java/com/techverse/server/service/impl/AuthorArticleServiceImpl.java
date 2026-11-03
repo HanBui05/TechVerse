@@ -4,7 +4,7 @@ import com.techverse.server.dto.internal.ArticleCreationReceipt;
 import com.techverse.server.dto.request.*;
 import com.techverse.server.dto.response.*;
 import com.techverse.server.entity.*;
-import com.techverse.server.enums.ArticleAction;
+import com.techverse.server.enums.*;
 import com.techverse.server.exception.*;
 import com.techverse.server.repository.*;
 import com.techverse.server.repository.specification.*;
@@ -31,6 +31,7 @@ import java.util.*;
 @Slf4j
 public class AuthorArticleServiceImpl implements AuthorArticleService {
     private final ArticleRepository articles;
+    private final ArticleModerationHistoryRepository histories;
     private final TopicRepository topics;
     private final TagRepository tags;
     private final ArticleAccessService access;
@@ -54,12 +55,16 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                             if (previous != null) {
                                 if (!previous.fingerprint().equals(fingerprint))
                                     throw new CustomException(ErrorCode.ARTICLE_KEY_CONFLICT);
-                                if (previous.articleId() != null
-                                        && articles.existsById(previous.articleId())) {
-                                    if (previous.response() == null)
-                                        throw new CustomException(
-                                                ErrorCode.ARTICLE_REQUEST_IN_PROGRESS);
-                                    return previous.response();
+                                if (previous.articleId() != null) {
+                                    if (articles.existsById(previous.articleId())) {
+                                        if (previous.response() == null)
+                                            throw new CustomException(
+                                                    ErrorCode.ARTICLE_REQUEST_IN_PROGRESS);
+                                        return previous.response();
+                                    }
+                                    // Missing row: rolled back (retry may create) or hard-deleted.
+                                    if (receipts.isDeleted(previous.articleId()))
+                                        throw new CustomException(ErrorCode.ARTICLE_KEY_CONFLICT);
                                 }
                             }
                             if (request.getTitle() == null || request.getTopicId() == null)
@@ -90,7 +95,7 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                                             .build();
                             article.replaceTags(selected);
                             validateFinal(article, request.getAction());
-                            if (request.getAction() == ArticleAction.SUBMIT) article.submit();
+                            apply(article, request.getAction());
                             articles.saveAndFlush(article);
                             em.refresh(article);
                             ArticleResponse response = toResponse(article);
@@ -147,21 +152,71 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                         : article.getCoverImageUrl());
         article.replaceTags(selected);
         validateFinal(article, request.getAction());
-        if (request.getAction() == ArticleAction.SUBMIT) article.submit();
+        apply(article, request.getAction());
+        return flushed(article);
+    }
+
+    @Override
+    @Transactional(timeout = 45)
+    public ArticleResponse withdraw(UUID actor, UUID id) {
+        access.lockWriter(actor);
+        Article article = access.lockOwned(actor, id);
+        article.withdraw();
+        return flushed(article);
+    }
+
+    @Override
+    @Transactional(timeout = 45)
+    public ArticleResponse discard(UUID actor, UUID id) {
+        access.lockWriter(actor);
+        Article article = access.lockOwned(actor, id);
+        article.discard();
+        return flushed(article);
+    }
+
+    @Override
+    @Transactional(timeout = 45)
+    public ArticleResponse publication(UUID actor, UUID id, ArticlePublicationRequest request) {
+        var action = request.action();
+        if (action != ArticlePublicationAction.HIDE && action != ArticlePublicationAction.UNHIDE)
+            invalid();
+        User user = access.lockWriter(actor);
+        Article article = access.lockOwned(actor, id);
+        histories.save(
+                action == ArticlePublicationAction.HIDE
+                        ? article.authorHide(user)
+                        : article.authorUnhide(user));
+        return flushed(article);
+    }
+
+    @Override
+    @Transactional(timeout = 45)
+    public void delete(UUID actor, UUID id) {
+        User user = access.lockActiveUser(actor);
+        Article article = access.lockOwned(actor, id);
+        if (article.isHardDeletable()) {
+            // Tombstone first: if Redis is down the delete aborts instead of allowing resurrection.
+            receipts.markDeleted(id);
+            articles.delete(article);
+        } else {
+            histories.save(article.softDelete(user));
+        }
         articles.flush();
-        em.refresh(article);
-        return toResponse(article);
     }
 
     @Override
     @Transactional(readOnly = true)
     public ArticleResponse detail(UUID actor, UUID id) {
-        access.checkReader(actor);
-        var a =
-                articles.findById(id)
-                        .filter(v -> v.getAuthor().getId().equals(actor))
-                        .orElseThrow(() -> new CustomException(ErrorCode.ARTICLE_NOT_FOUND));
-        return toResponse(a);
+        return toResponse(owned(actor, id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ArticleModerationHistoryResponse> history(
+            UUID actor, UUID id, int page, int size) {
+        owned(actor, id);
+        var result = histories.findPage(id, PageRequest.of(page, size));
+        return PageResponse.from(result, result.stream().map(this::history).toList());
     }
 
     @Override
@@ -186,7 +241,10 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                                                 .summary(a.getSummary())
                                                 .coverImageUrl(a.getCoverImageUrl())
                                                 .topic(option(a.getTopic()))
-                                                .status(a.getStatus())
+                                                .workflowStatus(a.getWorkflowStatus())
+                                                .publicationStatus(a.getPublicationStatus())
+                                                .hasUnpublishedChanges(a.hasUnpublishedChanges())
+                                                .publishedAt(a.getPublishedAt())
                                                 .createdAt(a.getCreatedAt())
                                                 .updatedAt(a.getUpdatedAt())
                                                 .build())
@@ -213,6 +271,25 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                 .build();
     }
 
+    private Article owned(UUID actor, UUID id) {
+        access.checkReader(actor);
+        return articles.findById(id)
+                .filter(a -> access.isOwnedVisible(a, actor))
+                .orElseThrow(() -> new CustomException(ErrorCode.ARTICLE_NOT_FOUND));
+    }
+
+    private void apply(Article article, ArticleAction action) {
+        if (action == ArticleAction.SUBMIT) article.submit();
+        else article.save();
+    }
+
+    private ArticleResponse flushed(Article article) {
+        articles.flush();
+        // Triggers own updated_at; the fingerprint formula also needs a re-read.
+        em.refresh(article);
+        return toResponse(article);
+    }
+
     private Topic lockTopic(UUID id) {
         return topics.findByIdForUpdate(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.TOPIC_NOT_FOUND));
@@ -236,12 +313,14 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                 || a.getTitle().length() > 255
                 || a.getSummary().length() > 500) invalid();
         contentService.validateContent(a.getContent());
-        imageService.validateReferences(a);
         if (action == ArticleAction.SUBMIT) {
             if (a.getSummary().isBlank() || a.getContent().isBlank()) invalid();
+            imageService.validateReferences(a);
             if (!a.getTopic().isActive()
                     || a.getArticleTags().stream().anyMatch(t -> !t.getTag().isActive()))
                 inactive();
+        } else {
+            imageService.validateDraft(a);
         }
     }
 
@@ -296,6 +375,47 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                 .build();
     }
 
+    private ArticleModerationHistoryResponse history(ArticleModerationHistory h) {
+        User actor = h.getActor();
+        return ArticleModerationHistoryResponse.builder()
+                .id(h.getId())
+                .action(h.getAction())
+                .note(h.getNote())
+                .actor(
+                        actor == null
+                                ? null
+                                : ArticleAuthorResponse.builder()
+                                        .id(actor.getId())
+                                        .fullName(actor.getFullName())
+                                        .avatarUrl(actor.getAvatarUrl())
+                                        .build())
+                .fromWorkflowStatus(h.getFromWorkflowStatus())
+                .toWorkflowStatus(h.getToWorkflowStatus())
+                .fromPublicationStatus(h.getFromPublicationStatus())
+                .toPublicationStatus(h.getToPublicationStatus())
+                .versionNumber(h.getVersion() == null ? null : h.getVersion().getVersionNumber())
+                .createdAt(h.getCreatedAt())
+                .build();
+    }
+
+    private ArticlePublicationVersionResponse version(ArticlePublicationVersion v) {
+        if (v == null) return null;
+        return ArticlePublicationVersionResponse.builder()
+                .id(v.getId())
+                .versionNumber(v.getVersionNumber())
+                .title(v.getTitle())
+                .summary(v.getSummary())
+                .content(v.getContent())
+                .coverImageUrl(v.getCoverImageUrl())
+                .topic(option(v.getTopic()))
+                .tags(v.getTags().stream().map(t -> option(t.getTag())).toList())
+                .approvedBy(v.getApprovedBy() == null ? null : v.getApprovedBy().getId())
+                .approvedAt(v.getApprovedAt())
+                .contentFingerprint(v.getContentFingerprint())
+                .readingMinutes(v.getReadingMinutes())
+                .build();
+    }
+
     private ArticleResponse toResponse(Article a) {
         return ArticleResponse.builder()
                 .id(a.getId())
@@ -306,7 +426,13 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                 .coverImageUrl(a.getCoverImageUrl())
                 .topic(option(a.getTopic()))
                 .tags(a.getArticleTags().stream().map(t -> option(t.getTag())).toList())
-                .status(a.getStatus())
+                .workflowStatus(a.getWorkflowStatus())
+                .publicationStatus(a.getPublicationStatus())
+                .hasUnpublishedChanges(a.hasUnpublishedChanges())
+                .publishedVersion(version(a.getPublishedVersion()))
+                .imageIssues(
+                        contentService.imageIssues(
+                                a.getContent(), url -> imageService.isOwnManagedUrl(url, a)))
                 .moderationNote(a.getModerationNote())
                 .reviewedBy(a.getReviewedBy() == null ? null : a.getReviewedBy().getId())
                 .reviewedAt(a.getReviewedAt())

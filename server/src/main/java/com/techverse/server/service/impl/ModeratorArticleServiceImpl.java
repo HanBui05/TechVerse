@@ -32,6 +32,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ModeratorArticleServiceImpl implements ModeratorArticleService {
     private final ArticleRepository articles;
+    private final ArticleModerationHistoryRepository histories;
+    private final ArticleContentService contentService;
     private final UserRepository users;
     private final AuthorProfileRepository profiles;
     private final TopicRepository topics;
@@ -44,10 +46,9 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
     public PageResponse<ModeratorArticleSummaryResponse> list(
             UUID actor, ModeratorArticleFilter f) {
         checkModerator(users.findWithRolesById(actor).orElse(null));
-        if (f.getStatus() == ArticleStatus.DRAFT
-                || (f.getCreatedFrom() != null
-                        && f.getCreatedTo() != null
-                        && f.getCreatedFrom().isAfter(f.getCreatedTo()))) {
+        if (f.getCreatedFrom() != null
+                && f.getCreatedTo() != null
+                && f.getCreatedFrom().isAfter(f.getCreatedTo())) {
             throw new CustomException(ErrorCode.VALIDATION_ERROR);
         }
         var sort =
@@ -100,7 +101,9 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
         ensureVisible(article);
         if (!article.getAuthor().getId().equals(authorId))
             throw new CustomException(ErrorCode.ARTICLE_REVIEW_STALE);
-        if (article.getStatus() != ArticleStatus.PENDING)
+        if (article.getPublicationStatus().isTerminal())
+            throw new CustomException(ErrorCode.ARTICLE_PUBLICATION_TRANSITION_INVALID);
+        if (article.getWorkflowStatus() != ArticleWorkflowStatus.PENDING)
             throw new CustomException(ErrorCode.ARTICLE_NOT_PENDING);
         if (!reviewToken(article).equals(r.reviewToken()))
             throw new CustomException(ErrorCode.ARTICLE_REVIEW_STALE);
@@ -118,14 +121,15 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
                 throw new CustomException(ErrorCode.ARTICLE_AUTHOR_INELIGIBLE);
             lockActiveAssociations(article);
         }
-        article.review(
+        Instant now = Instant.now();
+        var history =
                 r.decision() == ArticleReviewDecision.APPROVE
-                        ? ArticleStatus.PUBLISHED
-                        : ArticleStatus.CHANGES_REQUESTED,
-                actor,
-                note,
-                Instant.now());
+                        ? article.approve(
+                                actor, note, now, contentService.readingMinutes(article.getContent()))
+                        : article.requestChanges(actor, note, now);
+        // Flush first so the new snapshot (cascaded from Article) exists before history links it.
         articles.flush();
+        histories.saveAndFlush(history);
         // Database triggers own updated_at; return a fingerprint of persisted precision/state.
         entityManager.refresh(article);
         return detailResponse(article);
@@ -161,7 +165,9 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
     }
 
     private void ensureVisible(Article article) {
-        if (article.getStatus() == ArticleStatus.DRAFT)
+        // A never-submitted draft is private to its author.
+        if (article.getPublicationStatus() == ArticlePublicationStatus.UNPUBLISHED
+                && article.getWorkflowStatus() == ArticleWorkflowStatus.DRAFT)
             throw new CustomException(ErrorCode.ARTICLE_NOT_FOUND);
     }
 
@@ -171,7 +177,11 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
         snapshot.put("id", a.getId());
         snapshot.put("authorId", a.getAuthor().getId());
         snapshot.put("updatedAt", a.getUpdatedAt());
-        snapshot.put("status", a.getStatus());
+        snapshot.put("workflowStatus", a.getWorkflowStatus());
+        snapshot.put("publicationStatus", a.getPublicationStatus());
+        snapshot.put(
+                "publishedVersionId",
+                a.getPublishedVersion() == null ? null : a.getPublishedVersion().getId());
         snapshot.put("title", a.getTitle());
         snapshot.put("summary", a.getSummary());
         snapshot.put("content", a.getContent());
@@ -223,7 +233,8 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
                 .coverImageUrl(a.getCoverImageUrl())
                 .author(author(a.getAuthor()))
                 .topic(topic(a.getTopic()))
-                .status(a.getStatus())
+                .workflowStatus(a.getWorkflowStatus())
+                .publicationStatus(a.getPublicationStatus())
                 .createdAt(a.getCreatedAt())
                 .updatedAt(a.getUpdatedAt())
                 .build();
@@ -249,7 +260,9 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
                                                                 .active(t.getTag().isActive())
                                                                 .build())
                                         .toList())
-                        .status(a.getStatus())
+                        .workflowStatus(a.getWorkflowStatus())
+                        .publicationStatus(a.getPublicationStatus())
+                        .hasUnpublishedChanges(a.hasUnpublishedChanges())
                         .moderationNote(a.getModerationNote())
                         .reviewedBy(a.getReviewedBy() == null ? null : a.getReviewedBy().getId())
                         .reviewedAt(a.getReviewedAt())
