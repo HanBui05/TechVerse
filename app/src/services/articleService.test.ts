@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setAccessToken } from './api/client'
 import { authorActions, authorArticles, changedFields, changedFromLive, countImages, imageSources, isManagedImage, lastReturnNote, moderatorActions, moderatorArticles, removeImage, replaceImage, resolveIssue, publicArticles, readerBackTarget, readerFilter, readerSearch } from './articleService'
 import type { AuthorArticle, ImageIssue } from '../types/articles'
-import { articleFixture, issueFixture as issue, moderatorDetailFixture, moderatorSummaryFixture, versionFixture as version, publicDetailFixture } from '../test/articleFixtures'
+import { articleFixture, issueFixture as issue, moderatorDetailFixture, moderatorSummaryFixture, versionFixture as version, publicDetailFixture, savedSummaryFixture } from '../test/articleFixtures'
 
 // PageResponse JSON as the backend serializes it (Task 1a–1c); article fixtures live in test/articleFixtures.ts.
 const page = { content: [{ id: 'art-1', title: 'Draft', summary: 'Sum', coverImageUrl: null, topic: { id: 'java', name: 'Java', active: true }, workflowStatus: 'DRAFT', publicationStatus: 'PUBLISHED', hasUnpublishedChanges: true, publishedAt: null, createdAt: '2026-11-01T09:00:00Z', updatedAt: '2026-11-04T10:42:00Z' }], page: 0, size: 20, totalElements: 1, totalPages: 1, hasNext: false }
@@ -211,6 +211,16 @@ describe('publicArticles API', () => {
     expect([call(0).init.method, call(1).init.method]).toEqual(['PUT', 'DELETE'])
     expect(call(1).url.pathname).toBe('/api/v1/articles/pub-1/saved')
   })
+
+  it('reads the saved list (public summary + savedAt) with keyword and page', async () => {
+    fetchMock.mockResolvedValueOnce(ok({ content: [savedSummaryFixture], page: 1, size: 9, totalElements: 10, totalPages: 2, hasNext: false }))
+    const result = await publicArticles.savedList({ keyword: 'spring', page: 1 })
+    expect(call().url.pathname).toBe('/api/v1/me/saved-articles')
+    expect(Object.fromEntries(call().url.searchParams)).toEqual({ keyword: 'spring', page: '1', size: '9' })
+    expect(result.content[0].savedAt).toBe('2026-11-04T12:00:00Z')
+    await publicArticles.savedList({ keyword: '', page: 0 }).catch(() => undefined)
+    expect(Object.fromEntries(call(1).url.searchParams)).toEqual({ page: '0', size: '9' })
+  })
 })
 
 describe('reader URL state', () => {
@@ -224,6 +234,8 @@ describe('reader URL state', () => {
   it('goes back only to a /blogs list URL from router state', () => {
     expect(readerBackTarget({ from: '/blogs?topicId=t&page=2' })).toBe('/blogs?topicId=t&page=2')
     expect(readerBackTarget({ from: '/blogs' })).toBe('/blogs')
+    expect(readerBackTarget({ from: '/me/saved-articles' })).toBe('/me/saved-articles')
+    expect(readerBackTarget({ from: '/me/saved-articlesx' })).toBe('/blogs')
     expect([readerBackTarget(null), readerBackTarget({ from: '//evil.com' }), readerBackTarget({ from: '/blogsx' }), readerBackTarget({ from: 1 })]).toEqual(['/blogs', '/blogs', '/blogs', '/blogs'])
   })
 })

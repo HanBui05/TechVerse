@@ -62,6 +62,8 @@ export type PublicArticleSummary = {
   id: string; title: string; summary: string | null; coverImageUrl: string | null; author: ArticleAuthor; topic: ArticleOption; tags: ArticleOption[]
   publishedAt: string; approvedAt: string; versionNumber: number; readingMinutes: number; saved: boolean
 }
+/** `GET /me/saved-articles` item (SavedArticleSummaryResponse). */
+export type SavedArticleSummary = PublicArticleSummary & { savedAt: string }
 export type RelatedArticle = { id: string; title: string; coverImageUrl: string | null; publishedAt: string; saved: boolean }
 export type PublicArticleDetail = Omit<PublicArticleSummary, 'author'> & {
   content: string; author: ArticleAuthor & { expertise: string | null; bioExcerpt: string | null }; relatedArticles: RelatedArticle[]

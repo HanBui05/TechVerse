@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
-import { ArrowDownUp, BookOpen, FileStack, LayoutGrid, Newspaper, RefreshCw, Search, Sparkles, Tag, X } from 'lucide-react'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { ArrowDownUp, BookOpen, FileStack, Heart, LayoutGrid, Newspaper, RefreshCw, Search, Sparkles, Tag, X } from 'lucide-react'
 import { cn } from 'cn'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,7 @@ const touch = 'pointer-coarse:min-h-11 pointer-coarse:min-w-11'
 const GRID = 'grid list-none gap-6 sm:grid-cols-2 xl:grid-cols-3'
 
 /** Reader list (wireframe 2c-1). The URL is the only filter/page state: every committed change pushes one history entry. */
-export function BlogsPage({ language = 'vi' }: { language?: Language }) {
+export function BlogsPage({ language = 'vi', canSave = true }: { language?: Language; canSave?: boolean }) {
   const t = readerText(language)
   const location = useLocation()
   const [params, setParams] = useSearchParams()
@@ -81,6 +81,9 @@ export function BlogsPage({ language = 'vi' }: { language?: Language }) {
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('title')}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">{t('subtitle')}</p>
       </div>
+      {canSave && <Button asChild variant="outline" className={cn('ml-auto shrink-0', touch)}>
+        <Link to="/me/saved-articles"><Heart className="text-tone-rose-fg" aria-hidden />{t('savedTitle')}</Link>
+      </Button>}
     </header>
 
     <Card className="gap-3 rounded-2xl p-3 shadow-sm sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
@@ -139,7 +142,7 @@ export function BlogsPage({ language = 'vi' }: { language?: Language }) {
           ? <EmptyState icon={BookOpen} title={filtered ? t('emptyFiltered') : t('empty')} description={filtered ? t('emptyFilteredText') : t('emptyText')}
               action={filtered && <Button type="button" variant="outline" className={touch} onClick={() => setParams(new URLSearchParams())}>{t('clearFilters')}</Button>} />
           : data && <ul aria-label={t('list')} aria-busy={loading} className={GRID}>{data.content.map((article, i) => <li key={article.id} style={{ animationDelay: `${i * 60}ms` }}
-            className="flex min-w-0 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:fill-mode-both motion-safe:duration-500"><ArticleCard article={article} from={from} language={language} /></li>)}</ul>}
+            className="flex min-w-0 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:fill-mode-both motion-safe:duration-500"><ArticleCard article={article} from={from} language={language} canSave={canSave} /></li>)}</ul>}
 
     {data && !error && <Pagination language={language} page={filter.page} totalPages={data.totalPages} loading={loading} onPageChange={page => setParams(readerSearch({ ...filter, page }))} />}
   </main>

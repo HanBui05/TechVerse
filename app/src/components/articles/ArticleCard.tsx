@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Boxes, Braces, CalendarDays, Clock3, Code2, Cpu, Database, Globe, Hash, Layers, Terminal, type LucideIcon } from 'lucide-react'
 import { cn } from 'cn'
@@ -23,8 +24,12 @@ export function topicIcon(name: string): LucideIcon {
 /** Text color class of a tone (the tile classes already list it, so Tailwind sees it statically). */
 export const toneText = (tone: keyof typeof TONE_TILE) => TONE_TILE[tone].split(' ').find(c => c.startsWith('text-'))
 
-/** Reader grid card (javabuilder-patterns 4.3); `from` is the list URL the detail “Back to list” returns to. Shared with `/blogs/saved`. */
-export function ArticleCard({ article, from, language = 'vi' }: { article: PublicArticleSummary; from: string; language?: Language }) {
+type CardProps = { article: PublicArticleSummary; from: string; language?: Language; canSave?: boolean; saveButton?: ReactNode }
+/**
+ * Reader grid card (javabuilder-patterns 4.3); `from` is the list URL the detail “Back to list” returns to. Shared with
+ * `/me/saved-articles`, which passes its own `saveButton`. `canSave=false` (management accounts) renders no save control.
+ */
+export function ArticleCard({ article, from, language = 'vi', canSave = true, saveButton }: CardProps) {
   const t = readerText(language)
   const to = `/blogs/${article.id}`
   const state = { from }
@@ -63,7 +68,7 @@ export function ArticleCard({ article, from, language = 'vi' }: { article: Publi
           </span>
         </span>
         <span className="flex shrink-0 items-start gap-1.5">
-          <ArticleSaveButton key={article.id} articleId={article.id} saved={article.saved} language={language} />
+          {canSave && (saveButton ?? <ArticleSaveButton key={article.id} articleId={article.id} saved={article.saved} language={language} />)}
           <Link to={to} state={state} aria-label={t('readMoreOf', { title: article.title })}
             className={cn('inline-flex h-9 items-center gap-1 rounded-md bg-primary/10 px-3 text-sm font-semibold text-accent-text transition hover:bg-primary hover:text-primary-foreground focus-visible:outline-2 focus-visible:outline-ring', touch)}>
             {t('readMore')}<ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />

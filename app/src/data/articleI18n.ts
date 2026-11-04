@@ -241,6 +241,10 @@ const readerVi = {
   copyCode: 'Sao chép mã', copyHeading: 'Sao chép liên kết tới mục {title}', table: 'Bảng nội dung', code: 'mã',
   author: 'Tác giả', quickActions: 'Hành động nhanh', allArticles: 'Tất cả bài viết', sameTopic: 'Bài cùng chủ đề {topic}', progress: 'Tiến độ đọc',
   publishedOn: 'Đăng {date}',
+  myCorner: 'Góc của tôi', savedTitle: 'Bài đã lưu', savedSubtitle: 'Những bài bạn muốn đọc lại.', savedSearch: 'Tìm trong bài đã lưu', savedSearchPlaceholder: 'Tìm trong bài đã lưu…',
+  savedList: 'Danh sách bài đã lưu', savedLoading: 'Đang tải bài đã lưu...', savedLoadError: 'Không thể tải bài đã lưu.', savedFilterError: 'Kiểm tra lại bộ lọc bài đã lưu.',
+  savedEmpty: 'Chưa có bài đã lưu', savedEmptyText: 'Bấm ♡ trên bài viết để lưu lại đọc sau.', explore: 'Khám phá bài viết',
+  savedEmptyFiltered: 'Không có bài đã lưu khớp', savedEmptyFilteredText: 'Thử từ khóa khác.', unsaved: 'Đã bỏ lưu', undo: 'Hoàn tác', undoOf: 'Hoàn tác bỏ lưu {title}', clearSavedSearch: 'Xóa tìm kiếm',
 }
 type ReaderCopy = typeof readerVi
 const readerEn: ReaderCopy = {
@@ -258,6 +262,10 @@ const readerEn: ReaderCopy = {
   copyCode: 'Copy code', copyHeading: 'Copy link to section {title}', table: 'Content table', code: 'code',
   author: 'Author', quickActions: 'Quick actions', allArticles: 'All articles', sameTopic: 'More in {topic}', progress: 'Reading progress',
   publishedOn: 'Published {date}',
+  myCorner: 'My corner', savedTitle: 'Saved articles', savedSubtitle: 'Articles you want to come back to.', savedSearch: 'Search saved articles', savedSearchPlaceholder: 'Search saved articles…',
+  savedList: 'Saved articles', savedLoading: 'Loading saved articles...', savedLoadError: 'Unable to load your saved articles.', savedFilterError: 'Check the saved-article filters.',
+  savedEmpty: 'No saved articles yet', savedEmptyText: 'Tap ♡ on an article to keep it for later.', explore: 'Explore articles',
+  savedEmptyFiltered: 'No saved articles match', savedEmptyFilteredText: 'Try another keyword.', unsaved: 'Removed from saved', undo: 'Undo', undoOf: 'Undo removing {title}', clearSavedSearch: 'Clear search',
 }
 export const readerCopy = { vi: readerVi, en: readerEn }
 export type ReaderKey = keyof ReaderCopy

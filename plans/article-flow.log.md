@@ -12,7 +12,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - **Task 2b đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2b`; đã đánh dấu “Xong khi” 2b trong spec, nhờ Codex đồng bộ spec (2 quyết định: bộ lọc Moderator, nút lên đầu trang). Chi tiết mục “Task 2b” cuối file.
 - **Task 2c đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2c`; đã đánh dấu “Xong khi” 2c trong spec, nhờ Codex đồng bộ spec (gồm quyết định làm đẹp Reader). Preflight đã bật, 7 CSS legacy đã xóa; Codex vòng 1 sửa 3 lỗi, vòng 2 sửa 1 lỗi. Chi tiết mục “Task 2c” cuối file.
 - **Task 1d đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1d`; đã đánh dấu “Xong khi” 1d trong spec, nhờ Codex đồng bộ spec (kèm quyết định chạy full cuối module). Test 24/24, Codex review vòng 1 không phát hiện. Một dòng `@PreAuthorize` ở `SavedArticleController`; chi tiết mục “Task 1d” cuối file.
-- **Task tiếp theo sau khi nhận 1d:** **2d — UI Bài đã lưu** (`/me/saved-articles`, nhóm “Góc của tôi”, chặn trang người dùng với Admin/Moderator, ẩn nút lưu; dùng lại `ArticleCard`, `useSavedState`). Sau đó: regression gộp + E2E.
+- **Task 2d đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2d`; đã đánh dấu 6 mục “Xong khi” 2d trong spec, nhờ Codex đồng bộ spec. 262/262, build đạt, kiểm mắt thật đạt; Codex vòng 1 sửa 2 lỗi, vòng 2 approve; chi tiết mục “Task 2d” cuối file. **Tiếp: hoàn tất module** (regression gộp BE+FE song song → E2E thật → full BE rồi FE, mục “Hoàn tất module sau Task 2d” trong spec), session mới.
 - Frontend đã theo API mới ở cả Author/Moderator/Reader.
 - **Lỗi có sẵn:** Sidebar dư 8 px cuộn ngang ở desktop (cả `/profile`). (Lỗi `App.auth.test` Moderator đã sửa ở 2b.)
 - **DB dev phải làm mới trước khi chạy app** (V10 dừng nếu `articles` có dữ liệu): lệnh ở `docs/RUNBOOK.md` mục “Làm mới DB dev”. Không còn seed SQL bài viết: tạo 3–5 bài qua API theo `server/src/test/resources/seed/HUONG_DAN.md`.
@@ -20,13 +20,23 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 
 ## Quyết định người dùng chưa có trong spec
 
-- **2026-11-04 — Chạy full sau khi xong mọi task:** sau Task 2d (sau regression gộp + E2E của bước hoàn tất module) chạy thêm một lượt full backend + full frontend (`npm test`) trên máy, lần lượt (không song song vì RAM), để bắt lỗi nhỏ nhất. Không chạy full trước đó. Spec chờ Codex cập nhật.
+- (không có)
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — Task 2d đã nhận
+- Người dùng nhận Task 2d; đánh dấu 6 mục “Xong khi” 2d trong spec, commit WIP, nhờ Codex đồng bộ spec. Tiếp: hoàn tất module (session mới).
+
+### 2026-11-04 — Task 2d: UI Bài đã lưu
+- Đã làm: `/me/saved-articles` (card dùng chung, dòng “Đã bỏ lưu · Hoàn tác” trên cùng `useSavedState`), nhóm sidebar “Góc của tôi”, `ReaderRoute` chuyển Admin/Moderator về dashboard, `canSave` ẩn nút/link lưu, bỏ “Về trang người dùng”.
+- Kiểm mắt lần này đăng nhập thật được: mật khẩu dev mặc định `12345678` (`application-dev.yaml`), backend người dùng đã có 1d.
+- Codex vòng 1 sửa 2 lỗi (quay lại từ detail, nhóm sidebar khi khôi phục phiên), vòng 2 approve. Việc dở: người dùng nhận.
+
+- 2026-11-04 — Codex: đã đối chiếu và giữ nguyên 3 tiêu chí Task 1d ở `[x]`; đã đưa quyết định chạy full backend rồi full frontend một lượt, tuần tự sau regression gộp + E2E, vào spec.
+
 ### 2026-11-04 — Task 1d đã nhận
 - Người dùng nhận Task 1d; đánh dấu 3 mục “Xong khi” 1d, commit WIP, nhờ Codex đồng bộ spec. Quyết định mới: chạy full BE + FE một lượt sau khi xong mọi task (mục “Quyết định người dùng”). Tiếp: Task 2d (session mới).
 
@@ -281,3 +291,17 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - RED: 403 expected nhưng 200. Cuối: `./gradlew test --tests '...SavedArticleIntegrationTest' --tests '...PublishedArticleIntegrationTest'` → 8/8 + 16/16 đạt.
 - Chưa kiểm: không chạy full backend (CI); không kiểm app thật.
 - Review vòng 1 (Codex `review`): “Không phát hiện lỗi mức cao/trung.” Không cần vòng 2.
+
+## Task 2d — UI Bài đã lưu (2026-11-04)
+
+- **Đã làm:** `App.tsx`: `managerHome` (ADMIN → `/admin`, rồi MODERATOR → `/moderator`) dùng chung cho đăng nhập và guard `ReaderRoute` (`Navigate replace`) trên `/`, `/blogs`, `/blogs/:id`, route mới `/me/saved-articles` (thêm `AuthRoute`); `canSave` truyền xuống `BlogsPage`/`BlogDetailPage` → `ArticleCard`. `Sidebar` thêm nhóm cố định “Góc của tôi” → “Bài đã lưu”; `AdminSidebar`/`ModeratorSidebar` bỏ “Về trang người dùng”. `BlogsPage` header thêm nút “♡ Bài đã lưu” (chỉ khi `canSave`). `ArticleSaveButton` tách `SaveToggle` (trình bày, có `autoFocus`); `ArticleCard` nhận `canSave` + `saveButton`. `SavedArticlesPage.tsx` mới: header (kicker, h1, chip tổng, nút “Tất cả bài viết” — mobile thành icon), tìm kiếm Enter/✕, lưới như `/blogs`, 6 skeleton, empty tim + “Khám phá bài viết”, empty tìm kiếm + “Xóa tìm kiếm”, lỗi + Thử lại, phân trang, về trang cuối khi trang vượt. `publicArticles.savedList`, type `SavedArticleSummary`, fixture `savedSummaryFixture`, copy vi/en trong `readerText`.
+- **Test:** RED: 6 ca mới lỗi đúng lý do (thiếu `canSave`, nhóm sidebar, link quản trị còn) + `SavedArticlesPage.test` chưa có module; ca service viết cùng lượt code nên không thấy RED riêng. Cuối: `npx vitest run src/services/articleService.test.ts src/data/articleI18n.test.ts src/components/articles/ArticleCard.test.tsx src/components/articles/ArticleSaveButton.test.tsx src/pages/Blogs/BlogsPage.test.tsx src/pages/Blogs/BlogDetailPage.test.tsx src/pages/Blogs/SavedArticlesPage.test.tsx src/components/layout/Sidebar.test.tsx src/App.auth.test.tsx` → 9 file 262/262; `npm run build` đạt. Sau sửa dòng hoàn tác: `SavedArticlesPage.test` 5/5 + build đạt.
+- **Kiểm mắt (Playwright MCP, backend dev thật, `bao.author` / `moderator`, mật khẩu dev mặc định):** desktop 1440 dark: trang có 1 bài, nhóm “Góc của tôi” active, bỏ lưu → dòng hoàn tác (focus vào nút Hoàn tác), Hoàn tác → card trở lại `aria-pressed=true` và focus về nút lưu, empty thật (“Chưa có bài đã lưu” + CTA); light: card/nền đúng token, không cuộn ngang trang. Mobile 390 cảm ứng (`pointer: coarse` true): không cuộn ngang, mọi control ≥44 px, không chữ tràn, dòng hoàn tác full width cao 62 px. Moderator thật: `/blogs`, `/`, `/me/saved-articles` → `/moderator`, không request saved, không có link “Về trang người dùng”. Sửa sau kiểm: dòng hoàn tác bị xuống 2 hàng ở desktop → một hàng (tiêu đề cắt `…`).
+- **Lệch khác spec (chi tiết kỹ thuật tự chọn):**
+  - Tìm kiếm/trang của Bài đã lưu giữ trong state, không lên URL (spec không đòi).
+  - Dòng hoàn tác ghi thêm tiêu đề bài (cắt `…`) để biết bài nào; `size=9` như `/blogs`, skeleton 6 theo wireframe.
+  - `VALIDATION_ERROR` ở trang này dùng câu “Kiểm tra lại bộ lọc bài đã lưu.” theo bảng mã lỗi.
+  - `Sidebar.test`: ca đếm icon Admin ≥7 → ≥6 (bỏ một mục).
+- **Chưa kiểm:** Admin thật (không đổi được, chỉ test + logic chung `managerHome`); nhiều trang phân trang thật (DB dev chỉ 1 bài công khai). Lỗi có sẵn: thanh cuộn ngang 8 px ở Sidebar do `SidebarSeparator` (`w-full` + `mx-2`) — không sửa (ngoài phạm vi).
+- **Review vòng 1 (Codex `review`):** 2 phát hiện [P2], sửa cả 2: detail mở từ Bài đã lưu “Về danh sách” ra `/blogs` → `readerBackTarget` nhận thêm đúng `/me/saved-articles` (đã sửa dòng tương ứng ở “Lệch khác spec”); khi khôi phục phiên `roles` còn rỗng nên Admin/Moderator thoáng thấy “Bài đã lưu” → nhóm “Góc của tôi” chỉ hiện khi đã có `profile` và không có role quản lý. Test thêm (RED đúng lý do): 2 kỳ vọng `readerBackTarget`, 2 ca Sidebar (profile chưa tải; LEARNER+MODERATOR). Chạy `npx vitest run src/services/articleService.test.ts src/components/layout/Sidebar.test.tsx src/pages/Blogs/BlogDetailPage.test.tsx src/pages/Blogs/SavedArticlesPage.test.tsx` → 76/76; build đạt.
+- **Review vòng 2 (Codex `adversarial-review`, phần sửa):** approve, “No material findings”.

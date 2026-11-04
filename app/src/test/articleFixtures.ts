@@ -1,4 +1,4 @@
-import type { AuthorArticle, HistoryEntry, ImageIssue, ModeratorArticleDetail, ModeratorArticleSummary, PublicArticleDetail, PublicArticleSummary, PublicationVersion } from '../types/articles'
+import type { AuthorArticle, HistoryEntry, ImageIssue, ModeratorArticleDetail, ModeratorArticleSummary, PublicArticleDetail, PublicArticleSummary, PublicationVersion, SavedArticleSummary } from '../types/articles'
 
 // JSON exactly as the backend serializes ArticleResponse/ArticlePublicationVersionResponse (Task 1a–1c) and the
 // Moderator summary/detail/history responses (Task 1b). Kept out of *.test.ts so importing them does not re-run those tests.
@@ -33,3 +33,5 @@ export const publicDetailFixture: PublicArticleDetail = {
   author: { ...publicSummaryFixture.author, expertise: 'Java backend', bioExcerpt: 'Kỹ sư Java.' },
   relatedArticles: [{ id: 'pub-2', title: 'JPA nâng cao', coverImageUrl: null, publishedAt: '2026-11-02T10:00:00Z', saved: true }],
 }
+// GET /me/saved-articles item: SavedArticleSummaryResponse (Task 1c) = public summary fields + savedAt, saved always true.
+export const savedSummaryFixture: SavedArticleSummary = { ...publicSummaryFixture, saved: true, savedAt: '2026-11-04T12:00:00Z' }

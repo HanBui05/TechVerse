@@ -49,10 +49,16 @@ type Props = { articleId: string; saved: boolean; language?: Language; withText?
 
 /** Heart toggle with `aria-pressed`; the error shows right under the button. Remount (key) when the article changes. */
 export function ArticleSaveButton({ articleId, saved: initial, language = 'vi', withText = false, className, onSavedChange }: Props) {
-  const t = readerText(language)
   const { saved, error, toggle } = useSavedState(articleId, initial, language, onSavedChange)
+  return <SaveToggle saved={saved} error={error} onToggle={toggle} language={language} withText={withText} className={className} />
+}
+
+type ToggleProps = { saved: boolean; error: string; onToggle: () => void; language?: Language; withText?: boolean; className?: string; autoFocus?: boolean }
+/** Presentational heart button + inline error; `/me/saved-articles` drives it from its own `useSavedState`. */
+export function SaveToggle({ saved, error, onToggle: toggle, language = 'vi', withText = false, className, autoFocus }: ToggleProps) {
+  const t = readerText(language)
   return <span className={cn('inline-flex flex-col items-start gap-1', className)}>
-    <Button type="button" variant="outline" size={withText ? 'sm' : 'icon'} aria-pressed={saved} aria-label={t('saveLabel')} title={t('saveLabel')} onClick={toggle}
+    <Button type="button" variant="outline" size={withText ? 'sm' : 'icon'} aria-pressed={saved} aria-label={t('saveLabel')} title={t('saveLabel')} onClick={toggle} autoFocus={autoFocus}
       className={cn('pointer-coarse:min-h-11 pointer-coarse:min-w-11', saved && 'border-tone-rose-border bg-tone-rose-bg text-tone-rose-fg hover:bg-tone-rose-bg hover:text-tone-rose-fg')}>
       <Heart className={cn(saved && 'fill-current')} aria-hidden />
       {withText && <span>{saved ? t('saved') : t('save')}</span>}

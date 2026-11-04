@@ -42,3 +42,9 @@ it('uses the cover when present and an English copy on demand', () => {
   expect(screen.getByText('6 min read')).not.toBeNull()
   expect(screen.getByRole('button', { name: 'Save article' }).getAttribute('aria-pressed')).toBe('true')
 })
+
+it('renders no save control for a management account (canSave=false)', () => {
+  renderCard({ canSave: false })
+  expect(screen.queryByRole('button', { name: 'Lưu bài viết' })).toBeNull()
+  expect(screen.getByRole('link', { name: 'Đọc tiếp: Spring Boot từ đầu' })).not.toBeNull()
+})

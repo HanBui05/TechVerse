@@ -28,7 +28,7 @@ const QUICK = 'flex items-center gap-2.5 rounded-lg px-2 py-2 text-foreground tr
 type Heading = { id: string; text: string; level: 2 | 3 }
 
 /** Reader detail (wireframe 2c-2): content ~880 px + sticky 280 px sidebar; on mobile the TOC folds under the summary and the sidebar follows the article. */
-export function BlogDetailPage({ language = 'vi' }: { language?: Language }) {
+export function BlogDetailPage({ language = 'vi', canSave = true }: { language?: Language; canSave?: boolean }) {
   const t = readerText(language)
   const { id = '' } = useParams()
   const location = useLocation()
@@ -155,7 +155,7 @@ export function BlogDetailPage({ language = 'vi' }: { language?: Language }) {
               {article.versionNumber > 1 && <span className={cn(chip, TONE_TILE.green)}><RefreshCw className="size-3.5" aria-hidden /><time dateTime={article.approvedAt}>{t('updated', { date: formatDate(article.approvedAt, language) })}</time></span>}
               <span className={cn(chip, TONE_TILE.sky)}><Clock3 className="size-3.5" aria-hidden /><span>{t('minutes', { n: article.readingMinutes })}</span></span>
               <span className="ml-auto flex flex-wrap items-start gap-2">
-                <ArticleSaveButton key={article.id} articleId={article.id} saved={article.saved} language={language} withText />
+                {canSave && <ArticleSaveButton key={article.id} articleId={article.id} saved={article.saved} language={language} withText />}
                 <CopyButton language={language} label={t('copyLink')} text={() => window.location.href.split('#')[0]}
                   className="h-8 border border-border px-3 text-sm text-foreground"><Link2 className="size-4" aria-hidden /><span>{t('copyLink')}</span></CopyButton>
               </span>

@@ -113,3 +113,17 @@ it('shows a translated error with retry instead of the backend text', async () =
   await user.click(within(alert).getByRole('button', { name: 'Thử lại' }))
   expect(await screen.findByRole('heading', { name: 'Spring Boot từ đầu' })).not.toBeNull()
 })
+
+it('links “Saved articles” in the header and shows save buttons only when the account may save', async () => {
+  const fetch = mockApi()
+  renderPage()
+  await screen.findByRole('heading', { name: 'Spring Boot từ đầu' })
+  expect(screen.getByRole('link', { name: 'Bài đã lưu' }).getAttribute('href')).toBe('/me/saved-articles')
+  expect(screen.getByRole('button', { name: 'Lưu bài viết' })).not.toBeNull()
+  cleanup()
+  render(<MemoryRouter initialEntries={['/blogs']}><Routes><Route path="/blogs" element={<BlogsPage language="vi" canSave={false} />} /></Routes></MemoryRouter>)
+  await screen.findByRole('heading', { name: 'Spring Boot từ đầu' })
+  expect(screen.queryByRole('link', { name: 'Bài đã lưu' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Lưu bài viết' })).toBeNull()
+  expect(fetch.mock.calls.filter(([input]) => /saved/.test(String(input)))).toEqual([])
+})

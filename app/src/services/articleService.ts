@@ -1,5 +1,5 @@
 import { request } from './api/client'
-import type { ArticleFields, ArticleOption, ArticleStatus, ArticleWrite, AuthorAction, AuthorArticle, AuthorArticleFilter, AuthorArticleSummary, CompareField, HistoryEntry, ImageIssue, ModeratorAction, ModeratorArticleDetail, ModeratorArticleFilter, ModeratorArticleSummary, Page, PublicArticleDetail, PublicArticleSummary, ReaderFilter } from '../types/articles'
+import type { ArticleFields, ArticleOption, ArticleStatus, ArticleWrite, AuthorAction, AuthorArticle, AuthorArticleFilter, AuthorArticleSummary, CompareField, HistoryEntry, ImageIssue, ModeratorAction, ModeratorArticleDetail, ModeratorArticleFilter, ModeratorArticleSummary, Page, PublicArticleDetail, PublicArticleSummary, ReaderFilter, SavedArticleSummary } from '../types/articles'
 
 const base = '/api/v1/author/articles'
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
@@ -161,6 +161,7 @@ export const publicArticles = {
   options: () => request<{ topics: Page<ArticleOption>; tags: Page<ArticleOption> }>(`${publicBase}/options?topicSize=100&tagSize=100`),
   detail: (id: string) => request<PublicArticleDetail>(`${publicBase}/${encodeURIComponent(id)}`),
   setSaved: (id: string, saved: boolean) => request<{ saved: boolean }>(`${publicBase}/${encodeURIComponent(id)}/saved`, { method: saved ? 'PUT' : 'DELETE' }),
+  savedList: ({ keyword, page }: { keyword: string; page: number }) => request<Page<SavedArticleSummary>>(`/api/v1/me/saved-articles?${query({ keyword: keyword.trim(), page, size: READER_PAGE_SIZE })}`),
 }
 
 /** `/blogs` query → filter; unknown sort and malformed page fall back to the defaults. */
@@ -183,8 +184,8 @@ export function readerSearch({ keyword, topicId, tagId, sort, page }: ReaderFilt
   return params
 }
 
-/** “Back to list” target: the `/blogs` list URL carried in router state, else `/blogs` (direct visit or foreign state). */
+/** “Back to list” target: the `/blogs` list URL or `/me/saved-articles` carried in router state, else `/blogs` (direct visit or foreign state). */
 export function readerBackTarget(state: unknown) {
   const from = (state as { from?: unknown } | null)?.from
-  return typeof from === 'string' && /^\/blogs(\?|$)/.test(from) ? from : '/blogs'
+  return typeof from === 'string' && /^\/(blogs(\?|$)|me\/saved-articles$)/.test(from) ? from : '/blogs'
 }

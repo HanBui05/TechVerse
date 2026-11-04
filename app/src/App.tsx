@@ -12,6 +12,7 @@ import { copy } from './data/i18n'
 import { HomePage } from './pages/Home/HomePage'
 import { BlogsPage } from './pages/Blogs/BlogsPage'
 import { BlogDetailPage } from './pages/Blogs/BlogDetailPage'
+import { SavedArticlesPage } from './pages/Blogs/SavedArticlesPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
 import { ThemePage } from './pages/Settings/ThemePage'
 import { AuthLayout } from './components/auth/AuthLayout'
@@ -39,6 +40,15 @@ import { getMyProfile, type UserProfile } from './services/profileService'
 
 function AuthRoute({ authenticated, children }: { authenticated: boolean; children: ReactNode }) {
   return authenticated ? children : <Navigate to="/login" replace />
+}
+
+/** Dashboard of a management account (ADMIN wins over MODERATOR); null for Reader accounts. */
+const managerHome = (roles: string[]) => roles.includes('ADMIN') ? '/admin' : roles.includes('MODERATOR') ? '/moderator' : null
+
+// Reader routes (/, /blogs, /blogs/:id, /me/saved-articles) are not for management accounts; /profile and /settings/* stay shared.
+function ReaderRoute({ roles, children }: { roles: string[]; children: ReactNode }) {
+  const home = managerHome(roles)
+  return home ? <Navigate to={home} replace /> : children
 }
 
 const LOADING_MAIN = 'tw-page flex min-h-svh flex-col items-center justify-center p-10 text-center text-muted-foreground'
@@ -99,7 +109,7 @@ export default function App() {
     setProfile(nextProfile)
     localStorage.setItem('techverse-authenticated', 'true')
     setAuthenticated(true)
-    return nextProfile.roles.includes('ADMIN') ? '/admin' : nextProfile.roles.includes('MODERATOR') ? '/moderator' : '/'
+    return managerHome(nextProfile.roles) ?? '/'
   }, [])
   // A callback must start clean, even when another account was previously signed in in this tab.
   const resetGoogleSession = useCallback(() => {
@@ -134,12 +144,16 @@ export default function App() {
     setProfile(null)
     navigate('/login', { replace: true })
   }
+  const roles = profile?.roles || []
+  // Hides every saved control/link and never calls the saved API; the backend (Task 1d) still enforces it.
+  const canSave = !managerHome(roles)
   const routes = authenticated && !profile && !isAuthPage
       ? <main className={LOADING_MAIN}><p role="status">Đang đồng bộ phiên đăng nhập và quyền truy cập...</p></main>
       : <Routes>
-      <Route path="/" element={<HomePage t={t} />} />
-      <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><BlogsPage language={language} /></AuthRoute>} />
-      <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><BlogDetailPage language={language} /></AuthRoute>} />
+      <Route path="/" element={<ReaderRoute roles={roles}><HomePage t={t} /></ReaderRoute>} />
+      <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><BlogsPage language={language} canSave={canSave} /></ReaderRoute></AuthRoute>} />
+      <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><BlogDetailPage language={language} canSave={canSave} /></ReaderRoute></AuthRoute>} />
+      <Route path="/me/saved-articles" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><SavedArticlesPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route element={<AuthLayout t={t} />}>
         <Route path="/login" element={<LoginPage t={t} onLogin={login} />} />
         <Route path="/register" element={<RegisterPage t={t} onRegister={register} />} />
@@ -165,7 +179,6 @@ export default function App() {
       <Route path="*" element={<PlaceholderPage t={t} language={language} />} />
     </Routes>
   if (isAuthPage) return <div className="min-h-svh">{routes}</div>
-  const roles = profile?.roles || []
   const sidebar = authenticated && roles.includes('MODERATOR') && (isModeratorPage || !roles.includes('ADMIN'))
     ? <ModeratorSidebar language={language} profile={profile} onLogout={logout} />
     : roles.includes('ADMIN')

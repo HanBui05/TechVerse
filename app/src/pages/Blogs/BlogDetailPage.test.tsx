@@ -95,3 +95,11 @@ it('shows a translated error with retry for other failures', async () => {
   await user.click(within(alert).getByRole('button', { name: 'Thử lại' }))
   expect(await screen.findByRole('heading', { level: 1, name: 'Spring Boot từ đầu' })).not.toBeNull()
 })
+
+it('hides the save button for a management account (canSave=false)', async () => {
+  mockApi()
+  render(<MemoryRouter initialEntries={['/blogs/pub-1']}><Routes><Route path="/blogs/:id" element={<BlogDetailPage language="vi" canSave={false} />} /></Routes></MemoryRouter>)
+  expect(await screen.findByRole('heading', { level: 1, name: 'Spring Boot từ đầu' })).not.toBeNull()
+  expect(screen.queryByRole('button', { name: 'Lưu bài viết' })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Sao chép liên kết' })).not.toBeNull()
+})
