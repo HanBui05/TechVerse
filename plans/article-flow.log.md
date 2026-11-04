@@ -13,6 +13,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - **Task 2c đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2c`; đã đánh dấu “Xong khi” 2c trong spec, nhờ Codex đồng bộ spec (gồm quyết định làm đẹp Reader). Preflight đã bật, 7 CSS legacy đã xóa; Codex vòng 1 sửa 3 lỗi, vòng 2 sửa 1 lỗi. Chi tiết mục “Task 2c” cuối file.
 - **Task 1d đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1d`; đã đánh dấu “Xong khi” 1d trong spec, nhờ Codex đồng bộ spec (kèm quyết định chạy full cuối module). Test 24/24, Codex review vòng 1 không phát hiện. Một dòng `@PreAuthorize` ở `SavedArticleController`; chi tiết mục “Task 1d” cuối file.
 - **Task 2d đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2d`; đã đánh dấu 6 mục “Xong khi” 2d trong spec, nhờ Codex đồng bộ spec. 262/262, build đạt, kiểm mắt thật đạt; Codex vòng 1 sửa 2 lỗi, vòng 2 approve; chi tiết mục “Task 2d” cuối file. **Tiếp: hoàn tất module** (regression gộp BE+FE song song → E2E thật → full BE rồi FE, mục “Hoàn tất module sau Task 2d” trong spec), session mới.
+- **Hoàn tất module đã nhận (2026-11-04) — MODULE HOÀN TẤT**, commit WIP `wip(article-flow): Hoàn tất module`; đã đánh dấu 4 mục “Hoàn tất module” + mục 2c “Public 404…” trong spec, nhờ Codex đồng bộ spec. **Tiếp:** khi người dùng yêu cầu — squash các commit `wip(article-flow)` thành một commit rồi mở PR `feature/article-flow` → `main` (CI chạy full BE). Codex review vòng 1 không phát hiện; full BE sau sửa để CI (quyết định người dùng). Kết quả: regression gộp BE 147/147, FE 375 (1 ca chậm do tải, chạy riêng đạt); E2E API thật 46/46 + UI thật đạt (Cloudinary thật); full BE 368/370 → 2 test Admin taxonomy còn chèn cột `status` cũ, đã sửa fixture, 2 lớp 36/36; full FE 563/563. Dữ liệu E2E còn trong DB dev (bài của `hoa.author`). Chi tiết mục “Hoàn tất module” cuối file. Khi nhận: đánh dấu 4 mục “Xong khi” hoàn tất + mục 2c “Public 404…”, commit WIP, Codex đồng bộ spec; squash chỉ khi người dùng yêu cầu PR.
 - Frontend đã theo API mới ở cả Author/Moderator/Reader.
 - **Lỗi có sẵn:** Sidebar dư 8 px cuộn ngang ở desktop (cả `/profile`). (Lỗi `App.auth.test` Moderator đã sửa ở 2b.)
 - **DB dev phải làm mới trước khi chạy app** (V10 dừng nếu `articles` có dữ liệu): lệnh ở `docs/RUNBOOK.md` mục “Làm mới DB dev”. Không còn seed SQL bài viết: tạo 3–5 bài qua API theo `server/src/test/resources/seed/HUONG_DAN.md`.
@@ -20,13 +21,24 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 
 ## Quyết định người dùng chưa có trong spec
 
-- (không có)
+- **2026-11-04 — Full BE sau khi sửa 2 test Admin:** không chạy lại full backend trên máy; để CI chạy khi mở PR. Tiêu chí “full BE đạt trong đúng một lượt” coi là đạt bằng: lượt full 368/370 + 2 lớp đã sửa 36/36 + CI khi mở PR.
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — Module article-flow đã nhận
+- Người dùng nhận bước hoàn tất module; đánh dấu spec, commit WIP, nhờ Codex đồng bộ spec. Module hoàn tất. Tiếp: squash + PR khi người dùng yêu cầu.
+
+### 2026-11-04 — Hoàn tất module: regression + E2E + full
+- Đã làm: regression gộp, E2E thật (API + UI Playwright), full BE rồi FE; sửa 2 test Admin (`AdminTagIntegrationTest`, `AdminTopicIntegrationTest`) còn chèn cột `articles.status` đã bị V10 xóa.
+- Bài học: Task 1a grep caller của `status` chỉ trong lớp article → sót SQL thô ở test module khác; chỉ full suite mới lộ. Chạy Vitest song song Gradle làm `findBy*` (1 s) hết hạn → lỗi giả.
+- Codex review vòng 1 (job đầu treo, đã hủy, chạy lại): không phát hiện. Người dùng: full BE sau sửa để CI. Việc dở: người dùng nhận.
+
+### 2026-11-04 — Codex đồng bộ Task 2d
+- Codex: đã đối chiếu kết quả Task 2d trong log; toàn bộ 6 mục “Xong khi” Task 2d đã là `[x]` đúng theo kết quả test, build, kiểm mắt và review nên giữ nguyên. Bảng “Quyết định người dùng chưa có trong spec” đang trống nên không có quyết định nào cần đưa vào thân spec.
+
 ### 2026-11-04 — Task 2d đã nhận
 - Người dùng nhận Task 2d; đánh dấu 6 mục “Xong khi” 2d trong spec, commit WIP, nhờ Codex đồng bộ spec. Tiếp: hoàn tất module (session mới).
 
@@ -305,3 +317,13 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - **Chưa kiểm:** Admin thật (không đổi được, chỉ test + logic chung `managerHome`); nhiều trang phân trang thật (DB dev chỉ 1 bài công khai). Lỗi có sẵn: thanh cuộn ngang 8 px ở Sidebar do `SidebarSeparator` (`w-full` + `mx-2`) — không sửa (ngoài phạm vi).
 - **Review vòng 1 (Codex `review`):** 2 phát hiện [P2], sửa cả 2: detail mở từ Bài đã lưu “Về danh sách” ra `/blogs` → `readerBackTarget` nhận thêm đúng `/me/saved-articles` (đã sửa dòng tương ứng ở “Lệch khác spec”); khi khôi phục phiên `roles` còn rỗng nên Admin/Moderator thoáng thấy “Bài đã lưu” → nhóm “Góc của tôi” chỉ hiện khi đã có `profile` và không có role quản lý. Test thêm (RED đúng lý do): 2 kỳ vọng `readerBackTarget`, 2 ca Sidebar (profile chưa tải; LEARNER+MODERATOR). Chạy `npx vitest run src/services/articleService.test.ts src/components/layout/Sidebar.test.tsx src/pages/Blogs/BlogDetailPage.test.tsx src/pages/Blogs/SavedArticlesPage.test.tsx` → 76/76; build đạt.
 - **Review vòng 2 (Codex `adversarial-review`, phần sửa):** approve, “No material findings”.
+
+## Hoàn tất module sau Task 2d (2026-11-04)
+
+- **Regression gộp (song song):** BE lệnh spec → `BUILD SUCCESSFUL` 4m20s, 10 lớp 147/147. FE 21 file spec → 374/375 + build đạt; ca lỗi `App.author-session.test.tsx` “F5 after approval…” (`findByRole('option','Java Backend')` hết 1 s) do máy tải nặng khi Gradle + Testcontainers chạy cùng; chạy riêng file sau khi BE xong → 6/6. Không phải lỗi code.
+- **E2E API thật** (script tạm scratchpad `e2e.mjs`, backend IntelliJ đã nạp code 1d, `hoa.author` = Author, `lan.author` = Reader): 46/46. Tạo 4 bài từ `articles.json` (không SQL): A=`ec1e2af8-…` ảnh ngoài → `imageIssues` → SUBMIT 400 `ARTICLE_IMAGE_INVALID` → upload Cloudinary thật (ảnh + cover) → SUBMIT; v1 approve → sửa, Reader vẫn v1 → REQUEST_CHANGES (note) → gửi lại → approve v2 cùng URL; Author hide/unhide; Moderator HIDE từ AUTHOR_HIDDEN → Author UNHIDE 409 → RESTORE về AUTHOR_HIDDEN; Admin suspend `hoa.author` → 4 bài 404 + biến khỏi list/saved → restore hiện lại; Admin/Moderator ba API saved 403 `ACCESS_DENIED`; soft delete B (đang lưu) biến khỏi public/saved/Author list/queue, Moderator RESTORE 409; hard delete nháp + retry key 409 `ARTICLE_KEY_CONFLICT`.
+- **E2E UI thật (Playwright MCP, desktop, dark mặc định):** Reader `/blogs` lưu/bỏ lưu trên card (DB 1→2→1); `/blogs/A` H1 v2 + nhãn “Cập nhật” + ảnh Cloudinary; `/me/saved-articles` bỏ lưu → “Đã bỏ lưu” → Hoàn tác (focus về nút lưu). Moderator + Admin: `/`, `/blogs`, `/blogs/:id`, `/me/saved-articles` → dashboard đúng role, 0 request saved, không có “Về trang người dùng”; dialog Duyệt bài C hiện “Lần trước trả về: …” và duyệt thành công. Author: editor nháp F có 2 ảnh ngoài → “2 ảnh cần tải lên”, Gửi duyệt khóa, 0 request tới URL ngoài; “Tải ảnh thay thế” bằng PNG thật → Cloudinary → còn 1.
+- **Full (tuần tự):** BE `./gradlew test` → 370, 2 lỗi `BadSqlGrammarException`: `AdminTagIntegrationTest.renameAndStatusChangesPreserveArticlesAndAllTagLinks`, `AdminTopicIntegrationTest.inactivePreservesAllFourReferencingContentTypesWithoutChangingRows` chèn `articles(status,published_at)` — cột `status` bị V10 xóa (regression từ Task 1a). Sửa fixture: chèn nháp mặc định V10 + `content_fingerprint=repeat('0',64)` (ý định test giữ nguyên: đổi taxonomy không đổi row bài). Chạy lại 2 lớp → 36/36. FE `npm test` → 44 file 563/563.
+- **Lệch khác spec:** spec đòi full BE đạt “trong đúng một lượt”; lượt full có 2 lỗi trên, đã sửa và chỉ chạy lại 2 lớp bị ảnh hưởng (không chạy lại full ~9 phút) — người dùng chọn để CI chạy khi mở PR (2026-11-04).
+- **Review vòng 1 (Codex `review`):** “Không phát hiện lỗi chức năng hoặc bảo mật… Hai fixture Admin đã được cập nhật phù hợp schema V10.” Không cần vòng 2. Sửa 2 file test ngoài “Đường dẫn thuộc module” vì lỗi do V10 của module.
+- **Chưa kiểm:** mobile/light trong lượt E2E (đã kiểm mắt ở từng task); 429/>50 ảnh/>5 MiB với Cloudinary thật (đã phủ unit test). Dữ liệu E2E để lại trong DB dev (bài A/C/D công khai của `hoa.author`, B soft-delete, nháp F; `lan.author` lưu A).

@@ -271,7 +271,7 @@ class AdminTagIntegrationTest {
         UUID id = newTag("Backend", "Shared tag");
         UUID other = newTag("Java", "Second tag");
         UUID topicId = jdbc.queryForObject("INSERT INTO techverse.topics(name) VALUES ('Article topic') RETURNING id", UUID.class);
-        UUID articleId = jdbc.queryForObject("INSERT INTO techverse.articles(author_id,topic_id,title,summary,content,status,published_at) VALUES (?,?,'Article','Summary','Content','PUBLISHED',now()) RETURNING id", UUID.class, learnerId, topicId);
+        UUID articleId = jdbc.queryForObject("INSERT INTO techverse.articles(author_id,topic_id,title,summary,content,content_fingerprint) VALUES (?,?,'Article','Summary','Content',repeat('0',64)) RETURNING id", UUID.class, learnerId, topicId);
         jdbc.update("INSERT INTO techverse.article_tags(article_id,tag_id) VALUES (?,?),(?,?)", articleId, id, articleId, other);
         var articleBefore = jdbc.queryForMap("SELECT * FROM techverse.articles WHERE id=?", articleId);
         var linksBefore = jdbc.queryForList("SELECT * FROM techverse.article_tags ORDER BY id");
