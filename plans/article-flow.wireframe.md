@@ -4,7 +4,7 @@ Trạng thái: **người dùng đã duyệt 2026-11-04** (quyết định ở `
 
 ## Phong cách (người dùng chốt 2026-11-04)
 
-- **Reader (`/blogs`, `/blogs/:id`, `/blogs/saved`):** bám mẫu javabuilder.online theo số đo `docs/design/javabuilder-patterns.md` 4.1 (header), 4.2 (card lọc), 4.3 (lưới card), 4.4 (chi tiết 2 cột); chỉ lấy bố cục/tỷ lệ/công thức màu.
+- **Reader (`/blogs`, `/blogs/:id`, `/me/saved-articles`):** bám mẫu javabuilder.online theo số đo `docs/design/javabuilder-patterns.md` 4.1 (header), 4.2 (card lọc), 4.3 (lưới card), 4.4 (chi tiết 2 cột); chỉ lấy bố cục/tỷ lệ/công thức màu. Sau kiểm mắt Task 2c, người dùng chốt bộ lọc gọn nhiều tone/icon, card có topic + tag +N và avatar tác giả, detail là card bài lớn đầy đặn với hiệu ứng/icon. Mọi tone dùng token/Badge có cặp chữ/nền ≥ 4.5:1 theo `tokens.test.ts`; không gradient, không thêm chức năng ngoài spec và tắt chuyển động khi `prefers-reduced-motion`.
 - **Author và Moderator:** không có web mẫu — Claude tự thiết kế, sinh động nhưng cùng khung chung (Sidebar, `max-w-7xl`, card bo 18, hàng trong card 4.5, chip kicker 4.1). Cách làm sinh động, chỉ bằng token/Badge tone, không gradient:
   - Ô số liệu: ô icon màu theo `statusTone` (nháp slate, chờ duyệt amber, cần sửa sky, công khai green, ẩn/gỡ rose, tổng blue), số `text-2xl font-bold`; ô đang lọc có viền + nền tone nhạt.
   - Hàng bài: thumbnail cover hoặc ô fallback tone/icon topic như card Reader; viền trái 3 px theo trạng thái cần chú ý (chờ duyệt amber, cần sửa sky, bị ẩn/gỡ rose); topic dùng `toneFor`.
@@ -233,34 +233,37 @@ Giữ khung Admin/Moderator hiện tại (D-029). Thay đổi:
 │         │ └──────────────────────────────────────────────────────────────┘        │
 │         │ ┌ card ───────────┐ ┌ card ───────────┐ ┌ card ───────────┐         │
 │         │ │ ▢ cover 16:10   │ │ ▢ fallback tone │ │                 │         │
-│         │ │ (Java)  3 ngày  │ │   + icon topic  │ │                 │         │
+│         │ │   (⏱ 6 phút)    │ │   + icon topic  │ │                 │         │
+│         │ │ (Java)(t1)(t2)+2│ │                 │ │                 │         │
 │         │ │ Tiêu đề 2 dòng… │ │                 │ │                 │         │
 │         │ │ Tóm tắt 2 dòng… │ │                 │ │                 │         │
-│         │ │ (t1)(t2)(t3)+2  │ │                 │ │                 │         │
-│         │ │ ⏱ 6 phút  [♡] [Đọc tiếp ›]│        │ │                 │         │
-│         │ │ (av) Trần B     │ │                 │ │                 │         │
+│         │ │ [♡]       [Đọc tiếp ›]     │        │ │                 │         │
+│         │ │ (av) Trần B     │Tác giả│          │ │                 │         │
 │         │ └─────────────────┘ └─────────────────┘ └─────────────────┘         │
 │         │                       ‹ 1 2 3 … 7 ›                                  │
 └─────────┴──────────────────────────────────────────────────────────────────────┘
 ```
 
-- Grid 3/2/1 cột. Filter/page đồng bộ URL như spec. [♡] = `ArticleSaveButton` (aria-pressed, 44 px); lỗi lưu hiện dòng nhỏ ngay dưới nút trong card.
-- **Mobile:** 1 cột; chip topic cuộn ngang; [♡ Bài đã lưu] thành nút icon cạnh H1.
-- Loading 6 card `▓`. Empty “Không tìm thấy bài viết phù hợp” + [Xóa bộ lọc] (khi không có filter: “Chưa có bài viết nào”). Error + [⟳ Thử lại].
+- Header có ô icon + kicker. Trên desktop, filter giữ gọn: search, Thẻ có icon, Sắp xếp có icon và chip tổng trên một hàng; chip topic ở hàng kế, dùng `toneFor` + `topicIcon`.
+- Grid 3/2/1 cột. Filter/page đồng bộ URL như spec. Với tài khoản không có role quản lý, [♡] = `ArticleSaveButton` (aria-pressed, 44 px) và lỗi lưu hiện dòng nhỏ ngay dưới nút trong card; `ADMIN`/`MODERATOR` bị redirect khỏi Reader nên không render card/header lưu bài.
+- Card bo 16: cover/fallback phóng nhẹ và card nhấc + đổ bóng khi hover; fallback có icon trang trí; chip phút đọc nổi trên ảnh. Hàng taxonomy luôn có topic, tối đa 3 tag rồi `+N`. Tác giả có avatar 36 px viền, tên đậm và nhãn “Tác giả”; “Đọc tiếp” là nút nền nhấn. Card xuất hiện lần lượt, tắt animation khi reduced-motion.
+- **Mobile:** 1 cột; chip topic cuộn ngang; [♡ Bài đã lưu] thành nút icon cạnh H1 cho tài khoản được phép lưu.
+- Loading 9 card `▓`. Empty “Không tìm thấy bài viết phù hợp” + [Xóa bộ lọc] (khi không có filter: “Chưa có bài viết nào”). Error + [⟳ Thử lại].
 
 ## 2c-2 Reader detail `/blogs/:id` — desktop
 
 ```
 ┌ Sidebar ┬──────────────────────────────────────────────────────────────────────┐
+│         │ ━━━━━━━━━━━━━━━ tiến độ đọc (`role=progressbar`) ━━━━━━━━━━━━━━━     │
 │         │ Bài viết › Java › Tiêu đề…                                           │
-│         │ ┌ nội dung ~880 ─────────────────────────────┐ ┌ sidebar 280 sticky ┐│
-│         │ │ ▢ cover bo 18                              │ │ Về tác giả         ││
+│         │ ┌ card bài lớn ~880, bo 16 ─────────────────┐ ┌ sidebar 300 sticky ┐│
+│         │ │ ▢ cover/fallback lớn                       │ │ Về tác giả         ││
 │         │ │ [◼ Java]                                    │ │ (av) Trần B        ││
-│         │ │ Tiêu đề bài viết (H1 30)                   │ │ Chuyên môn…        ││
-│         │ │ (av) Trần B · 01/11 · Cập nhật 04/11 · ⏱ 6p │ │ Bio ≤300 ký tự…    ││
+│         │ │ Tiêu đề bài viết (H1 36)                   │ │ Chuyên môn (badge) ││
+│         │ │ (tác giả)(01/11)(Cập nhật 04/11)(⏱ 6p)     │ │ Bio ≤300 ký tự…    ││
 │         │ │                    [♡ Lưu] [🔗 Sao chép link]│ ├ Mục lục ───────────┤│
-│         │ │ ┃ Tóm tắt (viền trái nhấn)                 │ │ ▸ Mở đầu  (đang đọc)││
-│         │ │ (tag)(tag)(tag)                            │ │   Cài đặt          ││
+│         │ │ ℹ Tóm tắt (tone blue)                      │ │ ▸ Mở đầu  (đang đọc)││
+│         │ │ (tag 14)(tag 14)(tag 14)                   │ │   Cài đặt          ││
 │         │ │ ## Mở đầu  🔗                               │ │     Bước 1         ││
 │         │ │ đoạn văn…                                  │ ├ Bài liên quan ─────┤│
 │         │ │ ┌ java ─────────────── [Copy] ┐            │ │ ▢ Tiêu đề 2 dòng   ││
@@ -268,31 +271,35 @@ Giữ khung Admin/Moderator hiện tại (D-029). Thay đổi:
 │         │ │ └─────────────────────────────┘            │ │ [Xem tất cả Java ›]││
 │         │ │ bảng cuộn ngang trong khung                │ └────────────────────┘│
 │         │ │ ─────────────────────────────              │                       │
-│         │ │ [‹ Về danh sách]            [↑ Về đầu trang]│                       │
+│         │ │ [‹ Về danh sách]            [↑ Về đầu trang]│ ├ Hành động nhanh ───┤│
+│         │ │                                                │ │ [Tất cả bài viết]  ││
+│         │ │                                                │ │ [Bài cùng chủ đề]  ││
 │         │ └────────────────────────────────────────────┘                       │
 └─────────┴──────────────────────────────────────────────────────────────────────┘
 ```
 
-- “Cập nhật <approvedAt>” chỉ khi `versionNumber > 1`. Sidebar cuộn riêng khi dài hơn viewport.
+- “Cập nhật <approvedAt>” chỉ khi `versionNumber > 1`. Nội dung dùng cỡ chữ 16 px; card bài có viền + bóng, summary có icon, metadata và tag dùng chip rõ cấp. Sidebar cuộn riêng khi dài hơn viewport.
+- Thẻ tác giả có dải màu phẳng, avatar 64 px và chuyên môn dạng badge. Tiêu đề mỗi card sidebar có ô icon tone; bài liên quan dùng ảnh 56 px + hover. “Hành động nhanh” chỉ dùng hai link đã có: tất cả bài viết và bài cùng chủ đề.
 - **Mobile:** breadcrumb rút còn “‹ Bài viết”; mục lục thành khối thu gọn “Mục lục ▾” ngay dưới tóm tắt; Về tác giả + Bài liên quan xuống cuối bài; hàng meta xuống dòng, [♡][🔗] cao 44.
 - Loading: cover `▓`, H1 `▓`, 8 dòng `▓`, sidebar `▓`. 404: `EmptyState` “Bài viết không tồn tại hoặc đã bị ẩn” + [Về danh sách]. Error khác + [⟳]. Không có related thì ẩn card đó.
 
-## 2d Bài đã lưu `/blogs/saved`
+## 2d Bài đã lưu `/me/saved-articles`
 
 ```
 ┌ Sidebar ┬──────────────────────────────────────────────────────────────────────┐
-│ Trang chủ│ (♡ Của bạn)                                                         │
-│ Bài viết │ Bài đã lưu   (8 bài)                         [‹ Tất cả bài viết]     │
-│  Bài đã  │ [⚲ Tìm trong bài đã lưu… ⏎   ✕]                                      │
-│  lưu  ◀  │ ┌ card (dùng ArticleCard) ┐ ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┐ ┌ card ─┐     │
-│          │ │ …            [♥ Đã lưu] │ │ Đã bỏ lưu · [Hoàn tác]  │ │       │     │
-│          │ └─────────────────────────┘ │ (giữ chỗ, cao 1 dòng)   │ └───────┘     │
-│          │                             └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┘               │
-│          │                         ‹ 1 2 ›                                      │
+│ CHÍNH    │ (♡ Góc của tôi)                                                     │
+│ Trang chủ│ Bài đã lưu   (8 bài)                         [‹ Tất cả bài viết]     │
+│ Bài viết │ [⚲ Tìm trong bài đã lưu… ⏎   ✕]                                      │
+│──────────│ ┌ card (dùng ArticleCard) ┐ ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┐ ┌ card ─┐     │
+│ GÓC CỦA  │ │ …            [♥ Đã lưu] │ │ Đã bỏ lưu · [Hoàn tác]  │ │       │     │
+│ TÔI      │ └─────────────────────────┘ │ (giữ chỗ, cao 1 dòng)   │ └───────┘     │
+│ Bài đã   │                             └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┘               │
+│ lưu   ◀  │                         ‹ 1 2 ›                                      │
 └──────────┴──────────────────────────────────────────────────────────────────────┘
 ```
 
-- Entry “Bài đã lưu” chỉ ở sidebar User, dưới “Bài viết”; Admin/Moderator vào qua [♡ Bài đã lưu] ở header `/blogs`.
+- “Góc của tôi” là nhãn nhóm cố định trong sidebar User, không thu gọn và không có route overview; hiện chỉ chứa “Bài đã lưu”. Mục “Bài viết của tôi” của Tác giả vẫn ở nhóm “Tác giả”. Nút [♡ Bài đã lưu] ở header `/blogs` dẫn tới route này.
+- Chỉ tài khoản không có role `ADMIN`/`MODERATOR` thấy nhóm/link/control lưu. Admin/Moderator (kể cả có thêm Learner/Author) không có màn 2d: vào route này hoặc các route Reader `/`, `/blogs`, `/blogs/:id` thì chuyển về `/admin` hoặc `/moderator`; hai sidebar quản trị không còn “Về trang người dùng”.
 - Dòng “Đã bỏ lưu · Hoàn tác” chiếm đúng ô card trong grid tới khi rời trang; lỗi bỏ lưu/hoàn tác hiện chữ `destructive` ngay trong dòng, card trở lại trạng thái đã xác nhận.
 - Empty: icon tim, “Chưa có bài đã lưu”, [Khám phá bài viết] → `/blogs`. Search không có kết quả: “Không có bài đã lưu khớp” + [Xóa tìm kiếm]. Loading 6 card `▓`; error + [⟳].
 - **Mobile:** 1 cột; nút quay lại thành icon; dòng undo full width cao 44.

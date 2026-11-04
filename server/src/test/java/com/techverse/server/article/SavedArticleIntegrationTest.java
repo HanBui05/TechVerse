@@ -58,17 +58,47 @@ class SavedArticleIntegrationTest extends ArticleIntegrationTestBase {
     }
 
     @Test
-    void putAndDeleteAreIdempotentForEveryAuthenticatedRole() throws Exception {
+    void managerRolesAreDeniedOnAllSavedRoutesWithoutTouchingRows() throws Exception {
+        // createLocalAccount already grants LEARNER; add AUTHOR + ADMIN on top
+        UUID multi = user("multi@example.com", "AUTHOR");
+        jdbc.update(
+                "INSERT INTO techverse.user_roles(user_id,role_id) SELECT ?,id FROM"
+                        + " techverse.roles WHERE name='ADMIN'",
+                multi);
+        String multiToken = login("multi@example.com");
+        UUID kept = published("Kept");
+        UUID fresh = published("Fresh");
+        for (String email : List.of("mod@example.com", "admin@example.com", "multi@example.com"))
+            jdbc.update(
+                    "INSERT INTO techverse.saved_articles(user_id,article_id) SELECT id,? FROM"
+                            + " techverse.users WHERE email=?",
+                    kept,
+                    email);
+        for (String t : List.of(modToken, adminToken, multiToken)) {
+            for (UUID id : List.of(fresh, kept, UUID.randomUUID())) {
+                denied(save(t, id));
+                denied(unsave(t, id));
+            }
+            denied(
+                    mvc.perform(
+                            get(SAVED_LIST).header("Authorization", bearer(t))));
+        }
+        assertThat(rows(kept)).isEqualTo(3);
+        assertThat(rows(fresh)).isZero();
+    }
+
+    @Test
+    void putAndDeleteAreIdempotentForLearnerAndAuthor() throws Exception {
         UUID id = published("Shared");
-        for (String t : List.of(token, authorToken, modToken, adminToken)) {
+        for (String t : List.of(token, authorToken)) {
             for (int i = 0; i < 2; i++)
                 save(t, id)
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.status").value(200))
                         .andExpect(jsonPath("$.data.saved").value(true));
         }
-        assertThat(rows(id)).isEqualTo(4);
-        for (String t : List.of(token, authorToken, modToken, adminToken)) {
+        assertThat(rows(id)).isEqualTo(2);
+        for (String t : List.of(token, authorToken)) {
             for (int i = 0; i < 2; i++)
                 unsave(t, id)
                         .andExpect(status().isOk())
@@ -242,6 +272,11 @@ class SavedArticleIntegrationTest extends ArticleIntegrationTestBase {
         var ids = new ArrayList<String>();
         page.at("/content").forEach(node -> ids.add(node.at("/id").asText()));
         return ids;
+    }
+
+    private void denied(ResultActions result) throws Exception {
+        result.andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
 
     private UUID user(String email, String role) {

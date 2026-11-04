@@ -22,7 +22,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
-@PreAuthorize("isAuthenticated()")
+// Manager accounts are separated from Reader features, even with extra LEARNER/AUTHOR roles.
+@PreAuthorize("isAuthenticated() and !hasAnyRole('ADMIN', 'MODERATOR')")
 @Tag(name = "Saved Articles", description = "Reader bookmarks of published articles")
 public class SavedArticleController {
     private final SavedArticleService service;

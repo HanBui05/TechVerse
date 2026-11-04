@@ -11,7 +11,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - **Task 2a đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2a`; đã đánh dấu “Xong khi” 2a trong spec, nhờ Codex đồng bộ spec. Test 80/80 + build đạt; Codex vòng 1 sửa 5 lỗi, vòng 2 sửa 1 lỗi; chi tiết mục “Task 2a” cuối file.
 - **Task 2b đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2b`; đã đánh dấu “Xong khi” 2b trong spec, nhờ Codex đồng bộ spec (2 quyết định: bộ lọc Moderator, nút lên đầu trang). Chi tiết mục “Task 2b” cuối file.
 - **Task 2c đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2c`; đã đánh dấu “Xong khi” 2c trong spec, nhờ Codex đồng bộ spec (gồm quyết định làm đẹp Reader). Preflight đã bật, 7 CSS legacy đã xóa; Codex vòng 1 sửa 3 lỗi, vòng 2 sửa 1 lỗi. Chi tiết mục “Task 2c” cuối file.
-- **Task tiếp theo: 2d — UI Bài đã lưu** (session mới), theo spec + wireframe 2d; dùng lại `ArticleCard`, `useSavedState` (`setSaved` cho Hoàn tác). Sau đó: regression gộp + E2E.
+- **Task 1d đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1d`; đã đánh dấu “Xong khi” 1d trong spec, nhờ Codex đồng bộ spec (kèm quyết định chạy full cuối module). Test 24/24, Codex review vòng 1 không phát hiện. Một dòng `@PreAuthorize` ở `SavedArticleController`; chi tiết mục “Task 1d” cuối file.
+- **Task tiếp theo sau khi nhận 1d:** **2d — UI Bài đã lưu** (`/me/saved-articles`, nhóm “Góc của tôi”, chặn trang người dùng với Admin/Moderator, ẩn nút lưu; dùng lại `ArticleCard`, `useSavedState`). Sau đó: regression gộp + E2E.
 - Frontend đã theo API mới ở cả Author/Moderator/Reader.
 - **Lỗi có sẵn:** Sidebar dư 8 px cuộn ngang ở desktop (cả `/profile`). (Lỗi `App.auth.test` Moderator đã sửa ở 2b.)
 - **DB dev phải làm mới trước khi chạy app** (V10 dừng nếu `articles` có dữ liệu): lệnh ở `docs/RUNBOOK.md` mục “Làm mới DB dev”. Không còn seed SQL bài viết: tạo 3–5 bài qua API theo `server/src/test/resources/seed/HUONG_DAN.md`.
@@ -19,13 +20,24 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 
 ## Quyết định người dùng chưa có trong spec
 
-- **2026-11-04 (Task 2c, sau kiểm mắt) — làm đẹp Reader:** bộ lọc `/blogs` đang to và đơn điệu → gọn hơn, nhiều màu/icon; card hiện cả topic và tag (nhiều thì `+N`) để card dài và sinh động, thêm icon; hàng tác giả có avatar, cỡ/độ đậm chữ khác; chi tiết bài phải “đầy đặn, to đẹp” như mẫu chi tiết javabuilder.online (chỉ lấy bố cục/tỷ lệ/công thức màu); có hiệu ứng, icon, không đơn điệu. Claude tự sáng tạo trong token/Badge tone, không gradient, không thêm chức năng ngoài spec. Spec/wireframe chờ Codex cập nhật.
+- **2026-11-04 — Chạy full sau khi xong mọi task:** sau Task 2d (sau regression gộp + E2E của bước hoàn tất module) chạy thêm một lượt full backend + full frontend (`npm test`) trên máy, lần lượt (không song song vì RAM), để bắt lỗi nhỏ nhất. Không chạy full trước đó. Spec chờ Codex cập nhật.
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — Task 1d đã nhận
+- Người dùng nhận Task 1d; đánh dấu 3 mục “Xong khi” 1d, commit WIP, nhờ Codex đồng bộ spec. Quyết định mới: chạy full BE + FE một lượt sau khi xong mọi task (mục “Quyết định người dùng”). Tiếp: Task 2d (session mới).
+
+### 2026-11-04 — Task 1d: chặn saved với tài khoản quản lý
+- Đã làm: `SavedArticleController` đổi class-level `@PreAuthorize` thành `isAuthenticated() and !hasAnyRole('ADMIN','MODERATOR')` (403 `ACCESS_DENIED` qua handler sẵn có); test ma trận quyền mới.
+- Bài học: `User.createLocalAccount` đã tự gán `LEARNER` → tài khoản đa role trong test chỉ cần thêm role khác, gán lại `LEARNER` bị trùng khóa.
+- Codex review vòng 1: không phát hiện mức cao/trung. Việc dở: người dùng nhận.
+
+- 2026-11-04 — Codex: đã đưa hai quyết định Task 2d về nhóm “Góc của tôi”/route `/me/saved-articles` và chính sách tài khoản quản lý vào spec + wireframe; tách phần 403 backend thành Task 1d riêng trước Task 2d, đồng thời cập nhật contract, đường dẫn và ngân sách test.
+- 2026-11-04 — Codex: đã đối chiếu “Chưa kiểm” của Task 2c; giữ 7 tiêu chí ở `[x]`, để tiêu chí public 404 theo trạng thái ở `[ ] (chưa kiểm — xem log)` và không chặn mở Task 2d vì E2E thật thuộc bước hoàn tất module.
+- 2026-11-04 — Codex: đã đưa quyết định làm đẹp Reader vào thân spec và wireframe 2c, đồng thời xóa quyết định khỏi bảng chờ.
 ### 2026-11-04 — Task 2c đã nhận
 - Người dùng nhận Task 2c (sau làm đẹp Reader + vòng 2 sửa slug tuyến tính); đánh dấu 8 mục “Xong khi” 2c trong spec, commit WIP, nhờ Codex đồng bộ spec. Bài học: máy 14,8 GB RAM dễ thiếu khi Vitest + build + Playwright + Codex chạy cùng lúc → lệnh chờ nền bị dừng, job Codex treo; chờ Codex thì không chạy test/trình duyệt. Tiếp: Task 2d (session mới).
 
@@ -260,3 +272,12 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
   - Kiểm: `ArticleCard.test` + `BlogsPage.test` + `BlogDetailPage.test` + `articleI18n.test` + `MarkdownContent.test` 66/66, build đạt. Kiểm mắt Playwright (API giả lập): desktop 1440 dark + light list/detail, không cuộn ngang; mobile 390 cảm ứng list/detail: không cuộn ngang, mọi control ≥44 px, không chữ tràn.
   - Chưa qua Codex (vòng 2 bị dừng do thiếu RAM); phần làm đẹp nên gộp vào vòng 2.
 - **Review vòng 2 (Codex `adversarial-review`, phần sửa vòng 1 + làm đẹp; job cũ treo do thiếu RAM đã hủy, chạy lại):** needs-attention, 1 phát hiện [medium]: `uniqueSlug` dò hậu tố lại từ `-2` cho mỗi heading trùng → bậc hai, bài 1 MiB nhiều heading trùng có thể treo Reader. Phần làm đẹp không có phát hiện. **Người dùng chọn sửa (2026-11-04):** `seen` thành `Map` id → hậu tố kế tiếp, không quét lại (tuyến tính). Test thêm: 20.000 heading trùng < 500 ms, id duy nhất, `a-20000`; ca `Foo, Foo 2, Foo, Foo 3, Foo` → `foo, foo-2, foo-3, foo-3-2, foo-4`. RED (`seen.add is not a function`) → `MarkdownContent.test` + `BlogDetailPage.test` 12/12, build đạt. Hết 2 vòng, không chạy vòng 3.
+
+## Task 1d — Backend chặn lưu bài với tài khoản quản lý (2026-11-04)
+
+- Sửa: `SavedArticleController` class-level `@PreAuthorize("isAuthenticated() and !hasAnyRole('ADMIN', 'MODERATOR')")` — chặn cả PUT/DELETE `/articles/{id}/saved` và GET `/me/saved-articles` trước service nên không chạm row và không phụ thuộc article visible. `AuthorizationDeniedException` → 403 `ACCESS_DENIED` qua `GlobalExceptionHandler` có sẵn. Không đổi schema/URL/DTO/SecurityConfiguration.
+- Test (`SavedArticleIntegrationTest`): ca “mọi role auth” thay bằng `managerRolesAreDeniedOnAllSavedRoutesWithoutTouchingRows` (Moderator, Admin, tài khoản LEARNER+AUTHOR+ADMIN; PUT/DELETE trên bài visible, bài đã có row, ID ngẫu nhiên + GET list → 403 `ACCESS_DENIED`; row cũ còn 3, không tạo row mới) và `putAndDeleteAreIdempotentForLearnerAndAuthor` (regression).
+- Lệch khác spec: không có. Caller khác: `PublishedArticleIntegrationTest` chỉ lưu bằng token Learner → không ảnh hưởng.
+- RED: 403 expected nhưng 200. Cuối: `./gradlew test --tests '...SavedArticleIntegrationTest' --tests '...PublishedArticleIntegrationTest'` → 8/8 + 16/16 đạt.
+- Chưa kiểm: không chạy full backend (CI); không kiểm app thật.
+- Review vòng 1 (Codex `review`): “Không phát hiện lỗi mức cao/trung.” Không cần vòng 2.
