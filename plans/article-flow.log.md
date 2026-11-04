@@ -13,7 +13,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - **Task 2c đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2c`; đã đánh dấu “Xong khi” 2c trong spec, nhờ Codex đồng bộ spec (gồm quyết định làm đẹp Reader). Preflight đã bật, 7 CSS legacy đã xóa; Codex vòng 1 sửa 3 lỗi, vòng 2 sửa 1 lỗi. Chi tiết mục “Task 2c” cuối file.
 - **Task 1d đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1d`; đã đánh dấu “Xong khi” 1d trong spec, nhờ Codex đồng bộ spec (kèm quyết định chạy full cuối module). Test 24/24, Codex review vòng 1 không phát hiện. Một dòng `@PreAuthorize` ở `SavedArticleController`; chi tiết mục “Task 1d” cuối file.
 - **Task 2d đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2d`; đã đánh dấu 6 mục “Xong khi” 2d trong spec, nhờ Codex đồng bộ spec. 262/262, build đạt, kiểm mắt thật đạt; Codex vòng 1 sửa 2 lỗi, vòng 2 approve; chi tiết mục “Task 2d” cuối file. **Tiếp: hoàn tất module** (regression gộp BE+FE song song → E2E thật → full BE rồi FE, mục “Hoàn tất module sau Task 2d” trong spec), session mới.
-- **Hoàn tất module đã nhận (2026-11-04) — MODULE HOÀN TẤT**, commit WIP `wip(article-flow): Hoàn tất module`; đã đánh dấu 4 mục “Hoàn tất module” + mục 2c “Public 404…” trong spec, nhờ Codex đồng bộ spec. **Tiếp:** khi người dùng yêu cầu — squash các commit `wip(article-flow)` thành một commit rồi mở PR `feature/article-flow` → `main` (CI chạy full BE). Codex review vòng 1 không phát hiện; full BE sau sửa để CI (quyết định người dùng). Kết quả: regression gộp BE 147/147, FE 375 (1 ca chậm do tải, chạy riêng đạt); E2E API thật 46/46 + UI thật đạt (Cloudinary thật); full BE 368/370 → 2 test Admin taxonomy còn chèn cột `status` cũ, đã sửa fixture, 2 lớp 36/36; full FE 563/563. Dữ liệu E2E còn trong DB dev (bài của `hoa.author`). Chi tiết mục “Hoàn tất module” cuối file. Khi nhận: đánh dấu 4 mục “Xong khi” hoàn tất + mục 2c “Public 404…”, commit WIP, Codex đồng bộ spec; squash chỉ khi người dùng yêu cầu PR.
+- **Hoàn tất module đã nhận (2026-11-04) — MODULE HOÀN TẤT**, commit WIP `wip(article-flow): Hoàn tất module`; đã đánh dấu 4 mục “Hoàn tất module” + mục 2c “Public 404…” trong spec, nhờ Codex đồng bộ spec. **PR đã mở; đã push commit sửa test Admin để CI chạy lại (2026-11-04). Tiếp:** xem CI; trước khi merge, squash các commit `wip(article-flow)` khi người dùng yêu cầu. Codex review vòng 1 không phát hiện; full BE sau sửa để CI (quyết định người dùng). Kết quả: regression gộp BE 147/147, FE 375 (1 ca chậm do tải, chạy riêng đạt); E2E API thật 46/46 + UI thật đạt (Cloudinary thật); full BE 368/370 → 2 test Admin taxonomy còn chèn cột `status` cũ, đã sửa fixture, 2 lớp 36/36; full FE 563/563. Dữ liệu E2E còn trong DB dev (bài của `hoa.author`). Chi tiết mục “Hoàn tất module” cuối file. Khi nhận: đánh dấu 4 mục “Xong khi” hoàn tất + mục 2c “Public 404…”, commit WIP, Codex đồng bộ spec; squash chỉ khi người dùng yêu cầu PR.
 - Frontend đã theo API mới ở cả Author/Moderator/Reader.
 - **Lỗi có sẵn:** Sidebar dư 8 px cuộn ngang ở desktop (cả `/profile`). (Lỗi `App.auth.test` Moderator đã sửa ở 2b.)
 - **DB dev phải làm mới trước khi chạy app** (V10 dừng nếu `articles` có dữ liệu): lệnh ở `docs/RUNBOOK.md` mục “Làm mới DB dev”. Không còn seed SQL bài viết: tạo 3–5 bài qua API theo `server/src/test/resources/seed/HUONG_DAN.md`.
@@ -21,13 +21,20 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 
 ## Quyết định người dùng chưa có trong spec
 
-- **2026-11-04 — Full BE sau khi sửa 2 test Admin:** không chạy lại full backend trên máy; để CI chạy khi mở PR. Tiêu chí “full BE đạt trong đúng một lượt” coi là đạt bằng: lượt full 368/370 + 2 lớp đã sửa 36/36 + CI khi mở PR.
+(không có)
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — CI PR đỏ: thiếu commit sửa test Admin
+- CI `Server CI` run 41847950833 (PR `feature/article-flow`) đỏ 368/370: đúng 2 test Admin `BadSqlGrammarException` vì remote còn ở `824f909`, commit sửa `3554a5b` chưa push. Log Netty/Lettuce `RejectedExecutionException`/`Connection refused` cuối run là nhiễu lúc tắt (Testcontainers dừng trước khi Spring đóng context), không phải nguyên nhân.
+- Quyết định người dùng (2026-11-04): commit phần Codex đồng bộ spec rồi `git push` (không force) nhánh `feature/article-flow` để CI chạy lại; squash làm sau, trước khi merge.
+
+### 2026-11-04 — Codex đồng bộ hoàn tất module
+- Codex: đã đưa quyết định không chạy lại full backend sau khi sửa hai test Admin vào spec; tiêu chí hoàn tất dùng kết quả full 368/370 + hai lớp đã sửa 36/36, còn full backend để CI chạy khi mở PR. Giữ nguyên 4 mục “Hoàn tất module” và mục 2c về public 404 ở `[x]`; trạng thái module trong `PLAN.md` đã là “Hoàn tất”.
+
 ### 2026-11-04 — Module article-flow đã nhận
 - Người dùng nhận bước hoàn tất module; đánh dấu spec, commit WIP, nhờ Codex đồng bộ spec. Module hoàn tất. Tiếp: squash + PR khi người dùng yêu cầu.
 
