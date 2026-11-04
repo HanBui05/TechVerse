@@ -10,7 +10,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - **Cổng wireframe 2a–2d đã nhận (2026-11-04)** — [`article-flow.wireframe.md`](article-flow.wireframe.md) (bố cục + mục “Phong cách”); đã đánh dấu “Xong khi” cổng UI trong spec.
 - **Task 2a đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2a`; đã đánh dấu “Xong khi” 2a trong spec, nhờ Codex đồng bộ spec. Test 80/80 + build đạt; Codex vòng 1 sửa 5 lỗi, vòng 2 sửa 1 lỗi; chi tiết mục “Task 2a” cuối file.
 - **Task 2b đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2b`; đã đánh dấu “Xong khi” 2b trong spec, nhờ Codex đồng bộ spec (2 quyết định: bộ lọc Moderator, nút lên đầu trang). Chi tiết mục “Task 2b” cuối file.
-- **Task tiếp theo: 2c — Reader + preflight + CSS legacy** (session mới), theo spec + wireframe 2c-1/2c-2. Dùng lại `BackToTopButton` cho “về đầu trang”. Sau đó: 2d → regression gộp + E2E.
+- **Task tiếp theo: 2c — Reader + preflight + CSS legacy** (session mới), theo spec + wireframe 2c-1/2c-2. Dùng lại `BackToTopButton` cho “về đầu trang”. Người dùng chốt thêm: `/blogs` 9 bài/trang; giữ card “Bài liên quan” (mục “Quyết định”). Sau đó: 2d → regression gộp + E2E.
 - **Frontend còn lệch API mới (tới 2c):** Public bỏ `updatedAt`, `sortBy/direction` → `sort`. Author (2a) và Moderator (2b) đã theo API mới.
 - **Lỗi có sẵn:** Sidebar dư 8 px cuộn ngang ở desktop (cả `/profile`). (Lỗi `App.auth.test` Moderator đã sửa ở 2b.)
 - **DB dev phải làm mới trước khi chạy app** (V10 dừng nếu `articles` có dữ liệu): lệnh ở `docs/RUNBOOK.md` mục “Làm mới DB dev”. Không còn seed SQL bài viết: tạo 3–5 bài qua API theo `server/src/test/resources/seed/HUONG_DAN.md`.
@@ -18,14 +18,17 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 
 ## Quyết định người dùng chưa có trong spec
 
-- **2026-11-04 (Task 2b) — bộ lọc list Moderator:** Moderator không có endpoint options. Chủ đề/Thẻ lấy từ `GET /api/v1/articles/options` (chỉ chủ đề/thẻ của bài đang công khai); bỏ ô chọn Tác giả, thay bằng bấm tên tác giả trên hàng để lọc `authorId` (chip có nút bỏ). Không sửa backend. Spec/wireframe chờ Codex cập nhật.
-- **2026-11-04 (Task 2b) — nút lên đầu trang ở detail Moderator:** nút tròn góc dưới phải, hiện khi đã cuộn xuống, bấm thì cuộn lên đầu; trên mobile nằm trên thanh nút đáy. Component dùng chung `components/BackToTopButton.tsx` (2c dùng lại cho “về đầu trang” Reader). Spec/wireframe chờ Codex cập nhật.
+- **2026-11-04 (Task 2c) — `/blogs` mỗi trang 9 bài** (`size=9`, lưới 3 cột đủ 3 hàng) cho trang đỡ dài; skeleton đang tải cũng hiện 9 thẻ thay vì 6. Spec/wireframe chờ Codex cập nhật.
+- **2026-11-04 (Task 2c) — người dùng nhắc giữ “Bài liên quan”** ở detail đúng wireframe 2c-2: card trong sidebar (tối đa 5 bài từ `relatedArticles`, tiêu đề 2 dòng + ngày, link `[Xem tất cả <chủ đề>]` → `/blogs?topicId=`), mobile xuống cuối bài, không có bài liên quan thì ẩn card. Đã có trong spec, ghi lại để không bỏ sót.
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — Codex đồng bộ Task 2b
+- Codex: đã đưa quyết định bộ lọc list Moderator và component dùng chung `BackToTopButton` vào spec; giữ nguyên 5 mục “Xong khi” Task 2b đã được đánh dấu `[x]` và bổ sung tiêu chí đã đạt cho nút lên đầu trang.
+
 ### 2026-11-04 — Task 2b đã nhận
 - Người dùng nhận Task 2b; đánh dấu 5 mục “Xong khi” 2b trong spec, commit WIP, nhờ Codex đồng bộ spec. Tiếp: Task 2c (session mới).
 
