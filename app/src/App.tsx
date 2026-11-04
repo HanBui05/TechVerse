@@ -10,7 +10,9 @@ import { SidebarProvider, useSidebar } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { copy } from './data/i18n'
 import { HomePage } from './pages/Home/HomePage'
-import { BlogsPage, BlogDetailPage } from './pages/Blogs/BlogsPage'
+import { BlogsPage } from './pages/Blogs/BlogsPage'
+import { BlogDetailPage } from './pages/Blogs/BlogDetailPage'
+import { SavedArticlesPage } from './pages/Blogs/SavedArticlesPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
 import { ThemePage } from './pages/Settings/ThemePage'
 import { AuthLayout } from './components/auth/AuthLayout'
@@ -26,8 +28,10 @@ import { AdminUsersPage } from './pages/Admin/AdminUsersPage'
 import { TaxonomyPage } from './pages/Admin/TaxonomyPage'
 import { AuthorApplyPage } from './pages/Author/AuthorApplyPage'
 import { AuthorBlogsPage } from './pages/Author/AuthorBlogsPage'
+import { ArticleEditorPage } from './pages/Author/ArticleEditorPage'
 import { ModeratorDashboardPage } from './pages/Moderator/ModeratorDashboardPage'
 import { ModeratorArticlesPage } from './pages/Moderator/ModeratorArticlesPage'
+import { ModeratorArticleDetailPage } from './pages/Moderator/ModeratorArticleDetailPage'
 import type { Language, Theme } from './types/preferences'
 import { login as loginWithApi, logout as logoutFromApi, logoutAll as logoutAllFromApi, restoreSession, type GoogleSession } from './services/authService'
 import { setAccessToken } from './services/api/client'
@@ -36,6 +40,15 @@ import { getMyProfile, type UserProfile } from './services/profileService'
 
 function AuthRoute({ authenticated, children }: { authenticated: boolean; children: ReactNode }) {
   return authenticated ? children : <Navigate to="/login" replace />
+}
+
+/** Dashboard of a management account (ADMIN wins over MODERATOR); null for Reader accounts. */
+const managerHome = (roles: string[]) => roles.includes('ADMIN') ? '/admin' : roles.includes('MODERATOR') ? '/moderator' : null
+
+// Reader routes (/, /blogs, /blogs/:id, /me/saved-articles) are not for management accounts; /profile and /settings/* stay shared.
+function ReaderRoute({ roles, children }: { roles: string[]; children: ReactNode }) {
+  const home = managerHome(roles)
+  return home ? <Navigate to={home} replace /> : children
 }
 
 const LOADING_MAIN = 'tw-page flex min-h-svh flex-col items-center justify-center p-10 text-center text-muted-foreground'
@@ -96,7 +109,7 @@ export default function App() {
     setProfile(nextProfile)
     localStorage.setItem('techverse-authenticated', 'true')
     setAuthenticated(true)
-    return nextProfile.roles.includes('ADMIN') ? '/admin' : nextProfile.roles.includes('MODERATOR') ? '/moderator' : '/'
+    return managerHome(nextProfile.roles) ?? '/'
   }, [])
   // A callback must start clean, even when another account was previously signed in in this tab.
   const resetGoogleSession = useCallback(() => {
@@ -131,12 +144,16 @@ export default function App() {
     setProfile(null)
     navigate('/login', { replace: true })
   }
+  const roles = profile?.roles || []
+  // Hides every saved control/link and never calls the saved API; the backend (Task 1d) still enforces it.
+  const canSave = !managerHome(roles)
   const routes = authenticated && !profile && !isAuthPage
       ? <main className={LOADING_MAIN}><p role="status">Đang đồng bộ phiên đăng nhập và quyền truy cập...</p></main>
       : <Routes>
-      <Route path="/" element={<HomePage t={t} />} />
-      <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><BlogsPage /></AuthRoute>} />
-      <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><BlogDetailPage /></AuthRoute>} />
+      <Route path="/" element={<ReaderRoute roles={roles}><HomePage t={t} /></ReaderRoute>} />
+      <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><BlogsPage language={language} canSave={canSave} /></ReaderRoute></AuthRoute>} />
+      <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><BlogDetailPage language={language} canSave={canSave} /></ReaderRoute></AuthRoute>} />
+      <Route path="/me/saved-articles" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><SavedArticlesPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route element={<AuthLayout t={t} />}>
         <Route path="/login" element={<LoginPage t={t} onLogin={login} />} />
         <Route path="/register" element={<RegisterPage t={t} onRegister={register} />} />
@@ -147,18 +164,21 @@ export default function App() {
       <Route path="/admin" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminDashboardPage language={language} /></RoleRoute>} />
       <Route path="/moderator" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorDashboardPage language={language} /></RoleRoute>} />
       <Route path="/moderator/articles" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorArticlesPage language={language} /></RoleRoute>} />
+      <Route path="/moderator/articles/:id" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorArticleDetailPage language={language} /></RoleRoute>} />
       <Route path="/admin/author-applications" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AuthorApplicationsPage language={language} /></RoleRoute>} />
       <Route path="/admin/users" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminUsersPage language={language} /></RoleRoute>} />
       <Route path="/admin/topics" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="topics" language={language} /></RoleRoute>} />
       <Route path="/admin/tags" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="tags" language={language} /></RoleRoute>} />
       <Route path="/author/apply" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['LEARNER']}><AuthorApplyPage language={language} /></RoleRoute>} />
       <Route path="/author/blogs" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AuthorBlogsPage language={language} /></RoleRoute>} />
+      {/* Same element type on both paths: after the first auto-save /new → /:id/edit keeps editor state. */}
+      <Route path="/author/blogs/new" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><ArticleEditorPage language={language} /></RoleRoute>} />
+      <Route path="/author/blogs/:id/edit" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><ArticleEditorPage language={language} /></RoleRoute>} />
       <Route path="/settings/theme" element={<ThemePage theme={theme} setTheme={setTheme} t={t} />} />
       <Route path="/settings/language" element={<LanguagePage language={language} setLanguage={setLanguage} t={t} />} />
       <Route path="*" element={<PlaceholderPage t={t} language={language} />} />
     </Routes>
   if (isAuthPage) return <div className="min-h-svh">{routes}</div>
-  const roles = profile?.roles || []
   const sidebar = authenticated && roles.includes('MODERATOR') && (isModeratorPage || !roles.includes('ADMIN'))
     ? <ModeratorSidebar language={language} profile={profile} onLogout={logout} />
     : roles.includes('ADMIN')

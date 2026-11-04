@@ -1,10 +1,12 @@
 package com.techverse.server.repository;
 
+import static com.techverse.server.repository.specification.PublishedArticleSpecification.*;
+
 import com.techverse.server.dto.internal.PublishedArticleRow;
+import com.techverse.server.dto.internal.SavedArticleRow;
+import com.techverse.server.dto.request.PublishedArticleFilter;
 import com.techverse.server.dto.response.*;
 import com.techverse.server.entity.*;
-import com.techverse.server.enums.ArticleStatus;
-import com.techverse.server.repository.specification.PublishedArticleSpecification;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;
@@ -13,33 +15,40 @@ import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.*;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.*;
 
-/** Reader-only scalar queries; no collection fetch joins, entity hydration or write locks. */
+/**
+ * Reader-only scalar queries over the current approved snapshot. Working-copy columns of {@code
+ * articles} are never selected; no entity hydration, fetch joins or write locks.
+ */
 @Repository
 @RequiredArgsConstructor
 public class PublishedArticleRepository {
-    private static final int RELATED_LIMIT = 6;
+    private static final int RELATED_LIMIT = 5;
     private final EntityManager entityManager;
 
-    /** Count and page scalar metadata without retrieving article Markdown or multiplying tags. */
-    public Page<PublishedArticleRow> findPage(Specification<Article> spec, Pageable pageable) {
+    /** Count and page snapshot metadata without retrieving Markdown or multiplying tags. */
+    public Page<PublishedArticleRow> findPage(
+            UUID actor, PublishedArticleFilter filter, Pageable pageable) {
         var cb = entityManager.getCriteriaBuilder();
         var countQuery = cb.createQuery(Long.class);
         var countRoot = countQuery.from(Article.class);
-        countQuery.select(cb.count(countRoot)).where(spec.toPredicate(countRoot, countQuery, cb));
+        Join<Article, ArticlePublicationVersion> countVersion = countRoot.join("publishedVersion");
+        countQuery
+                .select(cb.count(countRoot))
+                .where(filter(filter, countRoot, countVersion, countQuery, cb));
         long total = entityManager.createQuery(countQuery).getSingleResult();
         if (pageable.getOffset() >= total || pageable.getOffset() > Integer.MAX_VALUE)
             return new PageImpl<>(List.of(), pageable, total);
 
         var query = cb.createTupleQuery();
         var root = query.from(Article.class);
-        selectArticle(query, root, false);
-        query.where(spec.toPredicate(root, query, cb));
+        Join<Article, ArticlePublicationVersion> version = root.join("publishedVersion");
+        select(query, root, version, false, actor);
+        query.where(filter(filter, root, version, query, cb));
         query.orderBy(
                 pageable.getSort().stream()
                         .map(
@@ -55,77 +64,149 @@ public class PublishedArticleRepository {
                         .setMaxResults(pageable.getPageSize())
                         .getResultList()
                         .stream()
-                        .map(this::articleRow)
+                        .map(this::row)
                         .toList();
         return new PageImpl<>(rows, pageable, total);
     }
 
-    /** Retrieve Markdown only when the requested article is currently published. */
-    public Optional<PublishedArticleRow> findPublishedById(UUID id) {
+    /** Snapshot Markdown only when the article is currently visible. */
+    public Optional<PublishedArticleRow> findVisibleById(UUID actor, UUID id) {
         var cb = entityManager.getCriteriaBuilder();
         var query = cb.createTupleQuery();
         var root = query.from(Article.class);
-        selectArticle(query, root, true);
-        query.where(
-                cb.equal(root.get("id"), id),
-                cb.equal(root.get("status"), ArticleStatus.PUBLISHED));
-        return entityManager.createQuery(query).getResultStream().map(this::articleRow).findFirst();
+        Join<Article, ArticlePublicationVersion> version = root.join("publishedVersion");
+        select(query, root, version, true, actor);
+        query.where(cb.equal(root.get("id"), id), visible(root, query, cb));
+        return entityManager.createQuery(query).getResultStream().map(this::row).findFirst();
     }
 
-    /** Batch-load safe tag labels for published page/detail IDs in one query. */
-    public Map<UUID, List<ArticleTaxonomyResponse>> findTags(Collection<UUID> ids) {
-        if (ids.isEmpty()) return Map.of();
+    /** Same visibility predicate as reading, without loading any snapshot column. */
+    public boolean isVisible(UUID id) {
+        var cb = entityManager.getCriteriaBuilder();
+        var query = cb.createQuery(Long.class);
+        var root = query.from(Article.class);
+        query.select(cb.count(root)).where(cb.equal(root.get("id"), id), visible(root, query, cb));
+        return entityManager.createQuery(query).getSingleResult() > 0;
+    }
+
+    /**
+     * The actor's saved rows whose article is visible now, newest save first; invisible rows stay
+     * in the table and reappear once the article is visible again.
+     */
+    public Page<SavedArticleRow> findSavedPage(UUID actor, String keyword, Pageable pageable) {
+        var cb = entityManager.getCriteriaBuilder();
+        var countQuery = cb.createQuery(Long.class);
+        var countSaved = countQuery.from(SavedArticle.class);
+        Join<SavedArticle, Article> countArticle = countSaved.join("article");
+        Join<Article, ArticlePublicationVersion> countVersion = countArticle.join("publishedVersion");
+        countQuery
+                .select(cb.count(countSaved))
+                .where(
+                        savedFilter(
+                                actor, keyword, countSaved, countArticle, countVersion, countQuery, cb));
+        long total = entityManager.createQuery(countQuery).getSingleResult();
+        if (pageable.getOffset() >= total || pageable.getOffset() > Integer.MAX_VALUE)
+            return new PageImpl<>(List.of(), pageable, total);
+
+        var query = cb.createTupleQuery();
+        var saved = query.from(SavedArticle.class);
+        Join<SavedArticle, Article> article = saved.join("article");
+        Join<Article, ArticlePublicationVersion> version = article.join("publishedVersion");
+        var selections = new ArrayList<Selection<?>>(columns(article, version, false));
+        selections.add(saved(article, actor, query).alias("saved"));
+        selections.add(saved.get("createdAt").alias("savedAt"));
+        query.multiselect(selections);
+        query.where(savedFilter(actor, keyword, saved, article, version, query, cb));
+        query.orderBy(cb.desc(saved.get("createdAt")), cb.desc(saved.get("id")));
+        var rows =
+                entityManager
+                        .createQuery(query)
+                        .setFirstResult((int) pageable.getOffset())
+                        .setMaxResults(pageable.getPageSize())
+                        .getResultList()
+                        .stream()
+                        .map(tuple -> new SavedArticleRow(row(tuple), tuple.get("savedAt", Instant.class)))
+                        .toList();
+        return new PageImpl<>(rows, pageable, total);
+    }
+
+    private Predicate savedFilter(
+            UUID actor,
+            String keyword,
+            Root<SavedArticle> saved,
+            Join<SavedArticle, Article> article,
+            Join<Article, ArticlePublicationVersion> version,
+            CriteriaQuery<?> query,
+            CriteriaBuilder cb) {
+        var predicates = new ArrayList<Predicate>();
+        predicates.add(cb.equal(saved.get("user").get("id"), actor));
+        predicates.add(visible(article, query, cb));
+        if (keyword != null && !keyword.isBlank())
+            predicates.add(
+                    cb.like(
+                            cb.lower(version.get("title")),
+                            literalPattern(keyword),
+                            '\\'));
+        return cb.and(predicates.toArray(Predicate[]::new));
+    }
+
+    /** Batch-load tag labels of the given snapshot versions in one query. */
+    public Map<UUID, List<ArticleTaxonomyResponse>> findTags(Collection<UUID> versionIds) {
+        if (versionIds.isEmpty()) return Map.of();
         var cb = entityManager.getCriteriaBuilder();
         var query = cb.createTupleQuery();
-        var root = query.from(ArticleTag.class);
-        var tag = root.join("tag");
+        var link = query.from(ArticlePublicationVersionTag.class);
+        var tag = link.join("tag");
         query.multiselect(
-                root.get("article").get("id").alias("articleId"),
+                link.get("version").get("id").alias("versionId"),
                 tag.get("id").alias("id"),
                 tag.get("name").alias("name"));
-        query.where(
-                root.get("article").get("id").in(ids),
-                cb.equal(root.get("article").get("status"), ArticleStatus.PUBLISHED));
+        query.where(link.get("version").get("id").in(versionIds));
         query.orderBy(cb.asc(tag.get("name")), cb.asc(tag.get("id")));
         Map<UUID, List<ArticleTaxonomyResponse>> tags = new HashMap<>();
         for (Tuple tuple : entityManager.createQuery(query).getResultList())
-            tags.computeIfAbsent(tuple.get("articleId", UUID.class), ignored -> new ArrayList<>())
+            tags.computeIfAbsent(tuple.get("versionId", UUID.class), ignored -> new ArrayList<>())
                     .add(taxonomy(tuple));
         return tags;
     }
 
-    /** Rank same-topic published articles by shared tags, then recency, with a DB-side cap. */
-    public List<RelatedArticleResponse> findRelated(UUID sourceId, UUID topicId) {
+    /** Public card fields of the author profile: expertise and raw bio (excerpted by caller). */
+    public Optional<Object[]> findAuthorProfile(UUID authorId) {
+        return entityManager
+                .createQuery(
+                        "select p.expertise, p.bio from AuthorProfile p where p.user.id = :id",
+                        Object[].class)
+                .setParameter("id", authorId)
+                .getResultStream()
+                .findFirst();
+    }
+
+    /** Visible snapshots with the same topic or any shared tag, newest first, capped in SQL. */
+    public List<RelatedArticleResponse> findRelated(
+            UUID actor,
+            UUID sourceId, UUID topicId, Collection<UUID> tagIds) {
         var cb = entityManager.getCriteriaBuilder();
         var query = cb.createTupleQuery();
         var root = query.from(Article.class);
-        var sourceTags = query.subquery(UUID.class);
-        var sourceLink = sourceTags.from(ArticleTag.class);
-        sourceTags
-                .select(sourceLink.get("tag").get("id"))
-                .where(
-                        cb.equal(sourceLink.get("article").get("id"), sourceId),
-                        cb.equal(sourceLink.get("article").get("status"), ArticleStatus.PUBLISHED));
-        var matchingTags = root.join("articleTags", JoinType.LEFT);
-        matchingTags.on(matchingTags.get("tag").get("id").in(sourceTags));
-        var sharedCount = cb.count(matchingTags.get("id"));
+        Join<Article, ArticlePublicationVersion> version = root.join("publishedVersion");
+        Predicate match = cb.equal(version.get("topic").get("id"), topicId);
+        if (!tagIds.isEmpty()) {
+            var shared = query.subquery(UUID.class);
+            var link = shared.from(ArticlePublicationVersionTag.class);
+            shared.select(link.get("id"))
+                    .where(
+                            cb.equal(link.get("version"), version),
+                            link.get("tag").get("id").in(tagIds));
+            match = cb.or(match, cb.exists(shared));
+        }
         query.multiselect(
                 root.get("id").alias("id"),
-                root.get("title").alias("title"),
-                root.get("coverImageUrl").alias("coverImageUrl"),
+                version.get("title").alias("title"),
+                version.get("coverImageUrl").alias("coverImageUrl"),
                 root.get("publishedAt").alias("publishedAt"),
-                sharedCount.alias("sharedCount"));
-        query.where(
-                cb.equal(root.get("status"), ArticleStatus.PUBLISHED),
-                cb.equal(root.get("topic").get("id"), topicId),
-                cb.notEqual(root.get("id"), sourceId));
-        query.groupBy(
-                root.get("id"),
-                root.get("title"),
-                root.get("coverImageUrl"),
-                root.get("publishedAt"));
-        query.orderBy(
-                cb.desc(sharedCount), cb.desc(root.get("publishedAt")), cb.asc(root.get("id")));
+                saved(root, actor, query).alias("saved"));
+        query.where(visible(root, query, cb), cb.notEqual(root.get("id"), sourceId), match);
+        query.orderBy(cb.desc(root.get("publishedAt")), cb.asc(root.get("id")));
         return entityManager
                 .createQuery(query)
                 .setMaxResults(RELATED_LIMIT)
@@ -138,21 +219,21 @@ public class PublishedArticleRepository {
                                         .title(tuple.get("title", String.class))
                                         .coverImageUrl(tuple.get("coverImageUrl", String.class))
                                         .publishedAt(tuple.get("publishedAt", Instant.class))
+                                        .saved(tuple.get("saved", Boolean.class))
                                         .build())
                 .toList();
     }
 
-    /** Page topic labels that occur on published articles, including inactive historic topics. */
+    /** Topics used by visible snapshots, including inactive historic topics. */
     public Page<ArticleTaxonomyResponse> findTopics(String keyword, Pageable pageable) {
         return findTaxonomy(Topic.class, keyword, pageable);
     }
 
-    /** Page tag labels that occur on published articles, including inactive historic tags. */
+    /** Tags used by visible snapshots, including inactive historic tags. */
     public Page<ArticleTaxonomyResponse> findTags(String keyword, Pageable pageable) {
         return findTaxonomy(Tag.class, keyword, pageable);
     }
 
-    /** Share bounded scalar paging between independent topic/tag option searches. */
     private <T> Page<ArticleTaxonomyResponse> findTaxonomy(
             Class<T> type, String keyword, Pageable pageable) {
         var cb = entityManager.getCriteriaBuilder();
@@ -181,67 +262,98 @@ public class PublishedArticleRepository {
         return new PageImpl<>(rows, pageable, total);
     }
 
-    /** Require published usage via EXISTS so options are never duplicated by article count. */
+    /** Require visible-snapshot usage via EXISTS so options are never duplicated. */
     private Predicate taxonomyPredicate(
             Class<?> type, Root<?> root, CriteriaQuery<?> query, String keyword) {
         var cb = entityManager.getCriteriaBuilder();
         var usage = query.subquery(UUID.class);
+        var article = usage.from(Article.class);
+        Join<Article, ArticlePublicationVersion> version = article.join("publishedVersion");
         if (type == Topic.class) {
-            var article = usage.from(Article.class);
             usage.select(article.get("id"))
                     .where(
-                            cb.equal(article.get("topic").get("id"), root.get("id")),
-                            cb.equal(article.get("status"), ArticleStatus.PUBLISHED));
+                            cb.equal(version.get("topic").get("id"), root.get("id")),
+                            visible(article, usage, cb));
         } else {
-            var link = usage.from(ArticleTag.class);
-            usage.select(link.get("id"))
+            var link = usage.from(ArticlePublicationVersionTag.class);
+            usage.select(article.get("id"))
                     .where(
+                            cb.equal(link.get("version"), version),
                             cb.equal(link.get("tag").get("id"), root.get("id")),
-                            cb.equal(link.get("article").get("status"), ArticleStatus.PUBLISHED));
+                            visible(article, usage, cb));
         }
-        var publishedUsage = cb.exists(usage);
-        if (keyword == null || keyword.isBlank()) return publishedUsage;
+        var used = cb.exists(usage);
+        if (keyword == null || keyword.isBlank()) return used;
         return cb.and(
-                publishedUsage,
-                cb.like(
-                        cb.lower(root.get("name").as(String.class)),
-                        PublishedArticleSpecification.literalPattern(keyword),
-                        '\\'));
+                used,
+                cb.like(cb.lower(root.get("name").as(String.class)), literalPattern(keyword), '\\'));
     }
 
-    /** Select only public metadata; list queries deliberately use a null literal for content. */
-    private void selectArticle(
-            CriteriaQuery<Tuple> query, Root<Article> root, boolean includeContent) {
+    /** Snapshot columns plus the actor's saved flag as a correlated EXISTS (no per-row query). */
+    private void select(
+            CriteriaQuery<Tuple> query,
+            Root<Article> root,
+            Join<Article, ArticlePublicationVersion> version,
+            boolean includeContent,
+            UUID actor) {
+        var selections = new ArrayList<Selection<?>>(columns(root, version, includeContent));
+        selections.add(saved(root, actor, query).alias("saved"));
+        query.multiselect(selections);
+    }
+
+    /** {@code true} when the actor has a saved row for the article; selected via CASE EXISTS. */
+    private Expression<Boolean> saved(From<?, Article> article, UUID actor, CriteriaQuery<?> query) {
+        var cb = entityManager.getCriteriaBuilder();
+        var sub = query.subquery(UUID.class);
+        var saved = sub.from(SavedArticle.class);
+        sub.select(saved.get("id"))
+                .where(
+                        cb.equal(saved.get("article"), article),
+                        cb.equal(saved.get("user").get("id"), actor));
+        return cb.<Boolean>selectCase().when(cb.exists(sub), true).otherwise(false);
+    }
+
+    /** Snapshot fields + stable article id/first publication; list uses a null content literal. */
+    private List<Selection<?>> columns(
+            From<?, Article> root,
+            Join<Article, ArticlePublicationVersion> version,
+            boolean includeContent) {
         var author = root.join("author");
-        var topic = root.join("topic");
-        query.multiselect(
+        var topic = version.join("topic");
+        return List.of(
                 root.get("id").alias("id"),
-                root.get("title").alias("title"),
-                root.get("summary").alias("summary"),
-                root.get("coverImageUrl").alias("coverImageUrl"),
+                version.get("id").alias("versionId"),
+                version.get("title").alias("title"),
+                version.get("summary").alias("summary"),
+                version.get("coverImageUrl").alias("coverImageUrl"),
                 root.get("publishedAt").alias("publishedAt"),
-                root.get("updatedAt").alias("updatedAt"),
+                version.get("approvedAt").alias("approvedAt"),
+                version.get("versionNumber").alias("versionNumber"),
+                version.get("readingMinutes").alias("readingMinutes"),
                 author.get("id").alias("authorId"),
                 author.get("fullName").alias("authorName"),
                 author.get("avatarUrl").alias("authorAvatar"),
                 topic.get("id").alias("topicId"),
                 topic.get("name").alias("topicName"),
                 (includeContent
-                                ? root.<String>get("content")
+                                ? version.<String>get("content")
                                 : entityManager.getCriteriaBuilder().nullLiteral(String.class))
                         .alias("content"));
     }
 
-    /** Map scalar tuples into the internal public-article read model without lazy loads. */
-    private PublishedArticleRow articleRow(Tuple row) {
+    private PublishedArticleRow row(Tuple row) {
         return PublishedArticleRow.builder()
                 .id(row.get("id", UUID.class))
+                .versionId(row.get("versionId", UUID.class))
                 .title(row.get("title", String.class))
                 .summary(row.get("summary", String.class))
                 .content(row.get("content", String.class))
                 .coverImageUrl(row.get("coverImageUrl", String.class))
                 .publishedAt(row.get("publishedAt", Instant.class))
-                .updatedAt(row.get("updatedAt", Instant.class))
+                .approvedAt(row.get("approvedAt", Instant.class))
+                .versionNumber(row.get("versionNumber", Integer.class))
+                .readingMinutes(row.get("readingMinutes", Integer.class))
+                .saved(row.get("saved", Boolean.class))
                 .author(
                         ArticleAuthorResponse.builder()
                                 .id(row.get("authorId", UUID.class))
@@ -256,7 +368,6 @@ public class PublishedArticleRepository {
                 .build();
     }
 
-    /** Map an option/tag tuple into the minimal id/name response. */
     private ArticleTaxonomyResponse taxonomy(Tuple tuple) {
         return ArticleTaxonomyResponse.builder()
                 .id(tuple.get("id", UUID.class))

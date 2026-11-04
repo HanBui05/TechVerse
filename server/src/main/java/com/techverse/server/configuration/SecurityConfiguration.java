@@ -76,6 +76,9 @@ public class SecurityConfiguration {
 						.requestMatchers("/api/v1/author/articles", "/api/v1/author/articles/**").authenticated()
 						.requestMatchers("/api/v1/moderator/articles", "/api/v1/moderator/articles/**").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/**").authenticated()
+						.requestMatchers(HttpMethod.PUT, "/api/v1/articles/*/saved").authenticated()
+						.requestMatchers(HttpMethod.DELETE, "/api/v1/articles/*/saved").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/v1/me/saved-articles").authenticated()
 						.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 						.anyRequest().denyAll())
 				.build();
@@ -125,7 +128,7 @@ public class SecurityConfiguration {
 	CorsConfigurationSource corsConfigurationSource(OAuth2Properties oauth2Properties) {
 		CorsConfiguration corsConfiguration = new CorsConfiguration();
 		corsConfiguration.setAllowedOrigins(List.of(oauth2Properties.webUrl()));
-		corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PATCH", "OPTIONS"));
+		corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		corsConfiguration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "Upload-Key"));
 		corsConfiguration.setAllowCredentials(true);
 

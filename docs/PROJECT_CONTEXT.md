@@ -10,7 +10,7 @@ TechVerse là monorepo gồm frontend React ở [`app/`](../app/) và backend Sp
 
 1. Mã chạy thực tế và cấu hình: [`server/src/main`](../server/src/main/), [`app/src`](../app/src/), [`server/build.gradle`](../server/build.gradle), [`app/package-lock.json`](../app/package-lock.json).
 2. Lịch sử schema chạy thật: [`server/src/main/resources/db/migration/`](../server/src/main/resources/db/migration/). Đây là nguồn Flyway áp dụng khi khởi động.
-3. Schema hợp nhất V1–V7 để đọc/ERD hoặc tạo **DB rỗng** thủ công: [`docs/technical/db/final.sql`](../docs/technical/db/final.sql). File này tự ghi rõ không được đưa vào thư mục migration và không chạy lên DB đã có dữ liệu.
+3. Schema hợp nhất V1–V10 để đọc/ERD hoặc tạo **DB rỗng** thủ công: [`docs/technical/db/final.sql`](../docs/technical/db/final.sql). File này tự ghi rõ không được đưa vào thư mục migration và không chạy lên DB đã có dữ liệu.
 4. Hành vi được kiểm chứng: [`server/src/test`](../server/src/test/) và các file `*.test.ts(x)` trong [`app/src`](../app/src/).
 
 ## 1. Tổng quan
@@ -102,7 +102,7 @@ TechVerse/
 - Email, tên topic và tag dùng `citext` để unique không phân biệt hoa/thường.
 - Không dùng soft-delete thống nhất bằng `deleted_at`: tài khoản/taxonomy dùng `is_active`; nội dung dùng cột `status`.
 - Bốn role dựng sẵn: `LEARNER`, `AUTHOR`, `MODERATOR`, `ADMIN`.
-- File tham chiếu hợp nhất: [`docs/technical/db/final.sql`](../docs/technical/db/final.sql). Migration chạy thật: [`V1`](../server/src/main/resources/db/migration/V1__initial_schema.sql), [`V2`](../server/src/main/resources/db/migration/V2__remove_email_verification_and_initialize_user_audit.sql), [`V3`](../server/src/main/resources/db/migration/V3__initialize_social_account_audit.sql), [`V4`](../server/src/main/resources/db/migration/V4__add_admin_user_query_indexes.sql), [`V5`](../server/src/main/resources/db/migration/V5__index_author_profile_status_for_admin_user_filter.sql), [`V6`](../server/src/main/resources/db/migration/V6__add_author_profile_version.sql), [`V7`](../server/src/main/resources/db/migration/V7__add_author_suspension_and_restoration_audit.sql).
+- File tham chiếu hợp nhất: [`docs/technical/db/final.sql`](../docs/technical/db/final.sql). Migration chạy thật: [`V1`](../server/src/main/resources/db/migration/V1__initial_schema.sql), [`V2`](../server/src/main/resources/db/migration/V2__remove_email_verification_and_initialize_user_audit.sql), [`V3`](../server/src/main/resources/db/migration/V3__initialize_social_account_audit.sql), [`V4`](../server/src/main/resources/db/migration/V4__add_admin_user_query_indexes.sql), [`V5`](../server/src/main/resources/db/migration/V5__index_author_profile_status_for_admin_user_filter.sql), [`V6`](../server/src/main/resources/db/migration/V6__add_author_profile_version.sql), [`V7`](../server/src/main/resources/db/migration/V7__add_author_suspension_and_restoration_audit.sql), [`V8`](../server/src/main/resources/db/migration/V8__create_author_application_review_history.sql), [`V9`](../server/src/main/resources/db/migration/V9__add_topic_icon.sql), [`V10`](../server/src/main/resources/db/migration/V10__add_article_publication_versions.sql) (V10 dừng nếu `articles` đã có dữ liệu: làm mới DB dev theo D-022, xem RUNBOOK).
 
 ### Các bảng đang được mã ứng dụng sử dụng
 
@@ -115,7 +115,9 @@ TechVerse/
 | `author_profiles` | `bio`, `expertise`, `portfolio_url`, `status`, review/suspend/restore audit, `version` | 1–1 `users`; reviewer/suspender/restorer đều FK `users` |
 | `topics` | `name`, `description`, `is_active` | 1–N `articles` và các miền nội dung tương lai |
 | `tags` | `name`, `description`, `is_active` | N–N `articles` qua `article_tags` |
-| `articles` | `author_id`, `topic_id`, `title`, `summary`, `content`, `cover_image_url`, `status`, moderation/publish fields | N–1 `users` tác giả; N–1 `topics`; N–N `tags`; reviewer FK `users` |
+| `articles` | Working copy của tác giả: `title`, `summary`, `content`, `cover_image_url`, `content_fingerprint`; hai trục `workflow_status` (DRAFT/PENDING/PUBLISHED/CHANGES_REQUESTED) và `publication_status` (UNPUBLISHED/PUBLISHED/AUTHOR_HIDDEN/HIDDEN/AUTHOR_DELETED/REMOVED) + `hidden_from_publication_status`; `published_version_id`, moderation fields | N–1 `users` tác giả; N–1 `topics`; N–N `tags`; trỏ snapshot đang công khai (FK cùng bài) |
+| `article_publication_versions` | Snapshot bất biến đã duyệt: `version_number`, nội dung, `topic_id`, `content_fingerprint`, `reading_minutes`, `approved_by/at` | N–1 `articles` (RESTRICT: bài từng công khai chỉ xóa mềm); tag qua `article_publication_version_tags`; trigger chặn UPDATE/DELETE |
+| `article_moderation_history` | Lịch sử append-only: actor, action, note, trạng thái trước/sau, version | N–1 `articles` (CASCADE khi xóa cứng bài chưa từng công khai); trigger chặn UPDATE |
 | `article_tags` | `article_id`, `tag_id` | FK tới `articles`, `tags`; unique cặp article-tag |
 
 Refresh session, token và password-reset OTP không nằm trong SQL; chúng được lưu ở Redis qua [`AuthSessionRepository`](../server/src/main/java/com/techverse/server/repository/AuthSessionRepository.java), [`TokenRepository`](../server/src/main/java/com/techverse/server/repository/TokenRepository.java) và [`PasswordResetRepository`](../server/src/main/java/com/techverse/server/repository/PasswordResetRepository.java).
@@ -153,7 +155,7 @@ Refresh session, token và password-reset OTP không nằm trong SQL; chúng đ�
 
 ### Chưa làm
 
-- API/service/UI cho document và saved content.
+- API/service/UI cho document và saved document; UI bài đã lưu (API lưu bài đã có).
 - Course, lesson, enrollment/progress.
 - Order, payment, commission, refund.
 - Exercise và interview practice.
@@ -184,7 +186,7 @@ Refresh session, token và password-reset OTP không nằm trong SQL; chúng đ�
 - Entity kế thừa audit từ [`BaseEntity`](../server/src/main/java/com/techverse/server/entity/BaseEntity.java), dùng constructor/method nghiệp vụ có kiểm soát; không thêm Lombok `@Data` vào entity.
 - `@Transactional` đặt ở service implementation; read path dùng `readOnly = true` khi phù hợp.
 - Success response dùng `ApiResponse<T>` với `status`, `message`, `data`; error dùng `ErrorResponse` với `status`, `code`, `message`, `error`, `timestamp`, `path`, `fieldErrors`. Không tự đổi sang raw object hoặc `ProblemDetail` nếu chưa có quyết định toàn dự án. Xem [`ApiResponse`](../server/src/main/java/com/techverse/server/dto/response/ApiResponse.java) và [`GlobalExceptionHandler`](../server/src/main/java/com/techverse/server/exception/GlobalExceptionHandler.java).
-- DB thay đổi bằng Flyway migration mới theo thứ tự tiếp theo; **không sửa V1–V7 đã áp dụng**, không đưa `final.sql` vào `db/migration`, không dùng JPA `ddl-auto` để tạo schema (`validate` đang là chuẩn).
+- DB thay đổi bằng Flyway migration mới theo thứ tự tiếp theo; **không sửa V1–V10 đã áp dụng**, không đưa `final.sql` vào `db/migration`, không dùng JPA `ddl-auto` để tạo schema (`validate` đang là chuẩn).
 - Không soft-delete tùy ý: bám semantics `is_active`/`status` hiện có và FK `ON DELETE` trong schema.
 - Quyền phải được chặn ở backend (`SecurityConfiguration`/`@PreAuthorize`); route guard frontend chỉ là UX.
 - Token access ở `sessionStorage`; refresh token qua cookie; không đưa provider OAuth token xuống frontend hoặc lưu lâu dài.
@@ -236,14 +238,23 @@ Tài liệu runtime đầy đủ được sinh từ OpenAPI tại `/swagger-ui.h
 | AUTHOR | POST | `/api/v1/author/articles` | Tạo draft/submit; yêu cầu `Idempotency-Key` |
 | Auth | GET | `/api/v1/author/articles` | Danh sách bài của mình |
 | Auth | GET | `/api/v1/author/articles/{id}` | Chi tiết bài của mình |
-| AUTHOR | PATCH | `/api/v1/author/articles/{id}` | Sửa draft hoặc submit |
+| AUTHOR | PATCH | `/api/v1/author/articles/{id}` | Lưu (SAVE, cho giữ ảnh chưa tải lên và trả `imageIssues`) hoặc gửi duyệt (SUBMIT); sửa được cả bài đã công khai mà không đổi bản công khai |
 | AUTHOR | POST | `/api/v1/author/articles/{id}/images` | Upload ảnh draft; hỗ trợ `Upload-Key` |
-| MODERATOR | GET | `/api/v1/moderator/articles` | Danh sách bài không phải draft |
-| MODERATOR | GET | `/api/v1/moderator/articles/{id}` | Đọc bài và lấy review token |
-| MODERATOR | PATCH | `/api/v1/moderator/articles/{id}/review` | Publish hoặc yêu cầu sửa; chống review stale |
-| Auth | GET | `/api/v1/articles` | Tìm/lọc bài published |
+| AUTHOR | POST | `/api/v1/author/articles/{id}/withdraw` | Rút bản đang chờ duyệt về DRAFT; bản công khai giữ nguyên |
+| AUTHOR | POST | `/api/v1/author/articles/{id}/discard` | Bỏ bản sửa chưa gửi, khôi phục từ snapshot công khai |
+| AUTHOR | PATCH | `/api/v1/author/articles/{id}/publication` | Tác giả tự ẩn/hiện (`HIDE`/`UNHIDE`) bài đã công khai |
+| Auth | DELETE | `/api/v1/author/articles/{id}` | Xóa cứng bài chưa từng công khai (tombstone khóa tạo bài) hoặc xóa mềm `AUTHOR_DELETED`; tác giả bị đình chỉ vẫn xóa được |
+| Auth | GET | `/api/v1/author/articles/{id}/history` | Lịch sử duyệt/xuất bản của bài mình, mới nhất trước |
+| MODERATOR | GET | `/api/v1/moderator/articles` | Danh sách bài không phải draft riêng/`AUTHOR_DELETED`; lọc `workflowStatus`/`publicationStatus`; có `authorEligible`, `hasUnpublishedChanges` |
+| MODERATOR | GET | `/api/v1/moderator/articles/{id}` | Working copy + `article.publishedVersion` để so, 5 lịch sử gần nhất, `authorEligible`, review token |
+| MODERATOR | PATCH | `/api/v1/moderator/articles/{id}/review` | APPROVE tạo version kế tiếp (kiểm lại ảnh/tác giả/taxonomy) hoặc REQUEST_CHANGES; chống review stale |
+| MODERATOR | PATCH | `/api/v1/moderator/articles/{id}/publication` | `HIDE`/`RESTORE`/`REMOVE` + `reviewToken`; HIDE/REMOVE bắt buộc lý do; RESTORE về trạng thái trước HIDE |
+| MODERATOR | GET | `/api/v1/moderator/articles/{id}/history` | Lịch sử đầy đủ, mới nhất trước |
+| Auth | GET | `/api/v1/articles` | Snapshot visible (PUBLISHED + tác giả active + profile không SUSPENDED); `keyword`/`topicId`/`tagId`, `sort=NEWEST/OLDEST` |
 | Auth | GET | `/api/v1/articles/options` | Topic/tag phục vụ bộ lọc |
-| Auth | GET | `/api/v1/articles/{id}` | Đọc bài và bài liên quan |
+| Auth | GET | `/api/v1/articles/{id}` | Snapshot + thẻ tác giả công khai + tối đa 5 bài liên quan (cùng topic hoặc chung tag); list/detail/related có `saved` của người gọi |
+| Auth | PUT/DELETE | `/api/v1/articles/{id}/saved` | Lưu (bài phải visible, 404 nếu không) / bỏ lưu (luôn 200); idempotent, trả `{saved}` |
+| Auth | GET | `/api/v1/me/saved-articles` | Bài đã lưu còn visible, `keyword`, mới lưu trước; item = summary public + `savedAt` |
 
 ## 9. Luồng nghiệp vụ chính
 

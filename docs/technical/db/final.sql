@@ -1,9 +1,9 @@
--- TechVerse consolidated database schema (Flyway V1 through V7).
+-- TechVerse consolidated database schema (Flyway V1 through V10).
 -- Generated from server/src/main/resources/db/migration on 2026-10-30.
 -- Target: PostgreSQL 16+; schema: techverse.
 --
 -- PURPOSE: Reference/ERD and manual initialization of a NEW, EMPTY database.
--- This is NOT a Flyway migration. Keep V1..V7 unchanged.
+-- This is NOT a Flyway migration. Keep V1..V10 unchanged.
 -- Do NOT execute against an existing database or put this file in db/migration.
 -- For normal application startup, let Flyway apply the original migrations.
 -- Manual initialization does not create Flyway history; do not subsequently run
@@ -18,6 +18,7 @@
 -- V3: initialize social-account audit fields.
 -- V4: add admin user-query indexes.
 -- V5: add author status/user index.
+-- V8-V10: appended verbatim in section 9 (V10 without its empty-table guard).
 -- V6: add author_profiles.version.
 -- V7: add author suspension/restoration audit fields.
 
@@ -1150,6 +1151,177 @@ CREATE INDEX IF NOT EXISTS idx_users_created_at ON users (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_roles_role_user ON user_roles (role_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_author_profiles_status_user_id
     ON author_profiles (status, user_id);
+
+-- ================================================================
+-- 9. V8-V10 applied in order (author review history, topic icon, article publication versions)
+-- ================================================================
+
+-- Append-only record of every APPROVED/REJECTED decision, so resubmission no longer erases earlier feedback.
+-- No backfill: the dev database was reset (D-022); history starts with the first review after V8.
+CREATE TABLE author_application_reviews (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    -- Cascade only when the whole profile (and its owner) is hard-deleted.
+    author_profile_id uuid NOT NULL REFERENCES author_profiles(id) ON DELETE CASCADE,
+    application_version bigint NOT NULL,
+    decision varchar(20) NOT NULL,
+    review_note text,
+    reviewed_at timestamptz NOT NULL,
+    reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
+    reviewer_name_snapshot varchar(150) NOT NULL,
+    bio_snapshot text NOT NULL,
+    expertise_snapshot varchar(255) NOT NULL,
+    portfolio_url_snapshot text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    created_by uuid REFERENCES users(id) ON DELETE SET NULL,
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    updated_by uuid REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT ck_author_application_reviews_decision CHECK (decision IN ('APPROVED', 'REJECTED')),
+    -- NULL must be rejected explicitly: btrim(NULL) <> '' evaluates to NULL, which a CHECK accepts.
+    CONSTRAINT ck_author_application_reviews_rejection_note
+        CHECK (decision <> 'REJECTED' OR (review_note IS NOT NULL AND btrim(review_note) <> '')),
+    CONSTRAINT ck_author_application_reviews_version CHECK (application_version >= 0),
+    CONSTRAINT uk_author_application_reviews_profile_version UNIQUE (author_profile_id, application_version)
+);
+
+CREATE INDEX idx_author_application_reviews_profile_order
+    ON author_application_reviews (author_profile_id, reviewed_at DESC, application_version DESC);
+
+-- Optional brand icon for a topic: a simple-icons slug picked by an admin (e.g. 'docker'), rendered by the frontend.
+-- Only the slug is stored, never a URL or markup; NULL means the UI shows the topic's initials.
+ALTER TABLE topics ADD COLUMN icon varchar(64);
+ALTER TABLE topics ADD CONSTRAINT topics_icon_slug_check CHECK (icon IS NULL OR icon ~ '^[a-z0-9]{1,64}$');
+
+-- Article flow: separate the author's working copy from immutable approved snapshots.
+-- No backfill (D-022): the dev database must be reset before this runs; existing rows abort it.
+
+CREATE OR REPLACE FUNCTION reject_article_audit_change()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;
+END;
+$$;
+
+-- ---------------------------------------------------------------- snapshots
+CREATE TABLE article_publication_versions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    -- RESTRICT: an article that was ever published can only be soft-deleted.
+    article_id uuid NOT NULL REFERENCES articles(id) ON DELETE RESTRICT,
+    version_number integer NOT NULL,
+    title varchar(255) NOT NULL,
+    summary varchar(500) NOT NULL,
+    content text NOT NULL,
+    cover_image_url text,
+    -- Only the taxonomy ID is frozen; names resolve against current taxonomy.
+    topic_id uuid NOT NULL REFERENCES topics(id) ON DELETE RESTRICT,
+    content_fingerprint varchar(64) NOT NULL,
+    reading_minutes integer NOT NULL,
+    approved_by uuid REFERENCES users(id) ON DELETE SET NULL,
+    approved_at timestamptz NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    created_by uuid REFERENCES users(id) ON DELETE SET NULL,
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    updated_by uuid REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT ck_article_publication_versions_number CHECK (version_number > 0),
+    CONSTRAINT ck_article_publication_versions_reading CHECK (reading_minutes >= 1),
+    CONSTRAINT ck_article_publication_versions_fingerprint CHECK (content_fingerprint ~ '^[a-f0-9]{64}$'),
+    CONSTRAINT uq_article_publication_versions_number UNIQUE (article_id, version_number),
+    -- Target of the composite FKs below: a pointer can only reference its own article's snapshot.
+    CONSTRAINT uq_article_publication_versions_article UNIQUE (id, article_id)
+);
+
+CREATE TABLE article_publication_version_tags (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    version_id uuid NOT NULL REFERENCES article_publication_versions(id) ON DELETE RESTRICT,
+    tag_id uuid NOT NULL REFERENCES tags(id) ON DELETE RESTRICT,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    created_by uuid REFERENCES users(id) ON DELETE SET NULL,
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    updated_by uuid REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT uq_article_publication_version_tags UNIQUE (version_id, tag_id)
+);
+
+CREATE INDEX idx_article_publication_version_tags_tag ON article_publication_version_tags (tag_id, version_id);
+
+CREATE TRIGGER trg_article_publication_versions_append_only
+    BEFORE UPDATE OR DELETE ON article_publication_versions
+    FOR EACH ROW EXECUTE FUNCTION reject_article_audit_change();
+CREATE TRIGGER trg_article_publication_version_tags_append_only
+    BEFORE UPDATE OR DELETE ON article_publication_version_tags
+    FOR EACH ROW EXECUTE FUNCTION reject_article_audit_change();
+
+-- ---------------------------------------------------------------- articles: two state axes
+ALTER TABLE articles DROP CONSTRAINT ck_articles_status;
+ALTER TABLE articles DROP CONSTRAINT ck_articles_published_at;
+DROP INDEX idx_articles_topic_status;
+ALTER TABLE articles DROP COLUMN status;
+
+ALTER TABLE articles
+    ADD COLUMN workflow_status varchar(30) NOT NULL DEFAULT 'DRAFT',
+    ADD COLUMN publication_status varchar(30) NOT NULL DEFAULT 'UNPUBLISHED',
+    ADD COLUMN hidden_from_publication_status varchar(30),
+    ADD COLUMN published_version_id uuid,
+    ADD COLUMN content_fingerprint varchar(64) NOT NULL,
+    ADD CONSTRAINT ck_articles_workflow_status
+        CHECK (workflow_status IN ('DRAFT', 'PENDING', 'PUBLISHED', 'CHANGES_REQUESTED')),
+    ADD CONSTRAINT ck_articles_publication_status
+        CHECK (publication_status IN ('UNPUBLISHED', 'PUBLISHED', 'AUTHOR_HIDDEN', 'HIDDEN', 'AUTHOR_DELETED', 'REMOVED')),
+    -- Every state except UNPUBLISHED points at a snapshot; the first approval also sets published_at.
+    ADD CONSTRAINT ck_articles_publication_snapshot
+        CHECK ((publication_status = 'UNPUBLISHED') = (published_version_id IS NULL)),
+    ADD CONSTRAINT ck_articles_published_at
+        CHECK ((published_version_id IS NULL) = (published_at IS NULL)),
+    ADD CONSTRAINT ck_articles_workflow_snapshot
+        CHECK (workflow_status <> 'PUBLISHED' OR published_version_id IS NOT NULL),
+    ADD CONSTRAINT ck_articles_fingerprint CHECK (content_fingerprint ~ '^[a-f0-9]{64}$'),
+    ADD CONSTRAINT ck_articles_hidden_source
+        CHECK ((publication_status = 'HIDDEN') = (hidden_from_publication_status IS NOT NULL)
+            AND (hidden_from_publication_status IS NULL
+                OR hidden_from_publication_status IN ('PUBLISHED', 'AUTHOR_HIDDEN'))),
+    ADD CONSTRAINT fk_articles_published_version
+        FOREIGN KEY (published_version_id, id)
+        REFERENCES article_publication_versions (id, article_id) ON DELETE RESTRICT;
+
+CREATE INDEX idx_articles_queue ON articles (workflow_status, publication_status, updated_at DESC);
+CREATE INDEX idx_articles_public ON articles (publication_status, published_at DESC, id);
+CREATE INDEX idx_articles_topic ON articles (topic_id);
+
+-- ---------------------------------------------------------------- history
+CREATE TABLE article_moderation_history (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    -- CASCADE only matters for hard-deleting a never-published article (its review notes go with it).
+    article_id uuid NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    actor_id uuid REFERENCES users(id) ON DELETE SET NULL,
+    action varchar(30) NOT NULL,
+    note text,
+    from_workflow_status varchar(30) NOT NULL,
+    to_workflow_status varchar(30) NOT NULL,
+    from_publication_status varchar(30) NOT NULL,
+    to_publication_status varchar(30) NOT NULL,
+    version_id uuid,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    created_by uuid REFERENCES users(id) ON DELETE SET NULL,
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    updated_by uuid REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT ck_article_moderation_history_action CHECK (action IN (
+        'APPROVE', 'REQUEST_CHANGES', 'HIDE', 'RESTORE', 'REMOVE',
+        'AUTHOR_HIDE', 'AUTHOR_UNHIDE', 'AUTHOR_DELETE')),
+    CONSTRAINT fk_article_moderation_history_version
+        FOREIGN KEY (version_id, article_id)
+        REFERENCES article_publication_versions (id, article_id) ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_article_moderation_history_article
+    ON article_moderation_history (article_id, created_at DESC, id DESC);
+
+-- UPDATE only: DELETE must stay possible for the hard-delete cascade above.
+CREATE TRIGGER trg_article_moderation_history_append_only
+    BEFORE UPDATE ON article_moderation_history
+    FOR EACH ROW EXECUTE FUNCTION reject_article_audit_change();
+
+-- ---------------------------------------------------------------- saved list read path
+CREATE INDEX idx_saved_articles_user_created ON saved_articles (user_id, created_at DESC, id DESC);
 
 COMMIT;
 

@@ -29,7 +29,7 @@ public class PublishedArticleController {
 
     /** List published articles using validated title/topic/tag filters and stable pagination. */
     @GetMapping
-    @Operation(summary = "List published articles; search title and filter by topic/tag")
+    @Operation(summary = "List published articles; search title, filter topic/tag, sort NEWEST/OLDEST")
     public ApiResponse<PageResponse<PublishedArticleSummaryResponse>> list(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @ParameterObject @ModelAttribute PublishedArticleFilter filter) {
@@ -48,9 +48,9 @@ public class PublishedArticleController {
                 service.options(UUID.fromString(jwt.getSubject()), filter));
     }
 
-    /** Read published Markdown and up to six related articles in one safe response. */
+    /** Read the visible snapshot and up to five related articles in one safe response. */
     @GetMapping("/{id}")
-    @Operation(summary = "Read a published article with same-topic related articles")
+    @Operation(summary = "Read a published article with related articles (same topic or tag)")
     public ApiResponse<PublishedArticleDetailResponse> detail(
             @AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
         return ok("Article retrieved", service.detail(UUID.fromString(jwt.getSubject()), id));

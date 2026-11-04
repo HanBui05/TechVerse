@@ -56,6 +56,32 @@ public class ModeratorArticleController {
                 service.review(UUID.fromString(jwt.getSubject()), id, request));
     }
 
+    @PatchMapping("/{id}/publication")
+    @Operation(
+            summary =
+                    "HIDE/REMOVE require moderationNote; RESTORE returns to the state before HIDE;"
+                            + " stale reviewToken returns 409")
+    public ApiResponse<ModeratorArticleDetailResponse> publication(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @Valid @RequestBody ArticlePublicationRequest request) {
+        return ok(
+                "Article publication updated",
+                service.publication(UUID.fromString(jwt.getSubject()), id, request));
+    }
+
+    @GetMapping("/{id}/history")
+    @Operation(summary = "Full moderation/publication history, newest first; only page/size apply")
+    public ApiResponse<PageResponse<ArticleModerationHistoryResponse>> history(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @Valid @ParameterObject @ModelAttribute ArticleFilter filter) {
+        return ok(
+                "Article history retrieved",
+                service.history(
+                        UUID.fromString(jwt.getSubject()), id, filter.getPage(), filter.getSize()));
+    }
+
     private <T> ApiResponse<T> ok(String message, T data) {
         return ApiResponse.<T>builder().status(200).message(message).data(data).build();
     }

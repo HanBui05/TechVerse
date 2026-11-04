@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { BookOpen, FileText, House, LayoutDashboard, Tag, UserCheck, Users } from 'lucide-react'
+import { BookOpen, FileText, LayoutDashboard, Tag, UserCheck, Users } from 'lucide-react'
 import type { Language } from '../../types/preferences'
 import { StaffSettingsLinks } from './StaffSettingsLinks'
 import { activeLink, SidebarAccount, SidebarFrame, toneText, useSidebarNav } from './Sidebar'
@@ -10,7 +10,6 @@ type Props = { language: Language; profile: UserProfile | null; onLogout: () => 
 const groups = [
   { label: { vi: 'Tổng quan', en: 'Overview' }, items: [
     { label: { vi: 'Trang chủ', en: 'Dashboard' }, path: '/admin', icon: LayoutDashboard, tone: 'cyan' },
-    { label: { vi: 'Về trang người dùng', en: 'User website' }, path: '/', icon: House, tone: 'blue' },
   ] },
   { label: { vi: 'Người dùng', en: 'Users' }, items: [
     { label: { vi: 'Hồ sơ tác giả', en: 'Author applications' }, path: '/admin/author-applications', icon: UserCheck, tone: 'violet' },
@@ -30,7 +29,7 @@ export function AdminSidebar({ language, profile, onLogout, isModerator = false 
     {groups.map(group => <SidebarGroup key={group.label.en}>
       <SidebarGroupLabel className="uppercase tracking-[.05em]">{group.label[language]}</SidebarGroupLabel>
       <SidebarMenu>
-        {group.items.map(({ label, path, icon: Icon, tone }) => <SidebarMenuItem key={path}><SidebarMenuButton asChild tooltip={label[language]} className={activeLink}><NavLink to={path} end={path === '/admin' || path === '/'} onClick={close}><Icon className={toneText[tone]} data-tone={tone} /><span>{label[language]}</span></NavLink></SidebarMenuButton></SidebarMenuItem>)}
+        {group.items.map(({ label, path, icon: Icon, tone }) => <SidebarMenuItem key={path}><SidebarMenuButton asChild tooltip={label[language]} className={activeLink}><NavLink to={path} end={path === '/admin'} onClick={close}><Icon className={toneText[tone]} data-tone={tone} /><span>{label[language]}</span></NavLink></SidebarMenuButton></SidebarMenuItem>)}
       </SidebarMenu>
     </SidebarGroup>)}
     <StaffSettingsLinks language={language} />

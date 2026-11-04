@@ -79,7 +79,8 @@ describe('Google signup and login', () => {
     await waitFor(() => expect(screen.getByTestId('location').textContent).toBe(destination))
     expect(getAccessToken()).toBe('test-google-access')
     expect(localStorage.getItem('techverse-authenticated')).toBe('true')
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    // Only the session bootstrap counts: a landing page may load its own data (the Moderator dashboard loads its counts).
+    expect(fetchMock.mock.calls.filter(([url]) => /\/api\/v1\/(auth|users)\//.test(String(url)))).toHaveLength(2)
     const [refreshUrl, refreshOptions] = fetchMock.mock.calls[0]
     expect(String(refreshUrl)).toMatch(/\/api\/v1\/auth\/refresh$/)
     expect(refreshOptions?.method).toBe('POST')
@@ -348,6 +349,40 @@ function expectNoBackendMessage() {
   expect(document.body.textContent).not.toContain('BACKEND_SECRET_MESSAGE')
   expect(document.body.textContent).not.toContain('Failed to fetch')
 }
+
+describe('Reader routes and management accounts (Task 2d)', () => {
+  const restoreAt = (roles: string[], path: string) => {
+    localStorage.setItem('techverse-authenticated', 'true')
+    setAccessToken('test-google-access')
+    successfulGoogleSession(roles)
+    renderApp(path)
+  }
+  const savedCalls = () => fetchMock.mock.calls.filter(([url]) => /\/saved/.test(String(url)))
+
+  it.each([
+    [['ADMIN'], '/blogs', '/admin'],
+    [['MODERATOR'], '/', '/moderator'],
+    [['LEARNER', 'AUTHOR', 'MODERATOR'], '/blogs/pub-1', '/moderator'],
+    [['MODERATOR', 'ADMIN'], '/me/saved-articles', '/admin'],
+  ])('sends %j away from %s to %s without calling the saved API', async (roles, path, destination) => {
+    restoreAt(roles, path)
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe(destination))
+    expect(savedCalls()).toEqual([])
+    expect(screen.queryByRole('link', { name: 'Về trang người dùng' })).toBeNull()
+  })
+
+  it('opens /me/saved-articles for a learner and loads the saved list', async () => {
+    restoreAt(['LEARNER'], '/me/saved-articles')
+    await waitFor(() => expect(savedCalls().map(([url]) => new URL(String(url)).pathname)).toContain('/api/v1/me/saved-articles'))
+    expect(screen.getByTestId('location').textContent).toBe('/me/saved-articles')
+    expect(screen.getByRole('link', { name: 'Bài đã lưu' }).getAttribute('href')).toBe('/me/saved-articles')
+  })
+
+  it('asks a signed-out visitor to log in before /me/saved-articles', async () => {
+    renderApp('/me/saved-articles')
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/login'))
+  })
+})
 
 describe('Auth layout and tabs', () => {
   it('shares one mounted layout between login and register tabs', async () => {

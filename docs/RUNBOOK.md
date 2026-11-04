@@ -15,6 +15,17 @@
 - **Đã có tiến trình đang chạy** (cổng 3000/8080 bận): kiểm `Get-NetTCPConnection -LocalPort <cổng>` + `CommandLine` của tiến trình. Của người dùng thì dùng chung, không tắt, không khởi động lại.
 - **Backend có đúng code không:** so `CreationDate` của tiến trình 8080 với lần sửa `server/` cuối (`git log -1 --format=%ci -- server`, cộng file chưa commit). Backend cũ hơn → ghi “chưa kiểm: backend chạy code cũ” và báo người dùng, không tự khởi động lại.
 
+## Làm mới DB dev (khi Flyway mới không chạy trên dữ liệu cũ)
+
+V10 (`article-flow`) dừng nếu bảng `articles` đã có dữ liệu (không backfill, D-022). Tắt backend rồi xóa schema + Redis; lần khởi động sau Flyway chạy lại từ V1 và `InitialAdminInitializer` tạo lại admin; sau đó chèn lại Moderator (lệnh dưới) và chạy `scripts/dev-seed-admin.sql` nếu cần.
+
+```bash
+docker compose exec postgres psql -U <POSTGRES_USER> -d <POSTGRES_DB> -c "DROP SCHEMA techverse CASCADE"
+docker compose exec redis redis-cli FLUSHALL
+```
+
+Chạy ở gốc repo. Chỉ làm trên DB dev, mất toàn bộ dữ liệu.
+
 ## Tài khoản dev theo vai trò
 
 | Vai trò | Email | Mật khẩu | Nguồn |

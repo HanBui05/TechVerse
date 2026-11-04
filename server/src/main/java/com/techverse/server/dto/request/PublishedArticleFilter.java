@@ -7,8 +7,6 @@ import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import org.springframework.data.domain.Sort;
-
 import java.util.UUID;
 
 @Getter
@@ -27,6 +25,5 @@ public class PublishedArticleFilter {
     @Max(100)
     private int size = 20;
 
-    @NotNull private PublishedArticleSortBy sortBy = PublishedArticleSortBy.PUBLISHED_AT;
-    @NotNull private Sort.Direction direction = Sort.Direction.DESC;
+    @NotNull private PublishedArticleSortBy sort = PublishedArticleSortBy.NEWEST;
 }

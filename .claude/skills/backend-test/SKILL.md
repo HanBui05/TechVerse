@@ -12,6 +12,8 @@ Chạy bằng Git Bash từ thư mục gốc repo.
 ```bash
 cd server && ./gradlew test --tests 'com.techverse.server.<gói>.<Lớp>'
 # một phương thức: --tests '<Lớp>.<tênPhươngThức>'
+# lần đỏ: chỉ các ca mới, dừng ở lỗi đầu
+cd server && ./gradlew test --fail-fast --tests '<Lớp>.<ca1>' --tests '<Lớp>.<ca2>'
 ```
 
 - Không `clean` (mất cache build). Test tích hợp cần Docker: `docker info` trước khi chạy.

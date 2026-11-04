@@ -22,7 +22,7 @@ Luật riêng theo vùng tự nạp khi làm việc với file tương ứng: [`
 - Chỉ làm task được giao. Plan chỉ ở `plans/`; không tạo plan tại vị trí khác.
 - **Khi plan:** Codex viết spec; Claude không viết/sửa plan, chỉ phản biện trong mục “Phản hồi vòng 1/2” của spec, tối đa 2 vòng rồi người dùng chốt. Thủ tục: skill `plan-review`.
 - Task đã có trong plan: không brainstorming, không tự sửa spec đã chốt. Spec thiếu thì dừng và hỏi.
-- Code: dùng `superpowers:test-driven-development`, Ponytail `full`. Refactor giữ nguyên hành vi: chạy test hiện có lấy mốc xanh, bổ sung test mô tả hành vi cũ nếu thiếu, rồi mới đổi cấu trúc.
+- Code: dùng `superpowers:test-driven-development`, Ponytail `full`. Đầu task, trước khi sửa: grep caller của mọi thứ sắp xóa/đổi tên; caller thuộc task khác thì ghi ngay vào log phần sửa tạm và test sẽ hỏng tới task nào. Refactor giữ nguyên hành vi: chạy test hiện có lấy mốc xanh, bổ sung test mô tả hành vi cũ nếu thiếu, rồi mới đổi cấu trúc.
 - Test: dùng `superpowers:verification-before-completion` và chỉ báo xong khi có output thật. Sửa lỗi tối đa 3 lần rồi dừng hỏi người dùng. Lỗi test: dùng `superpowers:systematic-debugging`.
 - **Review do Codex, Claude tự gọi** (không chờ người dùng), sau khi test + build đạt và đã ghi log. Thủ tục (lệnh, `--wait`, focus kèm “Xong khi” + kết quả test, tránh chạy trùng): skill `codex-workflow`. Không dùng `requesting-code-review`.
 - Tối đa 2 vòng: vòng 1 `review` (task rủi ro cao: `adversarial-review`), vòng 2 luôn `adversarial-review` chỉ trên phần sửa. Chỉ sửa blocker cao/trung gắn “Xong khi”, bug hoặc bảo mật; gợi ý/style ghi “Ngoài phạm vi” của log. Nhận góp ý theo `superpowers:receiving-code-review`.
@@ -50,8 +50,9 @@ Luật riêng theo vùng tự nạp khi làm việc với file tương ứng: [`
 
 ## Bài học vận hành (chung)
 
-- Công cụ/script tạm: viết một lần bằng file sạch (Write), không vá nhiều lần bằng `sed` hoặc heredoc. Node/Python trên Windows dùng đường dẫn Windows (`D:/...`), không dùng `/d/...` của Git Bash. File CRLF: sửa bằng Edit hoặc Python `newline=''` + chuỗi `\r\n`; không `sed -i` của Git Bash (làm mất CRLF).
-- Chạy song song các bước độc lập; chạy lâu thì để nền. Tắt server sau khi dùng (chỉ server do Claude bật; server của người dùng thì để nguyên).
+- Công cụ/script tạm: viết một lần bằng file sạch (Write), không vá nhiều lần bằng `sed` hoặc heredoc. Mọi script Python (kể cả ngắn): Write vào scratchpad rồi chạy file, không nhúng trong heredoc của Bash (vỡ cú pháp, không lệnh nào chạy; lặp lại ở Task 1b `article-flow`). Node/Python trên Windows dùng đường dẫn Windows (`D:/...`), không dùng `/d/...` của Git Bash. File CRLF: sửa bằng Edit hoặc Python `newline=''` + chuỗi `\r\n`; không `sed -i` của Git Bash (làm mất CRLF).
+- Đọc spec dài: grep tiêu đề/số dòng trước rồi đọc đúng đoạn (`offset`/`limit`), không mở cả file.
+- Chạy song song các bước độc lập (gom các lệnh đọc/kiểm vào một lượt gọi); chạy lâu thì để nền. Tắt server sau khi dùng (chỉ server do Claude bật; server của người dùng thì để nguyên).
 - **Windows:** lệnh có cờ `/X` (`taskkill /PID`) chạy bằng PowerShell. Script sửa file giữ kiểu xuống dòng sẵn có (CRLF/LF); PowerShell ghi file không BOM (`[IO.File]::WriteAllText` + `UTF8Encoding $false`). `npm` luôn `cd` đường dẫn tuyệt đối vào `app/`.
 - Công cụ kiểm chứng dùng lại cho nhiều task: đề nghị Codex đưa đường dẫn vào spec rồi mới thêm vào repo; không tự tạo ngoài spec.
 - Luật mới riêng một vùng ghi vào `.claude/rules/<vùng>.md`, không ghi vào file này. Mỗi rule giữ khoảng 30–50 dòng; luật lỗi thời thì xóa.

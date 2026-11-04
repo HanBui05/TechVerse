@@ -1,0 +1,241 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { setAccessToken } from './api/client'
+import { authorActions, authorArticles, changedFields, changedFromLive, countImages, imageSources, isManagedImage, lastReturnNote, moderatorActions, moderatorArticles, removeImage, replaceImage, resolveIssue, publicArticles, readerBackTarget, readerFilter, readerSearch } from './articleService'
+import type { AuthorArticle, ImageIssue } from '../types/articles'
+import { articleFixture, issueFixture as issue, moderatorDetailFixture, moderatorSummaryFixture, versionFixture as version, publicDetailFixture, savedSummaryFixture } from '../test/articleFixtures'
+
+// PageResponse JSON as the backend serializes it (Task 1a–1c); article fixtures live in test/articleFixtures.ts.
+const page = { content: [{ id: 'art-1', title: 'Draft', summary: 'Sum', coverImageUrl: null, topic: { id: 'java', name: 'Java', active: true }, workflowStatus: 'DRAFT', publicationStatus: 'PUBLISHED', hasUnpublishedChanges: true, publishedAt: null, createdAt: '2026-11-01T09:00:00Z', updatedAt: '2026-11-04T10:42:00Z' }], page: 0, size: 20, totalElements: 1, totalPages: 1, hasNext: false }
+
+const fetchMock = vi.fn<typeof fetch>()
+const ok = (data: unknown, status = 200) => new Response(JSON.stringify({ status, message: 'OK', data }), { status })
+const call = (i = 0) => ({ url: new URL(String(fetchMock.mock.calls[i][0])), init: fetchMock.mock.calls[i][1]! })
+
+beforeEach(() => { setAccessToken('t'); fetchMock.mockReset(); vi.stubGlobal('fetch', fetchMock) })
+afterEach(() => { setAccessToken(null); vi.unstubAllGlobals() })
+
+describe('authorArticles API', () => {
+  it('lists with separate workflow/publication filters and returns the page envelope', async () => {
+    fetchMock.mockResolvedValue(ok(page))
+    const result = await authorArticles.list({ page: 1, size: 20, keyword: 'java', workflowStatus: 'PENDING', publicationStatus: 'HIDDEN', topicId: '', sortBy: 'CREATED_AT', direction: 'DESC' })
+    const { url } = call()
+    expect(url.pathname).toBe('/api/v1/author/articles')
+    expect(Object.fromEntries(url.searchParams)).toEqual({ page: '1', size: '20', keyword: 'java', workflowStatus: 'PENDING', publicationStatus: 'HIDDEN', sortBy: 'CREATED_AT', direction: 'DESC' })
+    expect(result.totalElements).toBe(1)
+    expect(result.content[0].publicationStatus).toBe('PUBLISHED')
+  })
+
+  it('creates with an Idempotency-Key and patches with only the given fields', async () => {
+    fetchMock.mockResolvedValue(ok(articleFixture, 201))
+    const created = await authorArticles.create({ action: 'SAVE', title: 'Draft', topicId: 'java' }, 'key-1')
+    expect(created.imageIssues[0].occurrence).toBe(1)
+    expect(new Headers(call().init.headers).get('Idempotency-Key')).toBe('key-1')
+    expect(call().init.method).toBe('POST')
+    await authorArticles.update('art-1', { action: 'SUBMIT', summary: 'x' })
+    expect(call(1).url.pathname).toBe('/api/v1/author/articles/art-1')
+    expect(call(1).init.method).toBe('PATCH')
+    expect(JSON.parse(String(call(1).init.body))).toEqual({ action: 'SUBMIT', summary: 'x' })
+  })
+
+  it('maps lifecycle actions to their endpoints', async () => {
+    fetchMock.mockImplementation(async () => ok(articleFixture))
+    await authorArticles.withdraw('a')
+    await authorArticles.discard('a')
+    await authorArticles.publication('a', 'UNHIDE')
+    await authorArticles.remove('a')
+    await authorArticles.history('a', 2)
+    expect(fetchMock.mock.calls.map((_, i) => `${call(i).init.method || 'GET'} ${call(i).url.pathname}${call(i).url.search}`)).toEqual([
+      'POST /api/v1/author/articles/a/withdraw',
+      'POST /api/v1/author/articles/a/discard',
+      'PATCH /api/v1/author/articles/a/publication',
+      'DELETE /api/v1/author/articles/a',
+      'GET /api/v1/author/articles/a/history?page=2&size=10',
+    ])
+    expect(JSON.parse(String(call(2).init.body))).toEqual({ action: 'UNHIDE' })
+  })
+
+  it('uploads images as multipart with a reusable Upload-Key', async () => {
+    fetchMock.mockResolvedValue(ok({ url: 'https://res.cloudinary.com/x/image/upload/v1/f/author-1/art-1/k.png', publicId: 'p', width: 1, height: 1, uploadKey: 'u-1' }))
+    const file = new File(['x'], 'a.png', { type: 'image/png' })
+    const uploaded = await authorArticles.uploadImage('art-1', file, 'u-1')
+    expect(uploaded.url).toMatch(/k\.png$/)
+    expect(call().url.pathname).toBe('/api/v1/author/articles/art-1/images')
+    expect(new Headers(call().init.headers).get('Upload-Key')).toBe('u-1')
+    expect(call().init.body).toBeInstanceOf(FormData)
+  })
+})
+
+describe('authorActions (action matrix)', () => {
+  const actions = (workflowStatus: AuthorArticle['workflowStatus'], publicationStatus: AuthorArticle['publicationStatus']) => authorActions({ workflowStatus, publicationStatus })
+  it.each([
+    ['DRAFT', 'UNPUBLISHED', 'edit', ['deleteHard', 'history']],
+    ['CHANGES_REQUESTED', 'UNPUBLISHED', 'edit', ['deleteHard', 'history']],
+    ['PENDING', 'UNPUBLISHED', 'view', ['withdraw', 'history']],
+    ['PUBLISHED', 'PUBLISHED', 'edit', ['viewLive', 'hide', 'deleteSoft', 'history']],
+    ['DRAFT', 'PUBLISHED', 'edit', ['viewLive', 'discard', 'hide', 'deleteSoft', 'history']],
+    ['PENDING', 'PUBLISHED', 'view', ['viewLive', 'withdraw', 'hide', 'deleteSoft', 'history']],
+    ['DRAFT', 'AUTHOR_HIDDEN', 'edit', ['discard', 'unhide', 'deleteSoft', 'history']],
+    ['PUBLISHED', 'HIDDEN', 'edit', ['deleteSoft', 'history']],
+    ['PENDING', 'REMOVED', 'view', ['history']],
+  ] as const)('%s + %s → %s %j', (workflow, publication, primary, menu) => {
+    expect(actions(workflow, publication)).toEqual({ primary, menu, readOnly: primary === 'view' })
+  })
+})
+
+describe('Markdown image helpers', () => {
+  const content = 'a ![x](./a.png) b\n![y](<./a.png> "t")\n```\n![z](./a.png)\n```\n![w](https://x/b.jpg)'
+  it('replaces only the occurrence on the reported line and keeps alt/title', () => {
+    expect(replaceImage(content, { ...issue, source: './a.png', occurrence: 2, line: 2 }, 'https://cdn/new.png'))
+      .toBe('a ![x](./a.png) b\n![y](https://cdn/new.png "t")\n```\n![z](./a.png)\n```\n![w](https://x/b.jpg)')
+  })
+  it('refuses a stale target instead of replacing the wrong image', () => {
+    expect(replaceImage(content, { ...issue, source: './a.png', occurrence: 2, line: 6 }, 'u')).toBeNull()
+    expect(replaceImage(content, { ...issue, source: './gone.png', occurrence: 1, line: 1 }, 'u')).toBeNull()
+  })
+  it('removes the whole image markup', () => {
+    expect(removeImage(content, { ...issue, source: 'https://x/b.jpg', occurrence: 1, line: 6 })).toBe('a ![x](./a.png) b\n![y](<./a.png> "t")\n```\n![z](./a.png)\n```\n')
+  })
+  it('ignores image-like text inside code, like the backend parser', () => {
+    expect(countImages(content)).toBe(3)
+    expect(replaceImage('```\n![z](./a.png)\n```\n`![i](./a.png)` ![q](./a.png)', { ...issue, source: './a.png', occurrence: 1, line: 4 }, 'u'))
+      .toBe('```\n![z](./a.png)\n```\n`![i](./a.png)` ![q](u)')
+  })
+  it('recognises only this article’s managed Cloudinary assets', () => {
+    expect(isManagedImage('https://res.cloudinary.com/c/image/upload/v1/articles/author-1/art-1/k.png', 'author-1', 'art-1')).toBe(true)
+    expect(isManagedImage('https://res.cloudinary.com/c/image/upload/v1/articles/other/art-1/k.png', 'author-1', 'art-1')).toBe(false)
+    expect(isManagedImage('https://evil.example/author-1/art-1/k.png', 'author-1', 'art-1')).toBe(false)
+    expect(isManagedImage('./a.png', 'author-1', undefined)).toBe(false)
+  })
+  it('mirrors the backend URL shape: no query/port, versioned upload path, .png directly under the article folder', () => {
+    const ok = 'https://res.cloudinary.com/c/image/upload/v1/articles/author-1/art-1/k.png'
+    expect(isManagedImage(`${ok}?x=1`, 'author-1', 'art-1')).toBe(false)
+    expect(isManagedImage('https://res.cloudinary.com:8443/c/image/upload/v1/articles/author-1/art-1/k.png', 'author-1', 'art-1')).toBe(false)
+    expect(isManagedImage('https://res.cloudinary.com/c/image/fetch/v1/articles/author-1/art-1/k.png', 'author-1', 'art-1')).toBe(false)
+    expect(isManagedImage('https://res.cloudinary.com/c/image/upload/v1/articles/author-1/art-1/k.jpg', 'author-1', 'art-1')).toBe(false)
+    expect(isManagedImage('https://res.cloudinary.com/c/image/upload/v1/author-1/art-1/x/y/k.png', 'author-1', 'art-1')).toBe(false)
+  })
+  it('lists image sources in document order, ignoring code', () => {
+    expect(imageSources('![a](x.png) `![b](y.png)` ![c](<z.png> "t")')).toEqual(['x.png', 'z.png'])
+  })
+})
+
+it('resolving an issue shifts later occurrences of the same source only', () => {
+  const a1 = { ...issue, source: 'a', occurrence: 1 }, a2 = { ...issue, source: 'a', occurrence: 2 }, b1 = { ...issue, source: 'b', occurrence: 1 }
+  expect(resolveIssue([a1, a2, b1], a1)).toEqual([{ ...a2, occurrence: 1 }, b1])
+})
+
+describe('changedFields', () => {
+  it('returns only fields that differ from the saved article, tags compared as a set', () => {
+    const form = { title: 'Draft', topicId: 'java', tagIds: ['spring'], summary: 'New', content: articleFixture.content ?? '', coverImageUrl: null }
+    expect(changedFields(form, articleFixture)).toEqual({ summary: 'New' })
+    expect(changedFields({ ...form, summary: 'Sum', tagIds: [] }, articleFixture)).toEqual({ tagIds: [] })
+    expect(changedFields(form, null)).toEqual(form)
+  })
+})
+
+describe('moderatorArticles API', () => {
+  it('lists with moderator filters and drops empty values', async () => {
+    fetchMock.mockResolvedValue(ok({ ...page, content: [moderatorSummaryFixture] }))
+    await moderatorArticles.list({ page: 0, size: 12, workflowStatus: 'PENDING', publicationStatus: '', authorId: 'author-1', createdFrom: '2026-11-01T00:00:00.000Z', keyword: '' })
+    const { url } = call()
+    expect(url.pathname).toBe('/api/v1/moderator/articles')
+    expect(Object.fromEntries(url.searchParams)).toEqual({ page: '0', size: '12', workflowStatus: 'PENDING', authorId: 'author-1', createdFrom: '2026-11-01T00:00:00.000Z' })
+  })
+
+  it('sends review and publication actions with the token and a trimmed note', async () => {
+    fetchMock.mockResolvedValue(ok(moderatorDetailFixture))
+    await moderatorArticles.review('art-1', 'REQUEST_CHANGES', 'f'.repeat(64), '  Sửa  ')
+    await moderatorArticles.publication('art-1', 'RESTORE', 'f'.repeat(64), '   ')
+    expect(call(0).url.pathname).toBe('/api/v1/moderator/articles/art-1/review')
+    expect(JSON.parse(String(call(0).init.body))).toEqual({ decision: 'REQUEST_CHANGES', reviewToken: 'f'.repeat(64), moderationNote: 'Sửa' })
+    expect(call(1).url.pathname).toBe('/api/v1/moderator/articles/art-1/publication')
+    expect(JSON.parse(String(call(1).init.body))).toEqual({ action: 'RESTORE', reviewToken: 'f'.repeat(64), moderationNote: null })
+    expect(call(1).init.method).toBe('PATCH')
+  })
+})
+
+describe('moderatorActions', () => {
+  it.each([
+    ['PENDING', 'UNPUBLISHED', ['REQUEST_CHANGES', 'APPROVE']],
+    ['PENDING', 'PUBLISHED', ['REQUEST_CHANGES', 'APPROVE', 'HIDE', 'REMOVE']],
+    ['PUBLISHED', 'PUBLISHED', ['HIDE', 'REMOVE']],
+    ['DRAFT', 'AUTHOR_HIDDEN', ['HIDE', 'REMOVE']],
+    ['CHANGES_REQUESTED', 'HIDDEN', ['RESTORE', 'REMOVE']],
+    ['CHANGES_REQUESTED', 'UNPUBLISHED', []],
+    ['PENDING', 'REMOVED', []],
+    ['PENDING', 'AUTHOR_DELETED', []],
+  ] as const)('%s + %s → %j', (workflowStatus, publicationStatus, expected) => {
+    expect(moderatorActions({ workflowStatus, publicationStatus })).toEqual(expected)
+  })
+})
+
+describe('changedFromLive', () => {
+  it('compares each field with the live snapshot; tags as a set, null summary as empty', () => {
+    const live = { ...version, summary: null, tags: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] }
+    const same = { ...articleFixture, title: live.title, summary: '', content: live.content, coverImageUrl: null, topic: live.topic, tags: [{ id: 'b', name: 'B' }, { id: 'a', name: 'A' }], publishedVersion: live }
+    expect(changedFromLive(same)).toEqual([])
+    expect(changedFromLive({ ...same, title: 'New', content: 'x', tags: [{ id: 'a', name: 'A' }], coverImageUrl: 'https://c' })).toEqual(['title', 'cover', 'tags', 'content'])
+    expect(changedFromLive({ ...same, publishedVersion: null })).toEqual([])
+  })
+})
+
+describe('lastReturnNote', () => {
+  const article = moderatorDetailFixture.article
+  it('shows the note of a REQUEST_CHANGES made after the latest APPROVE', () => {
+    expect(lastReturnNote(article)).toBe('Bổ sung ví dụ')
+    expect(lastReturnNote({ ...article, publishedVersion: null })).toBe('Bổ sung ví dụ')
+  })
+  it('hides it when the latest review was the APPROVE itself or there is no note', () => {
+    expect(lastReturnNote({ ...article, reviewedAt: version.approvedAt, moderationNote: 'Approve note' })).toBeNull()
+    expect(lastReturnNote({ ...article, moderationNote: null })).toBeNull()
+    expect(lastReturnNote({ ...article, reviewedAt: null })).toBeNull()
+  })
+})
+
+describe('publicArticles API', () => {
+  it('lists 9 per page with the single sort param and reads the public detail shape', async () => {
+    fetchMock.mockResolvedValueOnce(ok({ content: [publicDetailFixture], page: 1, size: 9, totalElements: 10, totalPages: 2, hasNext: false }))
+    await publicArticles.list({ keyword: 'java', topicId: '', tagId: 't1', sort: 'OLDEST', page: 1 })
+    expect(Object.fromEntries(call().url.searchParams)).toEqual({ keyword: 'java', tagId: 't1', sort: 'OLDEST', page: '1', size: '9' })
+    fetchMock.mockResolvedValueOnce(ok(publicDetailFixture))
+    const detail = await publicArticles.detail('pub-1')
+    expect(call(1).url.pathname).toBe('/api/v1/articles/pub-1')
+    expect(detail.author.bioExcerpt).toBe('Kỹ sư Java.')
+    expect(detail.relatedArticles[0].saved).toBe(true)
+  })
+
+  it('saves with PUT and unsaves with DELETE on the same resource', async () => {
+    fetchMock.mockResolvedValueOnce(ok({ saved: true })).mockResolvedValueOnce(ok({ saved: false }))
+    expect(await publicArticles.setSaved('pub-1', true)).toEqual({ saved: true })
+    expect(await publicArticles.setSaved('pub-1', false)).toEqual({ saved: false })
+    expect([call(0).init.method, call(1).init.method]).toEqual(['PUT', 'DELETE'])
+    expect(call(1).url.pathname).toBe('/api/v1/articles/pub-1/saved')
+  })
+
+  it('reads the saved list (public summary + savedAt) with keyword and page', async () => {
+    fetchMock.mockResolvedValueOnce(ok({ content: [savedSummaryFixture], page: 1, size: 9, totalElements: 10, totalPages: 2, hasNext: false }))
+    const result = await publicArticles.savedList({ keyword: 'spring', page: 1 })
+    expect(call().url.pathname).toBe('/api/v1/me/saved-articles')
+    expect(Object.fromEntries(call().url.searchParams)).toEqual({ keyword: 'spring', page: '1', size: '9' })
+    expect(result.content[0].savedAt).toBe('2026-11-04T12:00:00Z')
+    await publicArticles.savedList({ keyword: '', page: 0 }).catch(() => undefined)
+    expect(Object.fromEntries(call(1).url.searchParams)).toEqual({ page: '0', size: '9' })
+  })
+})
+
+describe('reader URL state', () => {
+  it('parses the query with defaults and writes back only non-default, trimmed params', () => {
+    expect(readerFilter(new URLSearchParams('keyword=%20java%20&sort=BOGUS&page=-2'))).toEqual({ keyword: 'java', topicId: '', tagId: '', sort: 'NEWEST', page: 0 })
+    expect(readerFilter(new URLSearchParams('topicId=a&tagId=b&sort=OLDEST&page=3'))).toEqual({ keyword: '', topicId: 'a', tagId: 'b', sort: 'OLDEST', page: 3 })
+    expect(readerSearch({ keyword: '  ', topicId: '', tagId: '', sort: 'NEWEST', page: 0 }).toString()).toBe('')
+    expect(readerSearch({ keyword: ' a b ', topicId: 't', tagId: '', sort: 'OLDEST', page: 2 }).toString()).toBe('keyword=a+b&topicId=t&sort=OLDEST&page=2')
+  })
+
+  it('goes back only to a /blogs list URL from router state', () => {
+    expect(readerBackTarget({ from: '/blogs?topicId=t&page=2' })).toBe('/blogs?topicId=t&page=2')
+    expect(readerBackTarget({ from: '/blogs' })).toBe('/blogs')
+    expect(readerBackTarget({ from: '/me/saved-articles' })).toBe('/me/saved-articles')
+    expect(readerBackTarget({ from: '/me/saved-articlesx' })).toBe('/blogs')
+    expect([readerBackTarget(null), readerBackTarget({ from: '//evil.com' }), readerBackTarget({ from: '/blogsx' }), readerBackTarget({ from: 1 })]).toEqual(['/blogs', '/blogs', '/blogs', '/blogs'])
+  })
+})

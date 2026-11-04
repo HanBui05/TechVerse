@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { FileText, Home, LayoutDashboard, UserRound } from 'lucide-react'
+import { FileText, LayoutDashboard, UserRound } from 'lucide-react'
 import { StaffSettingsLinks } from './StaffSettingsLinks'
 import { activeLink, SidebarAccount, SidebarFrame, useSidebarNav } from './Sidebar'
 import type { Language } from '../../types/preferences'
@@ -13,7 +13,6 @@ export function ModeratorSidebar({ language, profile, onLogout }: Props) {
   const links = [
     { path: '/moderator', end: true, icon: LayoutDashboard, label: vi ? 'Tổng quan' : 'Overview' },
     { path: '/moderator/articles', end: false, icon: FileText, label: vi ? 'Kiểm duyệt bài viết' : 'Review articles' },
-    { path: '/', end: true, icon: Home, label: vi ? 'Về trang người dùng' : 'User website' },
     { path: '/profile', end: false, icon: UserRound, label: vi ? 'Thông tin cá nhân' : 'Profile' },
   ]
   return <SidebarFrame mobileTitle={vi ? 'Kiểm duyệt' : 'Moderation'} toggleLabel={iconOnly ? 'Expand menu' : 'Collapse menu'} closeLabel="Close menu" footer={<SidebarAccount profile={profile} onLogout={onLogout} logoutLabel={vi ? 'Đăng xuất' : 'Log out'} />}>

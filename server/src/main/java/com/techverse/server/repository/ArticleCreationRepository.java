@@ -32,6 +32,23 @@ public class ArticleCreationRepository {
         }
     }
 
+    /** Tombstone for a hard-deleted article: a create retry must not resurrect it. */
+    public void markDeleted(UUID articleId) {
+        try {
+            redis.opsForValue().set("article:deleted:" + articleId, "1", Duration.ofHours(24));
+        } catch (Exception e) {
+            throw new CustomException(ErrorCode.ARTICLE_STORAGE_UNAVAILABLE);
+        }
+    }
+
+    public boolean isDeleted(UUID articleId) {
+        try {
+            return Boolean.TRUE.equals(redis.hasKey("article:deleted:" + articleId));
+        } catch (Exception e) {
+            throw new CustomException(ErrorCode.ARTICLE_STORAGE_UNAVAILABLE);
+        }
+    }
+
     public void save(UUID user, UUID key, ArticleCreationReceipt receipt) {
         try {
             redis.opsForValue()

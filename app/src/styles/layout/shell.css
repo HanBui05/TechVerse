@@ -1,6 +1,0 @@
-/* The shadcn sidebar-gap reserves the sidebar width; legacy pages keep only their own padding. */
-.page-content {
-  min-height: 100vh;
-  transition: background-color .28s ease, color .28s ease, border-color .28s ease, box-shadow .28s ease;
-}
-

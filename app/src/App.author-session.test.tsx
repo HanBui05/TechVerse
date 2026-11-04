@@ -15,18 +15,18 @@ function response(data: unknown, status = 200) {
 }
 
 // Reproduce F5 while the browser still holds a learner token issued before approval.
-function reloadAuthorPage() {
-  return render(<StrictMode><MemoryRouter initialEntries={['/author/blogs']}><App /></MemoryRouter></StrictMode>)
+function reloadAuthorPage(path = '/author/blogs') {
+  return render(<StrictMode><MemoryRouter initialEntries={[path]}><App /></MemoryRouter></StrictMode>)
 }
 
 // Require the refreshed bearer for protected author resources, just as the backend does.
-function authorApi(input: RequestInfo | URL, options?: RequestInit, denyOptions = false) {
+function authorApi(input: RequestInfo | URL, options?: RequestInit, denyArticles = false) {
   const path = new URL(String(input)).pathname
   if (path === '/api/v1/users/me') return response(author)
   const validAuthor = new Headers(options?.headers).get('Authorization') === 'Bearer test-author-access'
-  if (!validAuthor || (denyOptions && path.endsWith('/options'))) return response(null, 403)
+  if (!validAuthor || (denyArticles && path.startsWith('/api/v1/author/articles'))) return response(null, 403)
   if (path.endsWith('/options')) return response({ topics: { content: [{ id: 'java', name: 'Java Backend' }], hasNext: false }, tags: { content: [{ id: 'spring', name: 'Spring Boot' }], hasNext: false } })
-  return response({ content: [], hasNext: false })
+  return response({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0, hasNext: false })
 }
 
 beforeEach(() => {
@@ -43,9 +43,7 @@ afterEach(() => { cleanup(); setAccessToken(null); localStorage.clear(); vi.unst
 it('F5 after approval loads author topics and tags using refreshed permissions without another login', async () => {
   fetchMock.mockImplementation(async (input, options) => String(input).endsWith('/auth/refresh')
     ? response({ accessToken: 'test-author-access', expiresAt: '', expiresIn: 900 }) : authorApi(input, options))
-  const user = userEvent.setup()
-  reloadAuthorPage()
-  await user.click(await screen.findByRole('button', { name: '+ Tạo bài viết' }))
+  reloadAuthorPage('/author/blogs/new')
   expect(await screen.findByRole('option', { name: 'Java Backend' })).toBeTruthy()
   expect(screen.getByRole('checkbox', { name: 'Spring Boot' })).toBeTruthy()
   expect(screen.queryByRole('alert')).toBeNull()
@@ -54,15 +52,14 @@ it('F5 after approval loads author topics and tags using refreshed permissions w
   expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/auth/refresh'))).toHaveLength(1)
 })
 
-// Catch regressions to native/unlabelled pagination and invalid previous-page navigation.
-it('provides accessible pagination and disables navigation at empty-page boundaries', async () => {
+// The workspace links into the editor routes, which App must declare for Authors.
+it('opens the editor from the workspace through the App routes', async () => {
   fetchMock.mockImplementation(async (input, options) => String(input).endsWith('/auth/refresh')
     ? response({ accessToken: 'test-author-access', expiresAt: '', expiresIn: 900 }) : authorApi(input, options))
+  const user = userEvent.setup()
   reloadAuthorPage()
-  await screen.findByRole('button', { name: '+ Tạo bài viết' })
-  expect(screen.queryByRole('navigation', { name: 'Phân trang' })).not.toBeNull()
-  expect((screen.getByRole('button', { name: 'Trang trước' }) as HTMLButtonElement).disabled).toBe(true)
-  expect((screen.getByRole('button', { name: 'Trang sau' }) as HTMLButtonElement).disabled).toBe(true)
+  await user.click(await screen.findByRole('link', { name: 'Viết bài đầu tiên' }))
+  expect(await screen.findByRole('heading', { name: 'Viết bài mới' })).toBeTruthy()
 })
 
 it('waits for permission synchronization before requesting author resources', async () => {
@@ -72,9 +69,9 @@ it('waits for permission synchronization before requesting author resources', as
   reloadAuthorPage()
   await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/auth/refresh'))).toBe(true))
   expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/author/articles'))).toBe(false)
-  expect(screen.queryByRole('button', { name: '+ Tạo bài viết' })).toBeNull()
+  expect(screen.queryByRole('link', { name: 'Viết bài mới' })).toBeNull()
   await act(async () => { finishRefresh(response({ accessToken: 'test-author-access', expiresAt: '', expiresIn: 900 })) })
-  expect(await screen.findByRole('button', { name: '+ Tạo bài viết' })).toBeTruthy()
+  expect(await screen.findByRole('link', { name: 'Viết bài mới' })).toBeTruthy()
 })
 
 it('does not open author resources when the refresh session has expired', async () => {
@@ -89,7 +86,7 @@ it('preserves real 403 errors without a refresh retry loop', async () => {
   fetchMock.mockImplementation(async (input, options) => String(input).endsWith('/auth/refresh')
     ? response({ accessToken: 'test-author-access', expiresAt: '', expiresIn: 900 }) : authorApi(input, options, true))
   reloadAuthorPage()
-  expect((await screen.findByRole('alert')).textContent).toMatch(/permission/)
+  expect((await screen.findByRole('alert')).textContent).toContain('Bạn không có quyền thực hiện thao tác này.')
   expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/auth/refresh'))).toHaveLength(1)
 })
 

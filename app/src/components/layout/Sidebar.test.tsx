@@ -68,7 +68,37 @@ it('lists only routable entries for a signed-out visitor', () => {
 it('lists only routable entries in the admin sidebar and keeps the moderator link', () => {
   render(<Shell><AdminSidebar language="vi" profile={profile} onLogout={props.onLogout} isModerator /></Shell>)
   expect(hrefs().filter(href => deadAdminPaths.test(href))).toEqual([])
-  for (const name of ['Trang chủ', 'Về trang người dùng', 'Hồ sơ tác giả', 'Quản lý người dùng', 'Chủ đề', 'Thẻ', 'Kiểm duyệt bài viết']) expect(screen.queryByRole('link', { name })).not.toBeNull()
+  for (const name of ['Trang chủ', 'Hồ sơ tác giả', 'Quản lý người dùng', 'Chủ đề', 'Thẻ', 'Kiểm duyệt bài viết']) expect(screen.queryByRole('link', { name })).not.toBeNull()
+})
+
+// Management accounts are redirected away from Reader routes, so neither staff sidebar links back to them.
+it.each([
+  ['admin', <AdminSidebar language="vi" profile={profile} onLogout={props.onLogout} isModerator />],
+  ['moderator', <ModeratorSidebar language="vi" profile={profile} onLogout={props.onLogout} />],
+])('%s sidebar has no “User website” link', (_, sidebar) => {
+  render(<Shell>{sidebar}</Shell>)
+  expect(screen.queryByRole('link', { name: 'Về trang người dùng' })).toBeNull()
+  expect(within(screen.getByRole('navigation')).queryAllByRole('link').map(link => link.getAttribute('href'))).not.toContain('/')
+})
+
+it('puts “Saved articles” in the fixed “My corner” group; “Author” stays in the main group', () => {
+  render(<Shell route="/me/saved-articles"><Sidebar {...props} profile={profile} /></Shell>)
+  const group = screen.getByText('Góc của tôi').closest('[data-sidebar="group"]') as HTMLElement
+  const saved = within(group).getByRole('link', { name: 'Bài đã lưu' })
+  expect(saved.getAttribute('href')).toBe('/me/saved-articles')
+  expect(saved.getAttribute('aria-current')).toBe('page')
+  expect(within(group).queryByRole('button')).toBeNull()
+  expect(within(group).queryByRole('link', { name: 'Tác giả' })).toBeNull()
+  cleanup()
+  render(<Shell><Sidebar {...props} authenticated={false} roles={[]} profile={null} /></Shell>)
+  expect(screen.queryByText('Góc của tôi')).toBeNull()
+  cleanup()
+  // Session restore: signed in but roles not loaded yet — a management account must never flash the link.
+  render(<Shell><Sidebar {...props} roles={[]} profile={null} /></Shell>)
+  expect(screen.queryByRole('link', { name: 'Bài đã lưu' })).toBeNull()
+  cleanup()
+  render(<Shell><Sidebar {...props} roles={['LEARNER', 'MODERATOR']} profile={profile} /></Shell>)
+  expect(screen.queryByRole('link', { name: 'Bài đã lưu' })).toBeNull()
 })
 
 // Staff sidebars match the user sidebar: coloured icons, settings collapsed until opened or visited.
@@ -90,7 +120,7 @@ it.each([
 it('colours every admin menu icon and drops labels of features that do not exist', () => {
   render(<Shell><AdminSidebar language="vi" profile={profile} onLogout={props.onLogout} isModerator /></Shell>)
   const links = within(screen.getByRole('navigation')).getAllByRole('link')
-  expect(links.length).toBeGreaterThanOrEqual(7)
+  expect(links.length).toBeGreaterThanOrEqual(6)
   for (const link of links) expect(link.querySelector('svg[data-tone]')).not.toBeNull()
   for (const text of [/học viên/i, /bài giảng/i, /learners/i, /lessons/i]) expect(screen.queryByText(text)).toBeNull()
 })

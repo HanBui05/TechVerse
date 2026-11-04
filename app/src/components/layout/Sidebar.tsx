@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { ArrowRight, ChevronDown, LogOut, Settings, UserRound, UserRoundPlus, X } from 'lucide-react'
+import { ArrowRight, ChevronDown, Heart, LogOut, Settings, UserRound, UserRoundPlus, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { navItems, settingsItems } from '../../data/navigation'
 import type { Language } from '../../types/preferences'
@@ -95,6 +95,13 @@ export function Sidebar({ language, t, authenticated, roles, profile, onLogout }
         {authenticated && <SidebarMenuItem><SidebarMenuButton asChild tooltip={language === 'vi' ? 'Tác giả' : 'Author'} className={activeLink}><NavLink to={isAuthor ? '/author/blogs' : '/author/apply'} onClick={close}><UserRound className={toneText.violet} data-tone="violet" /><span>{language === 'vi' ? 'Tác giả' : 'Author'}</span></NavLink></SidebarMenuButton></SidebarMenuItem>}
       </SidebarMenu>
     </SidebarGroup>
+    {/* Fixed group (no collapse, no overview); waits for loaded roles so a management account never sees it, even during session restore. */}
+    {authenticated && profile && !roles.some(role => role === 'ADMIN' || role === 'MODERATOR') && <SidebarGroup>
+      <SidebarGroupLabel className="uppercase tracking-[.05em]">{language === 'vi' ? 'Góc của tôi' : 'My corner'}</SidebarGroupLabel>
+      <SidebarMenu>
+        <SidebarMenuItem><SidebarMenuButton asChild tooltip={language === 'vi' ? 'Bài đã lưu' : 'Saved articles'} className={activeLink}><NavLink to="/me/saved-articles" onClick={close}><Heart className={toneText.rose} data-tone="rose" /><span>{language === 'vi' ? 'Bài đã lưu' : 'Saved articles'}</span></NavLink></SidebarMenuButton></SidebarMenuItem>
+      </SidebarMenu>
+    </SidebarGroup>}
     {authenticated && <SidebarSeparator />}
     <SettingsMenu label={t.settings} links={subLinks} />
   </SidebarFrame>

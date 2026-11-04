@@ -54,9 +54,10 @@ Mục tiêu: đúng nhưng nhanh; mỗi tiêu chí phải bắt được một l
 - Tối đa 2 vòng; vòng 2 chỉ xem diff sửa từ vòng 1. Không review lại toàn bộ.
 - Không đổi spec đã chốt. Khi bất đồng hoặc chạm giới hạn, dừng và hỏi người dùng.
 - Sandbox chỉ đọc có thể không chạy được test (ví dụ Vite không tạo được file tạm): nêu rõ phần nào chưa chạy lại và dựa vào kết quả ghi trong log, không bỏ qua.
+- **Shell khi review (Windows, sandbox — người dùng chốt 2026-11-04):** sandbox chặn Git Bash; không gọi `bash -lc`, `sed`, `cat`, `nl` hay đường dẫn `/c/...`. Chỉ dùng lệnh PowerShell có sẵn: `git diff`, `git diff --stat`, `git status --short`, `Get-Content -Encoding UTF8 <đường dẫn Windows>` (cần dòng thì thêm `| Select-Object -Skip <n> -First <m>`), `Select-String -Path <file> -Pattern <regex>` (không khớp gì thì exit 1 là bình thường, không thử lại). Không chạy Vitest/Gradle/npm: dùng lệnh + kết quả test Claude ghi trong log.
 - Không bật review gate. Mỗi task dùng session mới (`/clear`).
 - Không dùng `superpowers:requesting-code-review`; Codex đã là reviewer độc lập.
 
 Không đọc `.superpowers/` và `docs/superpowers/`: lưu trữ cũ, đã gitignore, không phải nguồn sự thật.
 
-Chạy script bằng Git Bash. Kết quả review ghi vào `plans/<module>.log.md`; trạng thái tổng chỉ cập nhật ở `PLAN.md`.
+Chạy script `scripts/*.sh` bằng Git Bash khi viết spec/đồng bộ (không áp dụng khi review, xem mục Reviewer). Kết quả review ghi vào `plans/<module>.log.md`; trạng thái tổng chỉ cập nhật ở `PLAN.md`.

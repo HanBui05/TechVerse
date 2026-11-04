@@ -88,22 +88,44 @@ public class ArticleImageService {
         }
     }
 
-    /** Caller holds the Article lock, also used by final cleanup reference-check/delete. */
+    /**
+     * SUBMIT/APPROVE: every image must be a live managed asset of this article. Caller holds the
+     * Article lock, also used by final cleanup reference-check/delete.
+     */
     public void validateReferences(Article article) {
-        var urls = references(article);
-        if (urls.size() > 50) throw new CustomException(ErrorCode.ARTICLE_IMAGE_INVALID);
-        for (String url : urls) {
-            String publicId = publicId(url);
-            if (!publicId.startsWith(prefix(article.getAuthor().getId(), article.getId())))
-                throw new CustomException(ErrorCode.ARTICLE_IMAGE_INVALID);
-            var asset =
-                    storage.find(publicId)
-                            .orElseThrow(
-                                    () -> new CustomException(ErrorCode.ARTICLE_IMAGE_INVALID));
-            validateAsset(asset, article.getAuthor().getId(), article.getId());
-            if (!url.equals(asset.url()))
-                throw new CustomException(ErrorCode.ARTICLE_IMAGE_INVALID);
+        checkImageCount(article);
+        for (String url : references(article)) validateManaged(url, article);
+    }
+
+    /** SAVE: Markdown may keep pending images (reported as issues); the cover never may. */
+    public void validateDraft(Article article) {
+        checkImageCount(article);
+        if (article.getCoverImageUrl() != null)
+            validateManaged(article.getCoverImageUrl(), article);
+    }
+
+    /** The 50-image cap counts every Markdown image node (repeats included) plus the cover. */
+    private void checkImageCount(Article article) {
+        int count = content.imageUrls(article.getContent()).size();
+        if (article.getCoverImageUrl() != null) count++;
+        if (count > 50) invalid();
+    }
+
+    /** Syntactic check only (no provider call): is this URL this article's managed asset? */
+    public boolean isOwnManagedUrl(String url, Article article) {
+        try {
+            return publicId(url).startsWith(prefix(article.getAuthor().getId(), article.getId()));
+        } catch (CustomException e) {
+            return false;
         }
+    }
+
+    private void validateManaged(String url, Article article) {
+        String publicId = publicId(url);
+        if (!publicId.startsWith(prefix(article.getAuthor().getId(), article.getId()))) invalid();
+        var asset = storage.find(publicId).orElseThrow(() -> new CustomException(ErrorCode.ARTICLE_IMAGE_INVALID));
+        validateAsset(asset, article.getAuthor().getId(), article.getId());
+        if (!url.equals(asset.url())) invalid();
     }
 
     public Set<String> references(Article article) {

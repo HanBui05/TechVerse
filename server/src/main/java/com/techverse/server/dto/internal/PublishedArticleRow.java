@@ -8,10 +8,11 @@ import lombok.Builder;
 import java.time.Instant;
 import java.util.UUID;
 
-/** Scalar read model: content is selected only for the single-article detail query. */
+/** Scalar read model of a visible snapshot; content is selected only for detail. */
 @Builder
 public record PublishedArticleRow(
         UUID id,
+        UUID versionId,
         String title,
         String summary,
         String content,
@@ -19,4 +20,7 @@ public record PublishedArticleRow(
         ArticleAuthorResponse author,
         ArticleTaxonomyResponse topic,
         Instant publishedAt,
-        Instant updatedAt) {}
+        Instant approvedAt,
+        int versionNumber,
+        int readingMinutes,
+        boolean saved) {}

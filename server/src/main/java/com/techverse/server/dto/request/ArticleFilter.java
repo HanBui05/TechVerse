@@ -16,7 +16,8 @@ public class ArticleFilter {
     @Size(max = 255)
     private String keyword;
 
-    private ArticleStatus status;
+    private ArticleWorkflowStatus workflowStatus;
+    private ArticlePublicationStatus publicationStatus;
     private UUID topicId;
     private UUID tagId;
 

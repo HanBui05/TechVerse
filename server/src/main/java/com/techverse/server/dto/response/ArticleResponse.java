@@ -1,12 +1,13 @@
 package com.techverse.server.dto.response;
 
-import com.techverse.server.enums.ArticleStatus;
+import com.techverse.server.enums.*;
 
 import lombok.Builder;
 
 import java.time.Instant;
 import java.util.*;
 
+/** Working copy as seen by its author (and Moderator); never returned by public APIs. */
 @Builder
 public record ArticleResponse(
         UUID id,
@@ -17,7 +18,11 @@ public record ArticleResponse(
         String coverImageUrl,
         ArticleOptionResponse topic,
         List<ArticleOptionResponse> tags,
-        ArticleStatus status,
+        ArticleWorkflowStatus workflowStatus,
+        ArticlePublicationStatus publicationStatus,
+        boolean hasUnpublishedChanges,
+        ArticlePublicationVersionResponse publishedVersion,
+        List<ArticleImageIssueResponse> imageIssues,
         String moderationNote,
         UUID reviewedBy,
         Instant reviewedAt,

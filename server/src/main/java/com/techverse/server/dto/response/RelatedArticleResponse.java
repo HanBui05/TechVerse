@@ -7,4 +7,4 @@ import java.util.UUID;
 
 @Builder
 public record RelatedArticleResponse(
-        UUID id, String title, String coverImageUrl, Instant publishedAt) {}
+        UUID id, String title, String coverImageUrl, Instant publishedAt, boolean saved) {}

@@ -1,6 +1,6 @@
 package com.techverse.server.dto.response;
 
-import com.techverse.server.enums.ArticleStatus;
+import com.techverse.server.enums.*;
 
 import lombok.Builder;
 
@@ -14,6 +14,9 @@ public record ArticleSummaryResponse(
         String summary,
         String coverImageUrl,
         ArticleOptionResponse topic,
-        ArticleStatus status,
+        ArticleWorkflowStatus workflowStatus,
+        ArticlePublicationStatus publicationStatus,
+        boolean hasUnpublishedChanges,
+        Instant publishedAt,
         Instant createdAt,
         Instant updatedAt) {}
