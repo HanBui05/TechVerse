@@ -55,7 +55,7 @@ function Version({ label, fields, changed, mark, t, imageAllowed }: { label: str
     {field('cover', fields.coverImageUrl && imageAllowed(fields.coverImageUrl)
       ? <img src={fields.coverImageUrl} alt="" className="aspect-video w-full rounded-lg border border-border object-cover" />
       : <p className="text-sm text-muted-foreground">{fields.coverImageUrl ? t('imagePlaceholder') : t('noCover')}</p>)}
-    {field('content', <div className="min-w-0 [&_.markdown-content>:first-child]:mt-0"><MarkdownContent content={fields.content ?? ''} imageAllowed={imageAllowed} imagePlaceholder={t('imagePlaceholder')} /></div>)}
+    {field('content', <div className="min-w-0"><MarkdownContent content={fields.content ?? ''} imageAllowed={imageAllowed} imagePlaceholder={t('imagePlaceholder')} /></div>)}
   </section>
 }
 

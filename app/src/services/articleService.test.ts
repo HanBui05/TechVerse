@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setAccessToken } from './api/client'
-import { authorActions, authorArticles, changedFields, changedFromLive, countImages, imageSources, isManagedImage, lastReturnNote, moderatorActions, moderatorArticles, removeImage, replaceImage, resolveIssue } from './articleService'
+import { authorActions, authorArticles, changedFields, changedFromLive, countImages, imageSources, isManagedImage, lastReturnNote, moderatorActions, moderatorArticles, removeImage, replaceImage, resolveIssue, publicArticles, readerBackTarget, readerFilter, readerSearch } from './articleService'
 import type { AuthorArticle, ImageIssue } from '../types/articles'
-import { articleFixture, issueFixture as issue, moderatorDetailFixture, moderatorSummaryFixture, versionFixture as version } from '../test/articleFixtures'
+import { articleFixture, issueFixture as issue, moderatorDetailFixture, moderatorSummaryFixture, versionFixture as version, publicDetailFixture } from '../test/articleFixtures'
 
 // PageResponse JSON as the backend serializes it (Task 1a–1c); article fixtures live in test/articleFixtures.ts.
 const page = { content: [{ id: 'art-1', title: 'Draft', summary: 'Sum', coverImageUrl: null, topic: { id: 'java', name: 'Java', active: true }, workflowStatus: 'DRAFT', publicationStatus: 'PUBLISHED', hasUnpublishedChanges: true, publishedAt: null, createdAt: '2026-11-01T09:00:00Z', updatedAt: '2026-11-04T10:42:00Z' }], page: 0, size: 20, totalElements: 1, totalPages: 1, hasNext: false }
@@ -189,5 +189,41 @@ describe('lastReturnNote', () => {
     expect(lastReturnNote({ ...article, reviewedAt: version.approvedAt, moderationNote: 'Approve note' })).toBeNull()
     expect(lastReturnNote({ ...article, moderationNote: null })).toBeNull()
     expect(lastReturnNote({ ...article, reviewedAt: null })).toBeNull()
+  })
+})
+
+describe('publicArticles API', () => {
+  it('lists 9 per page with the single sort param and reads the public detail shape', async () => {
+    fetchMock.mockResolvedValueOnce(ok({ content: [publicDetailFixture], page: 1, size: 9, totalElements: 10, totalPages: 2, hasNext: false }))
+    await publicArticles.list({ keyword: 'java', topicId: '', tagId: 't1', sort: 'OLDEST', page: 1 })
+    expect(Object.fromEntries(call().url.searchParams)).toEqual({ keyword: 'java', tagId: 't1', sort: 'OLDEST', page: '1', size: '9' })
+    fetchMock.mockResolvedValueOnce(ok(publicDetailFixture))
+    const detail = await publicArticles.detail('pub-1')
+    expect(call(1).url.pathname).toBe('/api/v1/articles/pub-1')
+    expect(detail.author.bioExcerpt).toBe('Kỹ sư Java.')
+    expect(detail.relatedArticles[0].saved).toBe(true)
+  })
+
+  it('saves with PUT and unsaves with DELETE on the same resource', async () => {
+    fetchMock.mockResolvedValueOnce(ok({ saved: true })).mockResolvedValueOnce(ok({ saved: false }))
+    expect(await publicArticles.setSaved('pub-1', true)).toEqual({ saved: true })
+    expect(await publicArticles.setSaved('pub-1', false)).toEqual({ saved: false })
+    expect([call(0).init.method, call(1).init.method]).toEqual(['PUT', 'DELETE'])
+    expect(call(1).url.pathname).toBe('/api/v1/articles/pub-1/saved')
+  })
+})
+
+describe('reader URL state', () => {
+  it('parses the query with defaults and writes back only non-default, trimmed params', () => {
+    expect(readerFilter(new URLSearchParams('keyword=%20java%20&sort=BOGUS&page=-2'))).toEqual({ keyword: 'java', topicId: '', tagId: '', sort: 'NEWEST', page: 0 })
+    expect(readerFilter(new URLSearchParams('topicId=a&tagId=b&sort=OLDEST&page=3'))).toEqual({ keyword: '', topicId: 'a', tagId: 'b', sort: 'OLDEST', page: 3 })
+    expect(readerSearch({ keyword: '  ', topicId: '', tagId: '', sort: 'NEWEST', page: 0 }).toString()).toBe('')
+    expect(readerSearch({ keyword: ' a b ', topicId: 't', tagId: '', sort: 'OLDEST', page: 2 }).toString()).toBe('keyword=a+b&topicId=t&sort=OLDEST&page=2')
+  })
+
+  it('goes back only to a /blogs list URL from router state', () => {
+    expect(readerBackTarget({ from: '/blogs?topicId=t&page=2' })).toBe('/blogs?topicId=t&page=2')
+    expect(readerBackTarget({ from: '/blogs' })).toBe('/blogs')
+    expect([readerBackTarget(null), readerBackTarget({ from: '//evil.com' }), readerBackTarget({ from: '/blogsx' }), readerBackTarget({ from: 1 })]).toEqual(['/blogs', '/blogs', '/blogs', '/blogs'])
   })
 })

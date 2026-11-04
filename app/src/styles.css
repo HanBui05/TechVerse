@@ -1,31 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* Tailwind theme + utilities only. Preflight stays off until module article-flow migrates the last legacy pages (Blogs, Moderator, AuthorBlogs). */
+/* Full Tailwind: theme, preflight (article-flow Task 2c, after the last legacy page moved), utilities. No page CSS. */
 @layer theme, base, components, utilities;
 @import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
 @import 'tailwindcss/utilities.css' layer(utilities);
 @import 'tw-animate-css';
 
 @import './styles/tokens.css';
-/* base.css sits in layer(base) so utilities on shadcn links/buttons beat its element resets; legacy page CSS (unlayered) still wins. */
-@import './styles/base.css' layer(base);
-@import './styles/layout/shell.css';
-@import './styles/components/controls.css';
-@import './styles/components/forms.css';
-@import './styles/components/content.css';
-@import './styles/pages/admin.css';
-@import './styles/pages/blogs.css';
 
-/* Until article-flow turns preflight on (then delete this block): the slice of preflight that shadcn primitives need.
-   Scoped to elements carrying data-slot so legacy pages keep their UA defaults. */
 @layer base {
-  [data-slot], [data-slot]::before, [data-slot]::after { border: 0 solid var(--border); }
-  button[data-slot] { background-color: transparent; color: inherit; font: inherit; padding: 0; }
-  ul[data-slot] { list-style: none; margin: 0; padding: 0; }
-  :is(h1, h2, h3, h4, p)[data-slot] { margin: 0; }
-  /* shortcut: migrated pages opt out of base.css heading/paragraph styles and UA margins; delete .tw-page with preflight in article-flow. */
-  .tw-page :is(h1, h2, h3, h4, p) { margin: 0; }
-  .tw-page h1 { letter-spacing: normal; max-width: none; }
+  *, ::before, ::after { border-color: var(--border); }
+  html { font-family: var(--font-sans); font-synthesis: none; color: var(--foreground); background: var(--background); -webkit-tap-highlight-color: transparent; }
+  body { min-width: 320px; background: var(--background); transition: background-color .28s ease, color .28s ease; }
 }
 
 /* Dark is the default (no attribute); light is data-theme='light'. No dark class on <html>. */

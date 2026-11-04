@@ -33,11 +33,8 @@ paths:
 - Shell: `App` bọc trang bằng `SidebarProvider` (controlled `techverse-sidebar`); trang tự có `<main>` nên không dùng `SidebarInset`. Sidebar mới ghép bằng `SidebarFrame`/`SidebarAccount`/`activeLink` trong `components/layout/Sidebar.tsx`.
 - Test bám role/label/state, không assert class Tailwind (ngoại lệ: test quét nguồn cho QĐ a11y); Radix cần polyfill trong `src/test/setup.ts`.
 
-## Giai đoạn chuyển (preflight tắt, tới khi module `article-flow` chuyển xong Blogs/Moderator/AuthorBlogs)
+## Preflight bật (từ `article-flow` Task 2c, 2026-11-04)
 
-- CSS legacy chỉ còn lớp tương thích cho luồng bài viết; không thêm class/rule legacy mới, không dùng class legacy ở trang đã chuyển.
-
-- CSS legacy unlayered thắng mọi utility. Không thêm CSS unlayered chạm element trần (`a`, `button`, `ul`…): `base.css` đã nạp vào `layer(base)` vì `a { color: inherit }` từng đè màu utility trên link.
-- Primitive shadcn dựa vào reset `[data-slot]` cuối `styles.css` (border, nút, `ul`, margin `h1–h4/p`); xóa khi bật preflight.
-- Trang đã chuyển: `<main>` có class `tw-page` (bỏ `letter-spacing`/margin của `base.css` và margin UA cho `h1–h4/p`). Phần tử không `data-slot` dùng `border*` phải kèm `border-border` (không thì viền lấy màu chữ). Chữ lỗi dùng `text-danger`, không `text-destructive` (~3:1 trên nền tối).
-- Class legacy trùng tên utility: đổi sang utility hoặc prefix `legacy-` trước khi dùng utility đó. Sửa CSS legacy: kiểm các class cùng nằm trên một phần tử vì đổi thứ tự nạp làm đổi cascade.
+- `styles.css` chỉ có theme + preflight + utilities + `tokens.css` + một khối `@layer base` (màu viền mặc định `--border`, nền/chữ `html`/`body`). Không còn CSS legacy; không thêm file CSS trang hay CSS unlayered.
+- Preflight xóa style UA: heading cần class cỡ/đậm chữ, list cần `list-disc`/`list-decimal` nếu muốn dấu đầu dòng, `img` là `block`. Nội dung Markdown tự mang kiểu chữ trong `MarkdownContent`.
+- Chữ lỗi dùng `text-danger`, không `text-destructive` (~3:1 trên nền tối). Class `tw-page` trên `<main>` không còn rule CSS (vô hại, không cần thêm ở trang mới).

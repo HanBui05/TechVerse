@@ -38,13 +38,6 @@
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 
-  /* Legacy aliases: only for article-flow compatibility CSS (Blogs, Moderator, AuthorBlogs) */
-  --bg: var(--background);
-  --surface: var(--card);
-  --surface-2: var(--secondary);
-  --text: var(--foreground);
-  --on-primary: var(--primary-foreground);
-
   /* Status and accents */
   --accent-text: #38bdf8;
   --info: #38bdf8;

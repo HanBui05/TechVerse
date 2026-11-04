@@ -57,5 +57,17 @@ export type ModeratorArticleFilter = Omit<AuthorArticleFilter, 'workflowStatus' 
   workflowStatus?: WorkflowStatus | ''; publicationStatus?: PublicationStatus | ''; authorId?: string; createdFrom?: string; createdTo?: string
 }
 
-export type ModeratorAction = 'REQUEST_CHANGES' | 'APPROVE' | 'HIDE' | 'RESTORE' | 'REMOVE'
+// Reader (public) DTOs: PublishedArticleSummaryResponse/DetailResponse, RelatedArticleResponse, PublishedArticleAuthorResponse.
+export type PublicArticleSummary = {
+  id: string; title: string; summary: string | null; coverImageUrl: string | null; author: ArticleAuthor; topic: ArticleOption; tags: ArticleOption[]
+  publishedAt: string; approvedAt: string; versionNumber: number; readingMinutes: number; saved: boolean
+}
+export type RelatedArticle = { id: string; title: string; coverImageUrl: string | null; publishedAt: string; saved: boolean }
+export type PublicArticleDetail = Omit<PublicArticleSummary, 'author'> & {
+  content: string; author: ArticleAuthor & { expertise: string | null; bioExcerpt: string | null }; relatedArticles: RelatedArticle[]
+}
+/** `/blogs` URL state; empty strings and defaults are dropped from the URL. */
+export type ReaderFilter = { keyword: string; topicId: string; tagId: string; sort: 'NEWEST' | 'OLDEST'; page: number }
+
+export type ModeratorAction ='REQUEST_CHANGES' | 'APPROVE' | 'HIDE' | 'RESTORE' | 'REMOVE'
 export type CompareField = 'title' | 'summary' | 'cover' | 'topic' | 'tags' | 'content'

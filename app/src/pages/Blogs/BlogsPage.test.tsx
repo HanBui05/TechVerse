@@ -1,57 +1,115 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { afterEach, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { BlogDetailPage } from './BlogsPage'
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { BlogsPage } from './BlogsPage'
 import { setAccessToken } from '../../services/api/client'
+import { publicSummaryFixture as item } from '../../test/articleFixtures'
 
-const markdown = '# Học Java\n\nĐoạn **quan trọng** và `inlineCode`.\n\n- Bước một\n- Bước hai\n\n> Ghi nhớ\n\n| Khóa | Ý nghĩa |\n| --- | --- |\n| sid | Phiên |\n\n```java\nint count = 1;\n```\n\n![Sơ đồ](https://res.cloudinary.com/demo/diagram.png)\n\n<script>alert(1)</script>\n\n[Không an toàn](javascript:alert%281%29)'
-const article = {
-  id: 'one', title: 'Kiến thức Java', summary: 'Tóm tắt bài học', content: markdown,
-  coverImageUrl: 'https://res.cloudinary.com/demo/cover.png',
-  author: { id: 'author', fullName: 'Tác giả Java', avatarUrl: null },
-  topic: { id: 'java', name: 'Java Core' }, tags: [{ id: 'oop', name: 'OOP' }],
-  publishedAt: '2026-10-30T00:00:00Z', updatedAt: '2026-10-30T00:00:00Z',
-  relatedArticles: [
-    { id: 'two', title: 'Spring tiếp theo', coverImageUrl: 'https://res.cloudinary.com/demo/spring.png', publishedAt: '2026-10-29T00:00:00Z' },
-    { id: 'three', title: 'Bài không có ảnh', coverImageUrl: null, publishedAt: null },
-  ],
-}
-
-beforeEach(() => {
-  setAccessToken('test-reader')
-  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify({
-    status: 200, message: 'OK', data: String(input).endsWith('/two')
-      ? { ...article, id: 'two', title: 'Spring tiếp theo', content: '## Nội dung Spring', relatedArticles: [] } : article,
-  }), { status: 200 })))
-})
 afterEach(() => { cleanup(); setAccessToken(null); vi.unstubAllGlobals() })
 
-// Bắt lỗi render Markdown như văn bản, mất bảng/code hoặc vô tình bật raw HTML.
-it('renders rich article content safely, including tables, lists, inline code and highlighted blocks', async () => {
-  const { container } = render(<MemoryRouter initialEntries={['/blogs/one']}><Routes><Route path="/blogs/:id" element={<BlogDetailPage />} /></Routes></MemoryRouter>)
-  await screen.findByRole('heading', { name: 'Kiến thức Java' })
-  expect(screen.getByRole('table').textContent).toContain('Phiên')
-  expect(screen.getByText('quan trọng').tagName).toBe('STRONG')
-  expect(screen.getByText('inlineCode').tagName).toBe('CODE')
-  expect(screen.getByText('Bước một').tagName).toBe('LI')
-  expect(screen.getByText('Ghi nhớ').closest('blockquote')).toBeTruthy()
-  expect(container.querySelector('pre code.language-java .hljs-number')?.textContent).toBe('1')
-  expect(screen.getByRole('img', { name: 'Sơ đồ' }).getAttribute('src')).toBe('https://res.cloudinary.com/demo/diagram.png')
-  expect(container.querySelector('script')).toBeNull()
-  expect(screen.getByText('Không an toàn').closest('a')?.getAttribute('href') || '').not.toMatch(/^javascript:/)
+const json = (data: unknown, status = 200) => new Response(JSON.stringify({ status, message: 'English', data }), { status })
+const page = (content: unknown[], totalElements = content.length, totalPages = 1) => ({ content, page: 0, size: 9, totalElements, totalPages, hasNext: false })
+const options = { topics: page([{ id: 'java', name: 'Java' }, { id: 'react', name: 'React' }]), tags: page([{ id: 't1', name: 'Spring' }]) }
+
+function mockApi(list: (url: URL) => Response | Promise<Response> = () => json(page([item], 42, 5))) {
+  const fetch = vi.fn(async (input: RequestInfo | URL) => {
+    const url = new URL(String(input))
+    return url.pathname.endsWith('/options') ? json(options) : list(url)
+  })
+  vi.stubGlobal('fetch', fetch)
+  setAccessToken('reader')
+  return fetch
+}
+const listParams = (fetch: ReturnType<typeof mockApi>) => fetch.mock.calls.map(([input]) => new URL(String(input))).filter(url => url.pathname === '/api/v1/articles').map(url => Object.fromEntries(url.searchParams))
+
+function Probe() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  return <><output aria-label="url">{location.pathname + location.search}</output><button type="button" onClick={() => navigate(-1)}>back</button><button type="button" onClick={() => navigate(1)}>forward</button></>
+}
+const renderPage = (url = '/blogs') => render(<MemoryRouter initialEntries={[url]}><Routes><Route path="/blogs" element={<><BlogsPage language="vi" /><Probe /></>} /></Routes></MemoryRouter>)
+const url = () => screen.getByRole('status', { name: 'url' }).textContent
+
+it('reads filter and page from the URL, asks for 9 articles and shows header, total chip, cards and pagination', async () => {
+  const fetch = mockApi()
+  renderPage('/blogs?topicId=java&sort=OLDEST&page=2')
+  expect(within(screen.getByRole('status', { name: 'Đang tải bài viết...' })).getAllByRole('listitem')).toHaveLength(9)
+  expect(await screen.findByRole('heading', { name: 'Spring Boot từ đầu' })).not.toBeNull()
+  expect(listParams(fetch)[0]).toEqual({ topicId: 'java', sort: 'OLDEST', page: '2', size: '9' })
+  expect(screen.getByRole('heading', { level: 1, name: 'Bài viết' })).not.toBeNull()
+  expect(screen.getByText('42 bài')).not.toBeNull()
+  expect(screen.getByRole('button', { name: 'Java' }).getAttribute('aria-pressed')).toBe('true')
+  expect(screen.getByRole('button', { name: 'Trang 3' }).getAttribute('aria-current')).toBe('page')
 })
 
-// Bắt lỗi mất thumbnail, điều hướng bài liên quan hoặc dữ liệu bài cũ còn lưu khi đổi route.
-it('places related articles with thumbnails in a complementary sidebar and follows their links', async () => {
+it('commits the keyword only on Enter, resets the page and pushes history that Back/Forward replay', async () => {
+  const fetch = mockApi()
   const user = userEvent.setup()
-  render(<MemoryRouter initialEntries={['/blogs/one']}><Routes><Route path="/blogs/:id" element={<BlogDetailPage />} /></Routes></MemoryRouter>)
-  await screen.findByRole('heading', { name: 'Kiến thức Java' })
-  const sidebar = screen.getByRole('complementary', { name: 'Thông tin bài viết' })
-  const link = within(sidebar).getByRole('link', { name: /Spring tiếp theo/ })
-  expect(link.querySelector('img')?.getAttribute('src')).toBe('https://res.cloudinary.com/demo/spring.png')
-  expect(within(sidebar).getByRole('link', { name: /Bài không có ảnh/ })).toBeTruthy()
-  await user.click(link)
-  await screen.findByRole('heading', { name: 'Nội dung Spring' })
-  expect(screen.queryByRole('heading', { name: 'Học Java' })).toBeNull()
+  renderPage('/blogs?page=1')
+  await screen.findByRole('heading', { name: 'Spring Boot từ đầu' })
+  const search = screen.getByRole('searchbox', { name: 'Tìm bài viết' })
+  fireEvent.change(search, { target: { value: '  spring  ' } })
+  expect(listParams(fetch)).toHaveLength(1)
+  await user.type(search, '{Enter}')
+  await waitFor(() => expect(url()).toBe('/blogs?keyword=spring'))
+  await waitFor(() => expect(listParams(fetch).at(-1)).toEqual({ keyword: 'spring', page: '0', size: '9', sort: 'NEWEST' }))
+  await user.click(screen.getByRole('button', { name: 'Trang 2' }))
+  await waitFor(() => expect(url()).toBe('/blogs?keyword=spring&page=1'))
+  await user.click(screen.getByRole('button', { name: 'back' }))
+  await waitFor(() => expect(url()).toBe('/blogs?keyword=spring'))
+  await user.click(screen.getByRole('button', { name: 'back' }))
+  await waitFor(() => expect(url()).toBe('/blogs?page=1'))
+  expect((screen.getByRole('searchbox', { name: 'Tìm bài viết' }) as HTMLInputElement).value).toBe('')
+  await user.click(screen.getByRole('button', { name: 'forward' }))
+  await waitFor(() => expect((screen.getByRole('searchbox', { name: 'Tìm bài viết' }) as HTMLInputElement).value).toBe('spring'))
+})
+
+it('topic chip, tag and sort write the URL and reset the page; clearing the keyword commits at once', async () => {
+  mockApi()
+  const user = userEvent.setup()
+  renderPage('/blogs?keyword=java&page=3')
+  await screen.findByRole('heading', { name: 'Spring Boot từ đầu' })
+  await user.click(screen.getByRole('button', { name: 'React' }))
+  await waitFor(() => expect(url()).toBe('/blogs?keyword=java&topicId=react'))
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Thẻ' }), 't1')
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Sắp xếp' }), 'OLDEST')
+  await waitFor(() => expect(url()).toBe('/blogs?keyword=java&topicId=react&tagId=t1&sort=OLDEST'))
+  await user.click(screen.getByRole('button', { name: 'Xóa từ khóa' }))
+  await waitFor(() => expect(url()).toBe('/blogs?topicId=react&tagId=t1&sort=OLDEST'))
+  await user.click(screen.getByRole('button', { name: 'Tất cả' }))
+  await waitFor(() => expect(url()).toBe('/blogs?tagId=t1&sort=OLDEST'))
+})
+
+it('separates “no match” (clear filters) from “no articles yet”', async () => {
+  mockApi(() => json(page([])))
+  const user = userEvent.setup()
+  renderPage('/blogs?tagId=t1')
+  expect(await screen.findByText('Không tìm thấy bài viết phù hợp')).not.toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Xóa bộ lọc' }))
+  expect(await screen.findByText('Chưa có bài viết nào')).not.toBeNull()
+  expect(url()).toBe('/blogs')
+  expect(screen.queryByRole('button', { name: 'Xóa bộ lọc' })).toBeNull()
+})
+
+it('normalizes empty, default and unknown params instead of treating them as filters', async () => {
+  const fetch = mockApi(() => json(page([])))
+  renderPage('/blogs?keyword=&sort=NEWEST&page=0&foo=1')
+  expect(await screen.findByText('Chưa có bài viết nào')).not.toBeNull()
+  await waitFor(() => expect(url()).toBe('/blogs'))
+  expect(screen.queryByRole('button', { name: 'Xóa bộ lọc' })).toBeNull()
+  expect(listParams(fetch).every(params => !('foo' in params))).toBe(true)
+})
+
+it('shows a translated error with retry instead of the backend text', async () => {
+  let fail = true
+  mockApi(() => fail ? json(null, 503) : json(page([item])))
+  const user = userEvent.setup()
+  renderPage()
+  const alert = await screen.findByRole('alert')
+  expect(alert.textContent).toContain('Hệ thống tạm thời gián đoạn')
+  expect(alert.textContent).not.toContain('English')
+  fail = false
+  await user.click(within(alert).getByRole('button', { name: 'Thử lại' }))
+  expect(await screen.findByRole('heading', { name: 'Spring Boot từ đầu' })).not.toBeNull()
 })

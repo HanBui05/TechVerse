@@ -10,7 +10,8 @@ import { SidebarProvider, useSidebar } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { copy } from './data/i18n'
 import { HomePage } from './pages/Home/HomePage'
-import { BlogsPage, BlogDetailPage } from './pages/Blogs/BlogsPage'
+import { BlogsPage } from './pages/Blogs/BlogsPage'
+import { BlogDetailPage } from './pages/Blogs/BlogDetailPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
 import { ThemePage } from './pages/Settings/ThemePage'
 import { AuthLayout } from './components/auth/AuthLayout'
@@ -137,8 +138,8 @@ export default function App() {
       ? <main className={LOADING_MAIN}><p role="status">Đang đồng bộ phiên đăng nhập và quyền truy cập...</p></main>
       : <Routes>
       <Route path="/" element={<HomePage t={t} />} />
-      <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><BlogsPage /></AuthRoute>} />
-      <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><BlogDetailPage /></AuthRoute>} />
+      <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><BlogsPage language={language} /></AuthRoute>} />
+      <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><BlogDetailPage language={language} /></AuthRoute>} />
       <Route element={<AuthLayout t={t} />}>
         <Route path="/login" element={<LoginPage t={t} onLogin={login} />} />
         <Route path="/register" element={<RegisterPage t={t} onRegister={register} />} />

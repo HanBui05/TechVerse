@@ -1,4 +1,4 @@
-import type { AuthorArticle, HistoryEntry, ImageIssue, ModeratorArticleDetail, ModeratorArticleSummary, PublicationVersion } from '../types/articles'
+import type { AuthorArticle, HistoryEntry, ImageIssue, ModeratorArticleDetail, ModeratorArticleSummary, PublicArticleDetail, PublicArticleSummary, PublicationVersion } from '../types/articles'
 
 // JSON exactly as the backend serializes ArticleResponse/ArticlePublicationVersionResponse (Task 1a–1c) and the
 // Moderator summary/detail/history responses (Task 1b). Kept out of *.test.ts so importing them does not re-run those tests.
@@ -20,4 +20,16 @@ export const moderatorDetailFixture: ModeratorArticleDetail = {
 export const moderatorSummaryFixture: ModeratorArticleSummary = {
   id: 'art-1', title: 'Live (sửa)', summary: 'Sum', coverImageUrl: null, author: moderatorAuthor, topic: { id: 'java', name: 'Java', active: true },
   workflowStatus: 'PENDING', publicationStatus: 'PUBLISHED', hasUnpublishedChanges: true, authorEligible: true, createdAt: '2026-11-01T09:00:00Z', updatedAt: '2026-11-04T10:42:00Z',
+}
+
+// Public reader JSON (PublishedArticleIntegrationTest / SavedArticleIntegrationTest shapes, Task 1b–1c).
+export const publicSummaryFixture: PublicArticleSummary = {
+  id: 'pub-1', title: 'Spring Boot từ đầu', summary: 'Tóm tắt Spring', coverImageUrl: null, author: { id: 'author-1', fullName: 'Trần B', avatarUrl: null },
+  topic: { id: 'java', name: 'Java' }, tags: [{ id: 't1', name: 'Spring' }, { id: 't2', name: 'JPA' }, { id: 't3', name: 'REST' }, { id: 't4', name: 'Docker' }, { id: 't5', name: 'Test' }],
+  publishedAt: '2026-11-01T10:00:00Z', approvedAt: '2026-11-04T10:00:00Z', versionNumber: 2, readingMinutes: 6, saved: false,
+}
+export const publicDetailFixture: PublicArticleDetail = {
+  ...publicSummaryFixture, content: '## Mở đầu\n\nĐoạn văn.\n\n### Cài đặt\n\n```java\nint count = 1;\n```\n\n## Mở đầu',
+  author: { ...publicSummaryFixture.author, expertise: 'Java backend', bioExcerpt: 'Kỹ sư Java.' },
+  relatedArticles: [{ id: 'pub-2', title: 'JPA nâng cao', coverImageUrl: null, publishedAt: '2026-11-02T10:00:00Z', saved: true }],
 }

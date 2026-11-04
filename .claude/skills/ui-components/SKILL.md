@@ -107,7 +107,7 @@ Grep trên file đã sửa, sửa hết rồi mới review (đây là các lỗi
 - `Badge`/chip chứa chữ người nhập (có thể dài, không khoảng trắng) phải xuống dòng: `max-w-full shrink whitespace-normal [overflow-wrap:anywhere]` — Badge mặc định `whitespace-nowrap` làm tràn ngang mobile.
 - Mọi `a`, `button`, `select`, dropdown, ô nhập có nút bên trong: có `pointer-coarse:min-h-11` (hoặc `h-11`) và nút trong ô căn giữa (`top-1/2 -translate-y-1/2`).
 - Chữ hiển thị (tháng, ngày, nhãn) theo `language` của app, không theo locale trình duyệt (`toLocaleString("default")`, `Intl` không truyền locale).
-- `<main>` có `tw-page`; `border*` ngoài primitive kèm `border-border`; không `text-destructive` cho chữ.
+- Preflight đã bật: heading/list cần class cỡ chữ/dấu đầu dòng; viền mặc định đã là `--border`; không `text-destructive` cho chữ.
 - `className` truyền vào composite được gộp (`cn(..., className)`), không bị ghi đè.
 - Tone của topic/tag/tên luôn qua `toneFor`, status qua `statusTone`; không tự ánh xạ tone trong trang (cùng giá trị phải cùng màu ở mọi trang).
 

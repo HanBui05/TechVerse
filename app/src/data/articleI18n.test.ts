@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../services/api/client'
-import { articleCopy, articleErrorText, historyActionLabel, isStaleError, moderatorCopy, moderatorErrorText, moderatorPublicationLabel, publicationLabel, workflowLabel } from './articleI18n'
+import { articleCopy, articleErrorText, historyActionLabel, isStaleError, moderatorCopy, moderatorErrorText, moderatorPublicationLabel, publicationLabel, workflowLabel, readerCopy, readerErrorText, relativeDate } from './articleI18n'
 
 const WORKFLOW = ['DRAFT', 'PENDING', 'PUBLISHED', 'CHANGES_REQUESTED']
 const PUBLICATION = ['UNPUBLISHED', 'PUBLISHED', 'AUTHOR_HIDDEN', 'HIDDEN', 'AUTHOR_DELETED', 'REMOVED']
@@ -74,5 +74,22 @@ describe('moderator copy', () => {
     expect(Object.keys(moderatorCopy.en).sort()).toEqual(Object.keys(moderatorCopy.vi).sort())
     expect(Object.keys(moderatorPublicationLabel).sort()).toEqual([...PUBLICATION].sort())
     expect(moderatorPublicationLabel.AUTHOR_HIDDEN.vi).toBe('Tác giả tự ẩn')
+  })
+})
+
+describe('reader copy', () => {
+  it('has the same keys in vi/en and says “does not exist or is hidden” for a missing article', () => {
+    expect(Object.keys(readerCopy.en).sort()).toEqual(Object.keys(readerCopy.vi).sort())
+    expect(readerErrorText(new ApiError('Not found', 404, 'ARTICLE_NOT_FOUND'), 'vi', 'f')).toBe('Bài viết không tồn tại hoặc đã bị ẩn.')
+    expect(readerErrorText(new ApiError('Not found', 404, 'ARTICLE_NOT_FOUND'), 'en', 'f')).toBe('The article does not exist or is hidden.')
+    expect(readerErrorText(new ApiError('Bad', 400, 'VALIDATION_ERROR'), 'vi', 'f')).toBe('Kiểm tra lại bộ lọc bài viết.')
+    expect(readerErrorText(new ApiError('Boom', 503), 'en', 'f')).toBe('The service is temporarily unavailable. Please try again later.')
+  })
+
+  it('formats relative dates with the largest fitting unit and never in the future', () => {
+    const now = Date.parse('2026-11-04T10:00:00Z')
+    expect(relativeDate('2026-11-01T10:00:00Z', 'vi', now)).toBe('3 ngày trước')
+    expect(relativeDate('2026-11-04T07:00:00Z', 'en', now)).toBe('3 hours ago')
+    expect(relativeDate('2026-11-05T10:00:00Z', 'en', now)).toBe('this minute')
   })
 })

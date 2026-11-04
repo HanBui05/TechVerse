@@ -1,5 +1,5 @@
 import { request } from './api/client'
-import type { ArticleFields, ArticleOption, ArticleStatus, ArticleWrite, AuthorAction, AuthorArticle, AuthorArticleFilter, AuthorArticleSummary, CompareField, HistoryEntry, ImageIssue, ModeratorAction, ModeratorArticleDetail, ModeratorArticleFilter, ModeratorArticleSummary, Page } from '../types/articles'
+import type { ArticleFields, ArticleOption, ArticleStatus, ArticleWrite, AuthorAction, AuthorArticle, AuthorArticleFilter, AuthorArticleSummary, CompareField, HistoryEntry, ImageIssue, ModeratorAction, ModeratorArticleDetail, ModeratorArticleFilter, ModeratorArticleSummary, Page, PublicArticleDetail, PublicArticleSummary, ReaderFilter } from '../types/articles'
 
 const base = '/api/v1/author/articles'
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
@@ -152,3 +152,39 @@ export const countImages = (content: string) => images(content).length
 export const resolveIssue = (issues: ImageIssue[], done: ImageIssue) => issues
   .filter(issue => issue.source !== done.source || issue.occurrence !== done.occurrence)
   .map(issue => issue.source === done.source && issue.occurrence > done.occurrence ? { ...issue, occurrence: issue.occurrence - 1 } : issue)
+
+const publicBase = '/api/v1/articles'
+export const READER_PAGE_SIZE = 9
+
+export const publicArticles = {
+  list: (filter: ReaderFilter) => request<Page<PublicArticleSummary>>(`${publicBase}?${query({ ...filter, size: READER_PAGE_SIZE })}`),
+  options: () => request<{ topics: Page<ArticleOption>; tags: Page<ArticleOption> }>(`${publicBase}/options?topicSize=100&tagSize=100`),
+  detail: (id: string) => request<PublicArticleDetail>(`${publicBase}/${encodeURIComponent(id)}`),
+  setSaved: (id: string, saved: boolean) => request<{ saved: boolean }>(`${publicBase}/${encodeURIComponent(id)}/saved`, { method: saved ? 'PUT' : 'DELETE' }),
+}
+
+/** `/blogs` query → filter; unknown sort and malformed page fall back to the defaults. */
+export function readerFilter(params: URLSearchParams): ReaderFilter {
+  const page = Number(params.get('page'))
+  return {
+    keyword: (params.get('keyword') ?? '').trim(), topicId: params.get('topicId') ?? '', tagId: params.get('tagId') ?? '',
+    sort: params.get('sort') === 'OLDEST' ? 'OLDEST' : 'NEWEST', page: Number.isInteger(page) && page > 0 ? page : 0,
+  }
+}
+
+/** Filter → `/blogs` query without empty or default params (NEWEST, page 0). */
+export function readerSearch({ keyword, topicId, tagId, sort, page }: ReaderFilter) {
+  const params = new URLSearchParams()
+  if (keyword.trim()) params.set('keyword', keyword.trim())
+  if (topicId) params.set('topicId', topicId)
+  if (tagId) params.set('tagId', tagId)
+  if (sort !== 'NEWEST') params.set('sort', sort)
+  if (page > 0) params.set('page', String(page))
+  return params
+}
+
+/** “Back to list” target: the `/blogs` list URL carried in router state, else `/blogs` (direct visit or foreign state). */
+export function readerBackTarget(state: unknown) {
+  const from = (state as { from?: unknown } | null)?.from
+  return typeof from === 'string' && /^\/blogs(\?|$)/.test(from) ? from : '/blogs'
+}

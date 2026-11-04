@@ -225,3 +225,59 @@ export function articleText(language: Language) {
   const copy = articleCopy[language]
   return (key: keyof ArticleCopy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
 }
+
+const readerVi = {
+  kicker: 'Thư viện bài viết', title: 'Bài viết', subtitle: 'Kiến thức lập trình do tác giả TechVerse chia sẻ.', filters: 'Bộ lọc', count: '{n} bài',
+  search: 'Tìm bài viết', searchPlaceholder: 'Tìm bài viết…', clearSearch: 'Xóa từ khóa', submitSearch: 'Tìm', topics: 'Chủ đề', allTopics: 'Tất cả', tag: 'Thẻ', allTags: 'Mọi thẻ',
+  sort: 'Sắp xếp', newest: 'Mới nhất', oldest: 'Cũ nhất', optionsError: 'Không tải được chủ đề và thẻ.', list: 'Danh sách bài viết',
+  emptyFiltered: 'Không tìm thấy bài viết phù hợp', emptyFilteredText: 'Thử từ khóa hoặc bộ lọc khác.', empty: 'Chưa có bài viết nào', emptyText: 'Bài viết sẽ xuất hiện ở đây khi được xuất bản.',
+  clearFilters: 'Xóa bộ lọc', loadError: 'Không thể tải bài viết.', retry: 'Thử lại', loading: 'Đang tải bài viết...',
+  minutes: '{n} phút đọc', readMore: 'Đọc tiếp', readMoreOf: 'Đọc tiếp: {title}', moreTags: '+{n}', moreTagsLabel: 'và {n} thẻ khác',
+  save: 'Lưu', saved: 'Đã lưu', saveLabel: 'Lưu bài viết', saveError: 'Không cập nhật được bài đã lưu. Hãy thử lại.',
+  breadcrumb: 'Đường dẫn', articles: 'Bài viết', updated: 'Cập nhật {date}', copyLink: 'Sao chép liên kết', copied: 'Đã sao chép', copyFailed: 'Không sao chép được',
+  summary: 'Tóm tắt', tags: 'Thẻ bài viết', aboutAuthor: 'Về tác giả', toc: 'Mục lục', related: 'Bài liên quan', viewAll: 'Xem tất cả {topic}',
+  backToList: 'Về danh sách', backToTop: 'Về đầu trang', notFound: 'Bài viết không tồn tại hoặc đã bị ẩn', notFoundText: 'Bài có thể đã bị tác giả hoặc kiểm duyệt viên ẩn.',
+  sidebar: 'Thông tin bài viết', cover: 'Ảnh bìa: {title}',
+  copyCode: 'Sao chép mã', copyHeading: 'Sao chép liên kết tới mục {title}', table: 'Bảng nội dung', code: 'mã',
+  author: 'Tác giả', quickActions: 'Hành động nhanh', allArticles: 'Tất cả bài viết', sameTopic: 'Bài cùng chủ đề {topic}', progress: 'Tiến độ đọc',
+  publishedOn: 'Đăng {date}',
+}
+type ReaderCopy = typeof readerVi
+const readerEn: ReaderCopy = {
+  kicker: 'Article library', title: 'Articles', subtitle: 'Programming knowledge shared by TechVerse authors.', filters: 'Filters', count: '{n} articles',
+  search: 'Search articles', searchPlaceholder: 'Search articles…', clearSearch: 'Clear keyword', submitSearch: 'Search', topics: 'Topics', allTopics: 'All', tag: 'Tag', allTags: 'All tags',
+  sort: 'Sort', newest: 'Newest', oldest: 'Oldest', optionsError: 'Unable to load topics and tags.', list: 'Articles',
+  emptyFiltered: 'No matching articles', emptyFilteredText: 'Try another keyword or filter.', empty: 'No articles yet', emptyText: 'Articles appear here once they are published.',
+  clearFilters: 'Clear filters', loadError: 'Unable to load articles.', retry: 'Retry', loading: 'Loading articles...',
+  minutes: '{n} min read', readMore: 'Read more', readMoreOf: 'Read more: {title}', moreTags: '+{n}', moreTagsLabel: 'and {n} more tags',
+  save: 'Save', saved: 'Saved', saveLabel: 'Save article', saveError: 'Could not update your saved articles. Try again.',
+  breadcrumb: 'Breadcrumb', articles: 'Articles', updated: 'Updated {date}', copyLink: 'Copy link', copied: 'Copied', copyFailed: 'Could not copy',
+  summary: 'Summary', tags: 'Article tags', aboutAuthor: 'About the author', toc: 'Contents', related: 'Related articles', viewAll: 'All {topic} articles',
+  backToList: 'Back to list', backToTop: 'Back to top', notFound: 'The article does not exist or is hidden', notFoundText: 'The author or a moderator may have hidden it.',
+  sidebar: 'Article details', cover: 'Cover: {title}',
+  copyCode: 'Copy code', copyHeading: 'Copy link to section {title}', table: 'Content table', code: 'code',
+  author: 'Author', quickActions: 'Quick actions', allArticles: 'All articles', sameTopic: 'More in {topic}', progress: 'Reading progress',
+  publishedOn: 'Published {date}',
+}
+export const readerCopy = { vi: readerVi, en: readerEn }
+export type ReaderKey = keyof ReaderCopy
+
+export function readerText(language: Language) {
+  const copy = readerCopy[language]
+  return (key: ReaderKey, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
+}
+
+/** Reader errors: a missing article means “does not exist or is hidden” (spec PUT saved/detail 404), the rest as in the author copy. */
+export function readerErrorText(error: unknown, language: Language, fallback: string) {
+  if (error instanceof ApiError && (error.code === 'ARTICLE_NOT_FOUND' || error.status === 404)) return { vi: 'Bài viết không tồn tại hoặc đã bị ẩn.', en: 'The article does not exist or is hidden.' }[language]
+  if (error instanceof ApiError && error.code === 'VALIDATION_ERROR') return { vi: 'Kiểm tra lại bộ lọc bài viết.', en: 'Check the article filters.' }[language]
+  return articleErrorText(error, language, fallback)
+}
+
+/** “3 ngày trước” / “3 days ago”: the largest unit that fits, never in the future. */
+export function relativeDate(value: string, language: Language, now = Date.now()) {
+  const seconds = Math.max(0, (now - Date.parse(value)) / 1000)
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]]
+  const [unit, size] = units.find(([, size]) => seconds >= size) ?? ['minute', 60]
+  return new Intl.RelativeTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', { numeric: 'auto' }).format(-Math.floor(seconds / size), unit)
+}
