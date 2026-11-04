@@ -28,6 +28,10 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — Luật commit message chỉ mô tả code
+- PR #2 đã merge trên GitHub; `main` local fast-forward lên `52e484e`.
+- Người dùng chốt: commit message chỉ nói thay đổi code, không nhắc AI/agent, không `Co-Authored-By`, không tên task/quy trình. Đã ghi vào `docs/GIT_WORKFLOW.md` mục 4, `CLAUDE.md`, skill `codex-workflow`, `AGENTS.md` (bỏ tham chiếu `wip(...)`). Chưa commit (đang ở `main`).
+
 ### 2026-11-04 — CI PR đỏ: thiếu commit sửa test Admin
 - CI `Server CI` run 41847950833 (PR `feature/article-flow`) đỏ 368/370: đúng 2 test Admin `BadSqlGrammarException` vì remote còn ở `824f909`, commit sửa `3554a5b` chưa push. Log Netty/Lettuce `RejectedExecutionException`/`Connection refused` cuối run là nhiễu lúc tắt (Testcontainers dừng trước khi Spring đóng context), không phải nguyên nhân.
 - Quyết định người dùng (2026-11-04): commit phần Codex đồng bộ spec rồi `git push` (không force) nhánh `feature/article-flow` để CI chạy lại; squash làm sau, trước khi merge.

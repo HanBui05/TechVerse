@@ -19,18 +19,18 @@ Chính sách (ai quyết, giới hạn vòng, sửa gì) ở `CLAUDE.md`. File n
    - Codex không chạy được Vitest trong sandbox (`EPERM`), chỉ đối chiếu kết quả test trong log → log phải ghi lệnh + số đạt trước khi review.
    - Sandbox chặn Git Bash: luật shell PowerShell cho reviewer ở `AGENTS.md` mục Reviewer (2026-11-04, vòng 1 Task 2b mất 7m50s vì thử `bash -lc`/`sed` rồi mới đổi). Review lâu bất thường, hoặc tiến trình in nhiều `bash -lc`/`Command failed` → kiểm lại mục đó.
    - Song song (người dùng chốt 2026-11-04, giữ đủ 2 vòng): task “Đổi giao diện: Có” thì chạy lệnh vòng 1 (vẫn `--wait`) ở chế độ nền của công cụ shell (`run_in_background`), trong lúc đó kiểm bằng mắt; sửa gì sau kiểm mắt thì gộp vào lượt sửa vòng 1.
-3. Phạm vi: diff chưa commit = task đang làm (task trước đã ở commit `wip(...)`). File mới chưa track: `git add -N <file>` trước khi review để có trong diff.
+3. Phạm vi: diff chưa commit = task đang làm (task trước đã ở commit trước đó). File mới chưa track: `git add -N <file>` trước khi review để có trong diff.
 4. Kết quả tiếng Anh: dán nguyên văn trong khối trích dẫn + dịch đủ từng phát hiện (mức, vị trí, nội dung). Đánh giá theo `superpowers:receiving-code-review`.
 5. Vòng 1: blocker thuộc diện sửa → sửa, chạy lại test liên quan + build, ghi log, tự chạy vòng 2. Vòng 2 còn phát hiện → trình bày + một khuyến nghị, người dùng quyết.
 
 ## 2. Người dùng nhận task
 
 1. Ghi log (“Bắt đầu từ đây”, nhật ký phiên), cập nhật dòng module ở `PLAN.md`.
-2. Commit WIP cục bộ trên nhánh module (không push, không `main`): `git add -A && git commit -m "wip(<module>): Task <n> — <tên>"` + dòng `Co-Authored-By`. Kiểm `git status --short` trước: không có file bí mật/ảnh nguồn lớn.
+2. Commit WIP cục bộ trên nhánh module (không push, không `main`): `git add -A && git commit -m "<type>(<scope>): <thay đổi trong code>"` — không `Co-Authored-By`, không nhắc AI/agent hay tên task (luật commit trong `CLAUDE.md`). Commit tài liệu plan: `docs(plans): <nội dung đổi>`. Kiểm `git status --short` trước: không có file bí mật/ảnh nguồn lớn.
 3. Đồng bộ spec (Claude không sửa spec): chạy nền
    `node "<script>" task --write "Đồng bộ spec plans/<module>.md theo log plans/<module>.log.md, làm đúng mục 'Đồng bộ với Claude' trong AGENTS.md. Người dùng đã nhận Task <n> (<ngày>). Cuối cùng liệt kê ngắn những gì đã đổi."`
    Xong thì tự kiểm diff spec/log rồi báo người dùng phần Codex đã đổi.
 
 ## 3. Cuối module
 
-Squash các commit `wip(<module>)` thành một commit (Conventional Commit) chỉ khi người dùng yêu cầu commit/PR cuối module.
+Squash các commit của nhánh module thành một commit (Conventional Commit) chỉ khi người dùng yêu cầu commit/PR cuối module.
