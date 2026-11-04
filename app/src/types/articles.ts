@@ -42,3 +42,20 @@ export type AuthorArticleFilter = {
 }
 
 export type AuthorAction = 'viewLive' | 'withdraw' | 'discard' | 'hide' | 'unhide' | 'deleteHard' | 'deleteSoft' | 'history'
+
+export type ArticleAuthor = { id: string; fullName: string; avatarUrl: string | null }
+
+export type ModeratorArticleSummary = ArticleStatus & {
+  id: string; title: string; summary: string | null; coverImageUrl: string | null; author: ArticleAuthor; topic: ArticleOption
+  hasUnpublishedChanges: boolean; authorEligible: boolean; createdAt: string; updatedAt: string
+}
+
+/** `article` is the working copy (ArticleResponse, same shape as the Author detail); `history` holds the 5 newest entries. */
+export type ModeratorArticleDetail = { article: AuthorArticle; author: ArticleAuthor; reviewToken: string; authorEligible: boolean; history: HistoryEntry[] }
+
+export type ModeratorArticleFilter = Omit<AuthorArticleFilter, 'workflowStatus' | 'publicationStatus'> & {
+  workflowStatus?: WorkflowStatus | ''; publicationStatus?: PublicationStatus | ''; authorId?: string; createdFrom?: string; createdTo?: string
+}
+
+export type ModeratorAction = 'REQUEST_CHANGES' | 'APPROVE' | 'HIDE' | 'RESTORE' | 'REMOVE'
+export type CompareField = 'title' | 'summary' | 'cover' | 'topic' | 'tags' | 'content'

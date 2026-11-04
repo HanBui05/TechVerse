@@ -1,16 +1,18 @@
 import { request } from './api/client'
-import type { ArticleFields, ArticleOption, ArticleStatus, ArticleWrite, AuthorAction, AuthorArticle, AuthorArticleFilter, AuthorArticleSummary, HistoryEntry, ImageIssue, Page } from '../types/articles'
+import type { ArticleFields, ArticleOption, ArticleStatus, ArticleWrite, AuthorAction, AuthorArticle, AuthorArticleFilter, AuthorArticleSummary, CompareField, HistoryEntry, ImageIssue, ModeratorAction, ModeratorArticleDetail, ModeratorArticleFilter, ModeratorArticleSummary, Page } from '../types/articles'
 
 const base = '/api/v1/author/articles'
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
 const multipart = (file: File, headers: HeadersInit = {}): RequestInit => { const body = new FormData(); body.append('file', file); return { method: 'POST', headers, body } }
 
+const query = (filter: object) => {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(filter)) if (value !== '' && value !== undefined) params.set(key, String(value))
+  return params
+}
+
 export const authorArticles = {
-  list(filter: AuthorArticleFilter) {
-    const params = new URLSearchParams()
-    for (const [key, value] of Object.entries(filter)) if (value !== '' && value !== undefined) params.set(key, String(value))
-    return request<Page<AuthorArticleSummary>>(`${base}?${params}`)
-  },
+  list: (filter: AuthorArticleFilter) => request<Page<AuthorArticleSummary>>(`${base}?${query(filter)}`),
   options: () => request<{ topics: Page<ArticleOption>; tags: Page<ArticleOption> }>(`${base}/options?topicSize=100&tagSize=100`),
   detail: (id: string) => request<AuthorArticle>(`${base}/${id}`),
   create: (body: ArticleWrite, idempotencyKey: string) => request<AuthorArticle>(base, { ...json('POST', body), headers: { 'Idempotency-Key': idempotencyKey } }),
@@ -22,6 +24,52 @@ export const authorArticles = {
   history: (id: string, page: number) => request<Page<HistoryEntry>>(`${base}/${id}/history?page=${page}&size=10`),
   importFile: (file: File) => request<{ filename: string; content: string; imageIssues: ImageIssue[] }>(`${base}/import`, multipart(file)),
   uploadImage: (id: string, file: File, uploadKey: string) => request<{ url: string }>(`${base}/${id}/images`, multipart(file, { 'Upload-Key': uploadKey })),
+}
+
+const moderatorBase = '/api/v1/moderator/articles'
+const note = (text: string) => text.trim() || null
+
+export const moderatorArticles = {
+  list: (filter: ModeratorArticleFilter) => request<Page<ModeratorArticleSummary>>(`${moderatorBase}?${query(filter)}`),
+  // shortcut: reader options only list topics/tags of visible articles (no moderator options endpoint; user decision 2026-11-04).
+  options: () => request<{ topics: Page<ArticleOption>; tags: Page<ArticleOption> }>('/api/v1/articles/options?topicSize=100&tagSize=100'),
+  detail: (id: string) => request<ModeratorArticleDetail>(`${moderatorBase}/${id}`),
+  review: (id: string, decision: 'APPROVE' | 'REQUEST_CHANGES', reviewToken: string, text: string) =>
+    request<ModeratorArticleDetail>(`${moderatorBase}/${id}/review`, json('PATCH', { decision, reviewToken, moderationNote: note(text) })),
+  publication: (id: string, action: 'HIDE' | 'RESTORE' | 'REMOVE', reviewToken: string, text: string) =>
+    request<ModeratorArticleDetail>(`${moderatorBase}/${id}/publication`, json('PATCH', { action, reviewToken, moderationNote: note(text) })),
+  history: (id: string, page: number) => request<Page<HistoryEntry>>(`${moderatorBase}/${id}/history?page=${page}&size=10`),
+}
+
+/** Moderator actions the backend accepts in this state (wireframe 2b-2); terminal states have none. */
+export function moderatorActions({ workflowStatus: wf, publicationStatus: pub }: ArticleStatus): ModeratorAction[] {
+  if (pub === 'REMOVED' || pub === 'AUTHOR_DELETED') return []
+  const actions: ModeratorAction[] = wf === 'PENDING' ? ['REQUEST_CHANGES', 'APPROVE'] : []
+  if (pub === 'PUBLISHED' || pub === 'AUTHOR_HIDDEN') actions.push('HIDE', 'REMOVE')
+  if (pub === 'HIDDEN') actions.push('RESTORE', 'REMOVE')
+  return actions
+}
+
+/** Fields of the working copy that differ from the live snapshot (string/ID compare, tags as a set); none without a snapshot. */
+export function changedFromLive(article: AuthorArticle): CompareField[] {
+  const live = article.publishedVersion
+  if (!live) return []
+  const tags = (list: ArticleOption[]) => list.map(tag => tag.id).sort().join()
+  const changed: [CompareField, boolean][] = [
+    ['title', article.title !== live.title], ['summary', (article.summary ?? '') !== (live.summary ?? '')], ['cover', article.coverImageUrl !== live.coverImageUrl],
+    ['topic', article.topic.id !== live.topic.id], ['tags', tags(article.tags) !== tags(live.tags)], ['content', (article.content ?? '') !== live.content],
+  ]
+  return changed.filter(([, differs]) => differs).map(([field]) => field)
+}
+
+/**
+ * Note of a REQUEST_CHANGES made after the latest APPROVE. APPROVE stamps reviewedAt and the new version's approvedAt with the
+ * same instant, so a later reviewedAt means the last review returned the article; withdraw/resubmit keep the note.
+ */
+export function lastReturnNote(article: AuthorArticle) {
+  if (!article.moderationNote || !article.reviewedAt) return null
+  const approvedAt = article.publishedVersion?.approvedAt
+  return !approvedAt || Date.parse(article.reviewedAt) > Date.parse(approvedAt) ? article.moderationNote : null
 }
 
 /** Author action matrix (plans/article-flow.wireframe.md): only actions the backend accepts in this state. */

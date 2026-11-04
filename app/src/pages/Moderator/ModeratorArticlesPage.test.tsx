@@ -1,105 +1,110 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { ModeratorArticlesPage } from './ModeratorArticlesPage'
 import { setAccessToken } from '../../services/api/client'
+import { moderatorSummaryFixture as item } from '../../test/articleFixtures'
 
-afterEach(() => { cleanup(); setAccessToken(null); vi.unstubAllGlobals(); vi.restoreAllMocks() })
+afterEach(() => { cleanup(); setAccessToken(null); vi.unstubAllGlobals() })
 
-const article = { id: 'long', title: 'Bài viết dài', summary: 'Tóm tắt', status: 'PENDING', content: '# Bài viết\n\n' + 'Nội dung dài.\n\n'.repeat(60), moderationNote: null, topic: { name: 'Java' }, tags: [], createdAt: '2026-10-30T01:00:00Z', updatedAt: '2026-10-30T01:00:00Z' }
 const json = (data: unknown, status = 200, code?: string) => new Response(JSON.stringify({ status, code, message: 'English message', data }), { status })
+const page = (content: unknown[], totalElements = content.length) => ({ content, page: 0, size: 12, totalElements, totalPages: 1, hasNext: false })
+const options = { topics: page([{ id: 'java', name: 'Java' }]), tags: page([{ id: 'spring', name: 'Spring' }]) }
 
-// Routes: count-only stats (size=1), the list, the detail and the review PATCH.
-function mockApi(review?: () => Response) {
-  const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+// Routes: reader options, count-only stats (size=1) and the list; `list` decides the list answer per request.
+function mockApi(list: (url: URL) => Response = () => json(page([item]))) {
+  const fetch = vi.fn(async (input: RequestInfo | URL) => {
     const url = new URL(String(input))
-    if (init?.method === 'PATCH') return review ? review() : json({ article: { ...article, status: 'PUBLISHED' }, author: { fullName: 'Tác giả' }, reviewToken: 'r2' })
-    if (url.pathname.endsWith('/long')) return json({ article, author: { fullName: 'Tác giả' }, reviewToken: 'review-test' })
-    if (url.searchParams.get('size') === '1') return json({ content: [], hasNext: false, totalElements: url.searchParams.get('status') === 'PENDING' ? 30 : 2 })
-    return json({ content: [{ ...article, author: { fullName: 'Tác giả' } }], hasNext: true, totalElements: 30 })
+    if (url.pathname.endsWith('/options')) return json(options)
+    if (url.searchParams.get('size') === '1') return json(page([], 3))
+    return list(url)
   })
   vi.stubGlobal('fetch', fetch)
-  setAccessToken('moderator-test')
+  setAccessToken('moderator')
   return fetch
 }
+const listCalls = (fetch: ReturnType<typeof mockApi>) => fetch.mock.calls.map(([input]) => new URL(String(input))).filter(url => url.pathname === '/api/v1/moderator/articles' && url.searchParams.get('size') === '12')
+const renderPage = () => render(<MemoryRouter><ModeratorArticlesPage language="vi" /></MemoryRouter>)
 
-// Keep long Markdown in a keyboard-accessible reading region, separate from review controls.
-it('opens long content in a dedicated reading region while keeping review actions outside it', async () => {
-  mockApi()
-  const user = userEvent.setup()
-  render(<ModeratorArticlesPage />)
-  await user.click(await screen.findByRole('button', { name: /Bài viết dài/ }))
-  const region = await screen.findByRole('region', { name: 'Nội dung bài viết' })
-  expect(region.tabIndex).toBe(0)
-  expect(region.contains(screen.getByRole('button', { name: 'Phê duyệt' }))).toBe(false)
-})
-
-it('shows status counts, 12 articles per page and numbered pagination', async () => {
+it('defaults to the pending queue and links each row to the detail page', async () => {
   const fetch = mockApi()
-  const user = userEvent.setup()
-  render(<ModeratorArticlesPage />)
-  const pending = await screen.findByText('30', { selector: 'dd' })
-  expect(pending).not.toBeNull()
-  const list = fetch.mock.calls.map(([input]) => new URL(String(input))).find(url => url.searchParams.get('size') !== '1')!
-  expect(list.searchParams.get('size')).toBe('12')
-  expect(list.searchParams.get('status')).toBe('PENDING')
-  await user.click(screen.getByRole('button', { name: 'Trang 3' }))
-  expect(fetch.mock.calls.some(([input]) => new URL(String(input)).searchParams.get('page') === '2')).toBe(true)
+  renderPage()
+  const link = await screen.findByRole('link', { name: 'Live (sửa)' })
+  expect(link.getAttribute('href')).toBe('/moderator/articles/art-1')
+  expect(Object.fromEntries(listCalls(fetch)[0].searchParams)).toMatchObject({ workflowStatus: 'PENDING', size: '12', page: '0' })
+  expect(screen.getByText('Bản cập nhật')).not.toBeNull()
+  expect(screen.getByRole('button', { name: 'Chờ duyệt' }).getAttribute('aria-pressed')).toBe('true')
+  expect(screen.queryByRole('dialog')).toBeNull()
 })
 
-it('confirms approval in an in-app dialog instead of window.confirm', async () => {
+it('filters by author from the row and removes the filter from its chip; warns when the author is ineligible', async () => {
+  const fetch = mockApi(() => json(page([{ ...item, authorEligible: false }])))
+  const user = userEvent.setup()
+  renderPage()
+  expect(await screen.findByText('Tác giả không còn đủ điều kiện')).not.toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Lọc theo tác giả Trần B' }))
+  await waitFor(() => expect(listCalls(fetch).at(-1)!.searchParams.get('authorId')).toBe('author-1'))
+  await user.click(screen.getByRole('button', { name: 'Bỏ lọc tác giả Trần B' }))
+  await waitFor(() => expect(listCalls(fetch).at(-1)!.searchParams.has('authorId')).toBe(false))
+})
+
+it('tells an empty queue apart from an empty filter result, and clears back to the queue', async () => {
+  const fetch = mockApi(() => json(page([])))
+  const user = userEvent.setup()
+  renderPage()
+  expect(await screen.findByText('Không còn bài chờ duyệt')).not.toBeNull()
+  expect(screen.queryByRole('button', { name: 'Xóa bộ lọc' })).toBeNull()
+  await user.click(within(screen.getByRole('group', { name: 'Công khai' })).getByRole('button', { name: 'Bị ẩn' }))
+  expect(await screen.findByText('Không có bài khớp bộ lọc')).not.toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Xóa bộ lọc' }))
+  await waitFor(() => expect(Object.fromEntries(listCalls(fetch).at(-1)!.searchParams)).toEqual({ page: '0', size: '12', workflowStatus: 'PENDING', sortBy: 'CREATED_AT', direction: 'DESC' }))
+})
+
+it('rejects a reversed date range without requesting it', async () => {
   const fetch = mockApi()
-  const confirm = vi.spyOn(window, 'confirm')
-  const user = userEvent.setup()
-  render(<ModeratorArticlesPage />)
-  await user.click(await screen.findByRole('button', { name: /Bài viết dài/ }))
-  await user.click(await screen.findByRole('button', { name: 'Phê duyệt' }))
-  const dialog = await screen.findByRole('alertdialog')
-  await user.click(within(dialog).getByRole('button', { name: 'Phê duyệt' }))
-  expect(await screen.findByText('Bài viết đã được phê duyệt và xuất bản.')).not.toBeNull()
-  const patch = fetch.mock.calls.find(([, init]) => init?.method === 'PATCH')!
-  expect(JSON.parse(String(patch[1]!.body))).toEqual({ decision: 'APPROVE', reviewToken: 'review-test', moderationNote: null })
-  expect(confirm).not.toHaveBeenCalled()
+  renderPage()
+  await screen.findByRole('link', { name: 'Live (sửa)' })
+  fireEvent.change(screen.getByLabelText('Gửi từ ngày'), { target: { value: '2026-11-04' } })
+  fireEvent.change(screen.getByLabelText('Đến ngày'), { target: { value: '2026-11-01' } })
+  expect(await screen.findByText('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.')).not.toBeNull()
+  expect(listCalls(fetch).some(url => url.searchParams.has('createdTo'))).toBe(false)
 })
 
-it('asks for feedback before requesting changes', async () => {
+it('moves back to the last page when the queue shrank under the current page', async () => {
+  const fetch = mockApi(url => url.searchParams.get('page') === '0' ? json(page([item], 13)) : json({ ...page([], 13), page: 1, totalPages: 1 }))
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByRole('link', { name: 'Live (sửa)' })
+  await user.click(screen.getByRole('button', { name: 'Trang 2' }))
+  await waitFor(() => expect(listCalls(fetch).map(url => url.searchParams.get('page'))).toEqual(['0', '1', '0']))
+  expect(await screen.findByRole('link', { name: 'Live (sửa)' })).not.toBeNull()
+})
+
+it('reports a failed topic/tag options load and retries it', async () => {
+  let fail = true
   const fetch = mockApi()
-  const user = userEvent.setup()
-  render(<ModeratorArticlesPage />)
-  await user.click(await screen.findByRole('button', { name: /Bài viết dài/ }))
-  await user.click(await screen.findByRole('button', { name: 'Yêu cầu chỉnh sửa' }))
-  expect(screen.queryByRole('alertdialog')).toBeNull()
-  expect(screen.getByText('Nhập nhận xét trước khi yêu cầu chỉnh sửa.')).not.toBeNull()
-  expect(fetch.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false)
-})
-
-it('keeps the newest status counts when an older count request answers late', async () => {
-  const late: (() => void)[] = []
-  let round = 0
-  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+  fetch.mockImplementation(async (input: RequestInfo | URL) => {
     const url = new URL(String(input))
-    if (url.searchParams.get('size') !== '1') return json({ content: [], hasNext: false, totalElements: 0 })
-    if (url.searchParams.get('status') !== 'PENDING') return json({ content: [], hasNext: false, totalElements: 0 })
-    // First round (on mount) answers only after the refresh round has finished.
-    if (round++ === 0) return new Promise<Response>(resolve => late.push(() => resolve(json({ content: [], hasNext: false, totalElements: 99 }))))
-    return json({ content: [], hasNext: false, totalElements: 5 })
-  }))
-  setAccessToken('moderator-test')
+    if (url.pathname.endsWith('/options')) return fail ? json(null, 500) : json(options)
+    return json(page([item], url.searchParams.get('size') === '1' ? 3 : 1))
+  })
   const user = userEvent.setup()
-  render(<ModeratorArticlesPage />)
-  await user.click(await screen.findByRole('button', { name: 'Làm mới' }))
-  expect(await screen.findByText('5', { selector: 'dd' })).not.toBeNull()
-  late.forEach(resolve => resolve())
-  await new Promise(resolve => setTimeout(resolve, 20))
-  expect(screen.queryByText('99', { selector: 'dd' })).toBeNull()
+  renderPage()
+  const alert = await screen.findByText('Không thể tải danh sách chủ đề và thẻ.')
+  fail = false
+  await user.click(within(alert.parentElement!).getByRole('button', { name: 'Thử lại' }))
+  expect(await screen.findByRole('option', { name: 'Java' })).not.toBeNull()
 })
 
-it('explains a stale review in Vietnamese', async () => {
-  mockApi(() => json(null, 409, 'ARTICLE_REVIEW_STALE'))
+it('shows a load error with retry', async () => {
+  let fail = true
+  const fetch = mockApi(() => fail ? json(null, 500) : json(page([item])))
   const user = userEvent.setup()
-  render(<ModeratorArticlesPage />)
-  await user.click(await screen.findByRole('button', { name: /Bài viết dài/ }))
-  await user.click(await screen.findByRole('button', { name: 'Phê duyệt' }))
-  await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Phê duyệt' }))
-  expect((await screen.findByRole('alert')).textContent).toBe('Bài viết đã thay đổi. Hãy mở lại bài để kiểm tra trước khi duyệt.')
+  renderPage()
+  expect((await screen.findByRole('alert')).textContent).toContain('Hệ thống tạm thời gián đoạn')
+  fail = false
+  await user.click(screen.getByRole('button', { name: 'Thử lại' }))
+  expect(await screen.findByRole('link', { name: 'Live (sửa)' })).not.toBeNull()
+  expect(listCalls(fetch).length).toBe(2)
 })

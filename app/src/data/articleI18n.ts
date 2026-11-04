@@ -125,6 +125,101 @@ const en: ArticleCopy = {
 
 export const articleCopy = { vi, en }
 
+// ---------------------------------------------------------------- Moderator (Task 2b)
+
+/** Moderator wording: the author's own choices are named as such, and a DRAFT here is always an update of a live article. */
+export const moderatorPublicationLabel: Record<PublicationStatus, Copy> = {
+  ...publicationLabel,
+  AUTHOR_HIDDEN: { vi: 'Tác giả tự ẩn', en: 'Hidden by author' },
+  HIDDEN: { vi: 'Bị ẩn', en: 'Hidden' },
+  AUTHOR_DELETED: { vi: 'Tác giả đã xóa', en: 'Deleted by author' },
+}
+export const moderatorWorkflowLabel: Record<WorkflowStatus, Copy> = { ...workflowLabel, DRAFT: { vi: 'Nháp cập nhật', en: 'Update draft' } }
+
+const moderatorErrors: Record<string, Copy> = {
+  ARTICLE_NOT_PENDING: { vi: 'Bài viết không còn chờ duyệt. Hãy tải lại.', en: 'This article is no longer pending. Reload it.' },
+  ARTICLE_REVIEW_STALE: { vi: 'Bài đã thay đổi, hãy tải lại.', en: 'The article changed; reload it.' },
+  ARTICLE_SELF_REVIEW_NOT_ALLOWED: { vi: 'Bạn không thể tự duyệt bài viết của mình.', en: 'You cannot review your own article.' },
+  ARTICLE_REVIEW_NOTE_REQUIRED: { vi: 'Cần nhập ghi chú khi yêu cầu sửa.', en: 'A note is required when requesting changes.' },
+  ARTICLE_AUTHOR_INELIGIBLE: { vi: 'Tác giả không còn quyền đăng bài nên chưa thể xuất bản.', en: 'The author can no longer publish, so this article cannot go live.' },
+  ARTICLE_PUBLICATION_TRANSITION_INVALID: { vi: 'Trạng thái xuất bản đã thay đổi, hãy tải lại.', en: 'The publication state changed; reload.' },
+  ARTICLE_PUBLICATION_NOTE_REQUIRED: { vi: 'Cần nhập lý do ẩn hoặc gỡ bài.', en: 'A reason is required to hide or remove an article.' },
+  ARTICLE_IMAGE_INVALID: { vi: 'Bài còn ảnh không hợp lệ hoặc ảnh đã mất; hãy yêu cầu tác giả sửa.', en: 'The article has invalid or missing images; ask the author to fix them.' },
+  ARTICLE_ASSOCIATION_INACTIVE: { vi: 'Chủ đề hoặc thẻ của bài đã bị ẩn. Hãy yêu cầu tác giả đổi phân loại.', en: 'The article’s topic or a tag is now hidden. Ask the author to change it.' },
+}
+
+/** Moderator copy first, then the shared article copy (same pure `code × language` lookup). */
+export function moderatorErrorText(error: unknown, language: Language, fallback: string) {
+  const copy = error instanceof ApiError && error.code ? moderatorErrors[error.code] : undefined
+  return copy ? copy[language] : articleErrorText(error, language, fallback)
+}
+
+/** The article changed under the moderator (stale token or state): the only fix is reloading the detail. */
+export const isStaleError = (error: unknown) => error instanceof ApiError && ['ARTICLE_REVIEW_STALE', 'ARTICLE_PUBLICATION_TRANSITION_INVALID', 'ARTICLE_NOT_PENDING'].includes(error.code ?? '')
+
+const moderatorVi = {
+  dashboardTitle: 'Không gian kiểm duyệt', dashboardSubtitle: 'Theo dõi nội dung và hoạt động của cộng đồng.', queueTitle: 'Hàng đợi kiểm duyệt',
+  queueText: '{n} bài đang chờ duyệt.', queueFallback: 'Xem và xử lý các bài viết được gửi từ tác giả.', openQueue: 'Mở danh sách bài viết',
+  stats: 'Bài viết cần xử lý', title: 'Kiểm duyệt bài viết', subtitle: 'Duyệt bản gửi từ tác giả và quản lý bài đang công khai.', refresh: 'Làm mới',
+  filters: 'Bộ lọc', search: 'Tìm theo tiêu đề', searchPlaceholder: 'Tìm theo tiêu đề...', topic: 'Chủ đề', tag: 'Thẻ', allTopics: 'Mọi chủ đề', allTags: 'Mọi thẻ',
+  from: 'Gửi từ ngày', to: 'Đến ngày', dateInvalid: 'Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.', sort: 'Sắp xếp',
+  newest: 'Mới gửi nhất', oldest: 'Cũ nhất', recentlyEdited: 'Sửa gần đây', titleAz: 'Tiêu đề A–Z', workflowFilter: 'Soạn thảo', publicationFilter: 'Công khai', all: 'Tất cả',
+  count: '{n} bài', list: 'Danh sách bài viết', authorChip: 'Tác giả: {name}', removeAuthor: 'Bỏ lọc tác giả {name}', filterByAuthor: 'Lọc theo tác giả {name}',
+  ineligible: 'Tác giả không còn đủ điều kiện', eligible: 'Đủ điều kiện', submitted: 'Gửi {date}', revision: 'Bản cập nhật',
+  optionsError: 'Không thể tải danh sách chủ đề và thẻ.', noMatch: 'Không có bài khớp bộ lọc', noPending: 'Không còn bài chờ duyệt', clearFilters: 'Xóa bộ lọc', loadError: 'Không thể tải bài viết.', retry: 'Thử lại', loading: 'Đang tải bài viết...',
+  breadcrumb: 'Đường dẫn', moderator: 'Kiểm duyệt', articles: 'Bài viết', actions: 'Thao tác kiểm duyệt',
+  changesFrom: 'Thay đổi so với v{n}:', noFieldChanged: 'Không có trường nào khác bản công khai', compareMode: 'Chế độ so sánh', both: 'Song song',
+  proposed: 'Bản đề xuất', live: 'Bản công khai v{n}', proposedShort: 'Đề xuất', liveShort: 'Công khai', changed: 'Đã đổi',
+  fieldTitle: 'Tiêu đề', fieldSummary: 'Tóm tắt', fieldCover: 'Ảnh bìa', fieldTopic: 'Chủ đề', fieldTags: 'Thẻ', fieldContent: 'Nội dung',
+  noSummary: 'Chưa có tóm tắt', noCover: 'Không có ảnh bìa', noTags: 'Không có thẻ', imagePlaceholder: 'Ảnh chưa tải lên', untitled: 'Chưa có tiêu đề',
+  authorCard: 'Tác giả', ineligibleReason: 'Tác giả không còn quyền đăng bài nên chưa thể duyệt.', history: 'Lịch sử', historyRecent: 'Lịch sử (5 mới nhất)', viewAll: 'Xem tất cả', historyEmpty: 'Chưa có lịch sử',
+  removedBanner: 'Bài đã gỡ khỏi trang đọc; không còn thao tác kiểm duyệt.', deletedBanner: 'Tác giả đã xóa bài, chỉ còn để đối soát.',
+  notFound: 'Không tìm thấy bài viết', backToList: 'Về danh sách', detailError: 'Không thể tải bài viết.',
+  APPROVE: 'Duyệt', REQUEST_CHANGES: 'Yêu cầu sửa', HIDE: 'Ẩn bài', RESTORE: 'Khôi phục', REMOVE: 'Gỡ bài',
+  APPROVE_title: 'Duyệt và xuất bản', REQUEST_CHANGES_title: 'Yêu cầu sửa', HIDE_title: 'Ẩn bài', RESTORE_title: 'Khôi phục bài', REMOVE_title: 'Gỡ bài',
+  APPROVE_text: 'Bản đề xuất sẽ thành v{n} trên cùng URL.', REQUEST_CHANGES_text: 'Bài trở về tác giả kèm ghi chú. Bản công khai (nếu có) giữ nguyên.',
+  HIDE_text: 'Bài sẽ biến khỏi trang đọc.', RESTORE_text: 'Bài trở về trạng thái trước khi bị ẩn.', REMOVE_text: 'Bài bị gỡ khỏi trang đọc. Không khôi phục được.',
+  APPROVE_done: 'Đã duyệt và xuất bản.', REQUEST_CHANGES_done: 'Đã gửi yêu cầu sửa cho tác giả.', HIDE_done: 'Đã ẩn bài.', RESTORE_done: 'Đã khôi phục bài.', REMOVE_done: 'Đã gỡ bài.',
+  lastReturn: 'Lần trước trả về:', noteOptional: 'Ghi chú (tùy chọn)', noteRequired: 'Ghi chú cho tác giả (bắt buộc)', reasonRequired: 'Lý do (bắt buộc)',
+  noteMissing: 'Nhập ghi chú trước khi yêu cầu sửa.', reasonMissing: 'Nhập lý do trước khi tiếp tục.', reload: 'Tải lại', cancel: 'Hủy', close: 'Đóng', backToTop: 'Lên đầu trang',
+}
+type ModeratorCopy = typeof moderatorVi
+
+const moderatorEn: ModeratorCopy = {
+  dashboardTitle: 'Moderation workspace', dashboardSubtitle: 'Follow community content and activity.', queueTitle: 'Moderation queue',
+  queueText: '{n} articles awaiting review.', queueFallback: 'Review articles submitted by authors.', openQueue: 'Open article queue',
+  stats: 'Articles to handle', title: 'Article moderation', subtitle: 'Review author submissions and manage live articles.', refresh: 'Refresh',
+  filters: 'Filters', search: 'Search by title', searchPlaceholder: 'Search by title...', topic: 'Topic', tag: 'Tag', allTopics: 'All topics', allTags: 'All tags',
+  from: 'Submitted from', to: 'To', dateInvalid: 'The start date must be on or before the end date.', sort: 'Sort',
+  newest: 'Newest', oldest: 'Oldest', recentlyEdited: 'Recently edited', titleAz: 'Title A–Z', workflowFilter: 'Editing', publicationFilter: 'Publication', all: 'All',
+  count: '{n} articles', list: 'Articles', authorChip: 'Author: {name}', removeAuthor: 'Remove author filter {name}', filterByAuthor: 'Filter by author {name}',
+  ineligible: 'The author is no longer eligible', eligible: 'Eligible', submitted: 'Submitted {date}', revision: 'Update',
+  optionsError: 'Unable to load topics and tags.', noMatch: 'No articles match the filters', noPending: 'No articles awaiting review', clearFilters: 'Clear filters', loadError: 'Unable to load articles.', retry: 'Retry', loading: 'Loading articles...',
+  breadcrumb: 'Breadcrumb', moderator: 'Moderation', articles: 'Articles', actions: 'Moderation actions',
+  changesFrom: 'Changes from v{n}:', noFieldChanged: 'No field differs from the live version', compareMode: 'Compare mode', both: 'Side by side',
+  proposed: 'Proposed version', live: 'Live version v{n}', proposedShort: 'Proposed', liveShort: 'Live', changed: 'Changed',
+  fieldTitle: 'Title', fieldSummary: 'Summary', fieldCover: 'Cover image', fieldTopic: 'Topic', fieldTags: 'Tags', fieldContent: 'Content',
+  noSummary: 'No summary', noCover: 'No cover image', noTags: 'No tags', imagePlaceholder: 'Image not uploaded', untitled: 'Untitled',
+  authorCard: 'Author', ineligibleReason: 'The author can no longer publish, so this article cannot be approved.', history: 'History', historyRecent: 'History (5 newest)', viewAll: 'View all', historyEmpty: 'No history yet',
+  removedBanner: 'This article was removed from the reader pages; no moderation actions remain.', deletedBanner: 'The author deleted this article; it is available for audit only.',
+  notFound: 'Article not found', backToList: 'Back to the list', detailError: 'Unable to load the article.',
+  APPROVE: 'Approve', REQUEST_CHANGES: 'Request changes', HIDE: 'Hide', RESTORE: 'Restore', REMOVE: 'Remove',
+  APPROVE_title: 'Approve and publish', REQUEST_CHANGES_title: 'Request changes', HIDE_title: 'Hide article', RESTORE_title: 'Restore article', REMOVE_title: 'Remove article',
+  APPROVE_text: 'The proposed version becomes v{n} on the same URL.', REQUEST_CHANGES_text: 'The article goes back to the author with your note. The live version, if any, stays.',
+  HIDE_text: 'The article disappears from the reader pages.', RESTORE_text: 'The article returns to its state before it was hidden.', REMOVE_text: 'The article leaves the reader pages. This cannot be undone.',
+  APPROVE_done: 'Approved and published.', REQUEST_CHANGES_done: 'Change request sent to the author.', HIDE_done: 'Article hidden.', RESTORE_done: 'Article restored.', REMOVE_done: 'Article removed.',
+  lastReturn: 'Last returned with:', noteOptional: 'Note (optional)', noteRequired: 'Note for the author (required)', reasonRequired: 'Reason (required)',
+  noteMissing: 'Enter a note before requesting changes.', reasonMissing: 'Enter a reason before continuing.', reload: 'Reload', cancel: 'Cancel', close: 'Close', backToTop: 'Back to top',
+}
+
+export const moderatorCopy = { vi: moderatorVi, en: moderatorEn }
+export type ModeratorKey = keyof ModeratorCopy
+
+export function moderatorText(language: Language) {
+  const copy = moderatorCopy[language]
+  return (key: ModeratorKey, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
+}
+
 /** Copy lookup with `{name}` placeholders. */
 export function articleText(language: Language) {
   const copy = articleCopy[language]

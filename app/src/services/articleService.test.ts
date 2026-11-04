@@ -1,17 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setAccessToken } from './api/client'
-import { authorActions, authorArticles, changedFields, countImages, imageSources, isManagedImage, removeImage, replaceImage, resolveIssue } from './articleService'
+import { authorActions, authorArticles, changedFields, changedFromLive, countImages, imageSources, isManagedImage, lastReturnNote, moderatorActions, moderatorArticles, removeImage, replaceImage, resolveIssue } from './articleService'
 import type { AuthorArticle, ImageIssue } from '../types/articles'
+import { articleFixture, issueFixture as issue, moderatorDetailFixture, moderatorSummaryFixture, versionFixture as version } from '../test/articleFixtures'
 
-// JSON exactly as ArticleResponse/ArticleSummaryResponse/PageResponse serialize it (Task 1a–1c).
-const version = { id: 'v-1', versionNumber: 3, title: 'Live', summary: 'S', content: '# Live', coverImageUrl: null, topic: { id: 'java', name: 'Java', active: true }, tags: [], approvedBy: 'mod-1', approvedAt: '2026-11-03T10:00:00Z', contentFingerprint: 'a'.repeat(64), readingMinutes: 2 }
-const issue: ImageIssue = { type: 'LOCAL_FILE', alt: 'sơ đồ', source: './img/a.png', occurrence: 1, line: 3, column: 1, filename: 'a.png' }
-export const articleFixture: AuthorArticle = {
-  id: 'art-1', authorId: 'author-1', title: 'Draft', summary: 'Sum', content: 'Intro\n\n![sơ đồ](./img/a.png)', coverImageUrl: null,
-  topic: { id: 'java', name: 'Java', active: true }, tags: [{ id: 'spring', name: 'Spring', active: true }],
-  workflowStatus: 'DRAFT', publicationStatus: 'PUBLISHED', hasUnpublishedChanges: true, publishedVersion: version, imageIssues: [issue],
-  moderationNote: null, reviewedBy: null, reviewedAt: null, publishedAt: '2026-11-01T10:00:00Z', createdAt: '2026-11-01T09:00:00Z', createdBy: 'author-1', updatedAt: '2026-11-04T10:42:00Z', updatedBy: 'author-1',
-}
+// PageResponse JSON as the backend serializes it (Task 1a–1c); article fixtures live in test/articleFixtures.ts.
 const page = { content: [{ id: 'art-1', title: 'Draft', summary: 'Sum', coverImageUrl: null, topic: { id: 'java', name: 'Java', active: true }, workflowStatus: 'DRAFT', publicationStatus: 'PUBLISHED', hasUnpublishedChanges: true, publishedAt: null, createdAt: '2026-11-01T09:00:00Z', updatedAt: '2026-11-04T10:42:00Z' }], page: 0, size: 20, totalElements: 1, totalPages: 1, hasNext: false }
 
 const fetchMock = vi.fn<typeof fetch>()
@@ -137,5 +130,64 @@ describe('changedFields', () => {
     expect(changedFields(form, articleFixture)).toEqual({ summary: 'New' })
     expect(changedFields({ ...form, summary: 'Sum', tagIds: [] }, articleFixture)).toEqual({ tagIds: [] })
     expect(changedFields(form, null)).toEqual(form)
+  })
+})
+
+describe('moderatorArticles API', () => {
+  it('lists with moderator filters and drops empty values', async () => {
+    fetchMock.mockResolvedValue(ok({ ...page, content: [moderatorSummaryFixture] }))
+    await moderatorArticles.list({ page: 0, size: 12, workflowStatus: 'PENDING', publicationStatus: '', authorId: 'author-1', createdFrom: '2026-11-01T00:00:00.000Z', keyword: '' })
+    const { url } = call()
+    expect(url.pathname).toBe('/api/v1/moderator/articles')
+    expect(Object.fromEntries(url.searchParams)).toEqual({ page: '0', size: '12', workflowStatus: 'PENDING', authorId: 'author-1', createdFrom: '2026-11-01T00:00:00.000Z' })
+  })
+
+  it('sends review and publication actions with the token and a trimmed note', async () => {
+    fetchMock.mockResolvedValue(ok(moderatorDetailFixture))
+    await moderatorArticles.review('art-1', 'REQUEST_CHANGES', 'f'.repeat(64), '  Sửa  ')
+    await moderatorArticles.publication('art-1', 'RESTORE', 'f'.repeat(64), '   ')
+    expect(call(0).url.pathname).toBe('/api/v1/moderator/articles/art-1/review')
+    expect(JSON.parse(String(call(0).init.body))).toEqual({ decision: 'REQUEST_CHANGES', reviewToken: 'f'.repeat(64), moderationNote: 'Sửa' })
+    expect(call(1).url.pathname).toBe('/api/v1/moderator/articles/art-1/publication')
+    expect(JSON.parse(String(call(1).init.body))).toEqual({ action: 'RESTORE', reviewToken: 'f'.repeat(64), moderationNote: null })
+    expect(call(1).init.method).toBe('PATCH')
+  })
+})
+
+describe('moderatorActions', () => {
+  it.each([
+    ['PENDING', 'UNPUBLISHED', ['REQUEST_CHANGES', 'APPROVE']],
+    ['PENDING', 'PUBLISHED', ['REQUEST_CHANGES', 'APPROVE', 'HIDE', 'REMOVE']],
+    ['PUBLISHED', 'PUBLISHED', ['HIDE', 'REMOVE']],
+    ['DRAFT', 'AUTHOR_HIDDEN', ['HIDE', 'REMOVE']],
+    ['CHANGES_REQUESTED', 'HIDDEN', ['RESTORE', 'REMOVE']],
+    ['CHANGES_REQUESTED', 'UNPUBLISHED', []],
+    ['PENDING', 'REMOVED', []],
+    ['PENDING', 'AUTHOR_DELETED', []],
+  ] as const)('%s + %s → %j', (workflowStatus, publicationStatus, expected) => {
+    expect(moderatorActions({ workflowStatus, publicationStatus })).toEqual(expected)
+  })
+})
+
+describe('changedFromLive', () => {
+  it('compares each field with the live snapshot; tags as a set, null summary as empty', () => {
+    const live = { ...version, summary: null, tags: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] }
+    const same = { ...articleFixture, title: live.title, summary: '', content: live.content, coverImageUrl: null, topic: live.topic, tags: [{ id: 'b', name: 'B' }, { id: 'a', name: 'A' }], publishedVersion: live }
+    expect(changedFromLive(same)).toEqual([])
+    expect(changedFromLive({ ...same, title: 'New', content: 'x', tags: [{ id: 'a', name: 'A' }], coverImageUrl: 'https://c' })).toEqual(['title', 'cover', 'tags', 'content'])
+    expect(changedFromLive({ ...same, publishedVersion: null })).toEqual([])
+  })
+})
+
+describe('lastReturnNote', () => {
+  const article = moderatorDetailFixture.article
+  it('shows the note of a REQUEST_CHANGES made after the latest APPROVE', () => {
+    expect(lastReturnNote(article)).toBe('Bổ sung ví dụ')
+    expect(lastReturnNote({ ...article, publishedVersion: null })).toBe('Bổ sung ví dụ')
+  })
+  it('hides it when the latest review was the APPROVE itself or there is no note', () => {
+    expect(lastReturnNote({ ...article, reviewedAt: version.approvedAt, moderationNote: 'Approve note' })).toBeNull()
+    expect(lastReturnNote({ ...article, moderationNote: null })).toBeNull()
+    expect(lastReturnNote({ ...article, reviewedAt: null })).toBeNull()
   })
 })

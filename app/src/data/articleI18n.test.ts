@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../services/api/client'
-import { articleCopy, articleErrorText, historyActionLabel, publicationLabel, workflowLabel } from './articleI18n'
+import { articleCopy, articleErrorText, historyActionLabel, isStaleError, moderatorCopy, moderatorErrorText, moderatorPublicationLabel, publicationLabel, workflowLabel } from './articleI18n'
 
 const WORKFLOW = ['DRAFT', 'PENDING', 'PUBLISHED', 'CHANGES_REQUESTED']
 const PUBLICATION = ['UNPUBLISHED', 'PUBLISHED', 'AUTHOR_HIDDEN', 'HIDDEN', 'AUTHOR_DELETED', 'REMOVED']
@@ -44,5 +44,35 @@ describe('articleErrorText', () => {
   it('falls back to a generic system message for 5xx/unknown codes and to the caller text for non-API errors', () => {
     expect(articleErrorText(new ApiError('boom', 500, 'SOMETHING_NEW'), 'vi', 'f')).toBe('Hệ thống tạm thời gián đoạn. Vui lòng thử lại sau.')
     expect(articleErrorText(new TypeError('Failed to fetch'), 'en', 'Could not load')).toBe('Could not load')
+  })
+})
+
+// Codes the Moderator review/publication API returns (spec “API và validation”, Task 2b).
+const MODERATOR_CODES = ['ARTICLE_NOT_PENDING', 'ARTICLE_REVIEW_STALE', 'ARTICLE_REVIEW_NOTE_REQUIRED', 'ARTICLE_SELF_REVIEW_NOT_ALLOWED', 'ARTICLE_AUTHOR_INELIGIBLE', 'ARTICLE_PUBLICATION_TRANSITION_INVALID', 'ARTICLE_PUBLICATION_NOTE_REQUIRED', 'ARTICLE_IMAGE_INVALID', 'ARTICLE_ASSOCIATION_INACTIVE', 'ARTICLE_NOT_FOUND', 'ACCESS_DENIED', 'VALIDATION_ERROR']
+
+describe('moderator copy', () => {
+  it.each(MODERATOR_CODES)('%s has moderator vi/en copy', code => {
+    const error = new ApiError('Backend english message', 409, code)
+    const vi = moderatorErrorText(error, 'vi', 'fallback')
+    const en = moderatorErrorText(error, 'en', 'fallback')
+    expect([vi, en]).not.toContain('fallback')
+    expect(vi).not.toBe(en)
+  })
+
+  it('uses the moderator wording where it differs from the Author one', () => {
+    expect(moderatorErrorText(new ApiError('x', 409, 'ARTICLE_PUBLICATION_TRANSITION_INVALID'), 'vi', '')).toBe('Trạng thái xuất bản đã thay đổi, hãy tải lại.')
+    expect(moderatorErrorText(new ApiError('x', 400, 'ARTICLE_PUBLICATION_NOTE_REQUIRED'), 'en', '')).toBe('A reason is required to hide or remove an article.')
+    expect(moderatorErrorText(new ApiError('x', 500), 'vi', 'f')).toBe('Hệ thống tạm thời gián đoạn. Vui lòng thử lại sau.')
+  })
+
+  it('treats a changed article as stale (reload instead of retry)', () => {
+    expect(['ARTICLE_REVIEW_STALE', 'ARTICLE_PUBLICATION_TRANSITION_INVALID', 'ARTICLE_NOT_PENDING'].map(code => isStaleError(new ApiError('x', 409, code)))).toEqual([true, true, true])
+    expect(isStaleError(new ApiError('x', 403, 'ARTICLE_SELF_REVIEW_NOT_ALLOWED'))).toBe(false)
+  })
+
+  it('labels every status from the moderator point of view in both languages', () => {
+    expect(Object.keys(moderatorCopy.en).sort()).toEqual(Object.keys(moderatorCopy.vi).sort())
+    expect(Object.keys(moderatorPublicationLabel).sort()).toEqual([...PUBLICATION].sort())
+    expect(moderatorPublicationLabel.AUTHOR_HIDDEN.vi).toBe('Tác giả tự ẩn')
   })
 })

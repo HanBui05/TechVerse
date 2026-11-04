@@ -17,6 +17,8 @@ Chính sách (ai quyết, giới hạn vòng, sửa gì) ở `CLAUDE.md`. File n
    - Vòng 2: luôn `node "<script>" adversarial-review --wait "<focus>"`.
    - Focus (chỉ cho `adversarial-review`): `Xong khi: plans/<module>.md — Task <n>. Test đã chạy: <lệnh> → <đạt/lỗi>. Vòng 2: chỉ xem <file/phần sửa sau vòng 1>.`
    - Codex không chạy được Vitest trong sandbox (`EPERM`), chỉ đối chiếu kết quả test trong log → log phải ghi lệnh + số đạt trước khi review.
+   - Sandbox chặn Git Bash: luật shell PowerShell cho reviewer ở `AGENTS.md` mục Reviewer (2026-11-04, vòng 1 Task 2b mất 7m50s vì thử `bash -lc`/`sed` rồi mới đổi). Review lâu bất thường, hoặc tiến trình in nhiều `bash -lc`/`Command failed` → kiểm lại mục đó.
+   - Song song (người dùng chốt 2026-11-04, giữ đủ 2 vòng): task “Đổi giao diện: Có” thì chạy lệnh vòng 1 (vẫn `--wait`) ở chế độ nền của công cụ shell (`run_in_background`), trong lúc đó kiểm bằng mắt; sửa gì sau kiểm mắt thì gộp vào lượt sửa vòng 1.
 3. Phạm vi: diff chưa commit = task đang làm (task trước đã ở commit `wip(...)`). File mới chưa track: `git add -N <file>` trước khi review để có trong diff.
 4. Kết quả tiếng Anh: dán nguyên văn trong khối trích dẫn + dịch đủ từng phát hiện (mức, vị trí, nội dung). Đánh giá theo `superpowers:receiving-code-review`.
 5. Vòng 1: blocker thuộc diện sửa → sửa, chạy lại test liên quan + build, ghi log, tự chạy vòng 2. Vòng 2 còn phát hiện → trình bày + một khuyến nghị, người dùng quyết.

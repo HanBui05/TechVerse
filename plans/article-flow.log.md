@@ -9,21 +9,38 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - **Task 1c đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 1c`; đã đánh dấu “Xong khi” 1c trong spec, nhờ Codex đồng bộ spec. 76/76, Codex review không phát hiện; chi tiết mục “Task 1c” cuối file. **Backend module xong (1a–1c).**
 - **Cổng wireframe 2a–2d đã nhận (2026-11-04)** — [`article-flow.wireframe.md`](article-flow.wireframe.md) (bố cục + mục “Phong cách”); đã đánh dấu “Xong khi” cổng UI trong spec.
 - **Task 2a đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2a`; đã đánh dấu “Xong khi” 2a trong spec, nhờ Codex đồng bộ spec. Test 80/80 + build đạt; Codex vòng 1 sửa 5 lỗi, vòng 2 sửa 1 lỗi; chi tiết mục “Task 2a” cuối file.
-- **Task tiếp theo: 2b — Moderator UI** (session mới), theo spec + wireframe 2b-1…2b-3. Dùng lại `ArticleHistorySheet`/`formatDate`/`fieldLabel`/`TONE_TILE` export từ `pages/Author/AuthorBlogsPage.tsx`, `articleI18n` (thêm mã lỗi Moderator), `ArticleStatusBadges`, `ArticlePreview`. Thứ tự sau đó: 2c → 2d → regression gộp + E2E.
-- **Frontend còn lệch API mới (tới 2b/2c):** `ModeratorArticlesPage`/`ArticleStats` còn đọc `status`; Public bỏ `updatedAt`, `sortBy/direction` → `sort`. Author đã theo API mới ở 2a.
-- **Lỗi có sẵn ngoài 2a (đã kiểm trên HEAD bằng `git stash`):** `App.auth.test.tsx` › “routes ["MODERATOR"] to /moderator” gọi fetch 10 lần thay vì 2 (dashboard Moderator gọi số liệu) → thuộc 2b. Sidebar dư 8 px cuộn ngang ở desktop (cả `/profile`).
+- **Task 2b đã nhận (2026-11-04)**, commit WIP `wip(article-flow): Task 2b`; đã đánh dấu “Xong khi” 2b trong spec, nhờ Codex đồng bộ spec (2 quyết định: bộ lọc Moderator, nút lên đầu trang). Chi tiết mục “Task 2b” cuối file.
+- **Task tiếp theo: 2c — Reader + preflight + CSS legacy** (session mới), theo spec + wireframe 2c-1/2c-2. Dùng lại `BackToTopButton` cho “về đầu trang”. Sau đó: 2d → regression gộp + E2E.
+- **Frontend còn lệch API mới (tới 2c):** Public bỏ `updatedAt`, `sortBy/direction` → `sort`. Author (2a) và Moderator (2b) đã theo API mới.
+- **Lỗi có sẵn:** Sidebar dư 8 px cuộn ngang ở desktop (cả `/profile`). (Lỗi `App.auth.test` Moderator đã sửa ở 2b.)
 - **DB dev phải làm mới trước khi chạy app** (V10 dừng nếu `articles` có dữ liệu): lệnh ở `docs/RUNBOOK.md` mục “Làm mới DB dev”. Không còn seed SQL bài viết: tạo 3–5 bài qua API theo `server/src/test/resources/seed/HUONG_DAN.md`.
 - **Môi trường:** Docker 29.6.1. DB dev đã vá checksum V10 (không cần làm mới DB; tài khoản dev còn nguyên, gồm `moderator@techverse.test`). Người dùng đã tạo API key Cloudinary mới (key cũ báo `api_secret mismatch`). Backend người dùng chạy từ IntelliJ (app không tự đọc `.env`).
 
 ## Quyết định người dùng chưa có trong spec
 
-- (không có)
+- **2026-11-04 (Task 2b) — bộ lọc list Moderator:** Moderator không có endpoint options. Chủ đề/Thẻ lấy từ `GET /api/v1/articles/options` (chỉ chủ đề/thẻ của bài đang công khai); bỏ ô chọn Tác giả, thay bằng bấm tên tác giả trên hàng để lọc `authorId` (chip có nút bỏ). Không sửa backend. Spec/wireframe chờ Codex cập nhật.
+- **2026-11-04 (Task 2b) — nút lên đầu trang ở detail Moderator:** nút tròn góc dưới phải, hiện khi đã cuộn xuống, bấm thì cuộn lên đầu; trên mobile nằm trên thanh nút đáy. Component dùng chung `components/BackToTopButton.tsx` (2c dùng lại cho “về đầu trang” Reader). Spec/wireframe chờ Codex cập nhật.
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-04 — Task 2b đã nhận
+- Người dùng nhận Task 2b; đánh dấu 5 mục “Xong khi” 2b trong spec, commit WIP, nhờ Codex đồng bộ spec. Tiếp: Task 2c (session mới).
+
+### 2026-11-04 — Task 2b: nút lên đầu trang
+- Người dùng thêm nút “Lên đầu trang” góc dưới phải ở detail Moderator; làm component dùng chung (2c dùng lại). 73/73 + build đạt, kiểm mắt desktop/mobile. Chưa qua Codex (hết 2 vòng). Bài học: lại vá script bằng `sed` và bị vỡ → luôn Write.
+
+### 2026-11-04 — Tăng tốc Codex review
+- Đo phiên 2b: 32 phút, Codex review 11,5 phút (vòng 1 7m50s). Nguyên nhân: `AGENTS.md` bảo “chạy bằng Git Bash” nhưng sandbox chặn → Codex thử `bash -lc`/`sed` lỗi rồi mới đổi. Người dùng: giữ vòng 2. Đã thêm luật shell PowerShell cho reviewer vào `AGENTS.md`; skill `codex-workflow`: chạy vòng 1 nền song song kiểm mắt.
+
+### 2026-11-04 — Task 2b: Moderator UI
+- Đã làm: dashboard/list 2 trục trạng thái, route detail `/moderator/articles/:id` toàn khổ so sánh song song (bỏ Sheet), dialog review/HIDE/RESTORE/REMOVE. 218/218 + build đạt; kiểm mắt bằng API giả lập.
+- Quyết định mới: bộ lọc Chủ đề/Thẻ dùng options công khai, lọc tác giả bằng bấm tên (xem mục quyết định). Người dùng nhắc: chi tiết bài phải là form lớn, không nép bên phải — đã đáp ứng bằng trang riêng.
+- Bài học: PowerShell `Get-Content -Raw` đọc UTF-8 thành ANSI → hỏng file test; import fixture từ file `*.test.ts` làm chạy lặp test → fixture để ở `src/test/articleFixtures.ts`.
+- Codex vòng 1: 3 lỗi P2 đã sửa; vòng 2 approve. Việc dở: người dùng nhận → đánh dấu spec, commit WIP, Codex đồng bộ spec.
+
 ### 2026-11-04 — Codex đồng bộ Task 2a
 - Codex: đã đưa quyết định sửa phát hiện review vòng 2 của Task 2a và bài học không sửa migration V1–V10 đã áp dụng vào spec; 8 mục “Xong khi” Task 2a đã là `[x]` đúng theo kết quả trong log nên giữ nguyên.
 
@@ -189,3 +206,21 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`article-flow.md`]
 - **Review vòng 1 (Codex `review`):** 5 phát hiện, sửa cả 5: [P1] form khóa khi đang ghi (`locked = readOnly || busy`, thay ảnh issue cũng khóa) để response cũ không ghi đè chữ mới; [P1] Ẩn/Hiện lại chỉ cập nhật trạng thái, giữ chỉnh sửa chưa lưu; [P2] preview chỉ nạp ảnh vừa khớp hình dạng URL backend (`/image/upload/v<n>/…/<author>/<article>/<id>.png`, không query/port) **vừa** thuộc danh sách tin cậy (ảnh đã lưu không bị liệt kê issue, ảnh bản công khai, ảnh vừa upload); [P2] lỗi tải chủ đề/thẻ có alert + Thử lại; [P2] import >1 MiB báo 413 thay vì 415. Test thêm 4 ca editor + 2 ca service. Chạy lại 7 file liên quan → 79/79, build đạt.
 - **Review vòng 2 (Codex `adversarial-review`, phần sửa):** needs-attention, 1 phát hiện [high]: nút thay/bỏ ảnh, Thử lại, ghép nhiều file trong panel `imageIssues` chưa theo `locked` → khi SAVE chậm, thao tác ảnh có thể bị `apply(saved)` ghi đè; `busy` boolean có thể bị request xong trước đặt về false khi chạy chồng. **Chờ người dùng quyết** (khuyến nghị: sửa — dùng `locked` cho mọi nút panel + guard trong handler, thêm 1 test).
 - **Sửa phát hiện vòng 2 (người dùng chọn sửa, 2026-11-04):** `busy` thành bộ đếm thao tác ghi đang chạy (`begin`/`end`), mọi handler ghi (lưu, thay/bỏ ảnh, ghép nhiều file, chèn ảnh, ảnh bìa, nhập file) dừng nếu đã có thao tác khác; nút thay/bỏ/Thử lại/ghép nhiều file theo `locked`. Test thêm: SAVE treo → nút panel khóa, input file bắn vẫn không upload. Chạy 7 file liên quan → 80/80, build đạt. Hết 2 vòng review theo quy trình; không chạy vòng 3.
+
+## Task 2b — Moderator UI (2026-11-04)
+
+- **Đã làm:** `types/articles.ts` (summary/detail/filter Moderator), `articleService.ts` (`moderatorArticles` list/options/detail/review/publication/history; hàm thuần `moderatorActions`, `changedFromLive`, `lastReturnNote`), `articleI18n.ts` (nhãn trạng thái góc Moderator, mã lỗi Moderator, `isStaleError`, copy vi/en). `ArticleStats` 5 ô 2 trục (Chờ duyệt, Cần sửa, Đang công khai, Bị ẩn, Đã gỡ), bấm lọc ở list. List: mặc định “Chờ duyệt”, filter tiêu đề/chủ đề/thẻ/ngày gửi/sắp xếp/2 nhóm chip, hàng là link tới detail, viền trái theo trạng thái, cảnh báo tác giả không đủ điều kiện. `ModeratorArticleDetailPage` mới: breadcrumb, header + nút theo trạng thái (mobile thanh đáy 2 nút + `⋯`), dải “Thay đổi so với vN” + [Song song|Đề xuất|Công khai], hai cột, “Đã đổi” amber, thẻ Tác giả + Lịch sử 5 mục + Sheet đầy đủ, AlertDialog có ghi chú/lý do bắt buộc, “Lần trước trả về”, 409 stale → [Tải lại]. `App.tsx` route `/moderator/articles/:id`. `ArticleStatusBadges` thêm prop `moderator`; `ArticleHistorySheet` nhận `fetchPage`.
+- **Test:** RED: service/i18n 28 lỗi (hàm chưa có), page detail/list lỗi (trang chưa có). Cuối: `npx vitest run src/services/articleService.test.ts src/data/articleI18n.test.ts src/pages/Moderator/ModeratorDashboardPage.test.tsx src/pages/Moderator/ModeratorArticlesPage.test.tsx src/pages/Moderator/ModeratorArticleDetailPage.test.tsx src/pages/Author/AuthorBlogsPage.test.tsx src/components/articles/ArticleStatusBadges.test.tsx src/App.auth.test.tsx` → 8 file, 218/218; `npm run build` đạt. Sau sửa breadcrumb chạy lại detail 6/6 + build đạt.
+- **Kiểm mắt (Playwright MCP, API giả lập `route` đúng shape backend — backend 8080 không chạy):** list + detail dark/light 1440 (không cuộn ngang, 2 cột 544 px); mobile 390 cảm ứng (`pointer: coarse` true) list/detail/404: không cuộn ngang, không chữ tràn nút, thanh đáy 2 nút + `⋯`. Sửa sau kiểm: `ol` breadcrumb hiện số/thụt lề (preflight tắt) → `m-0 list-none p-0`; link breadcrumb thêm vùng chạm 44 px.
+- **Lệch khác spec (chi tiết kỹ thuật tự chọn):**
+  - Bộ lọc Chủ đề/Thẻ/Tác giả theo quyết định người dùng (mục “Quyết định”).
+  - “Lần trước trả về” suy từ `moderationNote` + `reviewedAt` > `publishedVersion.approvedAt` (APPROVE đóng dấu hai mốc cùng một instant), không từ 5 mục lịch sử (có thể bị đẩy ra bởi ẩn/hiện).
+  - Ngày trên hàng list là `updatedAt` (backend không có mốc gửi duyệt riêng), hiện dạng ngày, không “2 giờ trước”.
+  - Lịch sử không có mục “Gửi duyệt/Rút lại” (backend không ghi SUBMIT/WITHDRAW).
+  - Fixture contract dùng chung đặt ở `src/test/articleFixtures.ts` (file mới, ngoài danh sách đường dẫn spec); 2a đặt trong `articleService.test.ts`, import file test làm chạy lặp test.
+  - `App.auth.test.tsx`: ca Google → `/moderator` chỉ đếm request `/auth`, `/users` (dashboard gọi số liệu là đúng).
+  - Ảnh trong so sánh chỉ nạp URL managed đúng tác giả/bài (`isManagedImage`), còn lại placeholder.
+- **Chưa kiểm:** backend/DB thật (E2E cuối module); Cloudinary thật.
+- **Review vòng 1 (Codex `review`):** 3 phát hiện [P2], sửa cả 3: tải lại sau 409 stale lỗi vẫn giữ bài + token cũ → `reload` xóa `detail` trước khi tải; trang vượt `totalPages` khi hàng đợi co lại → về trang cuối; lỗi tải options chủ đề/thẻ bị nuốt → dòng lỗi + [Thử lại], “Làm mới” tải lại options. Test thêm 3 ca (viết trước khi sửa nhưng không chạy riêng lúc đỏ). Chạy `npx vitest run src/pages/Moderator/ModeratorArticlesPage.test.tsx src/pages/Moderator/ModeratorArticleDetailPage.test.tsx src/data/articleI18n.test.ts` → 58/58; build đạt.
+- **Review vòng 2 (Codex `adversarial-review`, phần sửa):** approve, “No material findings”.
+- **Bổ sung theo người dùng (sau review):** nút “Lên đầu trang” (`components/BackToTopButton.tsx` + test, file mới ngoài danh sách đường dẫn spec) ở detail Moderator: hiện khi `scrollY > 400`, cuộn mượt (tôn trọng reduced-motion). Test: RED (chưa có module) → `npx vitest run src/components/BackToTopButton.test.tsx src/pages/Moderator/ModeratorArticleDetailPage.test.tsx src/data/articleI18n.test.ts src/components/ui/focus.test.ts` 73/73; build đạt. Kiểm mắt (Playwright, API giả lập, dùng chung Vite cổng 3000 đang chạy): desktop 1440 nút 44×44 cách đáy 24 px, bấm → `scrollY` 0; mobile 390 cảm ứng nút cách đáy 96 px, trên thanh nút (cao 69 px). Chưa qua Codex review (đã hết 2 vòng của task).

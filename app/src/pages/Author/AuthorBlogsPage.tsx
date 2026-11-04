@@ -89,12 +89,12 @@ export function ArticleActionMenu({ article, language, onAsk, exclude = [], disa
   </Popover>
 }
 
-const HISTORY_TONE: Record<HistoryAction, string> = {
+export const HISTORY_TONE: Record<HistoryAction, string> = {
   APPROVE: 'bg-tone-green-fg', REQUEST_CHANGES: 'bg-tone-sky-fg', HIDE: 'bg-tone-rose-fg', REMOVE: 'bg-tone-rose-fg', AUTHOR_DELETE: 'bg-tone-rose-fg',
   RESTORE: 'bg-tone-amber-fg', AUTHOR_HIDE: 'bg-tone-slate-fg', AUTHOR_UNHIDE: 'bg-tone-slate-fg',
 }
 
-export function ArticleHistorySheet({ target, language, onClose }: { target: Target | null; language: Language; onClose: () => void }) {
+export function ArticleHistorySheet({ target, language, onClose, fetchPage = authorArticles.history }: { target: Target | null; language: Language; onClose: () => void; fetchPage?: (id: string, page: number) => Promise<Page<HistoryEntry>> }) {
   const t = articleText(language)
   const [page, setPage] = useState<Page<HistoryEntry> | null>(null)
   const [entries, setEntries] = useState<HistoryEntry[]>([])
@@ -103,11 +103,11 @@ export function ArticleHistorySheet({ target, language, onClose }: { target: Tar
   const load = useCallback(async (id: string, number: number) => {
     setLoading(true); setError('')
     try {
-      const next = await authorArticles.history(id, number)
+      const next = await fetchPage(id, number)
       setPage(next); setEntries(old => number === 0 ? next.content : [...old, ...next.content])
     } catch (e) { setError(articleErrorText(e, language, t('loadError'))) }
     finally { setLoading(false) }
-  }, [language])
+  }, [language, fetchPage])
   useEffect(() => { setEntries([]); setPage(null); if (target) void load(target.id, 0) }, [target, load])
   return <Sheet open={target !== null} onOpenChange={open => { if (!open) onClose() }}>
     <SheetContent closeLabel={t('close')} className="w-full gap-0 sm:max-w-md">

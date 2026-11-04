@@ -79,7 +79,8 @@ describe('Google signup and login', () => {
     await waitFor(() => expect(screen.getByTestId('location').textContent).toBe(destination))
     expect(getAccessToken()).toBe('test-google-access')
     expect(localStorage.getItem('techverse-authenticated')).toBe('true')
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    // Only the session bootstrap counts: a landing page may load its own data (the Moderator dashboard loads its counts).
+    expect(fetchMock.mock.calls.filter(([url]) => /\/api\/v1\/(auth|users)\//.test(String(url)))).toHaveLength(2)
     const [refreshUrl, refreshOptions] = fetchMock.mock.calls[0]
     expect(String(refreshUrl)).toMatch(/\/api\/v1\/auth\/refresh$/)
     expect(refreshOptions?.method).toBe('POST')

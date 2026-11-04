@@ -414,11 +414,11 @@ Không thêm màu mới; chỉ dùng token đã đo từ `tokens.css` bằng `np
 
 ### Task 2b — Moderator UI
 
-- [ ] Dashboard/list giữ chuẩn Admin; click item tới `/moderator/articles/:id`, không còn Sheet detail; detail so working/snapshot và đánh dấu trường thay đổi.
-- [ ] Review/HIDE/RESTORE/REMOVE có validation/note/stale reload đúng; hiển thị eligibility tác giả; dialog note lần trả về tuân thủ mốc APPROVE gần nhất.
-- [ ] Contract fixture frontend đúng shape detail/list/history backend; mọi enum/mã lỗi task 2b có copy vi/en và unit test, page integration khoảng 5 luồng chính.
-- [ ] Chạy `npx vitest run src/services/articleService.test.ts src/data/articleI18n.test.ts src/pages/Moderator/ModeratorDashboardPage.test.tsx src/pages/Moderator/ModeratorArticlesPage.test.tsx src/pages/Moderator/ModeratorArticleDetailPage.test.tsx` rồi `npm run build` trong `app/` đạt; Codex review task 2b.
-- [ ] Kiểm mắt dark/light × desktop 1440 px + mobile 390 px một lượt cho list/detail Moderator; kết quả ghi log.
+- [x] Dashboard/list giữ chuẩn Admin; click item tới `/moderator/articles/:id`, không còn Sheet detail; detail so working/snapshot và đánh dấu trường thay đổi.
+- [x] Review/HIDE/RESTORE/REMOVE có validation/note/stale reload đúng; hiển thị eligibility tác giả; dialog note lần trả về tuân thủ mốc APPROVE gần nhất.
+- [x] Contract fixture frontend đúng shape detail/list/history backend; mọi enum/mã lỗi task 2b có copy vi/en và unit test, page integration khoảng 5 luồng chính.
+- [x] Chạy `npx vitest run src/services/articleService.test.ts src/data/articleI18n.test.ts src/pages/Moderator/ModeratorDashboardPage.test.tsx src/pages/Moderator/ModeratorArticlesPage.test.tsx src/pages/Moderator/ModeratorArticleDetailPage.test.tsx` rồi `npm run build` trong `app/` đạt; Codex review task 2b.
+- [x] Kiểm mắt dark/light × desktop 1440 px + mobile 390 px một lượt cho list/detail Moderator; kết quả ghi log.
 
 ### Task 2c — Reader + preflight + CSS legacy
 
