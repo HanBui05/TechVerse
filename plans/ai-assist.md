@@ -857,4 +857,4 @@ Claude xác nhận các điểm vòng 1 đã xử lý đúng và đề nghị ch
 
 - **Spec đã chốt ngày 2026-11-05**, gồm Q1–Q7, hai đề xuất làm ngay ở bản 1 và hướng tách viết lại một H2 sang `ai-assist-edit`.
 - Người dùng chấp nhận đề xuất vòng 2: spike tương thích Groq là bước đầu và cổng bắt buộc của Task 1a theo điều kiện đã ghi trong thân spec.
-- Không còn câu hỏi phạm vi trước khi thực hiện; Task tiếp theo là **Task 1a**.
+- Người dùng đã nhận **Task 1a** ngày 2026-11-05; Task tiếp theo là **Task 1b**.
