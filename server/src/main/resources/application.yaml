@@ -3,6 +3,33 @@ spring:
     name: server
   jackson:
     time-zone: Asia/Ho_Chi_Minh
+  mvc:
+    async:
+      request-timeout: ${AI_ASYNC_TIMEOUT:195s}
+  ai:
+    retry:
+      max-attempts: 1
+      on-client-errors: false
+    model:
+      chat: ${AI_MODEL_CHAT:none}
+      # The OpenAI starter enables every other model type by default; only chat is used.
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+    openai:
+      base-url: ${AI_BASE_URL:https://api.groq.com/openai/v1}
+      api-key: ${AI_API_KEY:}
+      timeout: ${AI_TIMEOUT:60s}
+      max-retries: ${AI_MAX_RETRIES:0}
+      chat:
+        model: ${AI_CHAT_MODEL:openai/gpt-oss-120b}
+        max-completion-tokens: ${AI_MAX_COMPLETION_TOKENS:8192}
+        reasoning-effort: ${AI_REASONING_EFFORT:low}
+        replay-reasoning-content: false
+        # include_reasoning=false is set in code: YAML binds it as the string "false" and Groq rejects that.
   servlet:
     multipart:
       max-file-size: 5MB
@@ -47,6 +74,16 @@ cloudinary:
   api-secret: ${CLOUDINARY_API_SECRET}
   folder: ${CLOUDINARY_ARTICLE_FOLDER:techverse/articles}
   cleanup-enabled: ${CLOUDINARY_CLEANUP_ENABLED:true}
+
+ai:
+  assist:
+    outline-timeout: ${AI_OUTLINE_TIMEOUT:60s}
+    draft-timeouts: {SHORT: 90s, MEDIUM: 120s, LONG: 180s}
+    max-completion-tokens: {OUTLINE: 2048, SHORT: 4096, MEDIUM: 8192, LONG: 16384}
+    outline-per-day: ${AI_OUTLINE_PER_DAY:10}
+    draft-per-day: ${AI_DRAFT_PER_DAY:5}
+    burst-per-minute: ${AI_BURST_PER_MINUTE:3}
+    completed-generation-ttl: 24h
 
 article:
   imports-per-hour: 60

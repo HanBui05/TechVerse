@@ -668,16 +668,16 @@ Log chỉ ghi ngày, provider/model, đạt/chưa đạt và mã lỗi. Nếu th
 
 **Xong khi:**
 
-- [ ] Gradle resolve Spring AI 2.0.2, `bootJar` compile với Boot 4.1.1 và context test/dev khởi động với `AI_MODEL_CHAT=none` không cần `AI_API_KEY`; không snapshot/RC, còn bật `openai` mà thiếu/sai config trả lỗi cấu hình rõ và không log secret.
-- [ ] Spike đầu task gọi thật một outline strict JSON Schema và một stream ngắn qua đúng runtime; xác nhận `include_reasoning=false`, strict schema được chấp nhận, reasoning không lẫn vào content, rồi ghi kết quả cùng header `x-ratelimit-*` vào log mà không commit khóa/output hay test mạng. Chỉ tiếp tục khi đạt; không đạt thì dừng hỏi, thiếu khóa thì ghi “Chưa kiểm” và để người dùng quyết định.
-- [ ] `AiOutlineServiceTest` dùng fake model kiểm strict JSON Schema, JSON hợp lệ, JSON hỏng → một repair, repair hỏng → `AI_OUTPUT_INVALID`, `tagIds` Author giữ nguyên và `suggestedTagIds` chỉ từ allowlist.
-- [ ] `AiGeneratedContentValidatorTest` kiểm boundary title/summary/3–8 H2/0–4 H3, HTML/image/duplicate heading.
-- [ ] `AiRateLimitServiceTest` kiểm atomic burst/ngày, timezone Asia/Ho_Chi_Minh, reserve/refund idempotent, Redis lỗi fail-closed, repair không tăng quota và remaining/limit đúng.
-- [ ] `AiProviderExceptionMapperTest` kiểm ma trận provider 401/403, 429, 4xx khác, 5xx/network và timeout sang đúng HTTP/code generic, không lộ body provider.
-- [ ] `AuthorAiControllerTest` kiểm contract JSON/boundary/unknown field, quota header/CORS expose, envelope và quyền/controller status; không lặp ma trận mapper thuần.
-- [ ] `AuthorArticleIntegrationTest` thêm tối đa 5 ca cho filter chain thật: thiếu JWT 401; approved Author thành công; suspended/inactive/non-Author 403; taxonomy active. Stub `ChatModel` nằm ở base dùng chung, không gọi network/không tách context.
-- [ ] Cấu hình assert đúng Groq: base URL có `/openai/v1`, model `openai/gpt-oss-120b`, Spring retry 1 attempt, SDK retry 0, `reasoning_effort=low`, `include_reasoning=false`, `max_completion_tokens` runtime và không có `max_tokens`.
-- [ ] Secret chỉ có backend property/env; grep `rg -n 'AI_API_KEY|spring\.ai\.openai\.api-key' app` không có kết quả.
+- [x] Gradle resolve Spring AI 2.0.2, `bootJar` compile với Boot 4.1.1 và context test/dev khởi động với `AI_MODEL_CHAT=none` không cần `AI_API_KEY`; không snapshot/RC, còn bật `openai` mà thiếu/sai config trả lỗi cấu hình rõ và không log secret.
+- [x] Spike đầu task gọi thật một outline strict JSON Schema và một stream ngắn qua đúng runtime; xác nhận `include_reasoning=false`, strict schema được chấp nhận, reasoning không lẫn vào content, rồi ghi kết quả cùng header `x-ratelimit-*` vào log mà không commit khóa/output hay test mạng. Chỉ tiếp tục khi đạt; không đạt thì dừng hỏi, thiếu khóa thì ghi “Chưa kiểm” và để người dùng quyết định.
+- [x] `AiOutlineServiceTest` dùng fake model kiểm strict JSON Schema, JSON hợp lệ, JSON hỏng → một repair, repair hỏng → `AI_OUTPUT_INVALID`, `tagIds` Author giữ nguyên và `suggestedTagIds` chỉ từ allowlist.
+- [x] `AiGeneratedContentValidatorTest` kiểm boundary title/summary/3–8 H2/0–4 H3, HTML/image/duplicate heading.
+- [x] `AiRateLimitServiceTest` kiểm atomic burst/ngày, timezone Asia/Ho_Chi_Minh, reserve/refund idempotent, Redis lỗi fail-closed, repair không tăng quota và remaining/limit đúng.
+- [x] `AiProviderExceptionMapperTest` kiểm ma trận provider 401/403, 429, 4xx khác, 5xx/network và timeout sang đúng HTTP/code generic, không lộ body provider.
+- [x] `AuthorAiControllerTest` kiểm contract JSON/boundary/unknown field, quota header/CORS expose, envelope và quyền/controller status; không lặp ma trận mapper thuần.
+- [x] `AuthorArticleIntegrationTest` thêm tối đa 5 ca cho filter chain thật: thiếu JWT 401; approved Author thành công; suspended/inactive/non-Author 403; taxonomy active. Stub `ChatModel` nằm ở base dùng chung, không gọi network/không tách context.
+- [x] Cấu hình assert đúng Groq: base URL có `/openai/v1`, model `openai/gpt-oss-120b`, Spring retry 1 attempt, SDK retry 0, `reasoning_effort=low`, `include_reasoning=false`, `max_completion_tokens` runtime và không có `max_tokens`.
+- [x] Secret chỉ có backend property/env; grep `rg -n 'AI_API_KEY|spring\.ai\.openai\.api-key' app` không có kết quả.
 
 Lệnh cuối task (Git Bash trong `server/`, theo luật backend):
 

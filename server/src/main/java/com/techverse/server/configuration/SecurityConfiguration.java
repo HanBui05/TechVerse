@@ -1,6 +1,7 @@
 package com.techverse.server.configuration;
 
 import com.techverse.server.properties.OAuth2Properties;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
@@ -62,6 +63,8 @@ public class SecurityConfiguration {
 						.authenticationEntryPoint(authenticationEntryPoint)
 						.accessDeniedHandler(accessDeniedHandler))
 				.authorizeHttpRequests(authorize -> authorize
+						// Redispatches of a request that already passed JWT + service checks (AI streams).
+						.dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
 						.requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
@@ -74,6 +77,7 @@ public class SecurityConfiguration {
 						.requestMatchers(HttpMethod.PATCH, "/api/v1/users/me", "/api/v1/users/me/avatar", "/api/v1/users/me/password").authenticated()
 						.requestMatchers("/api/v1/admin/**").authenticated()
 						.requestMatchers("/api/v1/author/articles", "/api/v1/author/articles/**").authenticated()
+						.requestMatchers("/api/v1/author/ai/**").authenticated()
 						.requestMatchers("/api/v1/moderator/articles", "/api/v1/moderator/articles/**").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/**").authenticated()
 						.requestMatchers(HttpMethod.PUT, "/api/v1/articles/*/saved").authenticated()
@@ -130,6 +134,7 @@ public class SecurityConfiguration {
 		corsConfiguration.setAllowedOrigins(List.of(oauth2Properties.webUrl()));
 		corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		corsConfiguration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "Upload-Key"));
+		corsConfiguration.setExposedHeaders(List.of("X-AI-Quota-Limit", "X-AI-Quota-Remaining"));
 		corsConfiguration.setAllowCredentials(true);
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

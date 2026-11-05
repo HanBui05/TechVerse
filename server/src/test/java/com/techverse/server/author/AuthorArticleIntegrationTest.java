@@ -394,6 +394,57 @@ class AuthorArticleIntegrationTest extends ArticleIntegrationTestBase {
     }
 
     @Test
+    void aiOutlineRequiresJwtAndAnActiveApprovedAuthor() throws Exception {
+        mvc.perform(aiOutline(null, topic)).andExpect(status().isUnauthorized());
+        mvc.perform(aiOutline(learnerToken, topic)).andExpect(status().isForbidden());
+        mvc.perform(aiOutline(modToken, topic)).andExpect(status().isForbidden());
+        // Role claim alone is not enough: the service re-checks profile and account state.
+        jdbc.update(
+                "UPDATE techverse.author_profiles SET status='SUSPENDED' WHERE user_id=?", author);
+        mvc.perform(aiOutline(token, topic))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        jdbc.update("UPDATE techverse.users SET is_active=false WHERE id=?", other);
+        mvc.perform(aiOutline(otherToken, topic)).andExpect(status().isForbidden());
+        verifyNoInteractions(chatModel);
+    }
+
+    @Test
+    void aiOutlineForApprovedAuthorReturnsQuotaHeadersExposedByCors() throws Exception {
+        when(chatModel.call(any(org.springframework.ai.chat.prompt.Prompt.class)))
+                .thenReturn(
+                        new org.springframework.ai.chat.model.ChatResponse(
+                                List.of(
+                                        new org.springframework.ai.chat.model.Generation(
+                                                new org.springframework.ai.chat.messages
+                                                        .AssistantMessage(outlineJson())))));
+        mvc.perform(aiOutline(token, topic).header("Origin", "http://localhost:3000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.topicId").value(topic.toString()))
+                .andExpect(jsonPath("$.data.tagIds[0]").value(tag.toString()))
+                .andExpect(header().string("X-AI-Quota-Limit", "10"))
+                .andExpect(header().string("X-AI-Quota-Remaining", "9"))
+                .andExpect(
+                        header().string(
+                                        "Access-Control-Expose-Headers",
+                                        org.hamcrest.Matchers.allOf(
+                                                org.hamcrest.Matchers.containsString(
+                                                        "X-AI-Quota-Limit"),
+                                                org.hamcrest.Matchers.containsString(
+                                                        "X-AI-Quota-Remaining"))));
+    }
+
+    @Test
+    void aiOutlineRejectsInactiveTaxonomyBeforeUsingQuota() throws Exception {
+        jdbc.update("UPDATE techverse.topics SET is_active=false WHERE id=?", topic);
+        mvc.perform(aiOutline(token, topic))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ARTICLE_ASSOCIATION_INACTIVE"));
+        assertThat(redisTemplate.keys("ai:quota:outline:" + author + ":*")).isEmpty();
+        verifyNoInteractions(chatModel);
+    }
+
+    @Test
     void importsAreRateLimitedAndCorsAllowsCreationAndUploadKeys() throws Exception {
         redisTemplate
                 .opsForValue()
@@ -1251,6 +1302,36 @@ class AuthorArticleIntegrationTest extends ArticleIntegrationTestBase {
 
     private String bearer(String t) {
         return "Bearer " + t;
+    }
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder aiOutline(
+            String jwt, UUID topicId) throws Exception {
+        var request =
+                post("/api/v1/author/ai/outlines")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                mapper.writeValueAsString(
+                                        Map.of(
+                                                "topicId", topicId,
+                                                "tagIds", List.of(tag),
+                                                "idea", "Giải thích JWT và refresh token phối hợp.",
+                                                "length", "SHORT",
+                                                "targetAudience", "Sinh viên")));
+        return jwt == null ? request : request.header("Authorization", bearer(jwt));
+    }
+
+    private String outlineJson() throws Exception {
+        return mapper.writeValueAsString(
+                Map.of(
+                        "title", "JWT và refresh token",
+                        "summary", "Bài viết giải thích cách JWT và refresh token phối hợp trong web.",
+                        "topicId", topic,
+                        "suggestedTagIds", List.of(),
+                        "sections",
+                                List.of(
+                                        Map.of("heading", "JWT là gì nhỉ", "subsections", List.of()),
+                                        Map.of("heading", "Refresh token", "subsections", List.of()),
+                                        Map.of("heading", "Ghép hai loại", "subsections", List.of()))));
     }
 
     private ResultActions create(UUID key, Object body) throws Exception {
