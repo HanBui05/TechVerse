@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai
 
 ## Bắt đầu từ đây (cập nhật 2026-11-05)
 
-- **Task 1a đã nhận (2026-11-05)**, đã commit WIP. Spike Groq đạt; `POST /api/v1/author/ai/outlines` + quota Redis + validator + mapper; Codex review approve. Tiếp: **Task 1b** (session mới). Task: 1a → 1b → 1c → wireframe → 2a → 2b.
+- **Task 1a đã nhận (2026-11-05)**, đã commit WIP. Spike Groq đạt; `POST /api/v1/author/ai/outlines` + quota Redis + validator + mapper; Codex review approve. Tiếp: **Task 1b** (session mới) — làm theo mục “Task 1b — Kế hoạch thực thi” cuối log. Task: 1a → 1b → 1c → wireframe → 2a → 2b.
 - Bài học cho 1b (chi tiết ở “Task 1a → Lệch khác spec”): option runtime phải dựng từ `getDefaultOptions().mutate()` (`AiPromptFactory.options`); `include_reasoning` đặt trong code, không YAML; `spring.ai.retry.*` không có tác dụng.
 - Rủi ro: TPM Groq tài khoản 8000 < trần MEDIUM/LONG; có thể gặp 429 khi viết bài dài.
 - Chưa kiểm: lớp tích hợp khác sau đổi `ASYNC/ERROR` permitAll (CI chạy full khi mở PR).
@@ -19,6 +19,13 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai
 - (không có — Q3/Q4 hoãn sang module RAG theo Q1=A)
 
 ## Nhật ký phiên
+- 2026-11-05 — Codex: đã đưa “Lệch khác spec” của Task 1a vào thân spec và giữ nguyên phạm vi/kế hoạch Task 1b.
+
+### 2026-11-05 — Kế hoạch Task 1b + cập nhật rule/skill
+- Người dùng yêu cầu lên kế hoạch kỹ cho 1b: ghi ở “Task 1b — Kế hoạch thực thi” (thứ tự TDD, phần dùng lại từ 1a, điều đã xác minh trong source: dispose → đóng stream Groq).
+- Rule/skill mới: `backend.md` mục Spring AI + cách dùng khóa `.env`; `backend-test` mục “Bẫy đã gặp” + lệnh đếm test; `codex-workflow` review qua `run_in_background`, prompt đồng bộ có “Lệch khác spec”; `CLAUDE.md` chỗ ghi kế hoạch thực thi.
+- Nhờ Codex đưa “Lệch khác spec” Task 1a vào thân spec.
+
 ### 2026-11-05 — Claude làm Task 1a
 - Spike Groq đạt (strict schema, stream không lẫn reasoning, header TPM 8000). Phát hiện: option runtime thay toàn bộ default; `include_reasoning` YAML bị bind thành chuỗi.
 - Code outline + quota + validator + mapper + security/CORS; 93 test đạt, `bootJar` đạt. Codex vòng 1: 2 P2 (header quota khi lỗi, deadline chung cho repair) đã sửa; vòng 2 approve.
@@ -85,3 +92,26 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai
 - [P2] Phản hồi lỗi outline sau khi giữ lượt không có header quota (trái “Header quota … sau debit/refund”). Sửa: `AuthorAiService.QuotaAwareException` mang quota sau refund; `AuthorAiController` có `@ExceptionHandler` riêng trả `ErrorResponse` chuẩn + `X-AI-Quota-*`. Refund lỗi Redis → `CustomException` thường, không header.
 - [P2] Repair dùng lại trọn `outline-timeout` → request có thể ~2× deadline. Sửa: một deadline chung từ `Clock` (bean ở `AiAssistConfiguration`); repair chỉ nhận thời gian còn lại, hết hạn trước repair → `AI_TIMEOUT` + refund.
 - Test sau sửa: `AiOutlineServiceTest` 15/15 (+3 ca), `AuthorAiControllerTest` 6/6 (ca lỗi có header), `AuthorArticleIntegrationTest` 37/37, `bootJar` đạt.
+
+## Task 1b — Kế hoạch thực thi (Claude, 2026-11-05)
+
+Nguồn sự thật vẫn là spec mục “2. Viết draft dạng SSE” + “Task 1b”; đây là thứ tự làm và các lựa chọn kỹ thuật đã chốt sẵn để phiên sau không dò lại.
+
+**Đã có từ 1a — dùng lại, không làm lại:** không spike/gọi Groq thật trong 1b. Dùng `AiPromptFactory.options(...)` (dựng từ default + `include_reasoning` boolean), `AiRateLimitService.reserve/refund(Kind.DRAFT)`, `AiProviderExceptionMapper`, `AuthorAiService.QuotaAwareException` + handler trong controller, bean `Clock`, `ASYNC/ERROR` permitAll + matcher `/api/v1/author/ai/**` đã có, `@MockitoBean ChatModel` ở `ArticleIntegrationTestBase`, mẫu `@WebMvcTest` của `AuthorAiControllerTest`.
+
+**Đã xác minh trong source Spring AI 2.0.2 (khỏi đọc lại):** `OpenAiChatModel.internalStream` gắn `sink.onDispose(response::close)` → dispose subscription đóng HTTP stream tới Groq (Dừng ngắt provider thật). Chunk cuối có thể `getResult()==null` (chunk usage) → bỏ qua. Stream trên dây chỉ có `content`; metadata `reasoningContent` rỗng vẫn xuất hiện → không phát.
+
+**Thứ tự (TDD, mỗi bước test đỏ → code → xanh):**
+1. `AiGeneratedContentValidator.validateDraft(content, sections) → List<String>`: parser CommonMark riêng trong validator (không sửa `ArticleContentService`), rồi `validateContent`. Bổ sung ca vào `AiGeneratedContentValidatorTest` đúng bullet 3 của spec.
+2. DTO: `AiDraftRequest` (cùng kiểu `AiOutlineRequest`: strip, `Nulls.FAIL`, field lạ → `MALFORMED_REQUEST`, `length` chuỗi `@Pattern`; `sections` 3–8 lồng `@Valid`, H3 ≤4, heading 5–120, trùng → `@AssertTrue`); `AiStreamEvent` (record lồng cho metadata/delta/completed/cancelled/error); `AiGenerationStatusResponse(generationId, status)`. Thêm `ErrorCode.AI_GENERATION_IN_PROGRESS` (409), `AI_GENERATION_NOT_FOUND` (404).
+3. `AiGenerationRegistry` (unit, `Clock` giả): `start` → 409 nếu Author đang có stream; `cancel(actor,id)` → `CANCELLED`/`ALREADY_FINISHED`/404 (không lộ owner); `finish` idempotent; tombstone giữ timeout + 10 phút, dọn khi truy cập.
+4. `AiCompletedGenerationRepository`: Redis `ai:completed:{authorId}:{generationId}`, TTL `completed-generation-ttl`, chỉ fingerprint SHA-256 canonical (title, summary, content, topicId, tagIds đã sort) + `claimKey=null`. 1b chỉ **lưu**; verify/claim là Task 1c.
+5. `AiDraftStreamService`: preflight đồng bộ (transaction ngắn `lockWriter` + taxonomy → `ChatModel` có → registry 409 → reserve DRAFT) rồi mới tạo `SseEmitter(deadline theo length)`. Subscribe `model.stream(prompt)`, gửi event trên executor bounded riêng `aiSseTaskExecutor` (mẫu `AvatarConfiguration`). Mọi kết thúc đi qua một `terminate(outcome)` có `AtomicBoolean`: completed (validate → lưu receipt → `completed` có sha/bytes/quotaRemaining), error (refund → event `error` + quota sau refund), cancelled (DELETE/disconnect: dispose, **không** refund), timeout (`emitter.onTimeout` → dispose + refund + `AI_TIMEOUT`). `finishReason=LENGTH` → `AI_OUTPUT_TRUNCATED`; thiếu finish → `AI_PROVIDER_UNAVAILABLE`. Quick guard trong stream: NUL, vượt 1 MiB, `![`, HTML thô rõ ràng → `AI_OUTPUT_INVALID` sớm. Log chỉ generationId/actor/outcome/ms.
+6. Controller: `POST /drafts:stream` (`text/event-stream`, `Cache-Control: no-cache, no-transform`, `X-Accel-Buffering: no`, header quota); `DELETE /generations/{id}` → `ApiResponse` “AI generation cancellation processed”.
+7. Integration: 1 ca stream qua filter chain thật (`asyncStarted` → `asyncDispatch` → có `event:completed`, số row `articles` không đổi), stub `chatModel.stream` trả `Flux.just(...)`.
+8. Việc nhỏ kéo từ đồng bộ spec 2026-11-05: spec giờ ghi “không khai báo `spring.ai.retry.*`” → xóa nhóm `spring.ai.retry` khỏi `application.yaml` và dòng assert `spring.ai.retry.max-attempts` trong `AiOutlineServiceTest.applicationYamlDefaultsTargetGroqWithoutRetries`.
+9. Cuối task: lệnh spec + `AiOutlineServiceTest` (nếu sửa `AiPromptFactory`/validator dùng chung) + `bootJar`, chạy một lần.
+
+**Lựa chọn kỹ thuật tự chốt (ghi vào “Lệch khác spec” khi code):** body >16 KiB → kiểm `Content-Length` đầu method, trả `400 VALIDATION_ERROR` field `body` (`shortcut:` chunked không có Content-Length thì chặn luôn). Draft không có repair (spec: invalid → error). Deadline = timeout của emitter = timeout request SDK theo length.
+
+**Không thuộc 1b:** `aiGenerationId` trong `ArticleWriteRequest`, V11, DTO `aiAssisted` (Task 1c); UI (2a).

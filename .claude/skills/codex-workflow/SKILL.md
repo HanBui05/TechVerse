@@ -7,12 +7,12 @@ description: Thủ tục làm việc với Codex trong TechVerse — tự gọi 
 
 Chính sách (ai quyết, giới hạn vòng, sửa gì) ở `CLAUDE.md`. File này là thủ tục.
 
-`<script>` = `~/.claude/plugins/cache/openai-codex/codex/<bản mới nhất>/scripts/codex-companion.mjs`. Mọi lệnh chạy bằng **PowerShell** (Git Bash đổi `/PID` của `taskkill` thành đường dẫn → `cancel` hỏng).
+`<script>` = `~/.claude/plugins/cache/openai-codex/codex/<bản mới nhất>/scripts/codex-companion.mjs` (2026-11-05: `1.0.6`; tìm bản mới nhất: `Get-ChildItem "$env:USERPROFILE\.claude\plugins\cache\openai-codex\codex" -Directory | Sort-Object Name -Descending | Select-Object -First 1`). Mọi lệnh chạy bằng **PowerShell** (Git Bash đổi `/PID` của `taskkill` thành đường dẫn → `cancel` hỏng).
 
 ## 1. Review
 
 1. `node "<script>" status ""` — đã có job review đang chạy (kể cả người dùng tự gõ `/codex:review`) thì chờ job đó, không chạy thêm. Job treo của phiên cũ (tiến trình đã chết) thì `cancel <job-id>`.
-2. Chạy **chờ kết quả**, không chạy nền (job nền chết khi phiên đóng):
+2. Chạy **chờ kết quả** bằng `--wait`, gọi qua `run_in_background` của công cụ PowerShell (review mất 5–10 phút, vượt timeout 10 phút của lệnh thường; không dùng chế độ nền riêng của Codex vì job chết khi phiên đóng). Chờ thông báo xong, không poll. Đọc kết quả: `sed -n '/^# Codex/,$p' "<output-file>"` (bỏ phần log lệnh phía trên).
    - Vòng 1: `node "<script>" review --wait` — **không kèm focus** (lệnh từ chối focus). Task rủi ro cao theo spec: `adversarial-review --wait "<focus>"`.
    - Vòng 2: luôn `node "<script>" adversarial-review --wait "<focus>"`.
    - Focus (chỉ cho `adversarial-review`): `Xong khi: plans/<module>.md — Task <n>. Test đã chạy: <lệnh> → <đạt/lỗi>. Vòng 2: chỉ xem <file/phần sửa sau vòng 1>.`
@@ -28,8 +28,8 @@ Chính sách (ai quyết, giới hạn vòng, sửa gì) ở `CLAUDE.md`. File n
 1. Ghi log (“Bắt đầu từ đây”, nhật ký phiên), cập nhật dòng module ở `PLAN.md`.
 2. Commit WIP cục bộ trên nhánh module (không push, không `main`): `git add -A && git commit -m "<type>(<scope>): <thay đổi trong code>"` — không `Co-Authored-By`, không nhắc AI/agent hay tên task (luật commit trong `CLAUDE.md`). Commit tài liệu plan: `docs(plans): <nội dung đổi>`. Kiểm `git status --short` trước: không có file bí mật/ảnh nguồn lớn.
 3. Đồng bộ spec (Claude không sửa spec): chạy nền
-   `node "<script>" task --write "Đồng bộ spec plans/<module>.md theo log plans/<module>.log.md, làm đúng mục 'Đồng bộ với Claude' trong AGENTS.md. Người dùng đã nhận Task <n> (<ngày>). Cuối cùng liệt kê ngắn những gì đã đổi."`
-   Xong thì tự kiểm diff spec/log rồi báo người dùng phần Codex đã đổi.
+   `node "<script>" task --write "Đồng bộ spec plans/<module>.md theo log plans/<module>.log.md, làm đúng mục 'Đồng bộ với Claude' trong AGENTS.md. Người dùng đã nhận Task <n> (<ngày>). Đưa mục 'Lệch khác spec' của Task <n> trong log vào thân spec (property, contract, cách dựng option) để task sau không đọc spec cũ. Không sửa mục kế hoạch thực thi của Claude trong log. Cuối cùng liệt kê ngắn những gì đã đổi."`
+   (2026-11-05: prompt cũ không nhắc “Lệch khác spec” nên Codex chỉ đổi một dòng trạng thái.) Xong thì kiểm diff bằng `git show <commit> --word-diff=plain` hoặc `git diff --word-diff=plain` (dòng dài, `-U0` không hiện), báo người dùng, rồi commit `docs(plans): ...`.
 
 ## 3. Cuối module
 
