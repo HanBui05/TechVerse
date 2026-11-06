@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 
 ## Bắt đầu từ đây (cập nhật 2026-11-07)
 
-- **Spec đã chốt 2026-11-07** sau vòng 1 (không vòng 2); lịch sử phản biện ở `course-free.review.md`. **Tiếp: Task 1a** (V12 schema, domain, lifecycle version) — `/clear` rồi bắt đầu.
+- **Spec đã chốt 2026-11-07** sau vòng 1 (không vòng 2); lịch sử phản biện ở `course-free.review.md`. **Tiếp: Task 1a** (V12 schema, domain, lifecycle version) — `/clear` rồi bắt đầu. Model (luật `CLAUDE.md` 2026-11-07): 1a, 2a–2c Sonnet; **1b, 1c Opus** (rủi ro cao: tách lõi article/AI, đồng thời start/completion).
 - Hướng gốc của người dùng: mục “Miền khóa học” trong “Câu hỏi mở” của `PLAN.md`; mẫu giao diện JavaBuilder, ảnh `.playwright-mcp/jb-course.png`, `.playwright-mcp/jb-lesson.png` (gitignore).
 - Nhánh `feature/course-free` (tách từ `feature/ai-assist`, PR ai-assist chưa merge → rebase lên `main` sau khi merge).
 

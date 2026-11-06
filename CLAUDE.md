@@ -40,6 +40,12 @@ Luật vùng: [`.claude/rules/frontend.md`](.claude/rules/frontend.md) (`app/**`
 - Công cụ kiểm chứng dùng lại: nhờ Codex đưa vào spec trước. Luật riêng một vùng ghi vào `.claude/rules/<vùng>.md` (30–50 dòng/file, xóa luật lỗi thời).
 - Không đọc `.superpowers/`, `docs/superpowers/` (lưu trữ cũ). Không dùng skill `superpowers:*` (người dùng chốt 2026-11-06; luật thay thế nằm ở mục Quy trình).
 
+## Model theo loại việc (người dùng chốt 2026-11-07)
+
+- Mặc định **Sonnet 5.5** (`"model": "sonnet"` ở `.claude/settings.json`) cho code/test/review fix.
+- **Opus 5.5** cho phản biện/trả lời spec, plan (skill `plan-review` khai `model: opus`; không ăn thì gõ `/model opus`) và task spec ghi rủi ro cao (vd. tách lõi dùng chung đang ổn định, xử lý đồng thời): đầu phiên báo người dùng gõ `/model opus` nếu đang Sonnet.
+- Sonnet sửa lỗi quá 3 lần chưa xong → đề nghị người dùng chuyển `/model opus` thay vì thử tiếp.
+
 ## Plugin theo loại task
 
 - `ui-ux-pro-max` tắt ở `.claude/settings.json`. Task giao diện/wireframe: bật bằng `/plugin` hoặc `"enabledPlugins": {"ui-ux-pro-max@ui-ux-pro-max-skill": true}` trong `.claude/settings.local.json` rồi mở phiên mới; xong thì tắt. Hook SessionStart nhắc khi trạng thái plugin không khớp task tiếp theo.
