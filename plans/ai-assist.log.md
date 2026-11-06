@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai
 
 ## Bắt đầu từ đây (cập nhật 2026-11-06)
 
-- **Task 2a đã nhận (2026-11-06)** (gồm API `GET /api/v1/author/ai/quota`). **Task 2b đã nhận (2026-11-06).** Đã xong mọi task. **Tiếp: cuối module** — Codex đồng bộ spec một lần (skill `codex-workflow` mục 3) và smoke Groq thật (spec “Kiểm thật cuối module”, cần `AI_API_KEY`).
+- **Module hoàn tất (người dùng chốt 2026-11-06).** Task 1a–1c, 2a, 2b đã nhận. Người dùng bỏ đồng bộ spec cuối module và smoke Groq thật; spec có thể lệch log — log là nguồn đúng. Nhánh `feature/ai-assist` đã push để mở PR vào `main`.
 - Chưa kiểm 2a: kiểm mắt dark/light × desktop/mobile `/author/blogs/ai` + banner editor (backend/dev server không chạy lúc làm); stream Groq thật (smoke cuối module).
 - Bài học (Spring AI/Spring 7): option runtime dựng từ `getDefaultOptions().mutate()` (`AiPromptFactory.options`); `include_reasoning` đặt trong code; **emitter đã đóng khi callback timeout chạy** → service tự áp deadline trên Flux, emitter dư 5 giây.
 - Rủi ro: TPM Groq tài khoản 8000 < trần MEDIUM/LONG; có thể gặp 429 khi viết bài dài. Registry cancel chỉ một instance.
@@ -20,6 +20,9 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai
 - (không có — Q3/Q4 hoãn sang module RAG theo Q1=A)
 
 ## Nhật ký phiên
+### 2026-11-06 — Đóng module
+- Người dùng chốt module hoàn tất, bỏ đồng bộ spec cuối module và smoke Groq thật. Push `feature/ai-assist` (12 commit so với `main`) để người dùng tự mở PR.
+
 ### 2026-11-06 — Claude làm Task 2b
 - Task 2b đã nhận (2026-11-06), commit cục bộ.
 - Badge `AI hỗ trợ`/`AI-assisted` (tone blue, đứng đầu danh sách status) ở Moderator list/detail; copy `aiAssisted` trong `moderatorCopy`. Type đã có sẵn từ 2a (`ModeratorArticleDetail.article: AuthorArticle`), không sửa `types/articles.ts`.

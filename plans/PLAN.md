@@ -2,7 +2,7 @@
 
 Đọc [`PROJECT_CONTEXT.md`](../docs/PROJECT_CONTEXT.md) trước khi nhận task. Mỗi module có đúng một spec `plans/<module>.md` và một nhật ký `plans/<module>.log.md`.
 
-Module đang làm: [ai-assist](ai-assist.md)
+Module đang làm: —
 
 <!-- Hook SessionStart của Claude đọc đúng dòng trên (dạng `[slug](slug.md)`, “—” nếu không có) để tự nạp mục “Bắt đầu từ đây” của log. Đổi module thì sửa dòng này. -->
 
@@ -22,7 +22,7 @@ Module đang làm: [ai-assist](ai-assist.md)
 | Sidebar + login redirect | — (làn nhẹ, người dùng yêu cầu 2026-11-02) | Chờ người dùng nhận kết quả | Claude | Code, test và sửa review đã xong; chờ người dùng nhận, chưa có log riêng. | Cài đặt đóng mặc định; icon có màu; login vào trang chủ | — |
 | UI foundation v2 (shadcn) | [`plans/ui-foundation-v2.md`](ui-foundation-v2.md) | Hoàn tất | Claude | Task 1–7b và UI Admin/Moderator đã được nhận, xem [log](ui-foundation-v2.log.md). | Mọi trang trong phạm vi ngoài luồng bài viết dùng shadcn/ui + Tailwind/token mới; chỉ còn CSS/API trình duyệt cũ thuộc lớp tương thích `article-flow`; preflight giữ tắt; từng task có test liên quan + build đạt | — |
 | Article flow | [`plans/article-flow.md`](article-flow.md) | Hoàn tất (người dùng nhận 2026-11-04) | Claude | Module đã được nhận và PR #2 đã merge với CI xanh, xem [log](article-flow.log.md). | Bản công khai không đổi khi Author sửa; Reader list/detail/lưu bài hoàn chỉnh; tài khoản quản lý bị tách khỏi Reader/saved; UI thống nhất và kiểm E2E thật | [`plans/article-flow.log.md`](article-flow.log.md) |
-| AI assist | [`plans/ai-assist.md`](ai-assist.md) | Đang thực hiện | Claude | Task 1a–1c, 2a, 2b đã nhận (2a, 2b: 2026-11-06); còn cuối module (đồng bộ spec, smoke Groq thật), xem [log](ai-assist.log.md). | Tác giả tạo bài DRAFT tiếng Việt từ dàn ý + stream bằng Groq `openai/gpt-oss-120b`/Spring AI; cờ AI bền vững chỉ Author/Moderator thấy; luồng duyệt cũ giữ nguyên; test không gọi model thật | [`plans/ai-assist.log.md`](ai-assist.log.md) |
+| AI assist | [`plans/ai-assist.md`](ai-assist.md) | Hoàn tất (người dùng chốt 2026-11-06) | Claude | Mọi task đã nhận; bỏ đồng bộ spec và smoke Groq thật theo người dùng, xem [log](ai-assist.log.md). | Tác giả tạo bài DRAFT tiếng Việt từ dàn ý + stream bằng Groq `openai/gpt-oss-120b`/Spring AI; cờ AI bền vững chỉ Author/Moderator thấy; luồng duyệt cũ giữ nguyên; test không gọi model thật | [`plans/ai-assist.log.md`](ai-assist.log.md) |
 
 Trạng thái hợp lệ: `Đề xuất` → `Đang lập kế hoạch` → `Chờ người dùng chốt` → `Đã chốt` → `Đang thực hiện` → `Đang review` → `Chờ người dùng nhận kết quả` → `Hoàn tất`; dùng `Bị chặn` khi không thể tạo ra kết quả để bàn giao vì cần quyết định hoặc môi trường bên ngoài.
 
@@ -83,6 +83,12 @@ Người dùng quyết định tại bốn cổng: chốt plan; xử lý bất �
 ## Câu hỏi mở
 
 - **Khóa học trả phí + chia hoa hồng tác giả (ý tưởng, chưa mở):** module riêng sau khi có khóa học; tách “đăng ký bán khóa học” (điều khoản, thông tin nhận tiền) khỏi duyệt tác giả; tỷ lệ hoa hồng mặc định + riêng từng tác giả/khóa có ngày hiệu lực; mỗi đơn hàng lưu snapshot tỷ lệ/số tiền lúc mua; sổ ghi tiền và đợt chi trả.
+- **Miền khóa học (người dùng đồng ý 2026-11-06, chưa có spec, Codex viết):**
+  - Tách module theo thứ tự: `course-free` (tạo khóa + bài học, Moderator duyệt, đăng ký học miễn phí, tiến độ) → `course-payment` (đơn hàng, cổng thanh toán, webhook, cấp quyền, hoàn tiền) → `course-commission` (hoa hồng, sổ tiền, chi trả). Module bài tập độc lập, có thể chen giữa.
+  - Ba cấp quyền: Tác giả đã duyệt tạo được khóa **miễn phí** mà không cần điều khoản mới; muốn bán phải “đăng ký bán khóa học” một lần (đồng ý điều khoản bán hàng có phiên bản + tỷ lệ hoa hồng, khai thông tin nhận tiền, Admin duyệt); khóa trả phí hiện tỷ lệ đang áp dụng khi gửi duyệt, đơn hàng snapshot tỷ lệ. Đổi điều khoản thì phải đồng ý bản mới trước khi đặt giá/gửi duyệt khóa mới.
+  - Chia vai: **Admin** duyệt đăng ký bán, tỷ lệ hoa hồng, điều khoản, chi trả, hoàn tiền, trần giá chung (nếu cần); **Moderator** chỉ duyệt/ẩn/gỡ nội dung khóa và bài học, không thấy giá/doanh thu/thông tin ngân hàng. Tác giả tự đặt giá.
+  - Tạo khóa giống tạo bài viết: trong khóa thêm bài học, chọn loại `TEXT` (Markdown, dùng lại editor/validator bài viết) hoặc `VIDEO`.
+  - Video trong `course-free` (demo): **YouTube** — tác giả tự tải lên kênh của họ (Không công khai), dán link; backend kiểm link và lưu `provider` + `videoId`; frontend nhúng `youtube-nocookie.com/embed/<id>` ngay trong trang bài học (không chuyển sang YouTube); tiến độ bằng nút “Hoàn thành bài”. Không dùng YouTube cho khóa trả phí (link lộ trong mã trang). `course-payment` chốt nhà cung cấp có token xem (Bunny Stream/Cloudflare/Mux…): trình duyệt tải thẳng lên bằng URL/chữ ký do backend cấp, webhook báo trạng thái, không truyền luồng video qua backend.
 - **Menu Tác giả khi có tính năng thứ hai (người dùng đồng ý 2026-11-04):** đổi mục sidebar “Tác giả” thành nhóm thu gọn (Bài viết của tôi `/author/blogs`, sau này Khóa học/Doanh thu); không dựng trước.
 - **Thông báo cho tác giả (ý tưởng từ `article-flow` vòng 1, 2026-11-04):** báo khi bài được duyệt/trả về/ẩn/gỡ (chuông web hoặc email); cần hệ thống notification riêng, module sau.
 - **Chẩn đoán lỗi Cloudinary (đề xuất ngoài phạm vi `article-flow`, 2026-11-04):** tách thành task backend reliability sau; log `status + error.message` của provider nhưng không log khóa/secret, và ánh xạ lỗi xác thực 401/403 sang `ARTICLE_STORAGE_UNAVAILABLE` thay vì `ARTICLE_IMAGE_UPLOAD_FAILED`. Chờ người dùng quyết có mở task không.
