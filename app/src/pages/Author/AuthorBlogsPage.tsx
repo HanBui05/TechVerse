@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ComponentType } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CheckCircle2, Clock, Eye, FileText, Layers, MoreHorizontal, PencilLine, Plus, RefreshCw, Search, SlidersHorizontal, SquarePen } from 'lucide-react'
+import { CheckCircle2, Clock, Eye, FileText, Layers, MoreHorizontal, PencilLine, Plus, RefreshCw, Search, SlidersHorizontal, Sparkles, SquarePen } from 'lucide-react'
 import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -18,6 +18,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { ArticleStatusBadges } from '../../components/articles/ArticleStatusBadges'
 import { AdminPagination } from '../Admin/AdminPagination'
 import { articleErrorText, articleText, historyActionLabel, publicationLabel, workflowLabel } from '../../data/articleI18n'
+import { aiText } from '../../data/aiAssistI18n'
 import { authorActions, authorArticles } from '../../services/articleService'
 import type { ArticleOption, ArticleStatus, AuthorAction, AuthorArticle, AuthorArticleFilter, AuthorArticleSummary, HistoryAction, HistoryEntry, Page, PublicationStatus, WorkflowStatus } from '../../types/articles'
 import type { Language } from '../../types/preferences'
@@ -205,7 +206,10 @@ export function AuthorBlogsPage({ language = 'vi' }: { language?: Language } = {
         <h1 className="text-2xl font-bold sm:text-3xl">{t('title')}</h1>
         <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
-      <Button asChild className={touch}><Link to="/author/blogs/new"><Plus />{t('newArticle')}</Link></Button>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild variant="outline" className={touch}><Link to="/author/blogs/ai"><Sparkles />{aiText(language)('entry')}</Link></Button>
+        <Button asChild className={touch}><Link to="/author/blogs/new"><Plus />{t('newArticle')}</Link></Button>
+      </div>
     </header>
 
     <section aria-label={t('stats')} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

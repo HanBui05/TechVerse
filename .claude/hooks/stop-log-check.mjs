@@ -11,7 +11,8 @@ const mod = activeModule()
 if (!mod?.log) process.exit(0)
 
 // Claude-owned areas only; spec and PLAN.md are excluded because Codex edits them in parallel.
-const watched = ['app', 'server', '.claude/rules', '.claude/skills', 'CLAUDE.md']
+// Code only: rule/doc edits alone do not force a log update (user decision 2026-11-06).
+const watched = ['app', 'server']
 const porcelain = execFileSync('git', ['status', '--porcelain', '-uall', '--', ...watched], { cwd: root, encoding: 'utf8' })
 const logTime = statSync(mod.log).mtimeMs
 const newer = porcelain.split('\n').filter(Boolean)

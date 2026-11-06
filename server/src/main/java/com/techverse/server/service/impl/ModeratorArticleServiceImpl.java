@@ -303,6 +303,7 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
                 .workflowStatus(a.getWorkflowStatus())
                 .publicationStatus(a.getPublicationStatus())
                 .hasUnpublishedChanges(a.hasUnpublishedChanges())
+                .aiAssisted(a.isAiAssisted())
                 .authorEligible(authorEligible)
                 .createdAt(a.getCreatedAt())
                 .updatedAt(a.getUpdatedAt())
@@ -332,6 +333,7 @@ public class ModeratorArticleServiceImpl implements ModeratorArticleService {
                         .workflowStatus(a.getWorkflowStatus())
                         .publicationStatus(a.getPublicationStatus())
                         .hasUnpublishedChanges(a.hasUnpublishedChanges())
+                        .aiAssisted(a.isAiAssisted())
                         .publishedVersion(
                                 ArticlePublicationVersionResponse.from(a.getPublishedVersion()))
                         .moderationNote(a.getModerationNote())

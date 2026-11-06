@@ -37,6 +37,8 @@ public class ArticleWriteRequest {
     @Size(max = 2048)
     private String coverImageUrl;
 
+    private UUID aiGenerationId;
+
     @JsonIgnore private final Set<String> provided = new HashSet<>();
 
     @JsonSetter(value = "action", nulls = Nulls.FAIL)
@@ -78,6 +80,12 @@ public class ArticleWriteRequest {
     public void setCoverImageUrl(String v) {
         provided.add("coverImageUrl");
         coverImageUrl = v == null ? null : v.strip();
+    }
+
+    @JsonSetter(value = "aiGenerationId", nulls = Nulls.FAIL)
+    public void setAiGenerationId(UUID v) {
+        provided.add("aiGenerationId");
+        aiGenerationId = v;
     }
 
     @JsonAnySetter

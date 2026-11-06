@@ -38,10 +38,16 @@ class ArticlePublicationMigrationTest {
     }
 
     @Test
-    void appliesV10AndAddsSavedListIndex() {
+    void appliesV11AndAddsAiAssistedWithFalseDefault() {
         assertThat(jdbc.queryForObject(
                         "SELECT max(version::int) FROM flyway_schema_history WHERE success", Integer.class))
-                .isEqualTo(10);
+                .isEqualTo(11);
+        assertThat(jdbc.queryForMap(
+                        "SELECT is_nullable, column_default FROM information_schema.columns"
+                                + " WHERE table_schema='techverse' AND table_name='articles'"
+                                + " AND column_name='ai_assisted'"))
+                .containsEntry("is_nullable", "NO")
+                .containsEntry("column_default", "false");
         assertThat(jdbc.queryForObject(
                         "SELECT count(*) FROM pg_indexes WHERE schemaname='techverse'"
                                 + " AND indexname='idx_saved_articles_user_created'",
@@ -58,9 +64,12 @@ class ArticlePublicationMigrationTest {
     void newArticleDefaultsToUnpublishedDraft() {
         UUID id = article("UNPUBLISHED", "DRAFT", null, null);
         assertThat(jdbc.queryForMap(
-                        "SELECT workflow_status, publication_status FROM articles WHERE id=?", id))
+                        "SELECT workflow_status, publication_status, ai_assisted"
+                                + " FROM articles WHERE id=?",
+                        id))
                 .containsEntry("workflow_status", "DRAFT")
-                .containsEntry("publication_status", "UNPUBLISHED");
+                .containsEntry("publication_status", "UNPUBLISHED")
+                .containsEntry("ai_assisted", false);
     }
 
     @Test

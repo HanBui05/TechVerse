@@ -27,6 +27,25 @@ grep -l '<failure' TEST-*.xml                                  # lớp có lỗi
 grep -h -A3 '<failure' TEST-*.xml | grep -E 'message=|at com.techverse' | head -20
 ```
 
+Số đạt/lỗi từng lớp (dùng ghi log, không cần mở report):
+
+```bash
+cd server && for f in build/test-results/test/TEST-*Ai*.xml build/test-results/test/TEST-*AuthorArticleIntegrationTest.xml; do
+  echo "$(basename $f .xml) $(grep -o 'tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' $f | head -1)"; done
+```
+
+Chỉ chạy vài ca của lớp tích hợp lớn: `--tests '<Lớp>.aiOutline*'` (wildcard theo tên phương thức).
+
+## Bẫy đã gặp (đừng lặp lại)
+
+- `List.of(...).contains(null)` ném NPE → kiểm null bằng `stream().anyMatch(Objects::isNull)`.
+- Stub lại method đã stub ném lỗi: dùng `doThrow(...).when(mock).m(...)`, không `when(mock.m(...))` (gọi stub cũ → ném).
+- Helper trong test không đặt tên `post`/`get` (che `MockMvcRequestBuilders`).
+- Exception OpenAI SDK trong test: `UnexpectedStatusCodeException.builder().statusCode(n).headers(Headers.builder().build()).error(Optional.empty()).build()`.
+- `@WebMvcTest` không nạp `SecurityConfiguration`: cần `@Import` lớp `@EnableMethodSecurity` + `.with(jwt()...).with(csrf())`; CORS/matcher kiểm ở test tích hợp. Mẫu: `ai/AuthorAiControllerTest`.
+- Lua Redis: test bằng Redis Testcontainers không Spring (`LettuceConnectionFactory` trực tiếp), mẫu `ai/AiRateLimitServiceTest`.
+- Thời gian trong service: inject `Clock` (bean ở `AiAssistConfiguration`), test dùng `MutableClock` của `AiRateLimitServiceTest`.
+
 ## 3. Cuối task: chỉ lớp bị ảnh hưởng
 
 ```bash

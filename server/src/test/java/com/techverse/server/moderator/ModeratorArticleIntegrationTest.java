@@ -210,8 +210,13 @@ class ModeratorArticleIntegrationTest extends ArticleIntegrationTestBase {
     @Test
     void firstApprovalPublishesVersionOneWithAuditAndReadingTime() throws Exception {
         UUID id = article("SUBMIT", "Markdown code");
+        jdbc.update("UPDATE techverse.articles SET ai_assisted=true WHERE id=?", id);
+        list(modToken)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].aiAssisted").value(true));
         detail(modToken, id)
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.article.aiAssisted").value(true))
                 .andExpect(jsonPath("$.data.article.content").value(CONTENT))
                 .andExpect(jsonPath("$.data.article.tags[0].id").value(tag.toString()))
                 .andExpect(jsonPath("$.data.article.publishedVersion").isEmpty())
@@ -220,6 +225,7 @@ class ModeratorArticleIntegrationTest extends ArticleIntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.article.workflowStatus").value("PUBLISHED"))
                 .andExpect(jsonPath("$.data.article.publicationStatus").value("PUBLISHED"))
+                .andExpect(jsonPath("$.data.article.aiAssisted").value(true))
                 .andExpect(jsonPath("$.data.article.reviewedBy").value(moderator.toString()))
                 .andExpect(jsonPath("$.data.article.publishedAt").isNotEmpty())
                 .andExpect(jsonPath("$.data.article.moderationNote").value("Ready"))

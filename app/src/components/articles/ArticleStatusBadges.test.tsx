@@ -13,6 +13,14 @@ it('shows publication and workflow as two labelled badges plus the unpublished-c
   expect(list.textContent).not.toMatch(/DRAFT|PUBLISHED/)
 })
 
+it('shows the AI flag only in moderator mode', () => {
+  const article = { workflowStatus: 'PENDING', publicationStatus: 'UNPUBLISHED', hasUnpublishedChanges: false, aiAssisted: true } as const
+  const { rerender } = render(<ArticleStatusBadges language="vi" article={article} />)
+  expect(screen.queryByText('AI hỗ trợ')).toBeNull()
+  rerender(<ArticleStatusBadges language="vi" article={article} moderator />)
+  expect(screen.getByText('AI hỗ trợ')).not.toBeNull()
+})
+
 it('does not claim unpublished changes for a never-published article and translates to English', () => {
   render(<ArticleStatusBadges language="en" article={{ workflowStatus: 'PENDING', publicationStatus: 'UNPUBLISHED', hasUnpublishedChanges: true }} />)
   const list = screen.getByRole('list', { name: 'Article status' })

@@ -103,3 +103,15 @@ it('F5 on /profile after approval switches the sidebar to author blogs and stays
   expect(screen.queryByRole('heading', { name: 'Chào mừng trở lại!' })).toBeNull()
   expect(getAccessToken()).toBe('test-author-access')
 })
+
+it('routes /author/blogs/ai to the AI page for an AUTHOR and away for a non-author', async () => {
+  fetchMock.mockImplementation(async (input, options) => String(input).endsWith('/auth/refresh')
+    ? response({ accessToken: 'test-author-access', expiresAt: '', expiresIn: 900 }) : authorApi(input, options))
+  reloadAuthorPage('/author/blogs/ai')
+  expect(await screen.findByRole('heading', { name: 'Tạo bài bằng AI' })).toBeTruthy()
+  cleanup()
+  fetchMock.mockImplementation(async input => new URL(String(input)).pathname === '/api/v1/users/me' ? response({ ...author, roles: ['LEARNER'] }) : response(null, 403))
+  reloadAuthorPage('/author/blogs/ai')
+  await waitFor(() => expect(screen.queryByText('Đang kiểm tra quyền truy cập...')).toBeNull())
+  expect(screen.queryByRole('heading', { name: 'Tạo bài bằng AI' })).toBeNull()
+})

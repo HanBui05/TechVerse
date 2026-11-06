@@ -20,11 +20,13 @@ export type AuthorArticle = ArticleStatus & {
   topic: ArticleOption; tags: ArticleOption[]; hasUnpublishedChanges: boolean; publishedVersion: PublicationVersion | null; imageIssues: ImageIssue[]
   moderationNote: string | null; reviewedBy: string | null; reviewedAt: string | null; publishedAt: string | null
   createdAt: string; createdBy: string | null; updatedAt: string; updatedBy: string | null
+  /** Set once by a create verified through the AI flow; Author/Moderator DTOs only, never Public. */
+  aiAssisted?: boolean
 }
 
 export type AuthorArticleSummary = ArticleStatus & {
   id: string; title: string; summary: string | null; coverImageUrl: string | null; topic: ArticleOption
-  hasUnpublishedChanges: boolean; publishedAt: string | null; createdAt: string; updatedAt: string
+  hasUnpublishedChanges: boolean; publishedAt: string | null; createdAt: string; updatedAt: string; aiAssisted?: boolean
 }
 
 export type HistoryEntry = {
@@ -34,7 +36,8 @@ export type HistoryEntry = {
 }
 
 export type ArticleFields = { title: string; topicId: string; tagIds: string[]; summary: string; content: string; coverImageUrl: string | null }
-export type ArticleWrite = Partial<ArticleFields> & { action: 'SAVE' | 'SUBMIT' }
+// `aiGenerationId`: only on a create with action SAVE, from a verified `completed` SSE event.
+export type ArticleWrite = Partial<ArticleFields> & { action: 'SAVE' | 'SUBMIT'; aiGenerationId?: string }
 
 export type AuthorArticleFilter = {
   page: number; size: number; keyword?: string; workflowStatus?: WorkflowStatus | ''; publicationStatus?: PublicationStatus | ''
@@ -47,7 +50,7 @@ export type ArticleAuthor = { id: string; fullName: string; avatarUrl: string | 
 
 export type ModeratorArticleSummary = ArticleStatus & {
   id: string; title: string; summary: string | null; coverImageUrl: string | null; author: ArticleAuthor; topic: ArticleOption
-  hasUnpublishedChanges: boolean; authorEligible: boolean; createdAt: string; updatedAt: string
+  hasUnpublishedChanges: boolean; authorEligible: boolean; createdAt: string; updatedAt: string; aiAssisted?: boolean
 }
 
 /** `article` is the working copy (ArticleResponse, same shape as the Author detail); `history` holds the 5 newest entries. */

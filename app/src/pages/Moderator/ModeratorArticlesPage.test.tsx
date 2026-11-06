@@ -25,7 +25,16 @@ function mockApi(list: (url: URL) => Response = () => json(page([item]))) {
   return fetch
 }
 const listCalls = (fetch: ReturnType<typeof mockApi>) => fetch.mock.calls.map(([input]) => new URL(String(input))).filter(url => url.pathname === '/api/v1/moderator/articles' && url.searchParams.get('size') === '12')
-const renderPage = () => render(<MemoryRouter><ModeratorArticlesPage language="vi" /></MemoryRouter>)
+const renderPage = (language: 'vi' | 'en' = 'vi') => render(<MemoryRouter><ModeratorArticlesPage language={language} /></MemoryRouter>)
+
+it.each([['vi', 'AI hỗ trợ', 'Trạng thái bài viết'], ['en', 'AI-assisted', 'Article status']] as const)('marks only AI-assisted rows (%s) and keeps both status axes', async (language, badge, statusList) => {
+  mockApi(() => json(page([{ ...item, aiAssisted: true }, { ...item, id: 'art-2', title: 'Viết tay', aiAssisted: false }])))
+  renderPage(language)
+  const statuses = async (title: string) => within(within((await screen.findByRole('link', { name: title })).closest('li')!).getByRole('list', { name: statusList })).getAllByRole('listitem').map(li => li.textContent)
+  const manual = await statuses('Viết tay')
+  expect(manual).not.toContain(badge)
+  expect(await statuses('Live (sửa)')).toEqual([badge, ...manual])
+})
 
 it('defaults to the pending queue and links each row to the detail page', async () => {
   const fetch = mockApi()

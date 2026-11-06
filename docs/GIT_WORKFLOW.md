@@ -126,6 +126,15 @@ fix bug
 code mới
 ```
 
+**Chỉ mô tả code (người dùng chốt 2026-11-04):** commit message (tiêu đề, thân, trailer) chỉ nói thay đổi trong code/tài liệu: tính năng, lỗi, test, cấu hình. Không nhắc AI, agent hay công cụ (Claude, Codex, Copilot, ChatGPT…), không dòng `Co-Authored-By`/`Generated with` của AI, không tên quy trình nội bộ như “Task 2d”, “review vòng 1”, “đồng bộ spec theo log”.
+
+```text
+feat(article): add saved articles page        # đúng
+test(admin): insert articles with V10 status columns
+wip(article-flow): Task 2d — UI Bài đã lưu    # sai: tên task quy trình
+docs(plans): Codex đồng bộ spec               # sai: nhắc agent
+```
+
 Mỗi commit chỉ nên gói một mục đích rõ ràng. Ví dụ, không gộp "thêm đăng ký", "sửa Docker" và "đổi giao diện profile" vào một commit.
 
 ## 5. Vòng lặp làm việc hằng ngày

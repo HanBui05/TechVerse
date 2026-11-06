@@ -50,8 +50,8 @@ async function refreshAccessToken() {
   return promise
 }
 
-// Send credentialed API requests, respecting explicit bearers and canceling stale-session renewals.
-export async function request<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
+// Credentialed fetch with bearer + one single-flight refresh on 401; returns the raw Response (streams read the body themselves).
+export async function requestRaw(path: string, options: RequestInit = {}, retry = true): Promise<Response> {
   const version = sessionVersion
   const headers = new Headers(options.headers)
   if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
@@ -60,9 +60,19 @@ export async function request<T>(path: string, options: RequestInit = {}, retry 
   if (response.status === 401 && retry && !path.includes('/auth/refresh')) {
     if (version !== sessionVersion) throw new ApiError('Session changed', 401)
     const token = await refreshAccessToken()
-    if (token && version === sessionVersion) return request<T>(path, options, false)
+    if (token && version === sessionVersion) return requestRaw(path, options, false)
   }
+  return response
+}
+
+// Unwrap the ApiResponse envelope, or throw ApiError with the backend code.
+export async function readEnvelope<T>(response: Response): Promise<T> {
   const body = await response.json().catch(() => null) as ApiEnvelope<T> | null
   if (!response.ok) throw new ApiError(body?.message || 'Request failed', response.status, body?.code)
   return body?.data as T
+}
+
+// Send credentialed API requests, respecting explicit bearers and canceling stale-session renewals.
+export async function request<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
+  return readEnvelope<T>(await requestRaw(path, options, retry))
 }

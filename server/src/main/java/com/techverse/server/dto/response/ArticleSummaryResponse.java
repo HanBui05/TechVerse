@@ -17,6 +17,7 @@ public record ArticleSummaryResponse(
         ArticleWorkflowStatus workflowStatus,
         ArticlePublicationStatus publicationStatus,
         boolean hasUnpublishedChanges,
+        boolean aiAssisted,
         Instant publishedAt,
         Instant createdAt,
         Instant updatedAt) {}

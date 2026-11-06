@@ -1,9 +1,9 @@
--- TechVerse consolidated database schema (Flyway V1 through V10).
--- Generated from server/src/main/resources/db/migration on 2026-10-30.
+-- TechVerse consolidated database schema (Flyway V1 through V11).
+-- Generated from server/src/main/resources/db/migration on 2026-11-05.
 -- Target: PostgreSQL 16+; schema: techverse.
 --
 -- PURPOSE: Reference/ERD and manual initialization of a NEW, EMPTY database.
--- This is NOT a Flyway migration. Keep V1..V10 unchanged.
+-- This is NOT a Flyway migration. Keep V1..V11 unchanged.
 -- Do NOT execute against an existing database or put this file in db/migration.
 -- For normal application startup, let Flyway apply the original migrations.
 -- Manual initialization does not create Flyway history; do not subsequently run
@@ -19,6 +19,7 @@
 -- V4: add admin user-query indexes.
 -- V5: add author status/user index.
 -- V8-V10: appended verbatim in section 9 (V10 without its empty-table guard).
+-- V11: add articles.ai_assisted provenance flag.
 -- V6: add author_profiles.version.
 -- V7: add author suspension/restoration audit fields.
 
@@ -162,6 +163,7 @@ CREATE TABLE articles (
     summary varchar(500) NOT NULL,
     content text NOT NULL,
     cover_image_url text,
+    ai_assisted boolean NOT NULL DEFAULT false,
     status varchar(30) NOT NULL DEFAULT 'DRAFT',
     moderation_note text,
     reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,

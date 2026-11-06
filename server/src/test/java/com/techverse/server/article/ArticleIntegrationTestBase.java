@@ -3,6 +3,7 @@ package com.techverse.server.article;
 import com.techverse.server.repository.ArticleCreationRepository;
 import com.techverse.server.service.ArticleImageStorage;
 
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -36,5 +37,7 @@ public abstract class ArticleIntegrationTestBase {
     }
 
     @MockitoBean protected ArticleImageStorage imageStorage;
+    // Shared here so AI tests reuse this context; nothing in tests may reach a real provider.
+    @MockitoBean protected ChatModel chatModel;
     @MockitoSpyBean protected ArticleCreationRepository receipts;
 }

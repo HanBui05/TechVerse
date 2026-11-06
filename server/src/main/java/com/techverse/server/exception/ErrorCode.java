@@ -72,6 +72,20 @@ public enum ErrorCode {
 	VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Request validation failed"),
 	MALFORMED_REQUEST(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST", "Request body is malformed"),
 	DATA_CONFLICT(HttpStatus.CONFLICT, "DATA_CONFLICT", "The request conflicts with existing data"),
+	AI_OUTPUT_INVALID(HttpStatus.UNPROCESSABLE_CONTENT, "AI_OUTPUT_INVALID", "AI returned invalid content"),
+	AI_OUTPUT_TRUNCATED(HttpStatus.UNPROCESSABLE_CONTENT, "AI_OUTPUT_TRUNCATED", "AI output was cut off by the token limit"),
+	AI_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "AI_RATE_LIMITED", "Too many AI requests; try again shortly"),
+	AI_QUOTA_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AI_QUOTA_EXCEEDED", "Daily AI allowance used up"),
+	AI_CONFIGURATION_INVALID(HttpStatus.INTERNAL_SERVER_ERROR, "AI_CONFIGURATION_INVALID", "AI assist is not configured"),
+	AI_PROVIDER_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "AI_PROVIDER_UNAVAILABLE", "The AI service is temporarily unavailable"),
+	AI_PROVIDER_REQUEST_REJECTED(HttpStatus.BAD_GATEWAY, "AI_PROVIDER_REQUEST_REJECTED", "The AI service rejected the request"),
+	AI_PROVIDER_AUTH_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "AI_PROVIDER_AUTH_FAILED", "The AI service is not ready"),
+	AI_PROVIDER_RATE_LIMITED(HttpStatus.SERVICE_UNAVAILABLE, "AI_PROVIDER_RATE_LIMITED", "The AI service is busy"),
+	AI_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI_STORAGE_UNAVAILABLE", "AI assist is temporarily unavailable"),
+	AI_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "AI_TIMEOUT", "AI took too long to respond"),
+	AI_GENERATION_IN_PROGRESS(HttpStatus.CONFLICT, "AI_GENERATION_IN_PROGRESS", "Another draft is already being generated"),
+	AI_GENERATION_NOT_FOUND(HttpStatus.NOT_FOUND, "AI_GENERATION_NOT_FOUND", "The generation no longer exists"),
+	AI_GENERATION_INVALID(HttpStatus.CONFLICT, "AI_GENERATION_INVALID", "The AI generation cannot be used for this article"),
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected error occurred");
 
 	private final HttpStatus status;
