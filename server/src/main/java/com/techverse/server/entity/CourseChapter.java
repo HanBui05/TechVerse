@@ -47,6 +47,20 @@ public class CourseChapter extends BaseEntity {
                 .toList();
     }
 
+    void rename(String title) {
+        this.title = title;
+    }
+
+    void moveTo(int position) {
+        this.position = position;
+    }
+
+    void restore(CourseVersionChapter snapshot) {
+        title = snapshot.getTitle();
+        position = snapshot.getPosition();
+        archivedAt = null;
+    }
+
     void archive(Instant at) {
         archivedAt = at;
         lessons.forEach(l -> l.archive(at));

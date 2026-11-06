@@ -219,6 +219,91 @@ class CourseLifecycleTest {
 
     // ------------------------------------------------------------------ helpers
 
+    @Test
+    void discardRestoresTreeFromSnapshotAndKeepsOlderArchives() {
+        Course c = published();
+        var ch = c.activeChapters().get(0);
+        var l1 = c.activeLessons().get(0);
+        var l2 = c.activeLessons().get(1);
+        // v2 drops L2 (archived, older version only)
+        c.removeLesson(l2);
+        c.save();
+        c.submit();
+        c.approve(moderator, null, now);
+        persist(c);
+        String v2 = c.getPublishedVersion().getContentFingerprint();
+        // edits after v2: rename chapter, edit L1, archive L1 via chapter? no: add L3, remove L1
+        c.editChapter(ch, "Renamed");
+        var l3 = c.addLesson(ch, "L3", null, "three", null, false, 2);
+        persist(c);
+        c.removeLesson(l1);
+        c.edit(topic, "New title", "S", "D", CourseLevel.ADVANCED, null);
+        c.save();
+        assertThat(c.hasUnpublishedChanges()).isTrue();
+
+        c.discard();
+
+        assertThat(c.getTitle()).isEqualTo("T");
+        assertThat(c.getLevel()).isEqualTo(CourseLevel.BEGINNER);
+        assertThat(ch.getTitle()).isEqualTo("Intro");
+        assertThat(l1.isActive()).isTrue();
+        assertThat(ch.getLessons()).doesNotContain(l3);
+        assertThat(l2.isActive()).isFalse(); // archived in an older version stays archived
+        assertThat(ch.getLessons()).contains(l2);
+        assertThat(c.getContentFingerprint()).isEqualTo(v2);
+        assertThat(c.computeFingerprint()).isEqualTo(v2);
+        assertThat(c.getWorkflowStatus()).isEqualTo(ArticleWorkflowStatus.PUBLISHED);
+        assertThat(c.hasUnpublishedChanges()).isFalse();
+    }
+
+    @Test
+    void discardNeedsPublishedVersionAndEditableRevision() {
+        expect(ErrorCode.COURSE_NOT_DISCARDABLE, course()::discard);
+        Course c = published();
+        c.edit(topic, "X", "S", "D", CourseLevel.BEGINNER, null);
+        c.save();
+        c.submit();
+        expect(ErrorCode.COURSE_NOT_DISCARDABLE, c::discard);
+    }
+
+    @Test
+    void authorHideUnhideAndDelete() {
+        Course c = published();
+        var hide = c.authorHide(author);
+        assertThat(hide.getAction()).isEqualTo(ArticleModerationAction.AUTHOR_HIDE);
+        assertThat(c.getPublicationStatus()).isEqualTo(ArticlePublicationStatus.AUTHOR_HIDDEN);
+        expect(ErrorCode.COURSE_PUBLICATION_TRANSITION_INVALID, () -> c.authorHide(author));
+        c.authorUnhide(author);
+        assertThat(c.getPublicationStatus()).isEqualTo(ArticlePublicationStatus.PUBLISHED);
+        expect(ErrorCode.COURSE_PUBLICATION_TRANSITION_INVALID, () -> c.authorUnhide(author));
+        assertThat(c.isHardDeletable()).isFalse();
+        var del = c.softDelete(author);
+        assertThat(del.getAction()).isEqualTo(ArticleModerationAction.AUTHOR_DELETE);
+        assertThat(c.getPublicationStatus()).isEqualTo(ArticlePublicationStatus.AUTHOR_DELETED);
+        expect(ErrorCode.COURSE_NOT_DELETABLE, () -> c.softDelete(author));
+        assertThat(course().isHardDeletable()).isTrue();
+        expect(ErrorCode.COURSE_NOT_DELETABLE, () -> course().softDelete(author));
+    }
+
+    @Test
+    void reorderNeedsExactlyTheActiveIds() {
+        Course c = course();
+        var a = c.addChapter("A", 1);
+        var b = c.addChapter("B", 2);
+        var l1 = c.addLesson(a, "L1", null, "x", null, false, 1);
+        var l2 = c.addLesson(a, "L2", null, "y", null, false, 2);
+        persist(c);
+        expect(ErrorCode.COURSE_ORDER_INVALID, () -> c.reorderChapters(List.of(a.getId()), 0));
+        expect(ErrorCode.COURSE_ORDER_INVALID, () -> c.reorderChapters(List.of(a.getId(), a.getId()), 0));
+        expect(ErrorCode.COURSE_ORDER_INVALID, () -> c.reorderChapters(List.of(a.getId(), b.getId(), l1.getId()), 0));
+        expect(ErrorCode.COURSE_ORDER_INVALID, () -> c.reorderLessons(b, List.of(l1.getId(), l2.getId()), 0));
+        c.reorderChapters(List.of(b.getId(), a.getId()), 0);
+        c.reorderLessons(a, List.of(l2.getId(), l1.getId()), 1000);
+        assertThat(c.activeChapters()).containsExactly(b, a);
+        assertThat(l2.getPosition()).isEqualTo(1001);
+        assertThat(l1.getPosition()).isEqualTo(1002);
+    }
+
     private Course course() {
         Course c = withId(Course.builder().author(author).topic(topic).title("T").summary("S")
                 .description("D").level(CourseLevel.BEGINNER).build());

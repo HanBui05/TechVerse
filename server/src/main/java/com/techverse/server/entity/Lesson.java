@@ -99,6 +99,24 @@ public class Lesson extends BaseEntity {
         aiAssisted = true;
     }
 
+    void moveTo(int position) {
+        this.position = position;
+    }
+
+    /** Copies the snapshot back verbatim (no re-parse), so fingerprints match the version. */
+    void restore(CourseVersionLesson s) {
+        title = s.getTitle();
+        summary = s.getSummary();
+        content = s.getContent();
+        videoProvider = s.getVideoProvider();
+        videoId = s.getVideoId();
+        preview = s.isPreview();
+        position = s.getPosition();
+        contentFingerprint = s.getContentFingerprint();
+        aiAssisted = s.isAiAssisted();
+        archivedAt = null;
+    }
+
     void archive(Instant at) {
         if (archivedAt == null) archivedAt = at;
     }

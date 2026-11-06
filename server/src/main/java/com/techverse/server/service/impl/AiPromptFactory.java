@@ -59,11 +59,12 @@ public class AiPromptFactory {
 
     public record Ref(UUID id, String name) {}
 
-    public record DraftInput(AiDraftRequest request, Ref topic, List<Ref> selectedTags) {}
+    /** {@code courseTitle} is set for a LESSON target, null for an article. */
+    public record DraftInput(AiDraftRequest request, Ref topic, List<Ref> selectedTags, String courseTitle) {}
 
     /** Plain copies taken inside the authorization transaction; no entities cross the AI call. */
     public record OutlineInput(
-            AiOutlineRequest request, Ref topic, List<Ref> selectedTags, List<Ref> activeTags) {}
+            AiOutlineRequest request, Ref topic, List<Ref> selectedTags, List<Ref> activeTags, String courseTitle) {}
 
     private final ObjectMapper mapper;
 
@@ -85,6 +86,7 @@ public class AiPromptFactory {
         data.put("input", input);
         data.put("selectedTopic", in.topic());
         data.put("selectedTags", in.selectedTags());
+        if (in.courseTitle() != null) data.put("lessonOfCourse", in.courseTitle());
         data.put(
                 "outline",
                 r.getSections().stream()
@@ -132,6 +134,7 @@ public class AiPromptFactory {
         data.put("selectedTopic", in.topic());
         data.put("selectedTags", in.selectedTags());
         data.put("activeTags", in.activeTags());
+        if (in.courseTitle() != null) data.put("lessonOfCourse", in.courseTitle());
         data.put("outputSchema", schema);
         return data;
     }

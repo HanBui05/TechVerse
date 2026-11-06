@@ -182,6 +182,50 @@ public class Course extends BaseEntity {
         } else chapters.remove(chapter);
     }
 
+    public void editChapter(CourseChapter chapter, String title) {
+        ensureEditable();
+        chapter.rename(title);
+    }
+
+    /**
+     * Positions become {@code base+1..base+n} in the given order. Unique position indexes are not
+     * deferrable, so callers move to a high base, flush, then to base 0.
+     */
+    public void reorderChapters(List<UUID> ids, int base) {
+        ensureEditable();
+        var ordered = ordered(activeChapters(), CourseChapter::getId, ids);
+        for (int i = 0; i < ordered.size(); i++) ordered.get(i).moveTo(base + i + 1);
+    }
+
+    public void reorderLessons(CourseChapter chapter, List<UUID> ids, int base) {
+        ensureEditable();
+        var ordered = ordered(chapter.activeLessons(), Lesson::getId, ids);
+        for (int i = 0; i < ordered.size(); i++) ordered.get(i).moveTo(base + i + 1);
+    }
+
+    /** Moves every active node out of the 1..n range (before a discard rewrites positions). */
+    public void shiftActivePositions(int base) {
+        for (CourseChapter chapter : activeChapters()) {
+            chapter.moveTo(base + chapter.getPosition());
+            chapter.activeLessons().forEach(l -> l.moveTo(base + l.getPosition()));
+        }
+    }
+
+    private static <T> List<T> ordered(
+            List<T> active, java.util.function.Function<T, UUID> id, List<UUID> ids) {
+        var byId = new HashMap<UUID, T>();
+        active.forEach(node -> byId.put(id.apply(node), node));
+        if (ids.size() != active.size() || new HashSet<>(ids).size() != ids.size())
+            throw new CustomException(ErrorCode.COURSE_ORDER_INVALID);
+        var result = new ArrayList<T>();
+        for (UUID each : ids) {
+            T node = byId.get(each);
+            if (node == null) throw new CustomException(ErrorCode.COURSE_ORDER_INVALID);
+            result.add(node);
+        }
+        return result;
+    }
+
     public List<CourseChapter> activeChapters() {
         return chapters.stream()
                 .filter(CourseChapter::isActive)
@@ -235,9 +279,85 @@ public class Course extends BaseEntity {
         workflowStatus = ArticleWorkflowStatus.DRAFT;
     }
 
+    /**
+     * Restores metadata, tags and the curriculum of the current version. Nodes added since are
+     * deleted (never published), nodes the version holds are revived, older archives stay archived.
+     * Callers shift active positions out of range first (see {@link #shiftActivePositions}).
+     */
+    public void discard() {
+        if (publishedVersion == null
+                || publicationStatus.isTerminal()
+                || (workflowStatus != ArticleWorkflowStatus.DRAFT
+                        && workflowStatus != ArticleWorkflowStatus.CHANGES_REQUESTED))
+            throw new CustomException(ErrorCode.COURSE_NOT_DISCARDABLE);
+        var v = publishedVersion;
+        edit(v.getTopic(), v.getTitle(), v.getSummary(), v.getDescription(), v.getLevel(), v.getCoverImageUrl());
+        replaceTags(v.getTags().stream().map(CourseVersionTag::getTag).toList());
+        var vChapters = new HashMap<UUID, CourseVersionChapter>();
+        v.getChapters().forEach(vc -> vChapters.put(vc.getChapter().getId(), vc));
+        var vLessons = new HashMap<UUID, CourseVersionLesson>();
+        v.getLessons().forEach(vl -> vLessons.put(vl.getLesson().getId(), vl));
+        for (CourseChapter chapter : new ArrayList<>(chapters)) {
+            var vc = vChapters.get(chapter.getId());
+            if (vc != null) chapter.restore(vc);
+            for (Lesson lesson : new ArrayList<>(chapter.getLessons())) {
+                var vl = vLessons.get(lesson.getId());
+                if (vl != null) lesson.restore(vl);
+                else if (lesson.isActive()) chapter.getLessons().remove(lesson);
+            }
+            if (vc == null && chapter.isActive()) {
+                // Rows with published lessons keep their ID (progress); otherwise never published.
+                if (chapter.getLessons().isEmpty()) chapters.remove(chapter);
+                else chapter.archive(Instant.now());
+            }
+        }
+        contentFingerprint = v.getContentFingerprint();
+        workflowStatus = ArticleWorkflowStatus.PUBLISHED;
+    }
+
     public boolean hasUnpublishedChanges() {
         return publishedVersion != null
                 && !publishedVersion.getContentFingerprint().equals(contentFingerprint);
+    }
+
+    // ------------------------------------------------------------------ author publication
+
+    public CourseModerationHistory authorHide(User actor) {
+        if (publicationStatus != PUBLISHED) transitionInvalid();
+        return transition(actor, ArticleModerationAction.AUTHOR_HIDE, AUTHOR_HIDDEN);
+    }
+
+    public CourseModerationHistory authorUnhide(User actor) {
+        if (publicationStatus == HIDDEN)
+            throw new CustomException(ErrorCode.COURSE_AUTHOR_UNHIDE_NOT_ALLOWED);
+        if (publicationStatus != AUTHOR_HIDDEN) transitionInvalid();
+        return transition(actor, ArticleModerationAction.AUTHOR_UNHIDE, PUBLISHED);
+    }
+
+    /** Never-approved courses are deleted outright; anything with a snapshot is soft-deleted. */
+    public boolean isHardDeletable() {
+        return publishedVersion == null
+                && publicationStatus == UNPUBLISHED
+                && (workflowStatus == ArticleWorkflowStatus.DRAFT
+                        || workflowStatus == ArticleWorkflowStatus.CHANGES_REQUESTED);
+    }
+
+    public CourseModerationHistory softDelete(User actor) {
+        if (publishedVersion == null || publicationStatus.isTerminal())
+            throw new CustomException(ErrorCode.COURSE_NOT_DELETABLE);
+        hiddenFromPublicationStatus = null;
+        return transition(actor, ArticleModerationAction.AUTHOR_DELETE, AUTHOR_DELETED);
+    }
+
+    private CourseModerationHistory transition(
+            User actor, ArticleModerationAction action, ArticlePublicationStatus to) {
+        var from = publicationStatus;
+        publicationStatus = to;
+        return CourseModerationHistory.of(this, actor, action, null, workflowStatus, from);
+    }
+
+    private static void transitionInvalid() {
+        throw new CustomException(ErrorCode.COURSE_PUBLICATION_TRANSITION_INVALID);
     }
 
     // ------------------------------------------------------------------ moderation

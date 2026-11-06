@@ -4,7 +4,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 
 ## Bắt đầu từ đây (cập nhật 2026-11-07)
 
-- **Task 1a đã nhận (2026-11-07)** sau Codex review 2 vòng. Chưa kiểm, để 1b: lưu/đọc JPA thật nhiều version (thứ tự insert cascade, `flush()` trước `save()`/tham chiếu, ca publish v1 → bỏ lesson, publish v2 → xóa chapter → flush). **Tiếp: Task 1b (Opus)** — `/clear`, `/model opus`; đã có `## Task 1b — Kế hoạch thực thi` ở cuối log (quyết định kỹ thuật, API/DTO, 11 bước TDD): làm theo đó, phần “Đã xác minh” không kiểm lại. Model: 1b, 1c **Opus** (rủi ro cao).
+- **Task 1b đã nhận (2026-11-07)** sau Codex review 2 vòng (vòng 2 approve). Task 1a đã nhận (2026-11-07). **Tiếp: Task 1c (Opus)** — `/clear`, `/model opus`. Lưu ý 1c: approve phải `flush()` trước `histories.save(...)` (nếu không `version_id` của history bị null — đã gặp ở test 1b).
+- Chưa kiểm: Cloudinary thật với scope COURSE/LESSON (chỉ fake storage); OpenAPI chỉ qua `@Operation`/`@Schema`, chưa mở Swagger.
 - **Spec đã chốt 2026-11-07** sau vòng 1 (không vòng 2); lịch sử phản biện ở `course-free.review.md`.
 - Hướng gốc của người dùng: mục “Miền khóa học” trong “Câu hỏi mở” của `PLAN.md`; mẫu giao diện JavaBuilder, ảnh `.playwright-mcp/jb-course.png`, `.playwright-mcp/jb-lesson.png` (gitignore).
 - Nhánh `feature/course-free` (tách từ `feature/ai-assist`, PR ai-assist chưa merge → rebase lên `main` sau khi merge).
@@ -18,6 +19,15 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-07 — Task 1b đã nhận
+- Người dùng nhận Task 1b; commit cục bộ trên `feature/course-free`.
+### 2026-11-07 — Task 1b: sửa theo Codex review vòng 1 (1 high, 2 medium)
+- High: SUBMIT pha 2 (dưới khóa course, cùng khóa với cleanup) gọi lại `validateManaged` cho ảnh của document đổi → ảnh bị cleanup xóa giữa hai pha trả `COURSE_NOT_READY` (lệch kế hoạch: có gọi provider dưới khóa, giới hạn ở ảnh document đổi). Medium: claim AI tách namespace `LESSON_CREATE:<key>` / `LESSON_UPDATE:<lessonId>` (lệch spec `LESSON:<lessonId>`). Medium: cleanup LESSON kiểm snapshot trước, độc lập với working row.
+- +3 ca. `./gradlew test` course.* (cleanup 7, AuthorCourse 11, …), ai.* 111, `AuthorArticleIntegrationTest` 42 → 0 lỗi. Vòng 2 `adversarial-review` chỉ phần sửa: approve, không phát hiện.
+### 2026-11-07 — Task 1b: API Author khóa/chương/bài, ảnh theo scope, AI lesson
+- Thêm `AuthorCourseController/Service(Impl)`, `CourseAccessService`, `LessonContentService`+`CourseErrors` (facade article), `CourseCreationRepository` (Redis receipt/tombstone), repo course/lesson/version/history, DTO `CourseWriteRequest/LessonWriteRequest/CourseChapterRequest/CourseReorderRequest`, `CourseResponse/LessonResponse/CourseSummaryResponse/CourseModerationHistoryResponse`; domain `discard/authorHide/authorUnhide/softDelete/reorder*/editChapter/shiftActivePositions`; 16 mã lỗi; matcher `/api/v1/author/courses/**`. Ảnh: `ArticleImageAsset.scope/parentId`, prefix `folder/course|lesson/...`, cleanup theo scope. AI: `targetType/courseId` (`@AiTarget`), `LessonAiContextService`, receipt LESSON.
+- Test (từng bước, `./gradlew test --tests ...`): `CoursePersistenceIntegrationTest` 1, `CourseLifecycleTest` 20, `LessonContentServiceTest` 6, `ArticleImageCleanupServiceTest` 6, `AuthorCourseIntegrationTest` 9, `CourseContractTest` 3, `ai.*` 111 (Draft 27, Outline 19, Controller 18, Validator 16, Mapper 20, RateLimit 11), `CloudinaryArticleImageStorageTest` 3 — đạt. Mốc xanh trước khi đổi ảnh: `AuthorArticleIntegrationTest` 42, `ArticleContentServiceTest` 12. Lượt cuối gộp (course.*, ai.*, 3 lớp article, `ModeratorArticleIntegrationTest`, `ArticleLifecycleTest`, `DatabaseBootstrapIntegrationTest`) → 20 lớp, 0 lỗi (course 82, ai 111, `AuthorArticleIntegrationTest` 42, `ArticleContentServiceTest` 12, Cloudinary 3, Moderator 19, `ArticleLifecycleTest` 21, Bootstrap 2).
+- Lệch khác spec/kế hoạch: tên DTO `CourseChapterRequest/CourseReorderRequest` (luật đường dẫn `*Course*`); storage không thêm `ImageTarget` mà overload `upload(publicId, scope, owner, document, parent, image)` + bản 4 tham số mặc định ARTICLE, record `ArticleImageService.Target`; AI không lưu thêm `targetType/courseId` vào hash Redis — fingerprint LESSON chứa `targetType+courseId` và claim key `LESSON:<...>` nên claim chéo type/course/key đều `AI_GENERATION_INVALID`; validate target bằng ràng buộc lớp `@AiTarget` (giữ `fieldErrors.topicId` cho ARTICLE); SUBMIT pha 2 so tập ảnh đã kiểm provider (target+url) thay vì so fingerprint; dịch vị trí tạm `+1_000_000`; chương không tồn tại → `COURSE_NOT_FOUND`; options dùng lại `AuthorArticleService.options`; rate limit dùng chung bộ đếm article; không thêm reading time cho lesson (thời lượng ngoài phạm vi); kiểm asset scope nằm ở `AuthorCourseIntegrationTest`/`ArticleImageCleanupServiceTest` (không ở `LessonContentServiceTest`); list `hasUnpublishedChanges` N+1 (ghi `shortcut:`).
 ### 2026-11-07 — Task 1a đã nhận
 - Người dùng nhận Task 1a; commit cục bộ trên `feature/course-free`.
 ### 2026-11-07 — Task 1a: V12, domain Course, parser YouTube
