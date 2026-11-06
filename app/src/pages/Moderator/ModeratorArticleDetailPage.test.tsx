@@ -35,6 +35,23 @@ it('compares the proposal with the live version side by side and marks changed f
   expect(screen.getAllByText('Đủ điều kiện').length).toBeGreaterThan(0)
 })
 
+it('shows the AI-assisted badge before and after an APPROVE response, and none for a manual article', async () => {
+  const ai = (d: ModeratorArticleDetail, aiAssisted: boolean) => ({ ...d, article: { ...d.article, aiAssisted } })
+  mockApi(ai(detail, true), () => json(ai(approved, true)))
+  const user = userEvent.setup()
+  renderPage()
+  expect(await screen.findByText('AI hỗ trợ')).not.toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Duyệt' }))
+  await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Duyệt' }))
+  expect(await screen.findByText('Đã duyệt và xuất bản.')).not.toBeNull()
+  expect(screen.getByText('AI hỗ trợ')).not.toBeNull()
+  cleanup()
+  mockApi(ai(detail, false))
+  renderPage()
+  expect(await screen.findByRole('heading', { level: 1, name: 'Live (sửa)' })).not.toBeNull()
+  expect(screen.queryByText('AI hỗ trợ')).toBeNull()
+})
+
 it('approves with the token after showing the last return note, then offers the live-article actions', async () => {
   const fetch = mockApi()
   const user = userEvent.setup()

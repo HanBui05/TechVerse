@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai
 
 ## Bắt đầu từ đây (cập nhật 2026-11-06)
 
-- **Task 2a đã nhận (2026-11-06)** (gồm API `GET /api/v1/author/ai/quota`). **Tiếp: Task 2b — Giao diện cờ AI cho Moderator** (session mới; `aiAssisted` đã có trong types).
+- **Task 2a đã nhận (2026-11-06)** (gồm API `GET /api/v1/author/ai/quota`). **Task 2b đã nhận (2026-11-06).** Đã xong mọi task. **Tiếp: cuối module** — Codex đồng bộ spec một lần (skill `codex-workflow` mục 3) và smoke Groq thật (spec “Kiểm thật cuối module”, cần `AI_API_KEY`).
 - Chưa kiểm 2a: kiểm mắt dark/light × desktop/mobile `/author/blogs/ai` + banner editor (backend/dev server không chạy lúc làm); stream Groq thật (smoke cuối module).
 - Bài học (Spring AI/Spring 7): option runtime dựng từ `getDefaultOptions().mutate()` (`AiPromptFactory.options`); `include_reasoning` đặt trong code; **emitter đã đóng khi callback timeout chạy** → service tự áp deadline trên Flux, emitter dư 5 giây.
 - Rủi ro: TPM Groq tài khoản 8000 < trần MEDIUM/LONG; có thể gặp 429 khi viết bài dài. Registry cancel chỉ một instance.
@@ -20,6 +20,14 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai
 - (không có — Q3/Q4 hoãn sang module RAG theo Q1=A)
 
 ## Nhật ký phiên
+### 2026-11-06 — Claude làm Task 2b
+- Task 2b đã nhận (2026-11-06), commit cục bộ.
+- Badge `AI hỗ trợ`/`AI-assisted` (tone blue, đứng đầu danh sách status) ở Moderator list/detail; copy `aiAssisted` trong `moderatorCopy`. Type đã có sẵn từ 2a (`ModeratorArticleDetail.article: AuthorArticle`), không sửa `types/articles.ts`.
+- Lệch khác spec: badge đặt trong `components/articles/ArticleStatusBadges.tsx` (chỉ khi `moderator`) thay vì sửa hai trang — một chỗ, cùng `<ul>` status; Author không thấy badge. Thêm 1 ca ở `ArticleStatusBadges.test.tsx`.
+- TDD: 3 ca mới đỏ vì thiếu badge → xanh. `npx vitest run` ModeratorArticlesPage, ModeratorArticleDetailPage, ArticleStatusBadges, AuthorBlogsPage, ArticleEditorPage: **41/41 đạt**; `npm run build` đạt. Kiểm tĩnh: `aiAssisted` không xuất hiện trong `pages/Blogs`, `pages/Home`, service public; `PublicArticle*` không có field.
+- Review vòng 1 (Codex `review`): không phát hiện.
+- Kiểm mắt (Playwright MCP, Moderator, `page.route` đặt `aiAssisted=true` trên response thật vì DB dev chưa có bài AI): list/detail × light/dark × desktop (2048, 1440) + mobile cảm ứng 390 — badge không tràn, không đè nhóm action, không cuộn ngang. Phát hiện: list mobile, hàng badge cùng dòng ép cột tiêu đề ~50px (có từ trước, badge làm nặng thêm) → `max-sm:basis-full` cho cột nội dung trong `ModeratorArticlesPage.tsx`; sau sửa tiêu đề 306px, badge xuống dòng; desktop giữ cùng dòng. Chạy lại 3 test Moderator/badge 20/20 đạt, build đạt.
+
 ### 2026-11-06 — Claude làm Task 2a
 - Task 2a đã nhận (2026-11-06), commit cục bộ. Lỗi chèn ảnh khi chạy thử: người dùng tự xử lý.
 - Trang `/author/blogs/ai` (form → dàn ý → stream SSE → handoff create SAVE + `aiGenerationId`), `AiOutlineEditor`, `aiAssistService` (parser SSE, SHA-256, cancel/keepalive), `requestRaw`/`readEnvelope` trong `api/client.ts`, i18n vi/en, nút “Tạo bằng AI”, banner AI ở editor.

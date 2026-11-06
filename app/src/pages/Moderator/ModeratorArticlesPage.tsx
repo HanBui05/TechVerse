@@ -157,7 +157,7 @@ export function ModeratorArticlesPage({ language = 'vi' }: { language?: Language
                 {item.coverImageUrl
                   ? <img src={item.coverImageUrl} alt="" className="hidden h-10 w-16 shrink-0 rounded-md border border-border object-cover sm:block" />
                   : <span aria-hidden className={`hidden h-10 w-16 shrink-0 items-center justify-center rounded-md border sm:flex ${TONE_TILE[toneFor(item.topic.name)]}`}><FileText className="size-4" /></span>}
-                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5 max-sm:basis-full">
                   {/* The title link stretches over the whole row; the author button sits above it. */}
                   <Link to={`/moderator/articles/${item.id}`} className="line-clamp-2 font-semibold outline-none [overflow-wrap:anywhere] after:absolute after:inset-0 focus-visible:underline">{item.title}</Link>
                   <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
