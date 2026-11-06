@@ -41,7 +41,7 @@ class ArticlePublicationMigrationTest {
     void appliesV11AndAddsAiAssistedWithFalseDefault() {
         assertThat(jdbc.queryForObject(
                         "SELECT max(version::int) FROM flyway_schema_history WHERE success", Integer.class))
-                .isEqualTo(11);
+                .isGreaterThanOrEqualTo(11);
         assertThat(jdbc.queryForMap(
                         "SELECT is_nullable, column_default FROM information_schema.columns"
                                 + " WHERE table_schema='techverse' AND table_name='articles'"

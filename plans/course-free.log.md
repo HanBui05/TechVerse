@@ -4,7 +4,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 
 ## Bắt đầu từ đây (cập nhật 2026-11-07)
 
-- **Spec đã chốt 2026-11-07** sau vòng 1 (không vòng 2); lịch sử phản biện ở `course-free.review.md`. **Tiếp: Task 1a** (V12 schema, domain, lifecycle version) — `/clear` rồi bắt đầu. Model (luật `CLAUDE.md` 2026-11-07): 1a, 2a–2c Sonnet; **1b, 1c Opus** (rủi ro cao: tách lõi article/AI, đồng thời start/completion).
+- **Task 1a đã nhận (2026-11-07)** sau Codex review 2 vòng. Chưa kiểm, để 1b: lưu/đọc JPA thật nhiều version (thứ tự insert cascade, `flush()` trước `save()`/tham chiếu, ca publish v1 → bỏ lesson, publish v2 → xóa chapter → flush). **Tiếp: Task 1b (Opus)** — `/clear`, `/model opus`. Model: 1b, 1c **Opus** (rủi ro cao).
+- **Spec đã chốt 2026-11-07** sau vòng 1 (không vòng 2); lịch sử phản biện ở `course-free.review.md`.
 - Hướng gốc của người dùng: mục “Miền khóa học” trong “Câu hỏi mở” của `PLAN.md`; mẫu giao diện JavaBuilder, ảnh `.playwright-mcp/jb-course.png`, `.playwright-mcp/jb-lesson.png` (gitignore).
 - Nhánh `feature/course-free` (tách từ `feature/ai-assist`, PR ai-assist chưa merge → rebase lên `main` sau khi merge).
 
@@ -17,6 +18,14 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-07 — Task 1a đã nhận
+- Người dùng nhận Task 1a; commit cục bộ trên `feature/course-free`.
+### 2026-11-07 — Task 1a: V12, domain Course, parser YouTube
+- Thêm V12, entity `Course/CourseChapter/Lesson/CourseTag/CoursePublicationVersion(+Chapter/Lesson/Tag)/CourseModerationHistory`, `CourseLevel`, `LessonVideoParser`, 12 mã lỗi; tái dùng enum trạng thái/action của article. Tách `Article.digest` dùng chung (hành vi giữ nguyên).
+- Test: `CourseLifecycleTest` 12, `LessonVideoParserTest` 29, `FreeCourseMigrationTest` 8, `ArticleLifecycleTest` 21, `ArticlePublicationMigrationTest` 7, `DatabaseBootstrapIntegrationTest` 2 (Hibernate validate với entity mới) — đạt hết.
+- Review vòng 1 (Codex, 2 P2, đã sửa): fingerprint thêm `chapter.id`/`lesson.id`/`aiAssisted`; `removeChapter` xóa cứng lesson chưa publish. +3 ca test, `CourseLifecycleTest` 15 đạt, `ArticleLifecycleTest`/`LessonVideoParserTest` đạt. Lưu ý 1b: `flush()` trước `save()` để ID đã gán khi tính fingerprint.
+- Review vòng 2 (1 medium, đã sửa): lesson đã archive (từng publish ở version cũ) không bao giờ bị hard delete khi `removeLesson`/`removeChapter`. +1 ca, `CourseLifecycleTest` 16 đạt. Không chạy vòng 3; ca persistence nhiều version + flush DB thật để 1b.
+- Lệch khác spec: sửa `ArticlePublicationMigrationTest` (`max version == 11` → `>= 11`); hard delete vs archive suy từ snapshot mới nhất (không thêm cột); chưa có entity enrollment/progress (thuộc 1c); chỉ có approve/requestChanges/withdraw, hide/restore/remove để 1c.
 ### 2026-11-07 — Chốt spec
 - Người dùng chốt spec sau vòng 1. Bốn mục phản hồi/trả lời chuyển sang `course-free.review.md`; spec giữ 3 dòng kết luận. Thân spec ~27,8 KB.
 ### 2026-11-06 — Đưa đề xuất ngoài spec vào spec
