@@ -2,7 +2,7 @@
 
 Đọc [`PROJECT_CONTEXT.md`](../docs/PROJECT_CONTEXT.md) trước khi nhận task. Mỗi module có đúng một spec `plans/<module>.md` và một nhật ký `plans/<module>.log.md`.
 
-Module đang làm: —
+Module đang làm: [course-free](course-free.md)
 
 <!-- Hook SessionStart của Claude đọc đúng dòng trên (dạng `[slug](slug.md)`, “—” nếu không có) để tự nạp mục “Bắt đầu từ đây” của log. Đổi module thì sửa dòng này. -->
 
@@ -23,6 +23,7 @@ Module đang làm: —
 | UI foundation v2 (shadcn) | [`plans/ui-foundation-v2.md`](ui-foundation-v2.md) | Hoàn tất | Claude | Task 1–7b và UI Admin/Moderator đã được nhận, xem [log](ui-foundation-v2.log.md). | Mọi trang trong phạm vi ngoài luồng bài viết dùng shadcn/ui + Tailwind/token mới; chỉ còn CSS/API trình duyệt cũ thuộc lớp tương thích `article-flow`; preflight giữ tắt; từng task có test liên quan + build đạt | — |
 | Article flow | [`plans/article-flow.md`](article-flow.md) | Hoàn tất (người dùng nhận 2026-11-04) | Claude | Module đã được nhận và PR #2 đã merge với CI xanh, xem [log](article-flow.log.md). | Bản công khai không đổi khi Author sửa; Reader list/detail/lưu bài hoàn chỉnh; tài khoản quản lý bị tách khỏi Reader/saved; UI thống nhất và kiểm E2E thật | [`plans/article-flow.log.md`](article-flow.log.md) |
 | AI assist | [`plans/ai-assist.md`](ai-assist.md) | Hoàn tất (người dùng chốt 2026-11-06) | Claude | Mọi task đã nhận; bỏ đồng bộ spec và smoke Groq thật theo người dùng, xem [log](ai-assist.log.md). | Tác giả tạo bài DRAFT tiếng Việt từ dàn ý + stream bằng Groq `openai/gpt-oss-120b`/Spring AI; cờ AI bền vững chỉ Author/Moderator thấy; luồng duyệt cũ giữ nguyên; test không gọi model thật | [`plans/ai-assist.log.md`](ai-assist.log.md) |
+| Course free | [`plans/course-free.md`](course-free.md) | Chờ người dùng chốt | Codex / Claude phản biện | Spec đã soạn; chờ Claude phản biện vòng 1 và người dùng chốt, xem [log](course-free.log.md). | Author tạo khóa miễn phí có chương/bài; Moderator duyệt snapshot cả khóa; Guest học thử; Learner học và có tiến độ | [`plans/course-free.log.md`](course-free.log.md) |
 
 Trạng thái hợp lệ: `Đề xuất` → `Đang lập kế hoạch` → `Chờ người dùng chốt` → `Đã chốt` → `Đang thực hiện` → `Đang review` → `Chờ người dùng nhận kết quả` → `Hoàn tất`; dùng `Bị chặn` khi không thể tạo ra kết quả để bàn giao vì cần quyết định hoặc môi trường bên ngoài.
 
@@ -83,7 +84,7 @@ Người dùng quyết định tại bốn cổng: chốt plan; xử lý bất �
 ## Câu hỏi mở
 
 - **Khóa học trả phí + chia hoa hồng tác giả (ý tưởng, chưa mở):** module riêng sau khi có khóa học; tách “đăng ký bán khóa học” (điều khoản, thông tin nhận tiền) khỏi duyệt tác giả; tỷ lệ hoa hồng mặc định + riêng từng tác giả/khóa có ngày hiệu lực; mỗi đơn hàng lưu snapshot tỷ lệ/số tiền lúc mua; sổ ghi tiền và đợt chi trả.
-- **Miền khóa học (người dùng đồng ý 2026-11-06, chưa có spec, Codex viết):**
+- **Miền khóa học (người dùng đồng ý 2026-11-06):** đã chuyển thành spec [`course-free`](course-free.md); các module trả phí/hoa hồng và AI tutor vẫn theo thứ tự dưới đây.
   - Tách module theo thứ tự: `course-free` (tạo khóa + bài học, Moderator duyệt, học miễn phí, tiến độ) → `course-payment` (tác giả đăng ký bán + đồng ý điều khoản/tỷ lệ hoa hồng, Admin duyệt; đặt giá; đơn hàng, cổng thanh toán, webhook, cấp quyền; đơn hàng snapshot tỷ lệ) → `course-commission` (tính tiền tác giả theo snapshot, sổ tiền, chi trả). **Không hoàn tiền** (người dùng chốt 2026-11-06, quá phức tạp): mua rồi không hoàn; migration mới xóa bảng `refunds` + `validate_refund`/`revoke_course_access_after_refund` và trigger, bỏ `refunds` khỏi danh sách bảng audit trong V1 (không sửa V1). Điều khoản bán và trang mua phải ghi rõ “không hoàn tiền”. Module bài tập độc lập, có thể chen giữa.
   - Ba cấp quyền: Tác giả đã duyệt tạo được khóa **miễn phí** mà không cần điều khoản mới; muốn bán phải “đăng ký bán khóa học” một lần (đồng ý điều khoản bán hàng có phiên bản + tỷ lệ hoa hồng, khai thông tin nhận tiền, Admin duyệt); khóa trả phí hiện tỷ lệ đang áp dụng khi gửi duyệt, đơn hàng snapshot tỷ lệ. Đổi điều khoản thì phải đồng ý bản mới trước khi đặt giá/gửi duyệt khóa mới.
   - Chia vai: **Admin** duyệt đăng ký bán, tỷ lệ hoa hồng, điều khoản, chi trả, hoàn tiền, trần giá chung (nếu cần); **Moderator** chỉ duyệt/ẩn/gỡ nội dung khóa và bài học, không thấy giá/doanh thu/thông tin ngân hàng. Tác giả tự đặt giá.
