@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, ChevronDown, ChevronUp, FileUp, ImagePlus, Images, Info, RefreshCw, Send, Trash2, Upload, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ChevronDown, ChevronUp, FileUp, ImagePlus, Images, Info, RefreshCw, Send, Sparkles, Trash2, Upload, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -20,6 +20,7 @@ import { ArticleStatusBadges } from '../../components/articles/ArticleStatusBadg
 import { ArticleActionMenu, fieldLabel, useArticleActions } from './AuthorBlogsPage'
 import { ApiError } from '../../services/api/client'
 import { articleErrorText, articleText } from '../../data/articleI18n'
+import { aiText } from '../../data/aiAssistI18n'
 import { authorActions, authorArticles, changedFields, countImages, imageSources, isManagedImage, removeImage, replaceImage, resolveIssue } from '../../services/articleService'
 import type { ArticleFields, ArticleOption, AuthorArticle, ImageIssue } from '../../types/articles'
 import type { Language } from '../../types/preferences'
@@ -63,6 +64,7 @@ export function ArticleEditorPage({ language = 'vi' }: { language?: Language } =
   const [mobileTab, setMobileTab] = useState<'compose' | 'preview'>('compose')
   const [issuesSheet, setIssuesSheet] = useState(false)
   const [leaveTo, setLeaveTo] = useState<string | null>(null)
+  const [aiBannerClosed, setAiBannerClosed] = useState(false) // tab-only: closing never touches article.aiAssisted
   const createKey = useRef(crypto.randomUUID())
   const loadedId = useRef<string | null>(null)
   const formRef = useRef(form)
@@ -360,6 +362,10 @@ export function ArticleEditorPage({ language = 'vi' }: { language?: Language } =
     </header>
 
     {banner && <div className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${banner[0]}`}><span className="inline-flex items-start gap-2 [overflow-wrap:anywhere]"><Info aria-hidden className="mt-0.5 size-4 shrink-0" />{banner[1]}</span>{banner[2]}</div>}
+    {article?.aiAssisted && !aiBannerClosed && <div className="flex items-start justify-between gap-3 rounded-lg border border-tone-blue-border bg-tone-blue-bg px-4 py-3 text-sm text-tone-blue-fg">
+      <span className="inline-flex items-start gap-2 [overflow-wrap:anywhere]"><Sparkles aria-hidden className="mt-0.5 size-4 shrink-0" /><span className="flex flex-col gap-0.5"><strong>{aiText(language)('aiBadge')}</strong><span>{aiText(language)('aiBanner')}</span></span></span>
+      <Button size="icon" variant="ghost" className={`size-7 shrink-0 ${touch}`} aria-label={aiText(language)('closeBanner')} onClick={() => setAiBannerClosed(true)}><X /></Button>
+    </div>}
     {(error || actions.error) && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-tone-rose-bg px-4 py-3 text-sm text-danger">
       <span>{error || actions.error}</span>
       {article && <Button size="sm" variant="outline" className={touch} onClick={() => void load(article.id)}><RefreshCw />{t('reload')}</Button>}

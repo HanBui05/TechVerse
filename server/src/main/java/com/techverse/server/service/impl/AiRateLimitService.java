@@ -72,10 +72,9 @@ public class AiRateLimitService {
 
     public Reservation reserve(UUID author, Kind kind) {
         var now = clock.instant().atZone(ZONE);
-        String dayKey =
-                "ai:quota:" + kind.name().toLowerCase(Locale.ROOT) + ":" + author + ":" + DAY.format(now);
+        String dayKey = dayKey(author, kind);
         String burstKey = "ai:rate:minute:" + author + ":" + MINUTE.format(now);
-        int limit = kind == Kind.OUTLINE ? properties.outlinePerDay() : properties.draftPerDay();
+        int limit = limit(kind);
         Long count;
         try {
             count =
@@ -108,6 +107,27 @@ public class AiRateLimitService {
             log.warn("AI quota refund failed for operation {}", reservation.operationId());
             return null;
         }
+    }
+
+    /** Read-only: today's allowance without touching the daily or burst counters. */
+    public Quota peek(UUID author, Kind kind) {
+        String used;
+        try {
+            used = redis.opsForValue().get(dayKey(author, kind));
+        } catch (DataAccessException e) {
+            throw new CustomException(ErrorCode.AI_STORAGE_UNAVAILABLE);
+        }
+        int limit = limit(kind);
+        return new Quota(limit, remaining(limit, used == null ? 0 : Long.parseLong(used)));
+    }
+
+    private String dayKey(UUID author, Kind kind) {
+        return "ai:quota:" + kind.name().toLowerCase(Locale.ROOT) + ":" + author + ":"
+                + DAY.format(clock.instant().atZone(ZONE));
+    }
+
+    private int limit(Kind kind) {
+        return kind == Kind.OUTLINE ? properties.outlinePerDay() : properties.draftPerDay();
     }
 
     private static int remaining(int limit, long used) {

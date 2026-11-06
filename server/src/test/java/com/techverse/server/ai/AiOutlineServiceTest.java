@@ -1,5 +1,6 @@
 package com.techverse.server.ai;
 
+import com.techverse.server.dto.response.AiQuotaResponse;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -363,5 +364,24 @@ class AiOutlineServiceTest {
     assertThatThrownBy(() -> AiAssistConfiguration.verify(present, Duration.ofSeconds(180), Duration.ofSeconds(180)))
         .hasMessageContaining("spring.mvc.async.request-timeout")
         .hasMessageNotContaining("gsk_live_secret");
+  }
+
+  @Test
+  void quotaChecksTheAuthorThenReadsBothAllowancesWithoutReserving() {
+    when(limits.peek(actor, Kind.OUTLINE)).thenReturn(new AiRateLimitService.Quota(10, 7));
+    when(limits.peek(actor, Kind.DRAFT)).thenReturn(new AiRateLimitService.Quota(5, 5));
+    assertThat(service(null).quota(actor))
+        .isEqualTo(new AiQuotaResponse(new AiRateLimitService.Quota(10, 7), new AiRateLimitService.Quota(5, 5)));
+    verify(access).lockWriter(actor);
+    verify(limits, never()).reserve(any(), any());
+  }
+
+  @Test
+  void quotaIsDeniedBeforeReadingRedisForANonApprovedAuthor() {
+    when(access.lockWriter(actor)).thenThrow(new CustomException(ErrorCode.ACCESS_DENIED));
+    assertThatThrownBy(() -> service(model).quota(actor))
+        .extracting(e -> ((CustomException) e).getErrorCode())
+        .isEqualTo(ErrorCode.ACCESS_DENIED);
+    verify(limits, never()).peek(any(), any());
   }
 }

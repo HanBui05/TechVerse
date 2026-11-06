@@ -3,6 +3,7 @@ package com.techverse.server.service.impl;
 import com.techverse.server.dto.internal.AiOutlineModelOutput;
 import com.techverse.server.dto.request.AiOutlineRequest;
 import com.techverse.server.dto.response.AiOutlineResponse;
+import com.techverse.server.dto.response.AiQuotaResponse;
 import com.techverse.server.entity.Tag;
 import com.techverse.server.exception.CustomException;
 import com.techverse.server.exception.ErrorCode;
@@ -84,6 +85,12 @@ public class AiOutlineService implements AuthorAiService {
             log.info("AI outline actor={} outcome={} ms={}", actor, code.getCode(), elapsedMs(started));
             throw refunded == null ? new CustomException(code) : new QuotaAwareException(code, refunded);
         }
+    }
+
+    @Override
+    public AiQuotaResponse quota(UUID actor) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(s -> access.lockWriter(actor));
+        return new AiQuotaResponse(limits.peek(actor, Kind.OUTLINE), limits.peek(actor, Kind.DRAFT));
     }
 
     private long elapsedMs(Instant started) {

@@ -1,5 +1,7 @@
 package com.techverse.server.ai;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import com.techverse.server.dto.response.AiQuotaResponse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -414,5 +416,27 @@ class AuthorAiControllerTest {
     cancel(other, "ROLE_AUTHOR")
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("AI_GENERATION_NOT_FOUND"));
+  }
+
+  @Test
+  void quotaReturnsBothAllowancesInTheEnvelope() throws Exception {
+    when(service.quota(actor)).thenReturn(new AiQuotaResponse(new Quota(10, 7), new Quota(5, 4)));
+    mvc.perform(get("/api/v1/author/ai/quota")
+            .with(jwt().jwt(j -> j.subject(actor.toString())).authorities(new SimpleGrantedAuthority("ROLE_AUTHOR"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value(200))
+        .andExpect(jsonPath("$.data.outline.limit").value(10))
+        .andExpect(jsonPath("$.data.outline.remaining").value(7))
+        .andExpect(jsonPath("$.data.draft.limit").value(5))
+        .andExpect(jsonPath("$.data.draft.remaining").value(4));
+  }
+
+  @Test
+  void nonAuthorCannotReadQuota() throws Exception {
+    mvc.perform(get("/api/v1/author/ai/quota")
+            .with(jwt().jwt(j -> j.subject(actor.toString())).authorities(new SimpleGrantedAuthority("ROLE_LEARNER"))))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    verify(service, never()).quota(any());
   }
 }

@@ -117,3 +117,10 @@ it('shows an onboarding empty state, and a retryable error', async () => {
   await user.click(screen.getByRole('button', { name: 'Thử lại' }))
   expect(await screen.findByText('Bài công khai')).toBeTruthy()
 })
+
+it('offers "Tạo bằng AI" next to "Viết bài mới"', async () => {
+  renderPage()
+  const ai = await screen.findByRole('link', { name: 'Tạo bằng AI' })
+  expect(ai.getAttribute('href')).toBe('/author/blogs/ai')
+  expect(ai.parentElement).toBe(screen.getByRole('link', { name: 'Viết bài mới' }).parentElement)
+})

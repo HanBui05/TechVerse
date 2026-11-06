@@ -4,6 +4,7 @@ import com.techverse.server.dto.request.AiDraftRequest;
 import com.techverse.server.dto.request.AiOutlineRequest;
 import com.techverse.server.dto.response.AiGenerationStatusResponse;
 import com.techverse.server.dto.response.AiOutlineResponse;
+import com.techverse.server.dto.response.AiQuotaResponse;
 import com.techverse.server.dto.response.ApiResponse;
 import com.techverse.server.exception.ErrorCode;
 import com.techverse.server.exception.ErrorResponse;
@@ -65,6 +66,17 @@ public class AuthorAiController {
                                 .message("AI outline generated")
                                 .data(result.body())
                                 .build());
+    }
+
+    @GetMapping("/quota")
+    @PreAuthorize("hasRole('AUTHOR')")
+    @Operation(summary = "Today's AI outline/draft allowance; reserves nothing")
+    public ApiResponse<AiQuotaResponse> quota(@AuthenticationPrincipal Jwt jwt) {
+        return ApiResponse.<AiQuotaResponse>builder()
+                .status(200)
+                .message("AI quota retrieved")
+                .data(service.quota(UUID.fromString(jwt.getSubject())))
+                .build();
     }
 
     /**

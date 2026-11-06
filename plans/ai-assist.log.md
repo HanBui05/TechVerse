@@ -4,7 +4,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai
 
 ## Bắt đầu từ đây (cập nhật 2026-11-06)
 
-- **Tiếp: Task 2a — Giao diện tạo bài bằng AI** (session mới; bật `ui-ux-pro-max`). Làm theo “Kế hoạch thực thi” của Task 2a trong spec + `plans/ai-assist.wireframe.md` (đã duyệt 2026-11-06). Backend 1a–1c đã nhận, không sửa `server/` trong 2a. Đã chốt thêm: DELETE keepalive khi `pagehide`; giữ bản completed (sau hash khớp) + `generationId` + payload/key qua F5 trong `sessionStorage`. Thứ tự: 2a → 2b.
+- **Task 2a đã nhận (2026-11-06)** (gồm API `GET /api/v1/author/ai/quota`). **Tiếp: Task 2b — Giao diện cờ AI cho Moderator** (session mới; `aiAssisted` đã có trong types).
+- Chưa kiểm 2a: kiểm mắt dark/light × desktop/mobile `/author/blogs/ai` + banner editor (backend/dev server không chạy lúc làm); stream Groq thật (smoke cuối module).
 - Bài học (Spring AI/Spring 7): option runtime dựng từ `getDefaultOptions().mutate()` (`AiPromptFactory.options`); `include_reasoning` đặt trong code; **emitter đã đóng khi callback timeout chạy** → service tự áp deadline trên Flux, emitter dư 5 giây.
 - Rủi ro: TPM Groq tài khoản 8000 < trần MEDIUM/LONG; có thể gặp 429 khi viết bài dài. Registry cancel chỉ một instance.
 - Chưa kiểm: stream Groq thật (smoke cuối module); lớp tích hợp khác sau đổi `ASYNC/ERROR` permitAll (CI chạy full khi mở PR).
@@ -12,13 +13,18 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai
 
 ## Quyết định người dùng chưa có trong spec
 
-- (không có)
+- 2026-11-06: làm ngay trong Task 2a API `GET /api/v1/author/ai/quota` → `ApiResponse<{outline:{limit,remaining}, draft:{limit,remaining}}>` (chỉ đọc, không trừ lượt; quyền như các endpoint AI khác) để trang AI hiện số lượt ngay khi mở, thay vì `—` tới lần dùng đầu. Thay quyết định wireframe “API quota tách module sau”.
 
 ## Câu hỏi mở cho người dùng
 
 - (không có — Q3/Q4 hoãn sang module RAG theo Q1=A)
 
 ## Nhật ký phiên
+### 2026-11-06 — Claude làm Task 2a
+- Task 2a đã nhận (2026-11-06), commit cục bộ. Lỗi chèn ảnh khi chạy thử: người dùng tự xử lý.
+- Trang `/author/blogs/ai` (form → dàn ý → stream SSE → handoff create SAVE + `aiGenerationId`), `AiOutlineEditor`, `aiAssistService` (parser SSE, SHA-256, cancel/keepalive), `requestRaw`/`readEnvelope` trong `api/client.ts`, i18n vi/en, nút “Tạo bằng AI”, banner AI ở editor.
+- 8 file test liên quan 198/198 đạt, `npm run build` đạt. Kiểm mắt: Chưa kiểm. Review vòng 1: 2 P2 (CRLF tách chunk SSE; sửa form không vô hiệu completed/tag outline) đã sửa.
+
 - 2026-11-06 — Codex: đã đưa quyết định duyệt wireframe 2a và phản hồi vòng 1 vào `ai-assist.wireframe.md`/Task 2a trong spec; mở Task 2a, API quota tách module sau.
 
 ### 2026-11-06 — Claude phản biện wireframe vòng 1
@@ -195,3 +201,38 @@ Nguồn sự thật vẫn là spec mục “2. Viết draft dạng SSE” + “T
 - Luồng provider signal và timeout error đi qua `aiSseTaskExecutor` trước khi ghi SSE; lỗi `subscribeOn` ở review vòng 1 đã sửa bằng `publishOn` và có test thread đỏ/xanh.
 - Kiểm chứng gần nhất: 95/95 test mục tiêu đạt (`AiDraftStreamServiceTest` 26, validator 16, controller 15, integration 38) và `bootJar` đạt. Codex review vòng 2 không còn blocker cao/trung.
 - **Chưa chốt hoàn tất:** các checkbox “Xong khi” của Task 1b trong spec vẫn để `[ ]`; chờ Claude đối chiếu lại code/test/log. Khi Claude xác nhận, cập nhật Task 1b rồi bắt đầu Task 1c.
+
+## Task 2a — Code + test (Claude, 2026-11-06)
+
+- Lệnh: `npx vitest run src/services/aiAssistService.test.ts src/components/articles/AiOutlineEditor.test.tsx src/pages/Author/AiArticlePage.test.tsx src/pages/Author/AuthorBlogsPage.test.tsx src/pages/Author/ArticleEditorPage.test.tsx src/App.author-session.test.tsx src/App.auth.test.tsx src/data/aiAssistI18n.test.ts` → 8 file, 198/198 đạt; `npm run build` đạt (cảnh báo chunk >500 kB có sẵn).
+- Không chạy `Sidebar.test`/`StaffPreferences.test`: `App.tsx` chỉ thêm một route, không đụng shell.
+- Chưa kiểm: kiểm mắt dark/light × desktop + mobile 390 (cổng 3000 và 8080 đều tắt, không tự bật backend AI); stream Groq thật.
+
+### Lệch khác spec
+- `aiAssisted?: boolean` (optional) trên `AuthorArticle`/`AuthorArticleSummary`/`ModeratorArticleSummary` để không sửa hàng loạt fixture test; backend luôn trả field.
+- `streamDraft` báo quota preflight qua callback `onOpen` (UI hiện “Còn x/y lượt viết” ngay khi stream mở); session lưu cờ `streaming: true` khi đang stream (không lưu buffer) để F5 hiện copy “phiên trước bị gián đoạn”.
+- Khung `max-w-5xl` thay `max-w-7xl` của wireframe (form một cột đọc dễ hơn); action bar một phần tử: sticky đáy trên mobile, inline từ `md`.
+- Sau create lỗi: nút chính “Lưu nháp và mở trình soạn thảo” là retry cùng key; “Viết lại” bỏ bản completed + nạp lại options. `AI_GENERATION_INVALID`/taxonomy khóa retry.
+
+## Task 2a — Review Codex vòng 1 (2026-11-06) — 2 phát hiện P2, đã sửa
+
+- P2 `aiAssistService.ts`: `
+- Chạy thử local: `.env` thiếu `AI_MODEL_CHAT` (mặc định `none` → `AI_CONFIGURATION_INVALID`); đã thêm `AI_MODEL_CHAT=openai`. IntelliJ báo "Command line is too long" → Shorten command line = @argfile.
+` bị tách giữa hai chunk không được chuẩn hóa → chuẩn hóa sau khi ghép buffer; test parser thêm ca `` | `
+`.
+- P2 `AiArticlePage.tsx`: sửa form sau outline/completed giữ payload cũ → mọi thay đổi form xóa bản completed; đổi thẻ ở form đồng bộ vào `outline.tagIds` (giữ gợi ý đang bật, ≤10). Test mới trong `AiArticlePage.test.tsx`.
+- Chạy lại: `npx vitest run src/services/aiAssistService.test.ts src/pages/Author/AiArticlePage.test.tsx src/components/articles/AiOutlineEditor.test.tsx` → 22/22 đạt; `npm run build` đạt.
+
+## Task 2a — Review Codex vòng 2 (2026-11-06) — Đạt
+
+- `adversarial-review` phần sửa (`parseSse`, `setField` + test): approve, không phát hiện. Kiểm mắt vẫn Chưa kiểm.
+
+## Task 2a — API quota (quyết định người dùng 2026-11-06)
+
+- Backend: `GET /api/v1/author/ai/quota` (`AuthorAiController.quota`) → `AiOutlineService.quota`: `lockWriter` trong transaction ngắn rồi `AiRateLimitService.peek` (GET key ngày, không đụng burst; Redis lỗi → `AI_STORAGE_UNAVAILABLE`). DTO `AiQuotaResponse(outline, draft)`.
+- Frontend: `aiAssist.quota()`; `AiArticlePage` gọi khi mở trang, lỗi thì giữ `—`; số từ lần gọi AI trong trang được ưu tiên.
+- Test: `./gradlew test --tests AiRateLimitServiceTest --tests AiOutlineServiceTest --tests AuthorAiControllerTest` → 45/45 đạt (6 ca mới). `npx vitest run src/services/aiAssistService.test.ts src/pages/Author/AiArticlePage.test.tsx src/App.author-session.test.tsx` → 26/26; `npm run build` đạt.
+- Lệch khác spec: thêm endpoint ngoài contract bản 1 (spec/wireframe ghi tách module sau) — theo quyết định người dùng.
+- Review Codex vòng 1: 1 P2 (quota 0 cũ khóa nút khi tab mở qua 00:00) → tải lại quota khi mở trang và mỗi lần tab nhận `focus`; test mới. Chạy lại 3 file FE 27/27, build đạt.
+- Review vòng 2: 1 medium (GET quota trả chậm đè số mới từ lần gọi AI). Người dùng chọn sửa luôn (2026-11-06): `quotaRevision` — mỗi lần gọi AI báo quota thì tăng; refresh chỉ áp nếu revision chưa đổi. Test race mới; 3 file FE 28/28, build đạt. Không chạy thêm vòng review.
+- Lỗi chèn ảnh “Kho ảnh tạm thời gián đoạn” (`ARTICLE_STORAGE_UNAVAILABLE`, article-flow) khi chạy thử: người dùng tự xử lý, không thuộc 2a.

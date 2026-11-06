@@ -209,6 +209,27 @@ class AiRateLimitServiceTest {
   }
 
   @Test
+  void peekReadsTheDailyAllowanceWithoutConsumingDailyOrBurst() {
+    var limits = service(10, 5, 1);
+    assertThat(limits.peek(author, Kind.OUTLINE)).isEqualTo(new AiRateLimitService.Quota(10, 10));
+    limits.reserve(author, Kind.DRAFT);
+    assertThat(limits.peek(author, Kind.DRAFT)).isEqualTo(new AiRateLimitService.Quota(5, 4));
+    assertThat(limits.peek(author, Kind.DRAFT)).isEqualTo(new AiRateLimitService.Quota(5, 4));
+    assertThat(TEMPLATE.opsForValue().get("ai:quota:draft:" + author + ":20261105")).isEqualTo("1");
+    assertThat(TEMPLATE.opsForValue().get("ai:rate:minute:" + author + ":202611052358")).isEqualTo("1");
+  }
+
+  @Test
+  void peekFailsClosedWhenRedisIsDown() {
+    var broken = mock(StringRedisTemplate.class);
+    when(broken.opsForValue()).thenThrow(new RedisConnectionFailureException("down"));
+    var limits = new AiRateLimitService(broken, props(10, 10, 10), clock);
+    assertThatThrownBy(() -> limits.peek(author, Kind.DRAFT))
+        .extracting(e -> ((CustomException) e).getErrorCode())
+        .isEqualTo(ErrorCode.AI_STORAGE_UNAVAILABLE);
+  }
+
+  @Test
   void refundFailureDoesNotThrowSoTheOriginalErrorSurvives() {
     var reservation = service(10, 10, 10).reserve(author, Kind.OUTLINE);
     var broken = mock(StringRedisTemplate.class);
