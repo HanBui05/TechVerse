@@ -38,6 +38,7 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
     private final ArticleContentService contentService;
     private final ArticleImageService imageService;
     private final ArticleCreationRepository receipts;
+    private final AiCompletedGenerationRepository aiGenerations;
     private final PlatformTransactionManager transactionManager;
     private final EntityManager em;
     private final ObjectMapper mapper;
@@ -54,7 +55,10 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                             var previous = receipts.find(actor, key);
                             if (previous != null) {
                                 if (!previous.fingerprint().equals(fingerprint))
-                                    throw new CustomException(ErrorCode.ARTICLE_KEY_CONFLICT);
+                                    throw new CustomException(
+                                            request.getAiGenerationId() == null
+                                                    ? ErrorCode.ARTICLE_KEY_CONFLICT
+                                                    : ErrorCode.AI_GENERATION_INVALID);
                                 if (previous.articleId() != null) {
                                     if (articles.existsById(previous.articleId())) {
                                         if (previous.response() == null)
@@ -66,6 +70,28 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                                     if (receipts.isDeleted(previous.articleId()))
                                         throw new CustomException(ErrorCode.ARTICLE_KEY_CONFLICT);
                                 }
+                            }
+                            if (request.getAiGenerationId() != null) {
+                                if (request.getAction() != ArticleAction.SAVE
+                                        || request.getTitle() == null
+                                        || request.getTopicId() == null)
+                                    throw new CustomException(ErrorCode.AI_GENERATION_INVALID);
+                                aiGenerations.claim(
+                                        actor,
+                                        request.getAiGenerationId(),
+                                        AiCompletedGenerationRepository.fingerprint(
+                                                request.getTitle(),
+                                                request.getSummary() == null
+                                                        ? ""
+                                                        : request.getSummary(),
+                                                request.getContent() == null
+                                                        ? ""
+                                                        : request.getContent(),
+                                                request.getTopicId(),
+                                                request.getTagIds() == null
+                                                        ? List.of()
+                                                        : request.getTagIds()),
+                                        key);
                             }
                             if (request.getTitle() == null || request.getTopicId() == null)
                                 invalid();
@@ -93,6 +119,7 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                                                             ? ""
                                                             : request.getContent())
                                             .build();
+                            if (request.getAiGenerationId() != null) article.markAiAssisted();
                             article.replaceTags(selected);
                             validateFinal(article, request.getAction());
                             apply(article, request.getAction());
@@ -132,6 +159,8 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
     @Transactional(timeout = 45)
     public ArticleResponse update(UUID actor, UUID id, ArticleWriteRequest request) {
         access.lockWriter(actor);
+        if (request.getAiGenerationId() != null)
+            throw new CustomException(ErrorCode.AI_GENERATION_INVALID);
         Article article = access.lockEditable(actor, id);
         if (request.getAction() == ArticleAction.SAVE && request.getProvided().isEmpty()) invalid();
         UUID topicId = request.has("topicId") ? request.getTopicId() : article.getTopic().getId();
@@ -244,6 +273,7 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                                                 .workflowStatus(a.getWorkflowStatus())
                                                 .publicationStatus(a.getPublicationStatus())
                                                 .hasUnpublishedChanges(a.hasUnpublishedChanges())
+                                                .aiAssisted(a.isAiAssisted())
                                                 .publishedAt(a.getPublishedAt())
                                                 .createdAt(a.getCreatedAt())
                                                 .updatedAt(a.getUpdatedAt())
@@ -388,6 +418,7 @@ public class AuthorArticleServiceImpl implements AuthorArticleService {
                 .workflowStatus(a.getWorkflowStatus())
                 .publicationStatus(a.getPublicationStatus())
                 .hasUnpublishedChanges(a.hasUnpublishedChanges())
+                .aiAssisted(a.isAiAssisted())
                 .publishedVersion(ArticlePublicationVersionResponse.from(a.getPublishedVersion()))
                 .imageIssues(
                         contentService.imageIssues(

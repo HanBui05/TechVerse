@@ -7,9 +7,6 @@ spring:
     async:
       request-timeout: ${AI_ASYNC_TIMEOUT:195s}
   ai:
-    retry:
-      max-attempts: 1
-      on-client-errors: false
     model:
       chat: ${AI_MODEL_CHAT:none}
       # The OpenAI starter enables every other model type by default; only chat is used.

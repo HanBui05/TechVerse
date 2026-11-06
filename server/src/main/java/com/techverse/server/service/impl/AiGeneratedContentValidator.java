@@ -5,6 +5,9 @@ import com.techverse.server.exception.CustomException;
 
 import lombok.RequiredArgsConstructor;
 
+import org.commonmark.node.*;
+import org.commonmark.parser.Parser;
+
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -60,6 +63,73 @@ public class AiGeneratedContentValidator {
                 heading(errors, seen, "sections[" + i + "].subsections[" + j + "]", s.subsections().get(j));
         }
         return errors;
+    }
+
+    /**
+     * Full check of a finished draft against the approved H2 list; empty means valid. Size, raw
+     * HTML and links follow {@link ArticleContentService#validateContent}.
+     */
+    public List<String> validateDraft(String text, List<String> expectedH2) {
+        var errors = new ArrayList<String>();
+        try {
+            content.validateContent(text);
+        } catch (CustomException e) {
+            errors.add("content must be at most 1 MiB of Markdown without raw HTML or unsafe links");
+            return errors;
+        }
+        if (!content.imageUrls(text).isEmpty()) errors.add("content must not contain images");
+        var h2 = new ArrayList<String>();
+        parser.parse(text)
+                .accept(
+                        new AbstractVisitor() {
+                            @Override
+                            public void visit(Heading heading) {
+                                if (heading.getLevel() == 2) h2.add(normalize(plainText(heading)));
+                                else if (heading.getLevel() != 3)
+                                    errors.add("only ## and ### headings are allowed");
+                                else if (h2.isEmpty())
+                                    errors.add("### must come after a ## heading");
+                            }
+
+                            @Override
+                            public void visit(FencedCodeBlock code) {
+                                String info = code.getInfo() == null ? "" : code.getInfo().strip();
+                                if (!CODE_LANGUAGE.matcher(info).matches())
+                                    errors.add("every code fence needs a language");
+                            }
+                        });
+        if (!h2.equals(expectedH2.stream().map(AiGeneratedContentValidator::normalize).toList()))
+            errors.add("## headings must match the outline in count and order");
+        return errors;
+    }
+
+    private static final java.util.regex.Pattern CODE_LANGUAGE =
+            java.util.regex.Pattern.compile("[A-Za-z0-9_+#.-]{1,32}");
+    private static final java.util.regex.Pattern NUMBERING =
+            java.util.regex.Pattern.compile("^(\\d+|[ivxlcdm]+)[.)]\\s*");
+    private final Parser parser = Parser.builder().build();
+
+    /** trim → lowercase → drop "1." / "1)" / "I." prefix → drop punctuation → collapse spaces. */
+    static String normalize(String heading) {
+        String s = NUMBERING.matcher(heading.strip().toLowerCase(Locale.ROOT)).replaceFirst("");
+        return s.replaceAll("\\p{P}+", " ").replaceAll("\\s+", " ").strip();
+    }
+
+    private static String plainText(Node node) {
+        var out = new StringBuilder();
+        node.accept(
+                new AbstractVisitor() {
+                    @Override
+                    public void visit(Text text) {
+                        out.append(text.getLiteral());
+                    }
+
+                    @Override
+                    public void visit(Code code) {
+                        out.append(code.getLiteral());
+                    }
+                });
+        return out.toString();
     }
 
     private void heading(List<String> errors, Set<String> seen, String field, String value) {

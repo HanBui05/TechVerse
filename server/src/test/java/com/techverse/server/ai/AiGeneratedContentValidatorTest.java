@@ -122,4 +122,92 @@ class AiGeneratedContentValidatorTest {
     list.set(0, new AiOutlineSection(null, null));
     assertThat(check(outline("Tiêu đề ổn", "s".repeat(60), list))).isNotEmpty();
   }
+
+  // ---- Draft ----
+
+  static final List<String> H2 = List.of("JWT giải quyết vấn đề gì?", "Refresh token", "Kết luận");
+
+  static String draft(String extra) {
+    return """
+        Mở bài ngắn.
+
+        ## JWT giải quyết vấn đề gì?
+
+        Nội dung [tài liệu](https://example.com/jwt).
+
+        ### Cấu trúc token
+
+        ```java
+        String token = jwt();
+        ```
+
+        ## Refresh token
+
+        Đoạn văn.
+
+        ## Kết luận
+
+        Hết.
+        """ + extra;
+  }
+
+  List<String> checkDraft(String content) {
+    return validator.validateDraft(content, H2);
+  }
+
+  @Test
+  void validDraftHasNoErrors() {
+    assertThat(checkDraft(draft(""))).isEmpty();
+  }
+
+  @Test
+  void rawHtmlImagesAndUnsafeLinksAreErrors() {
+    assertThat(checkDraft(draft("\n<div>x</div>\n"))).isNotEmpty();
+    assertThat(checkDraft(draft("\nChữ <b>đậm</b>.\n"))).isNotEmpty();
+    assertThat(checkDraft(draft("\n![ảnh](https://example.com/a.png)\n"))).isNotEmpty();
+    assertThat(checkDraft(draft("\n[x](javascript:alert(1))\n"))).isNotEmpty();
+  }
+
+  @Test
+  void onlyH2AndH3AreAllowedAndH3NeedsAPrecedingH2() {
+    assertThat(checkDraft("# Tiêu đề\n\n" + draft(""))).isNotEmpty();
+    assertThat(checkDraft(draft("\n#### Sâu quá\n"))).isNotEmpty();
+    assertThat(checkDraft("### Mồ côi\n\n" + draft(""))).isNotEmpty();
+  }
+
+  @Test
+  void h2MatchingIgnoresNumberingCasePunctuationAndSpacing() {
+    String numbered = draft("")
+        .replace("## JWT giải quyết vấn đề gì?", "## 1. jwt  GIẢI QUYẾT vấn đề gì")
+        .replace("## Refresh token", "## II. Refresh token:")
+        .replace("## Kết luận", "## 3) Kết luận!");
+    assertThat(checkDraft(numbered)).isEmpty();
+  }
+
+  @Test
+  void wrongH2CountOrOrderIsAnError() {
+    assertThat(checkDraft(draft("\n## Mục thừa\n"))).isNotEmpty();
+    assertThat(checkDraft(draft("").replace("## Kết luận", "Kết luận"))).isNotEmpty();
+    String swapped = draft("")
+        .replace("## Refresh token", "## TMP")
+        .replace("## Kết luận", "## Refresh token")
+        .replace("## TMP", "## Kết luận");
+    assertThat(checkDraft(swapped)).isNotEmpty();
+  }
+
+  @Test
+  void codeFenceNeedsALanguage() {
+    assertThat(checkDraft(draft("\n```\nplain\n```\n"))).isNotEmpty();
+    assertThat(checkDraft(draft("\n```c#\nvar x = 1;\n```\n"))).isEmpty();
+    assertThat(checkDraft(draft("\n```" + "a".repeat(33) + "\nx\n```\n"))).isNotEmpty();
+  }
+
+  @Test
+  void contentOverOneMebibyteIsAnError() {
+    String base = draft("");
+    int bytes = base.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+    String atLimit = base + "x".repeat(ArticleContentService.MAX_CONTENT_BYTES - bytes);
+    assertThat(checkDraft(atLimit)).isEmpty();
+    assertThat(checkDraft(atLimit + "x")).isNotEmpty();
+  }
 }

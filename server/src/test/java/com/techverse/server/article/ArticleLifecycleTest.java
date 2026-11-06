@@ -6,12 +6,14 @@ import static org.assertj.core.api.Assertions.*;
 import com.techverse.server.entity.*;
 import com.techverse.server.enums.*;
 import com.techverse.server.exception.*;
+import com.techverse.server.dto.response.*;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
+import java.lang.reflect.RecordComponent;
 import java.util.*;
 
 /** Pure state machine of {@link Article}: no Spring, no database. */
@@ -42,6 +44,41 @@ class ArticleLifecycleTest {
         assertThat(a.getPublicationStatus()).isEqualTo(UNPUBLISHED);
         assertThat(a.getContentFingerprint()).isEqualTo(a.computeFingerprint());
         assertThat(a.hasUnpublishedChanges()).isFalse();
+        assertThat(a.isAiAssisted()).isFalse();
+    }
+
+    @Test
+    void aiAssistedProvenanceOnlyMovesToTrueAndSurvivesLifecycle() {
+        Article a = draft();
+        a.markAiAssisted();
+        a.markAiAssisted();
+        assertThat(a.isAiAssisted()).isTrue();
+
+        a.edit(topic, "AI revision", a.getSummary(), a.getContent(), null);
+        a.save();
+        a.submit();
+        a.approve(moderator, null, now, 1);
+        a.edit(topic, "Another revision", a.getSummary(), a.getContent(), null);
+        a.save();
+        a.discard();
+        a.authorHide(author);
+        a.authorUnhide(author);
+
+        assertThat(a.isAiAssisted()).isTrue();
+    }
+
+    @Test
+    void publicSavedAndRelatedContractsDoNotExposeAiProvenance() {
+        for (Class<?> type :
+                List.of(
+                        PublishedArticleSummaryResponse.class,
+                        PublishedArticleDetailResponse.class,
+                        SavedArticleSummaryResponse.class,
+                        RelatedArticleResponse.class)) {
+            assertThat(type.getRecordComponents())
+                    .extracting(RecordComponent::getName)
+                    .doesNotContain("aiAssisted");
+        }
     }
 
     @Test

@@ -21,6 +21,7 @@ public record ArticleResponse(
         ArticleWorkflowStatus workflowStatus,
         ArticlePublicationStatus publicationStatus,
         boolean hasUnpublishedChanges,
+        boolean aiAssisted,
         ArticlePublicationVersionResponse publishedVersion,
         List<ArticleImageIssueResponse> imageIssues,
         String moderationNote,

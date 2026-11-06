@@ -18,6 +18,7 @@ public record ModeratorArticleSummaryResponse(
         ArticleWorkflowStatus workflowStatus,
         ArticlePublicationStatus publicationStatus,
         boolean hasUnpublishedChanges,
+        boolean aiAssisted,
         boolean authorEligible,
         Instant createdAt,
         Instant updatedAt) {}

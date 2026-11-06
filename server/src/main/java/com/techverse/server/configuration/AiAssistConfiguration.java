@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.StringUtils;
 
 import java.time.Clock;
@@ -30,6 +31,17 @@ public class AiAssistConfiguration {
     @Bean
     Clock clock() {
         return Clock.systemUTC();
+    }
+
+    /** One thread per running draft stream (it reads the provider and writes SSE). */
+    @Bean("aiSseTaskExecutor")
+    ThreadPoolTaskExecutor aiSseTaskExecutor() {
+        var executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(8);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(16);
+        executor.setThreadNamePrefix("techverse-ai-sse-");
+        return executor;
     }
 
     /** Messages name properties only, never their values. */

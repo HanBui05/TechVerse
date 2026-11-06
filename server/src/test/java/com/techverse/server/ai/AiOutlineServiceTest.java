@@ -343,7 +343,7 @@ class AiOutlineServiceTest {
     assertThat(yaml.getProperty("spring.ai.openai.base-url")).isEqualTo("https://api.groq.com/openai/v1");
     assertThat(yaml.getProperty("spring.ai.openai.chat.model")).isEqualTo("openai/gpt-oss-120b");
     assertThat(yaml.getProperty("spring.ai.openai.max-retries")).isEqualTo("0");
-    assertThat(yaml.getProperty("spring.ai.retry.max-attempts")).isEqualTo("1");
+    assertThat(yaml.containsProperty("spring.ai.retry.max-attempts")).isFalse();
     assertThat(yaml.getProperty("spring.ai.openai.chat.reasoning-effort")).isEqualTo("low");
     assertThat(yaml.containsProperty("spring.ai.openai.chat.max-tokens")).isFalse();
     assertThat(yaml.getProperty("spring.ai.openai.api-key")).isEmpty();

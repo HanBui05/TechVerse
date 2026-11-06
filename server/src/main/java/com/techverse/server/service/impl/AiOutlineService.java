@@ -92,27 +92,33 @@ public class AiOutlineService implements AuthorAiService {
 
     private OutlineInput load(UUID actor, AiOutlineRequest r) {
         access.lockWriter(actor);
-        var topic =
-                topics.findById(r.getTopicId())
-                        .orElseThrow(() -> new CustomException(ErrorCode.TOPIC_NOT_FOUND));
-        if (!topic.isActive()) throw new CustomException(ErrorCode.ARTICLE_ASSOCIATION_INACTIVE);
-        Map<UUID, Tag> selected =
-                tags.findAllById(r.getTagIds()).stream()
-                        .collect(Collectors.toMap(Tag::getId, Function.identity()));
-        if (selected.size() != r.getTagIds().size()) throw new CustomException(ErrorCode.TAG_NOT_FOUND);
-        if (selected.values().stream().anyMatch(t -> !t.isActive()))
-            throw new CustomException(ErrorCode.ARTICLE_ASSOCIATION_INACTIVE);
+        var selection = select(topics, tags, r.getTopicId(), r.getTagIds());
         var active =
                 tags.findAll(
                                 TagSpecification.hasActiveStatus(true),
                                 PageRequest.of(0, MAX_PROMPT_TAGS, Sort.by("name")))
                         .map(t -> new Ref(t.getId(), t.getName()))
                         .toList();
-        return new OutlineInput(
-                r,
+        return new OutlineInput(r, selection.topic(), selection.tags(), active);
+    }
+
+    record Selection(Ref topic, List<Ref> tags) {}
+
+    /** The Author's topic and tags must exist and be active; shared with the draft preflight. */
+    static Selection select(TopicRepository topics, TagRepository tags, UUID topicId, List<UUID> tagIds) {
+        var topic =
+                topics.findById(topicId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.TOPIC_NOT_FOUND));
+        if (!topic.isActive()) throw new CustomException(ErrorCode.ARTICLE_ASSOCIATION_INACTIVE);
+        Map<UUID, Tag> selected =
+                tags.findAllById(tagIds).stream()
+                        .collect(Collectors.toMap(Tag::getId, Function.identity()));
+        if (selected.size() != tagIds.size()) throw new CustomException(ErrorCode.TAG_NOT_FOUND);
+        if (selected.values().stream().anyMatch(t -> !t.isActive()))
+            throw new CustomException(ErrorCode.ARTICLE_ASSOCIATION_INACTIVE);
+        return new Selection(
                 new Ref(topic.getId(), topic.getName()),
-                r.getTagIds().stream().map(id -> new Ref(id, selected.get(id).getName())).toList(),
-                active);
+                tagIds.stream().map(id -> new Ref(id, selected.get(id).getName())).toList());
     }
 
     /** Both the call and its repair share one endpoint deadline. */

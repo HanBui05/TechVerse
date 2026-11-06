@@ -10,6 +10,7 @@ import com.techverse.server.dto.internal.ArticleCreationReceipt;
 import com.techverse.server.dto.internal.ArticleImageAsset;
 import com.techverse.server.dto.internal.DecodedArticleImage;
 import com.techverse.server.entity.User;
+import com.techverse.server.repository.AiCompletedGenerationRepository;
 import com.techverse.server.repository.UserRepository;
 import com.techverse.server.service.ArticleImageStorage;
 import com.techverse.server.service.impl.ArticleImageCleanupService;
@@ -23,6 +24,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.*;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -38,6 +40,7 @@ class AuthorArticleIntegrationTest extends ArticleIntegrationTestBase {
     @Autowired UserRepository users;
     @Autowired PasswordEncoder encoder;
     @Autowired ArticleImageCleanupService cleanup;
+    @MockitoSpyBean AiCompletedGenerationRepository aiGenerations;
     @Autowired org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
     final Map<String, ArticleImageAsset> cloud = new ConcurrentHashMap<>();
     UUID author, other, learner, moderator, topic, tag;
@@ -312,6 +315,116 @@ class AuthorArticleIntegrationTest extends ArticleIntegrationTestBase {
     }
 
     @Test
+    void manualAndVerifiedAiCreatesExposeDurableProvenanceAndRetryTheSameClaim() throws Exception {
+        create(UUID.randomUUID(), full("SAVE"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.aiAssisted").value(false));
+
+        UUID generation = UUID.randomUUID();
+        UUID key = UUID.randomUUID();
+        aiGenerations.save(author, generation, aiFingerprint(full("SAVE")));
+        Map<String, Object> body = withGeneration(full("SAVE"), generation);
+        MvcResult first =
+                create(key, body)
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.aiAssisted").value(true))
+                        .andReturn();
+        create(key, body)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.id").value(id(first).toString()))
+                .andExpect(jsonPath("$.data.aiAssisted").value(true));
+
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT ai_assisted FROM techverse.articles WHERE id=?",
+                                Boolean.class,
+                                id(first)))
+                .isTrue();
+        assertThat(
+                        redisTemplate.<Object, Object>opsForHash()
+                                .get(AiCompletedGenerationRepository.key(author, generation), "claimKey"))
+                .isEqualTo(key.toString());
+        String receiptKey = AiCompletedGenerationRepository.key(author, generation);
+        assertThat(redisTemplate.<Object, Object>opsForHash().keys(receiptKey))
+                .containsExactlyInAnyOrder("fingerprint", "claimKey");
+        assertThat(redisTemplate.getExpire(receiptKey)).isBetween(86_000L, 86_400L);
+        detail(token, id(first)).andExpect(jsonPath("$.data.aiAssisted").value(true));
+        mvc.perform(get(ROOT).header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[?(@.id == '%s')].aiAssisted", id(first))
+                        .value(org.hamcrest.Matchers.contains(true)));
+    }
+
+    @Test
+    void aiGenerationRejectsReuseWithAnotherKeyOrPayload() throws Exception {
+        UUID generation = UUID.randomUUID();
+        UUID key = UUID.randomUUID();
+        aiGenerations.save(author, generation, aiFingerprint(full("SAVE")));
+        Map<String, Object> body = withGeneration(full("SAVE"), generation);
+        create(key, body).andExpect(status().isCreated());
+
+        create(UUID.randomUUID(), body)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("AI_GENERATION_INVALID"));
+        var changed = new HashMap<>(body);
+        changed.put("content", "# Changed payload");
+        create(key, changed)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("AI_GENERATION_INVALID"));
+    }
+
+    @Test
+    void aiGenerationRejectsMissingForeignSubmitAndUpdateMarkers() throws Exception {
+        UUID missing = UUID.randomUUID();
+        create(UUID.randomUUID(), withGeneration(full("SAVE"), missing))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("AI_GENERATION_INVALID"));
+
+        UUID expired = UUID.randomUUID();
+        aiGenerations.save(author, expired, aiFingerprint(full("SAVE")));
+        redisTemplate.delete(AiCompletedGenerationRepository.key(author, expired));
+        create(UUID.randomUUID(), withGeneration(full("SAVE"), expired))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("AI_GENERATION_INVALID"));
+
+        UUID foreign = UUID.randomUUID();
+        aiGenerations.save(other, foreign, aiFingerprint(full("SAVE")));
+        create(UUID.randomUUID(), withGeneration(full("SAVE"), foreign))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("AI_GENERATION_INVALID"));
+
+        UUID submitGeneration = UUID.randomUUID();
+        aiGenerations.save(author, submitGeneration, aiFingerprint(full("SUBMIT")));
+        create(UUID.randomUUID(), withGeneration(full("SUBMIT"), submitGeneration))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("AI_GENERATION_INVALID"));
+
+        UUID id = draft();
+        update(id, Map.of("action", "SAVE", "title", "Edit", "aiGenerationId", missing))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("AI_GENERATION_INVALID"));
+    }
+
+    @Test
+    void aiMarkerFailsClosedOnRedisErrorWhileManualCreateStillWorks() throws Exception {
+        UUID generation = UUID.randomUUID();
+        UUID key = UUID.randomUUID();
+        Map<String, Object> body = withGeneration(full("SAVE"), generation);
+        doThrow(
+                        new com.techverse.server.exception.CustomException(
+                                com.techverse.server.exception.ErrorCode.AI_STORAGE_UNAVAILABLE))
+                .when(aiGenerations)
+                .claim(eq(author), eq(generation), anyString(), eq(key));
+        create(key, body)
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("AI_STORAGE_UNAVAILABLE"));
+
+        create(UUID.randomUUID(), full("SAVE"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.aiAssisted").value(false));
+    }
+
+    @Test
     void concurrentCreateHasOneRowAndConcurrentSubmitOneWinner() throws Exception {
         UUID key = UUID.randomUUID();
         var creations = parallel(() -> create(key, full("SAVE")).andReturn());
@@ -442,6 +555,45 @@ class AuthorArticleIntegrationTest extends ArticleIntegrationTestBase {
                 .andExpect(jsonPath("$.code").value("ARTICLE_ASSOCIATION_INACTIVE"));
         assertThat(redisTemplate.keys("ai:quota:outline:" + author + ":*")).isEmpty();
         verifyNoInteractions(chatModel);
+    }
+
+    @Test
+    void aiDraftStreamsThroughSecurityAndAsyncDispatchWithoutCreatingArticles() throws Exception {
+        String content =
+                "## JWT giải quyết vấn đề gì\n\nĐoạn.\n\n## Refresh token\n\nĐoạn.\n\n## Kết luận\n\nHết.\n";
+        when(chatModel.stream(any(org.springframework.ai.chat.prompt.Prompt.class)))
+                .thenReturn(
+                        reactor.core.publisher.Flux.just(
+                                new org.springframework.ai.chat.model.ChatResponse(
+                                        List.of(
+                                                new org.springframework.ai.chat.model.Generation(
+                                                        new org.springframework.ai.chat.messages
+                                                                .AssistantMessage(content),
+                                                        org.springframework.ai.chat.metadata
+                                                                .ChatGenerationMetadata.builder()
+                                                                .finishReason("STOP")
+                                                                .build())))));
+        Integer articlesBefore =
+                jdbc.queryForObject("SELECT count(*) FROM techverse.articles", Integer.class);
+
+        mvc.perform(aiDraft(null)).andExpect(status().isUnauthorized());
+        var started =
+                mvc.perform(aiDraft(token))
+                        .andExpect(request().asyncStarted())
+                        .andExpect(header().string("X-AI-Quota-Remaining", "4"))
+                        .andReturn();
+        String body =
+                mvc.perform(asyncDispatch(started))
+                        .andExpect(status().isOk())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+        assertThat(body).startsWith("event:metadata").contains("event:completed");
+        assertThat(body).doesNotContain("event:error");
+        assertThat(redisTemplate.keys("ai:completed:" + author + ":*")).hasSize(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.articles", Integer.class))
+                .isEqualTo(articlesBefore);
     }
 
     @Test
@@ -1232,6 +1384,22 @@ class AuthorArticleIntegrationTest extends ArticleIntegrationTestBase {
                 "# Content\n```java\n  int i = 1;\n```");
     }
 
+    private Map<String, Object> withGeneration(Map<String, Object> source, UUID generation) {
+        var body = new HashMap<>(source);
+        body.put("aiGenerationId", generation);
+        return body;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String aiFingerprint(Map<String, Object> body) {
+        return AiCompletedGenerationRepository.fingerprint(
+                (String) body.get("title"),
+                (String) body.get("summary"),
+                (String) body.get("content"),
+                (UUID) body.get("topicId"),
+                (List<UUID>) body.get("tagIds"));
+    }
+
     private UUID submitted() throws Exception {
         return id(create(UUID.randomUUID(), full("SUBMIT")).andExpect(status().isCreated()).andReturn());
     }
@@ -1317,6 +1485,29 @@ class AuthorArticleIntegrationTest extends ArticleIntegrationTestBase {
                                                 "idea", "Giải thích JWT và refresh token phối hợp.",
                                                 "length", "SHORT",
                                                 "targetAudience", "Sinh viên")));
+        return jwt == null ? request : request.header("Authorization", bearer(jwt));
+    }
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder aiDraft(
+            String jwt) throws Exception {
+        var request =
+                post("/api/v1/author/ai/drafts:stream")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                mapper.writeValueAsString(
+                                        Map.of(
+                                                "title", "JWT và refresh token",
+                                                "summary", "Bài viết giải thích cách JWT và refresh token phối hợp trong web.",
+                                                "topicId", topic,
+                                                "tagIds", List.of(tag),
+                                                "idea", "Giải thích JWT và refresh token phối hợp.",
+                                                "length", "SHORT",
+                                                "targetAudience", "Sinh viên",
+                                                "sections",
+                                                        List.of(
+                                                                Map.of("heading", "JWT giải quyết vấn đề gì"),
+                                                                Map.of("heading", "Refresh token"),
+                                                                Map.of("heading", "Kết luận")))));
         return jwt == null ? request : request.header("Authorization", bearer(jwt));
     }
 

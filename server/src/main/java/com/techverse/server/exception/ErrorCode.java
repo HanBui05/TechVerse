@@ -83,6 +83,9 @@ public enum ErrorCode {
 	AI_PROVIDER_RATE_LIMITED(HttpStatus.SERVICE_UNAVAILABLE, "AI_PROVIDER_RATE_LIMITED", "The AI service is busy"),
 	AI_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI_STORAGE_UNAVAILABLE", "AI assist is temporarily unavailable"),
 	AI_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "AI_TIMEOUT", "AI took too long to respond"),
+	AI_GENERATION_IN_PROGRESS(HttpStatus.CONFLICT, "AI_GENERATION_IN_PROGRESS", "Another draft is already being generated"),
+	AI_GENERATION_NOT_FOUND(HttpStatus.NOT_FOUND, "AI_GENERATION_NOT_FOUND", "The generation no longer exists"),
+	AI_GENERATION_INVALID(HttpStatus.CONFLICT, "AI_GENERATION_INVALID", "The AI generation cannot be used for this article"),
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected error occurred");
 
 	private final HttpStatus status;

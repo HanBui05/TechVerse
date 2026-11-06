@@ -68,6 +68,9 @@ public class Article extends BaseEntity {
     @Column(name = "content_fingerprint", nullable = false, length = 64)
     private String contentFingerprint;
 
+    @Column(name = "ai_assisted", nullable = false)
+    private boolean aiAssisted;
+
     /** Read-only copy for list queries: compares fingerprints without loading snapshot content. */
     @Formula(
             "(select v.content_fingerprint from techverse.article_publication_versions v"
@@ -128,6 +131,11 @@ public class Article extends BaseEntity {
     public void ensureEditable() {
         if (publicationStatus.isTerminal() || workflowStatus == ArticleWorkflowStatus.PENDING)
             throw new CustomException(ErrorCode.ARTICLE_NOT_EDITABLE);
+    }
+
+    /** Records verified AI provenance. Provenance is immutable once established. */
+    public void markAiAssisted() {
+        aiAssisted = true;
     }
 
     /** Records edited fields; returns false when nothing changed (no-op, state kept). */
