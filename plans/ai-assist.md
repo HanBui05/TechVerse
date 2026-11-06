@@ -361,7 +361,7 @@ public record AiOutlineModelOutput(
 }
 ```
 
-Validation giống outline response; `idea` 20–4.000, title 5–255, summary 50–500, 3–8 H2, mỗi H2 0–4 H3. Tổng JSON request sau decode tối đa 16 KiB; content dự kiến vẫn bị giới hạn bởi output tokens và 1 MiB UTF-8.
+Validation giống outline response; `idea` 20–4.000, title 5–255, summary 50–500, 3–8 H2, mỗi H2 0–4 H3. Mọi heading H2/H3 phải distinct sau trim và so sánh không phân biệt hoa thường; vi phạm trả `400 VALIDATION_ERROR` tại `fieldErrors.distinctHeadings`. Controller chặn request không có `Content-Length` hoặc `Content-Length` lớn hơn 16 KiB bằng `400 VALIDATION_ERROR` tại `fieldErrors.body`; giới hạn này là quick guard theo header, còn các validation field chạy sau khi bind. Content sinh vẫn bị giới hạn bởi output tokens và 1 MiB UTF-8.
 
 SSE framing: mỗi event có đúng một dòng `event:` và `data:` là JSON được Jackson serialize; không nối text model trực tiếp vào framing.
 
@@ -392,14 +392,14 @@ Mâu thuẫn stream/validation được xử lý rõ: `delta` chỉ là preview 
 Triển khai SSE và timeout/hủy:
 
 - Controller Spring MVC trả `SseEmitter`, không trả `Flux` trực tiếp. `AiDraftStreamService` subscribe `ChatModel.stream()` và chuyển việc `emitter.send` sang executor bounded dành riêng cho AI SSE; không giữ servlet thread, transaction hoặc DB lock trong lúc stream.
-- `SseEmitter` timeout lấy theo `length` (90/120/180 giây). `onCompletion`, `onError` và `onTimeout` cùng gọi một cleanup idempotent: dispose subscription đúng một lần, giải phóng registry và không emit event sau terminal. `@WebMvcTest` phải assert request async rồi dùng `asyncDispatch`; không chỉ assert response ban đầu.
-- Hết deadline dispose provider call, emit `error AI_TIMEOUT` nếu connection còn sống, refund lượt draft và dọn registry. `spring.mvc.async.request-timeout` luôn lớn hơn deadline emitter.
+- Deadline nghiệp vụ theo `length` (90/120/180 giây) do service áp tuyệt đối bằng `Flux.timeout`; hết deadline thì service dispose provider call, emit `error AI_TIMEOUT` nếu connection còn sống, refund lượt draft và dọn registry. `metadata.timeoutSeconds` vẫn trả 90/120/180.
+- `SseEmitter` dùng timeout deadline + 5 giây (95/125/185 giây), vì Spring 7 đánh dấu emitter hoàn tất trước khi chạy callback timeout nên callback đó không thể gửi `AI_TIMEOUT`. `onCompletion`, `onError` và `onTimeout` cùng gọi cleanup idempotent; callback timeout chỉ là dự phòng dọn dẹp/refund. `spring.mvc.async.request-timeout=195s` lớn hơn timeout emitter dài nhất. `@WebMvcTest` phải assert request async rồi dùng `asyncDispatch`; không chỉ assert response ban đầu.
 - Frontend bấm Dừng: gọi `AbortController.abort()` ngay để ngắt đọc, đồng thời gọi `DELETE /api/v1/author/ai/generations/{generationId}` best-effort để backend dispose provider.
 - `AiGenerationRegistry` giữ active entry `(generationId, authorId, state, disposable)` và terminal tombstone tối đa timeout + 10 phút. Terminal giải phóng ngay subscription + khóa concurrent nhưng giữ tombstone để DELETE idempotent: đang chạy trả `200 CANCELLED`; đã kết thúc trả `200 ALREADY_FINISHED`; ID lạ/không thuộc actor trả `404 AI_GENERATION_NOT_FOUND` để không lộ owner.
 - Disconnect callback cũng dispose. Giới hạn một draft stream đang chạy trên mỗi Author; lượt thứ hai trả `409 AI_GENERATION_IN_PROGRESS` trước khi mở stream.
 - Registry in-memory phù hợp topology một instance hiện tại. Nếu triển khai nhiều instance phải thêm sticky routing hoặc cancel bus Redis; đây là rủi ro, không âm thầm tuyên bố cancel cross-instance.
 - Groq GPT-OSS được gọi với `reasoning_effort=low`, `include_reasoning=false`. Spring AI metadata/property `reasoningContent` (nếu vẫn xuất hiện do incompatibility) bị bỏ; chỉ `AssistantMessage.content` mới thành `delta`. Smoke test phải xác nhận preview không chứa reasoning, `<think>` hoặc field lạ.
-- Nếu `finishReason=LENGTH`, thiếu finish reason cuối hoặc stream kết thúc không có terminal hợp lệ, emit `AI_OUTPUT_TRUNCATED`/`AI_PROVIDER_UNAVAILABLE`; không chạy handoff và refund lượt.
+- Chỉ `finishReason=STOP` mới được đi tới validation/completed. `LENGTH` emit `AI_OUTPUT_TRUNCATED`; giá trị khác như `content_filter`, thiếu finish reason cuối hoặc stream kết thúc không có terminal hợp lệ emit `AI_PROVIDER_UNAVAILABLE`. Các trường hợp này không chạy handoff và được refund lượt; draft không có repair call.
 
 `DELETE /api/v1/author/ai/generations/{generationId}` response:
 
@@ -430,9 +430,9 @@ Content-Type: application/json
 }
 ```
 
-- Trước khi emit `completed`, backend lưu Redis receipt `ai:completed:{authorId}:{generationId}` trong 24 giờ gồm fingerprint canonical của `title`, `summary`, `content`, `topicId`, `tagIds` đã sort và trạng thái claim. Nếu Redis không lưu được thì emit `AI_STORAGE_UNAVAILABLE`, không `completed`.
-- `ArticleWriteRequest` thêm field optional `aiGenerationId: UUID`. Chỉ create `action=SAVE` được gửi field này; update hoặc `SUBMIT` kèm field trả `400 VALIDATION_ERROR`.
-- Khi create có `aiGenerationId`, backend atomically xác minh receipt thuộc actor, đã completed và fingerprint khớp payload; claim receipt bằng `Idempotency-Key`. Cùng generation + cùng key được retry; key khác hoặc payload khác trả `409 AI_GENERATION_INVALID`. Client không được gửi boolean `aiAssisted`.
+- Trước khi emit `completed`, backend lưu Redis receipt `ai:completed:{authorId}:{generationId}` với TTL 24 giờ. Task 1b chỉ ghi field `fingerprint`; chưa có `claimKey` nghĩa là chưa claim. Fingerprint canonical dùng `title`/`summary` sau `strip()`, giữ nguyên `content`, và sort `tagIds` trước khi hash cùng `topicId`. Nếu Redis không lưu được thì emit `AI_STORAGE_UNAVAILABLE`, không `completed`.
+- `ArticleWriteRequest` thêm field optional `aiGenerationId: UUID`. Chỉ create `action=SAVE` được gửi field này; update hoặc `SUBMIT` kèm marker trả `409 AI_GENERATION_INVALID`.
+- Khi create có `aiGenerationId`, backend dùng Lua để atomically xác minh receipt thuộc actor, đã completed và fingerprint khớp payload, rồi claim bằng `Idempotency-Key`. Claim thêm field `claimKey` vào hash và giữ nguyên TTL còn lại của receipt. Cùng generation + cùng key được retry; key khác hoặc payload khác trả `409 AI_GENERATION_INVALID`. Actor/generation nằm trong Redis key; hash chỉ chứa `fingerprint` và `claimKey`, không chứa prompt/content. Client không được gửi boolean `aiAssisted`.
 - Create không có `aiGenerationId` vẫn là bài thủ công và `aiAssisted=false`. Cơ chế này ngăn client tự gắn cờ sai; nó không thể phát hiện Author cố tình bỏ marker rồi dán nội dung AI vào form thủ công, nên provenance là “đã đi qua luồng AI chính thức”, không phải máy dò nội dung AI.
 - V11 thêm `articles.ai_assisted boolean NOT NULL DEFAULT false`. Entity chỉ có method một chiều đặt `true` trong create đã xác minh; update/edit/discard/submit/approve/hide/restore và publication version không đặt lại `false`. Hard delete xóa cùng article.
 - `ArticleResponse`, `ArticleSummaryResponse` và `ModeratorArticleSummaryResponse` trả `aiAssisted`; Moderator detail nhận qua `ArticleResponse`. Không thêm trường vào `PublishedArticle*`, `SavedArticle*`, `RelatedArticle*` hoặc Reader UI.
@@ -506,7 +506,7 @@ User message gồm task, input, topic/tag label và outline đã sửa. `idea` k
 - Draft toàn phần: không `HtmlBlock`/`HtmlInline`, không `Image`, không H1, chỉ H2/H3, không H3 đứng trước H2. So khớp H2 theo đúng số lượng và thứ tự sau normalize `trim → lowercase Locale.ROOT → bỏ tiền tố đánh số (1., 1), I., …) → bỏ punctuation/khoảng trắng thừa`; không bắt H3 phải trùng chữ tuyệt đối. Sai số lượng/thứ tự H2 vẫn là `AI_OUTPUT_INVALID`. Code fence có info string thuộc pattern `[A-Za-z0-9_+#.-]{1,32}`, UTF-8 ≤ 1 MiB.
 - Link vẫn theo `ArticleContentService.safeLink` thông qua `validateContent`; AI prompt cấm ảnh kể cả URL hợp lệ.
 - Không “sanitize rồi im lặng”: output vi phạm bị từ chối `AI_OUTPUT_INVALID`; nội dung user không bị model sửa/lưu ngoài hành động rõ ràng.
-- Streaming có quick guard để dừng sớm khi thấy NUL/byte cap/cú pháp image/raw HTML rõ ràng, nhưng full CommonMark validation cuối mới là nguồn sự thật. Chỉ event `completed` xác nhận hợp lệ.
+- Streaming có quick guard trên các dòng hoàn chỉnh ngoài code fence để dừng sớm khi thấy NUL, vượt 1 MiB, dòng bắt đầu bằng `![` hoặc raw HTML dạng `<tag`; nội dung giống cú pháp trong code fence không bị chặn. Full CommonMark validation cuối mới là nguồn sự thật; chỉ event `completed` xác nhận hợp lệ.
 
 ## Định hướng module sau (không thuộc phạm vi thực thi)
 
@@ -862,4 +862,4 @@ Claude xác nhận các điểm vòng 1 đã xử lý đúng và đề nghị ch
 
 - **Spec đã chốt ngày 2026-11-05**, gồm Q1–Q7, hai đề xuất làm ngay ở bản 1 và hướng tách viết lại một H2 sang `ai-assist-edit`.
 - Người dùng chấp nhận đề xuất vòng 2: spike tương thích Groq là bước đầu và cổng bắt buộc của Task 1a theo điều kiện đã ghi trong thân spec.
-- Người dùng đã nhận **Task 1a** ngày 2026-11-05; Task tiếp theo là **Task 1b**.
+- Người dùng đã nhận **Task 1a** và **Task 1b** ngày 2026-11-05, nhận **Task 1c** ngày 2026-11-06; bước tiếp theo là **Cổng wireframe trước Task 2a**.
