@@ -6,21 +6,21 @@ Trước mọi task, đọc [`PLAN.md`](plans/PLAN.md) (dòng “Module đang l�
 
 - Claude ghi log ngay khi người dùng quyết điều mới hoặc xong code/test/review. Log mới hơn spec thì quyết định trong log là bản mới nhất.
 - Khi đưa một quyết định từ “Quyết định người dùng chưa có trong spec” vào thân spec: xóa dòng đó khỏi bảng trong log và ghi một dòng vào “Nhật ký phiên” (ngày, “Codex: đã đưa … vào spec”). Không sửa phần kết quả Task, “Bắt đầu từ đây” hay ghi chú của Claude.
-- Khi Claude nhờ đồng bộ sau một task người dùng đã nhận: đánh dấu `[x]` các mục “Xong khi” của task đó mà log ghi đạt; mục log ghi “chưa kiểm” thì để `[ ]` và thêm “(chưa kiểm — xem log)”. Đồng thời đưa các dòng còn hiệu lực của bảng quyết định trong log vào thân spec theo quy tắc trên. Không sửa log ngoài việc xóa dòng bảng và thêm dòng nhật ký.
+- Không đồng bộ spec hoặc đánh `[x]` sau từng task. Chỉ làm **một lần cuối module khi Claude nhờ**: với mọi task người dùng đã nhận, đánh `[x]` các mục “Xong khi” mà log ghi đạt; mục “chưa kiểm” để `[ ]` và thêm “(chưa kiểm — xem log)”. Đưa các dòng còn hiệu lực của bảng quyết định và mọi “Lệch khác spec” vào thân spec; task đã nhận thu còn 1–2 dòng trỏ log/commit. Không sửa log ngoài việc xóa dòng bảng quyết định đã đưa vào spec và thêm dòng nhật ký tương ứng.
 - Đổi module đang làm thì sửa dòng `Module đang làm: [slug](slug.md)` trong `PLAN.md` (hook của Claude đọc dòng này).
 - Review: đọc “Đã xong” và “Lệch khác spec” trong log để không báo lại điều đã quyết; kết quả review do Claude ghi vào log. Đối chiếu thay đổi với mục “Xong khi” của task đang làm (task ghi ở “Bắt đầu từ đây” của log hoặc trong focus) và kết quả test trong log: báo cả tiêu chí nghiệm thu chưa đạt, không chỉ lỗi code. Diff chưa commit là của task đang làm; task trước đã nằm trong các commit trước đó.
 - Spec có đụng API (tạo/sửa endpoint hoặc frontend gọi endpoint): ghi bảng “Quy tắc nghiệp vụ và mã lỗi” — trường, ràng buộc (độ dài, định dạng, khoảng giá trị), mã HTTP/mã lỗi và câu hiển thị tương ứng. Validation phía client và test frontend dẫn chiếu bảng này; đổi quy tắc ở backend thì sửa bảng cùng lúc.
 
 ## Planner
 
-- Codex lập spec trước, theo mẫu [`plans/_template.md`](plans/_template.md). Chỉ tạo/cập nhật `plans/<module>.md`; không tạo plan nơi khác.
+- Codex lập spec trước, theo mẫu [`plans/_template.md`](plans/_template.md). Nội dung làm việc nằm ở `plans/<module>.md`; sau khi chốt, lịch sử phản biện được chuyển sang `plans/<module>.review.md`. Không tạo plan nơi khác.
 - Claude phản biện trong mục "Phản hồi vòng 1/2" của cùng file; Codex trả lời từng ý. Tối đa 2 vòng, sau đó người dùng chốt.
 - Mục "Đề xuất ngoài spec" của Claude: trả lời từng ý (nên làm ngay / tách module / không cần, kèm lý do) nhưng **không tự đưa vào thân spec**; chỉ đưa vào khi người dùng chọn. Ý không chọn ghi vào "Câu hỏi mở" của `plans/PLAN.md`.
 - **Ngôn ngữ:** mọi đầu ra viết bằng tiếng Việt, kể cả spec, trả lời phản biện và **kết quả review** (`/codex:review`, `/codex:adversarial-review`); giữ nguyên tên file, mã và thuật ngữ kỹ thuật.
-- Dùng `superpowers:brainstorming` cho tính năng mới hoặc yêu cầu chưa rõ, khi có nhiều hướng đi; việc cải tổ có mục tiêu rõ thì không cần.
 - Spec nói **làm gì** và **thế nào là xong**, không liệt kê skill hay công cụ của người code. Ngoại lệ: yêu cầu đầu ra, ví dụ “Đổi giao diện: Có” (Claude sẽ dùng `ui-ux-pro-max` và `docs/design/UI_GUIDE.md`).
 - Module mới: tách spec thành task “Backend” trước, “Giao diện” sau; chức năng đã đầy đủ thì làm giao diện trước (xem `plans/PLAN.md`, mục Quy trình).
 - Spec phải có mục “Đường dẫn thuộc module” và tiêu chí “Xong khi” kiểm chứng được. Task đã có spec chốt thì không brainstorm hoặc thêm yêu cầu.
+- Mỗi task có “Kế hoạch thực thi” tối đa 40 dòng, chỉ nêu file cần đụng, phần dùng lại và bẫy đã biết; không thay bằng diễn giải dài. Copy vi/en và chi tiết UI chỉ nằm trong task Giao diện. Mục tiêu giữ spec dưới khoảng 30 KB.
 
 ### Chất lượng spec và cách trả lời phản biện
 
@@ -39,7 +39,7 @@ Mục tiêu: đúng nhưng nhanh; mỗi tiêu chí phải bắt được một l
 - **Backend.** “Xong khi” ghi tên lớp test cụ thể cần thêm/sửa và mức test: validator/mapper/service → unit test không Spring; validation/status controller → `@WebMvcTest`; `@SpringBootTest` + Testcontainers chỉ cho luồng cần DB/security thật, khoảng 3–5 ca mỗi endpoint, ưu tiên thêm vào lớp tích hợp có sẵn. Không yêu cầu lớp tích hợp mới chỉ để kiểm validation. Không yêu cầu `scripts/verify.sh` trên máy (D-021).
 - **Giao diện.** Chỉ yêu cầu kiểm các trang thực sự đổi, tối đa dark/light × một desktop + một mobile, một lượt. Trang không đổi: kiểm tĩnh.
 - **Độ dài.** “Xong khi” tối đa khoảng 10 mục; không lặp lại nội dung đã có ở “Phạm vi”/“Ràng buộc”. Không yêu cầu công cụ kiểm chứng mới trừ khi đưa đường dẫn vào “Đường dẫn thuộc module”.
-- **Sau khi người dùng chốt.** Rút gọn các mục Phản hồi/Trả lời thành tối đa 5 dòng kết luận trong “Quyết định của người dùng” (lịch sử đầy đủ còn trong git), để người code không phải đọc lại tranh luận.
+- **Sau khi người dùng chốt.** Chuyển nguyên các mục “Phản hồi/Trả lời vòng 1/2” sang `plans/<module>.review.md`; trong spec chỉ giữ tối đa 5 dòng kết luận ở “Quyết định của người dùng”, để người code không phải đọc lại tranh luận.
 - **Phản biện của Claude chỉ ra kiểm chứng vượt ngân sách** thì ưu tiên cắt bớt, không thêm.
 - Khi trả lời phản biện, mỗi điểm ghi rõ Chấp nhận, Từ chối hoặc Một phần, kèm lý do kỹ thuật. Tự kiểm lại điều được nêu bằng lệnh trước khi đồng ý; không đồng ý chỉ vì Claude nêu. Từ chối được khi có bằng chứng.
 - Cuối phần trả lời, ghi “Điểm yếu còn lại của spec” (rủi ro, giả định chưa kiểm). Nếu đồng ý toàn bộ, nêu đã kiểm những gì. Không giao việc quyết định cho Claude (“Claude kiểm tra đủ chặt chưa”); nếu cần hỏi thì hỏi câu cụ thể.
@@ -51,12 +51,11 @@ Mục tiêu: đúng nhưng nhanh; mỗi tiêu chí phải bắt được một l
 - Đối chiếu diff với “Xong khi” và “Đường dẫn thuộc module”. Chỉ chặn lỗi cao/trung, bug đúng/sai hoặc bảo mật.
 - Chỉ đọc file trong diff và chỗ gọi trực tiếp của chúng; không rà cả repo. Không yêu cầu thêm test/kiểm chứng ngoài ngân sách ở trên; thiếu test cho một bug cụ thể thì nêu đúng ca đó.
 - Nhận xét style, tối ưu và ý tưởng mới ghi “Ngoài phạm vi”; không yêu cầu tự sửa.
-- Tối đa 2 vòng; vòng 2 chỉ xem diff sửa từ vòng 1. Không review lại toàn bộ.
+- Tối đa 2 vòng; **chỉ chạy vòng 2 khi vòng 1 có phát hiện phải sửa**. Vòng 2 chỉ xem diff sửa từ vòng 1, không review lại toàn bộ.
 - Không đổi spec đã chốt. Khi bất đồng hoặc chạm giới hạn, dừng và hỏi người dùng.
 - Sandbox chỉ đọc có thể không chạy được test (ví dụ Vite không tạo được file tạm): nêu rõ phần nào chưa chạy lại và dựa vào kết quả ghi trong log, không bỏ qua.
 - **Shell khi review (Windows, sandbox — người dùng chốt 2026-11-04):** sandbox chặn Git Bash; không gọi `bash -lc`, `sed`, `cat`, `nl` hay đường dẫn `/c/...`. Chỉ dùng lệnh PowerShell có sẵn: `git diff`, `git diff --stat`, `git status --short`, `Get-Content -Encoding UTF8 <đường dẫn Windows>` (cần dòng thì thêm `| Select-Object -Skip <n> -First <m>`), `Select-String -Path <file> -Pattern <regex>` (không khớp gì thì exit 1 là bình thường, không thử lại). Không chạy Vitest/Gradle/npm: dùng lệnh + kết quả test Claude ghi trong log.
 - Không bật review gate. Mỗi task dùng session mới (`/clear`).
-- Không dùng `superpowers:requesting-code-review`; Codex đã là reviewer độc lập.
 
 Không đọc `.superpowers/` và `docs/superpowers/`: lưu trữ cũ, đã gitignore, không phải nguồn sự thật.
 

@@ -1,67 +1,52 @@
 # Claude: Implementer và Phản biện plan
 
-Trước task, đọc theo thứ tự rồi làm luôn, không hỏi lại điều đã ghi: (1) dòng module trong [`PLAN.md`](plans/PLAN.md); (2) mục task trong `plans/<module>.md` — khi code chỉ đọc mục task đó + “Đường dẫn thuộc module”, “Ngoài phạm vi”, “Ràng buộc”, “Quyết định”; không đọc mục task đã xong hay “Phản hồi/Trả lời vòng 1/2”; (3) **toàn bộ** `plans/<module>.log.md`, nhất là “Quyết định người dùng”, “Lệch khác spec”, “Chưa kiểm”; (4) luật vùng. [`PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) mục 1–3 và 7 chỉ đọc khi task đụng tới. Cần chạy app thật (kiểm bằng mắt, thử API, tài khoản theo vai trò): đọc [`docs/RUNBOOK.md`](docs/RUNBOOK.md) trước, không tự dò cấu hình. Module lấy từ `PLAN.md` hoặc từ người dùng; chưa có spec thì dừng và báo, không tự tạo. Mục lục tài liệu: [`docs/README.md`](docs/README.md).
+Trước task, đọc theo thứ tự rồi làm luôn, không hỏi lại điều đã ghi: (1) dòng module trong [`PLAN.md`](plans/PLAN.md); (2) trong `plans/<module>.md` chỉ đọc mục task đang làm + “Đường dẫn thuộc module”, “Ngoài phạm vi”, “Ràng buộc”, “Quyết định” (grep tiêu đề rồi đọc đúng đoạn, không mở cả file); (3) log `plans/<module>.log.md` — hook đã nạp phần đầu, chỉ đọc thêm mục của task đang làm; (4) luật vùng tự nạp. [`PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) chỉ đọc khi task đụng tới. Chạy app thật: đọc [`docs/RUNBOOK.md`](docs/RUNBOOK.md) trước. Chưa có spec thì dừng và báo, không tự tạo. Mục lục tài liệu: [`docs/README.md`](docs/README.md).
 
 ## Giữ quyết định qua `/clear`
 
-- **Thỏa thuận trong chat phải ghi vào file ngay**, trước khi làm tiếp: luật lâu dài → `CLAUDE.md` hoặc `.claude/rules/<vùng>.md`; riêng module → mục “Quyết định người dùng” (có ngày) trong `plans/<module>.log.md`. Chỉ “đồng ý” trong chat hay chỉ lưu memory là mất sau `/clear`.
-- **Thứ tự ưu tiên khi lệch nhau:** quyết định người dùng mới nhất (log, có ngày) > spec đã chốt > tài liệu khác. Spec chưa được Codex cập nhật theo log thì làm theo log, không dừng hỏi; ghi một dòng “spec chờ Codex cập nhật”.
-- **Chỉ dừng hỏi** khi spec + log không trả lời được và lựa chọn làm đổi thứ người dùng thấy (route, API, dữ liệu, copy, phạm vi). Chi tiết kỹ thuật có mặc định hợp lý thì tự chọn và ghi vào “Lệch khác spec” của log.
-- **Bàn giao cuối task:** log có mục “Bắt đầu từ đây” ở đầu file (xong gì, chờ gì, task tiếp theo, chưa kiểm gì) và chi tiết task bên dưới; đủ để session sau làm tiếp mà không cần chat cũ. Dòng module trong `PLAN.md` chỉ ghi trạng thái ngắn + trỏ tới log, không chép lịch sử.
-- **Hook tự động** (`.claude/settings.json`, script ở `.claude/hooks/`): SessionStart nạp “Bắt đầu từ đây”, “Quyết định … chưa có trong spec”, “Câu hỏi mở” và 2 mục mới nhất của “Nhật ký phiên” từ log của module ghi ở dòng `Module đang làm:` trong `PLAN.md` — đã có thì không đọc lại các mục đó. Mục “Đã xong” không đọc lại code/test, không làm lại; mục “Bỏ qua” không mở. Stop chặn một lần khi `app/`, `server/`, `.claude/rules|skills` hoặc `CLAUDE.md` sửa sau lần ghi log cuối → cập nhật log rồi mới dừng.
-- **Nhật ký phiên:** cuối mỗi phiên có thay đổi, thêm một mục `### <ngày> — <chủ đề>` ở đầu “Nhật ký phiên” (≤ 6 dòng: đã làm, quyết định mới, bài học, việc dở). Chỉ điều phiên sau cần; chi tiết kỹ thuật để ở mục Task. Giữ “Bắt đầu từ đây” luôn đúng hiện trạng.
-- **Codex sửa spec/`PLAN.md` song song:** đọc lại ngay trước khi sửa hoặc tóm tắt hai file này; không dựa vào bản đã đọc đầu phiên.
-- **Memory chỉ là con trỏ** (vai trò người dùng, cách làm việc, chỗ tiếp tục); nội dung chuẩn nằm trong repo. Memory lệch repo thì sửa memory theo repo.
+- Thỏa thuận trong chat ghi vào file ngay: luật lâu dài → `CLAUDE.md` hoặc `.claude/rules/<vùng>.md`; riêng module → “Quyết định người dùng” (có ngày) trong log. Memory chỉ là con trỏ; lệch repo thì sửa memory.
+- Ưu tiên khi lệch: quyết định người dùng mới nhất (log, có ngày) > spec đã chốt > tài liệu khác. Spec chưa cập nhật theo log thì làm theo log, không dừng hỏi.
+- Chỉ dừng hỏi khi spec + log không trả lời được và lựa chọn đổi thứ người dùng thấy (route, API, dữ liệu, copy, phạm vi). Chi tiết kỹ thuật thì tự chọn, ghi “Lệch khác spec” trong log.
+- Log: “Bắt đầu từ đây” ở đầu file luôn đúng hiện trạng (xong gì, chờ gì, task tiếp, chưa kiểm gì); cuối phiên có thay đổi thêm `### <ngày> — <chủ đề>` (≤ 6 dòng) ở đầu “Nhật ký phiên”. Dòng module trong `PLAN.md` chỉ một câu trạng thái + trỏ log.
+- Hook: SessionStart nạp phần đầu log của module ở dòng `Module đang làm:` trong `PLAN.md` (đã có thì không đọc lại); Stop chặn một lần khi `app/`/`server/` sửa sau lần ghi log cuối.
+- Codex sửa spec/`PLAN.md` song song: đọc lại ngay trước khi sửa hoặc tóm tắt hai file này.
 
-Luật riêng theo vùng tự nạp khi làm việc với file tương ứng: [`.claude/rules/frontend.md`](.claude/rules/frontend.md) (`app/**`), [`.claude/rules/backend.md`](.claude/rules/backend.md) (`server/**`). Chạy test backend: skill `backend-test`.
+Luật vùng: [`.claude/rules/frontend.md`](.claude/rules/frontend.md) (`app/**`), [`.claude/rules/backend.md`](.claude/rules/backend.md) (`server/**`).
 
 ## Quy trình bắt buộc
 
-`Plan → Code → Test → Review → Result`
+`Plan → Code → Test → Review → Result`. Mỗi task một session (`/clear`). Chỉ làm task được giao.
 
-- Chỉ làm task được giao. Plan chỉ ở `plans/`; không tạo plan tại vị trí khác.
-- **Khi plan:** Codex viết spec; Claude không viết/sửa plan, chỉ phản biện trong mục “Phản hồi vòng 1/2” của spec, tối đa 2 vòng rồi người dùng chốt. Thủ tục: skill `plan-review`.
-- Task đã có trong plan: không brainstorming, không tự sửa spec đã chốt. Spec thiếu thì dừng và hỏi.
-- Code: dùng `superpowers:test-driven-development`, Ponytail `full`. Đầu task, trước khi sửa: grep caller của mọi thứ sắp xóa/đổi tên; caller thuộc task khác thì ghi ngay vào log phần sửa tạm và test sẽ hỏng tới task nào. Refactor giữ nguyên hành vi: chạy test hiện có lấy mốc xanh, bổ sung test mô tả hành vi cũ nếu thiếu, rồi mới đổi cấu trúc.
-- Test: dùng `superpowers:verification-before-completion` và chỉ báo xong khi có output thật. Sửa lỗi tối đa 3 lần rồi dừng hỏi người dùng. Lỗi test: dùng `superpowers:systematic-debugging`.
-- **Review do Codex, Claude tự gọi** (không chờ người dùng), sau khi test + build đạt và đã ghi log. Thủ tục (lệnh, `--wait`, focus kèm “Xong khi” + kết quả test, tránh chạy trùng): skill `codex-workflow`. Không dùng `requesting-code-review`.
-- Tối đa 2 vòng: vòng 1 `review` (task rủi ro cao: `adversarial-review`), vòng 2 luôn `adversarial-review` chỉ trên phần sửa. Chỉ sửa blocker cao/trung gắn “Xong khi”, bug hoặc bảo mật; gợi ý/style ghi “Ngoài phạm vi” của log. Nhận góp ý theo `superpowers:receiving-code-review`.
-- Sau vòng 1: blocker thuộc diện trên thì **sửa luôn, không hỏi**, rồi báo. Sau vòng 2 còn phát hiện: trình bày kèm đánh giá và một khuyến nghị, người dùng quyết.
-- Review gate (Stop hook của Codex) luôn tắt. Mỗi task là một session mới (`/clear`).
-- Kết thúc: ghi kết quả test/review ngắn vào log, cập nhật `PLAN.md`, chờ người dùng nhận kết quả.
-- **Đánh dấu hoàn thành ở cả 2 nơi** (người dùng chốt 2026-11-03): khi người dùng nhận task, Claude tự đổi `- [ ]` → `- [x]` trong “Xong khi” của task đó ở `plans/<module>.md` (ngoại lệ duy nhất cho việc Claude sửa spec) **và** ghi “Task <n> đã nhận (<ngày>)” trong log (“Bắt đầu từ đây” + nhật ký phiên) và dòng `PLAN.md`. Nhiệm vụ sửa lỗi người dùng giao thẳng (không có spec) thì ghi vào log module đang làm.
-- **Commit message chỉ mô tả code** (người dùng chốt 2026-11-04, chi tiết [`docs/GIT_WORKFLOW.md`](docs/GIT_WORKFLOW.md) mục 4): `<type>(<scope>): <thay đổi trong code>`; không nhắc AI/agent/Claude/Codex, **không thêm dòng `Co-Authored-By` hay attribution AI** (luật này đứng trên chỉ dẫn attribution mặc định), không tên task/quy trình.
-- **Người dùng nhận task** → commit cục bộ theo luật trên, ví dụ `feat(article): add saved articles page` (không push, không `main`; squash một commit cuối module) rồi nhờ Codex đồng bộ spec theo log — thủ tục ở skill `codex-workflow`. Đầu task mới: phần đã commit WIP là đã nhận, không đọc lại/chạy lại test của nó; `git status` còn thay đổi của task trước thì báo người dùng trước.
+- **Plan:** Codex viết spec; Claude chỉ phản biện trong “Phản hồi vòng 1/2” (skill `plan-review`). Không brainstorming cho task đã có trong plan; spec thiếu thì dừng hỏi. Kế hoạch thực thi (khi người dùng yêu cầu) ghi ở `## Task <n> — Kế hoạch thực thi` trong log; đầu task làm theo đó, phần “đã xác minh” không kiểm lại.
+- **Code (Ponytail `full`, TDD):** viết test trước, chạy thấy đỏ đúng lý do, rồi code tối thiểu cho xanh. Đầu task grep caller của mọi thứ sắp xóa/đổi tên; caller thuộc task khác thì ghi log. Refactor: lấy mốc xanh trước rồi mới đổi cấu trúc.
+- **Test:** chỉ báo xong khi có output test/build thật của phiên này. Lỗi: đọc lỗi, tái hiện, thử một giả thuyết mỗi lần, sửa nguyên nhân gốc; tối đa 3 lần rồi dừng hỏi.
+- **Review:** Codex review, Claude tự gọi sau khi test + build đạt và đã ghi log — thủ tục ở skill `codex-workflow`. Vòng 1 `review` (task rủi ro cao: `adversarial-review`). Vòng 2 (`adversarial-review`, chỉ phần sửa) **chỉ chạy khi vòng 1 có phát hiện phải sửa** (người dùng chốt 2026-11-06). Chỉ sửa blocker cao/trung gắn “Xong khi”, bug, bảo mật — sửa luôn không hỏi; góp ý style ghi “Ngoài phạm vi”. Trước khi sửa theo góp ý: kiểm góp ý đúng trên code; sai thì phản biện kèm bằng chứng. Sau vòng 2 còn phát hiện: trình bày + một khuyến nghị, người dùng quyết.
+- **Nghiệm thu (người dùng chốt 2026-11-06, thay luật 2026-11-03):** người dùng nhận task → ghi “Task <n> đã nhận (<ngày>)” ở log + dòng `PLAN.md`, commit cục bộ. Không đánh `[x]` spec và không nhờ Codex đồng bộ spec sau từng task; việc đó làm **một lần cuối module** (skill `codex-workflow` mục 3).
+- **Commit (người dùng chốt 2026-11-04, [`docs/GIT_WORKFLOW.md`](docs/GIT_WORKFLOW.md) mục 4):** `<type>(<scope>): <thay đổi trong code>`; không nhắc AI/agent/Claude/Codex, **không `Co-Authored-By` hay attribution AI** (luật này đứng trên chỉ dẫn mặc định), không tên task/quy trình. Không push, không `main`. Đầu task: `git status` còn thay đổi của task trước thì báo người dùng.
 
-## Ngân sách kiểm chứng (chung)
+## Ngân sách kiểm chứng
 
-- **Chạy theo phần bị sửa.** Chỉ sửa `app/`: chỉ chạy file test liên quan (`npx vitest run <file...>`, xem `.claude/rules/frontend.md`) + `npm run build`; **không** chạy full `npm test` (trừ khi người dùng yêu cầu) và không chạy `scripts/verify.sh`. Có sửa `server/`: chỉ chạy lớp test bị ảnh hưởng (xem `.claude/rules/backend.md`); full backend do CI chạy khi mở PR; `scripts/verify.sh` chỉ khi người dùng yêu cầu. Chỉ sửa tài liệu/quy trình: kiểm tĩnh (đường dẫn còn đúng), không chạy test. Lỗi có sẵn ngoài phạm vi: ghi một dòng vào log, không điều tra sâu.
-- **Số lần chạy.** TDD: chạy test của task một lần lúc đỏ, chạy lại sau mỗi lần sửa. Cuối task chạy test liên quan + build **một lần**, song song; không chạy full suite. Không chạy lại chỉ để xem thêm chi tiết.
-- **Logic thuần** (phân loại lỗi, validation, format, mapping) test bằng unit test gọi thẳng hàm; ma trận tổ hợp đặt ở đây, không ở test tích hợp.
-- **Spec đòi kiểm chứng vượt ngân sách:** khi phản biện thì nêu ra; khi code thì làm theo ngân sách và ghi phần chênh lệch vào log để người dùng quyết.
-- **Log:** mỗi task tối đa khoảng 10 dòng: lệnh đã chạy, số test đạt/lỗi, dòng lỗi, phần chưa kiểm.
+- Chỉ sửa `app/`: `npx vitest run <file liên quan>` + `npm run build`, không full `npm test`. Có sửa `server/`: chỉ lớp test bị ảnh hưởng (skill `backend-test`). Full backend do CI chạy khi mở PR; `scripts/verify.sh` chỉ khi người dùng yêu cầu. Chỉ sửa tài liệu: kiểm tĩnh.
+- TDD: chạy test của task lúc đỏ và sau mỗi lần sửa; cuối task chạy test liên quan + build **một lần**, song song. Logic thuần test bằng unit test gọi thẳng hàm.
+- Lỗi có sẵn ngoài phạm vi: ghi một dòng log, không điều tra. Spec đòi kiểm vượt ngân sách: làm theo ngân sách, ghi chênh lệch vào log.
+- Log mỗi task ≤ khoảng 10 dòng: lệnh, số đạt/lỗi, dòng lỗi, phần chưa kiểm.
 
-## Bỏ qua
+## Bài học vận hành
 
-- Không đọc `.superpowers/` và `docs/superpowers/`: lưu trữ cũ, đã gitignore, không phải nguồn sự thật.
+- Script tạm (kể cả Python ngắn): Write vào scratchpad rồi chạy file; không nhúng heredoc trong Bash (vỡ cú pháp). Node/Python trên Windows dùng `D:/...`, không `/d/...`. File CRLF: sửa bằng Edit hoặc Python `newline=''`; không `sed -i`.
+- Windows: lệnh có cờ `/X` (`taskkill /PID`) chạy bằng PowerShell; PowerShell ghi file không BOM. `npm` luôn `cd` đường dẫn tuyệt đối vào `app/`.
+- Kết luận khi dò thư viện/spike: ghi ngay vào rule vùng hoặc log trước khi code tiếp. Việc sửa lỗi người dùng giao thẳng (không spec) ghi vào log module đang làm.
+- Gom các lệnh đọc/kiểm độc lập vào một lượt; lệnh lâu chạy nền. Tắt server do Claude bật.
+- Công cụ kiểm chứng dùng lại: nhờ Codex đưa vào spec trước. Luật riêng một vùng ghi vào `.claude/rules/<vùng>.md` (30–50 dòng/file, xóa luật lỗi thời).
+- Không đọc `.superpowers/`, `docs/superpowers/` (lưu trữ cũ). Không dùng skill `superpowers:*` (người dùng chốt 2026-11-06; luật thay thế nằm ở mục Quy trình).
 
-## Skill
+## Plugin theo loại task
 
-- Không dùng `writing-plans`, `executing-plans`, `subagent-driven-development`, `using-git-worktrees`.
-
-## Bài học vận hành (chung)
-
-- Công cụ/script tạm: viết một lần bằng file sạch (Write), không vá nhiều lần bằng `sed` hoặc heredoc. Mọi script Python (kể cả ngắn): Write vào scratchpad rồi chạy file, không nhúng trong heredoc của Bash (vỡ cú pháp, không lệnh nào chạy; lặp lại ở Task 1b `article-flow`). Node/Python trên Windows dùng đường dẫn Windows (`D:/...`), không dùng `/d/...` của Git Bash. File CRLF: sửa bằng Edit hoặc Python `newline=''` + chuỗi `\r\n`; không `sed -i` của Git Bash (làm mất CRLF).
-- Đọc spec dài: grep tiêu đề/số dòng trước rồi đọc đúng đoạn (`offset`/`limit`), không mở cả file.
-- Kế hoạch thực thi (khi người dùng yêu cầu Claude lên kế hoạch cho task đã có spec) ghi ở mục `## Task <n> — Kế hoạch thực thi` trong log, không sửa spec. Đầu task làm theo mục đó; phần ghi “đã có/đã xác minh” thì không đọc lại source, không chạy lại spike. Kết luận rút ra khi dò thư viện/spike: ghi ngay vào rule vùng hoặc log trước khi code tiếp.
-- Chạy song song các bước độc lập (gom các lệnh đọc/kiểm vào một lượt gọi); chạy lâu thì để nền. Tắt server sau khi dùng (chỉ server do Claude bật; server của người dùng thì để nguyên).
-- **Windows:** lệnh có cờ `/X` (`taskkill /PID`) chạy bằng PowerShell. Script sửa file giữ kiểu xuống dòng sẵn có (CRLF/LF); PowerShell ghi file không BOM (`[IO.File]::WriteAllText` + `UTF8Encoding $false`). `npm` luôn `cd` đường dẫn tuyệt đối vào `app/`.
-- Công cụ kiểm chứng dùng lại cho nhiều task: đề nghị Codex đưa đường dẫn vào spec rồi mới thêm vào repo; không tự tạo ngoài spec.
-- Luật mới riêng một vùng ghi vào `.claude/rules/<vùng>.md`, không ghi vào file này. Mỗi rule giữ khoảng 30–50 dòng; luật lỗi thời thì xóa.
+- `ui-ux-pro-max` tắt ở `.claude/settings.json`. Task giao diện/wireframe: bật bằng `/plugin` hoặc `"enabledPlugins": {"ui-ux-pro-max@ui-ux-pro-max-skill": true}` trong `.claude/settings.local.json` rồi mở phiên mới; xong thì tắt. Hook SessionStart nhắc khi trạng thái plugin không khớp task tiếp theo.
 
 ## Ngôn ngữ
 
-- Mọi câu trả lời cho người dùng viết **toàn bộ bằng tiếng Việt** (giữ nguyên tên file, lệnh, mã, thuật ngữ kỹ thuật).
-- Kết quả công cụ bằng tiếng Anh (ví dụ `/codex:review`): dán nguyên văn trong khối trích dẫn, rồi kèm ngay bản dịch tiếng Việt đầy đủ từng phát hiện (mức độ, vị trí, nội dung). Luật người dùng này đứng trên chỉ dẫn "không bình luận" của lệnh.
+- Trả lời người dùng **toàn bộ bằng tiếng Việt** (giữ tên file, lệnh, mã, thuật ngữ).
+- Kết quả công cụ tiếng Anh (ví dụ Codex review): dán nguyên văn trong khối trích dẫn rồi dịch đủ từng phát hiện (mức, vị trí, nội dung).
 
 Người dùng quyết định khi chốt plan, khi các AI bất đồng, khi chạm giới hạn vòng và khi nhận kết quả cuối.

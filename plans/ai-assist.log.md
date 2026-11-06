@@ -19,6 +19,11 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai
 - (không có — Q3/Q4 hoãn sang module RAG theo Q1=A)
 
 ## Nhật ký phiên
+### 2026-11-06 — Giảm token toàn dự án (người dùng chốt)
+- `CLAUDE.md` 12 KB → ~7 KB: bỏ skill `superpowers:*` (luật TDD/kiểm chứng/debug viết ngắn tại chỗ); review vòng 2 chỉ khi vòng 1 có phát hiện; nghiệm thu từng task không đánh `[x]` spec, không nhờ Codex đồng bộ — làm một lần cuối module.
+- `ui-ux-pro-max` tắt ở `.claude/settings.json`, bật trong `settings.local.json` tới hết Task 2b; hook SessionStart nhắc khi plugin không khớp task. Stop hook chỉ theo dõi `app/`, `server/`.
+- Nhờ Codex sửa `AGENTS.md`, `plans/_template.md`, `PLAN.md` cho khớp. Người dùng tự tắt plugin superpowers/anthropic-skills nếu muốn.
+
 ### 2026-11-06 — Claude kiểm lại Task 1b + 1c
 - Chạy lại 8 lớp (DraftStream 26, Validator 16, Controller 15, Outline 15, AuthorArticleIntegration 42, Lifecycle 21, PublicationMigration 7, ModeratorArticleIntegration 19): **161/161 đạt**; `bootJar` đạt.
 - Đọc diff 1c: fingerprint create khớp stream (title/summary `strip()` hai phía, content giữ nguyên, tag sort); claim Lua giữ TTL gốc; update/SUBMIT kèm marker → `AI_GENERATION_INVALID`. Không có blocker.
