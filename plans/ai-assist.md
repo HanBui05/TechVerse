@@ -139,6 +139,8 @@ Chỉ sửa các đường dẫn dưới đây.
 - `app/src/services/aiAssistService.test.ts` (tạo)
 - `app/src/pages/Author/AiArticlePage.tsx` (tạo)
 - `app/src/pages/Author/AiArticlePage.test.tsx` (tạo)
+- `app/src/pages/Author/AuthorBlogsPage.tsx` (thêm entry `Tạo bằng AI`)
+- `app/src/pages/Author/AuthorBlogsPage.test.tsx`
 - `app/src/components/articles/AiOutlineEditor.tsx` (tạo)
 - `app/src/components/articles/AiOutlineEditor.test.tsx` (tạo)
 - `app/src/pages/Author/ArticleEditorPage.tsx`
@@ -597,14 +599,14 @@ Không chỉ vẽ happy path. Route đã chốt là trang riêng `/author/blogs/
 ### Route và màn bản 1
 
 - Route riêng `/author/blogs/ai`, bọc `RoleRoute` AUTHOR; backend vẫn là nguồn quyền approved/suspended.
-- Điểm vào: nút “Tạo bằng AI” cạnh “Tạo bài viết” trong Author workspace hoặc entry do wireframe chốt. Không thêm menu sidebar riêng khi AI chỉ là một cách tạo bài.
+- Điểm vào: nút “Tạo bằng AI” cạnh “Viết bài mới” trong Author workspace; không thêm menu sidebar riêng.
 - Bước 1 form: title tùy chọn; topic select bắt buộc; tag picker; idea textarea có đếm `0/4000`; độ dài; đối tượng đọc; nút “Tạo dàn ý”. Topic/tag dùng `authorArticles.options()` hiện có.
-- Bước 2: form vẫn có thể thu gọn; `AiOutlineEditor` cho sửa title/summary, bật/tắt `suggestedTagIds` sao cho tổng thẻ ≤10, thêm/xóa/reorder H2/H3, validation inline, nút “Tạo dàn ý khác” và “Viết bài”. Reorder phải dùng control bàn phím lên/xuống bên cạnh drag nếu có.
+- Bước 2: form vẫn có thể thu gọn; `AiOutlineEditor` cho sửa title/summary, bật/tắt `suggestedTagIds` sao cho tổng thẻ ≤10, thêm/xóa/reorder H2/H3, validation inline, nút “Tạo dàn ý khác” và “Viết bài”. Reorder chỉ dùng control bàn phím lên/xuống, không drag.
 - Bước 3 stream: vùng preview Markdown/text tăng dần, `aria-live="polite"` không đọc từng token (cập nhật status theo đoạn), progress indeterminate, nút “Dừng” vùng chạm ≥44px. Trong stream khóa sửa dàn ý/handoff nhưng không khóa Dừng.
 - Sau `completed`: nút chính “Lưu nháp và mở trình soạn thảo”; nút phụ “Tạo lại”. Không tự gọi create khi chưa bấm.
 - Sau `cancelled`/error: không cho handoff phần dở; cho “Thử lại” với cùng input nhưng provider call mới và quota mới. Lỗi create sau completed retry với cùng `Idempotency-Key`.
 - Header khu vực hành động hiển thị quota outline/draft gần nút tương ứng. Terminal event cập nhật lại số lượt sau refund/cancel.
-- `sessionStorage['techverse-ai-compose:v1']` lưu version + form + dàn ý đã sửa + thẻ đã chọn trong tab hiện tại; restore sau refresh và cho nút “Bắt đầu lại”. Không lưu access token, preview/buffer stream, `generationId`, `Idempotency-Key` hay provider error. Xóa khi create thành công hoặc Author chủ động reset.
+- `sessionStorage['techverse-ai-compose:v1']` luôn có thể lưu version + form + dàn ý + thẻ trong tab. Chỉ sau `completed` và SHA-256 khớp mới lưu thêm buffer completed + `generationId` + payload handoff; lưu `Idempotency-Key` nếu đã bắt đầu create để retry qua F5. Restore phải tính lại SHA trước handoff. Không lưu access token, preview dở hay provider error; xóa khi create thành công hoặc Author reset.
 
 ### Trạng thái bắt buộc
 
@@ -632,8 +634,8 @@ Không chỉ vẽ happy path. Route đã chốt là trang riêng `/author/blogs/
 
 - Toàn bộ copy mới nằm trong `aiAssistI18n.ts`; không để câu tiếng Việt viết cứng trong component. Test ma trận mapping error vi/en ở unit, không render cả App cho mọi code.
 - `api/client.ts` cung cấp helper raw-response cho stream dùng cùng bearer, `credentials: include`, session-version và một lần single-flight refresh như `request<T>`; không sao chép `refreshAccessToken` sang `aiAssistService.ts`. Sau khi SSE đã mở thì 401 nằm trong event/error, không thể refresh rồi nối lại giữa stream.
-- Mobile 390px: form một cột, outline control không tràn ngang, stream action sticky dưới nhưng không che nội dung.
-- Label nhìn thấy, field error nối `aria-describedby`, focus trả về heading bước mới, Dừng/Retry/Accept có accessible name.
+- Mobile 390px: form một cột, outline control không tràn ngang, stream action sticky dưới nhưng không che nội dung và nằm ngoài vùng `aria-live` preview.
+- Label nhìn thấy, field error nối `aria-describedby`, focus tới heading card completed sau stream và giữ ở control vừa bấm sau reorder; Dừng/Retry/Accept có accessible name.
 - Chỉ dùng shadcn/ui + Tailwind/token hiện có và các cặp chữ/nền đã được `tokens.test.ts` kiểm ≥ 4.5:1; spec không thêm màu literal/cặp màu mới nên không có tỉ lệ mới cần tính. Dark/light dùng token; không gradient.
 - Kiểm mắt tối đa dark/light × desktop + mobile, một lượt, chỉ các màn thật sự đổi.
 
@@ -742,8 +744,8 @@ Lệnh cuối task:
 
 **Xong khi:**
 
-- [ ] Wireframe có form, quota, outline editable/reorder + thẻ gợi ý, session restore, stream+Dừng, completed/handoff, cancel/error/retry, create retry, banner Author và badge Moderator ở desktop/mobile.
-- [ ] Người dùng duyệt bằng lời; log ghi ngày + quyết định. Nếu chưa duyệt, Task 2a chưa mở.
+- [x] Wireframe có form, quota, outline editable/reorder + thẻ gợi ý, session restore, stream+Dừng, completed/handoff, cancel/error/retry, create retry, banner Author và badge Moderator ở desktop/mobile.
+- [x] Người dùng duyệt bằng lời ngày 2026-11-06; log ghi quyết định. Task 2a được mở.
 
 Kiểm tĩnh, không chạy test.
 
@@ -753,22 +755,38 @@ Kiểm tĩnh, không chạy test.
 
 **Đường dẫn:** Nhóm “Giao diện bản 1”.
 
+**Kế hoạch thực thi:**
+
+- **File cần đụng:** `types/aiAssist.ts`, `types/articles.ts` — contract outline/SSE/quota/handoff và cờ Author; không đưa cờ vào Public types.
+- **File cần đụng:** `services/api/client.ts`, `services/aiAssistService.ts` + test — raw `Response`, parser SSE theo chunk, SHA-256, cancel và DELETE keepalive có bearer.
+- **File cần đụng:** `components/articles/AiOutlineEditor.tsx` + test — sửa H2/H3, chỉ reorder bằng `↑/↓`, map `suggestedTagIds` qua options và validation khớp `AiDraftRequest`.
+- **File cần đụng:** `pages/Author/AiArticlePage.tsx` + test — state machine form/outline/stream/terminal, quota, focus/aria, session restore và handoff idempotent.
+- **File cần đụng:** `pages/Author/AuthorBlogsPage.tsx` + test, `App.tsx` + test route — entry cạnh `Viết bài mới`, route AUTHOR `/author/blogs/ai`, back cố định.
+- **File cần đụng:** `pages/Author/ArticleEditorPage.tsx` + test — banner theo `article.aiAssisted`, đóng chỉ trong tab.
+- **File cần đụng:** `data/aiAssistI18n.ts` + test — copy vi/en và mapping mã lỗi theo bảng contract.
+- **Phần dùng lại:** `authorArticles.options/create`, `TagPicker`, `ArticleStatusBadges`, shadcn Card/Button/AlertDialog/Skeleton và token/touch target hiện có.
+- **Phần dùng lại:** bearer + single-flight refresh/session-version trong `api/client.ts`; helper raw không được tạo cơ chế auth song song.
+- **Bẫy đã biết:** body draft UTF-8 ≤16 KiB; heading 5–120/distinct; tổng tag ≤10; ID gợi ý không còn active phải ẩn.
+- **Bẫy đã biết:** `delta` chỉ là preview RAM; chỉ `completed` + SHA khớp mới lưu buffer/generation/payload vào session; restore phải hash lại.
+- **Bẫy đã biết:** khi create retry phải giữ nguyên payload + `Idempotency-Key`; reset/create thành công xóa session; không tự `SUBMIT`.
+- **Bẫy đã biết:** `pagehide` keepalive là best-effort và phải có `Authorization`; stream cũ có thể giữ khóa tới deadline + 5s.
+
 **Xong khi:**
 
-- [ ] `aiAssistService.test.ts` kiểm request outline, quota header, parser SSE khi JSON bị chia qua chunk, typed events, SHA-256 bắt buộc, AbortController/cancel và mapping error vi/en; không dùng EventSource.
-- [ ] `AiOutlineEditor.test.tsx` kiểm suggested tag bật/tắt với tổng ≤10, add/delete/reorder H2/H3 bằng control bàn phím, boundary và dữ liệu edited được gửi đúng.
-- [ ] `AiArticlePage.test.tsx` khoảng 5 luồng chính: validation + restore form/outline; outline/quota; stream+Dừng; provider/error refund; completed/hash → create `SAVE` với `aiGenerationId` và cùng idempotency key khi retry.
+- [ ] `aiAssistService.test.ts` kiểm request outline, quota header, parser SSE khi JSON bị chia qua chunk, typed events, SHA-256 bắt buộc, AbortController/cancel, DELETE keepalive có bearer khi `pagehide` và mapping error vi/en; không dùng EventSource.
+- [ ] `AiOutlineEditor.test.tsx` kiểm suggested tag map qua options/bật/tắt với tổng ≤10; add/delete/reorder H2/H3 chỉ bằng control bàn phím; heading 5–120/distinct, boundary và dữ liệu edited gửi đúng.
+- [ ] `AiArticlePage.test.tsx` khoảng 5 luồng chính: validation gồm body UTF-8 ≤16 KiB + restore; outline/quota; stream+Dừng; provider/error refund; completed/hash → create `SAVE` với `aiGenerationId` và cùng idempotency key khi retry.
 - [ ] `ArticleEditorPage.test.tsx` kiểm banner theo `article.aiAssisted` vi/en, đóng chỉ trong tab và tuyệt đối không tự SUBMIT/đổi cờ.
-- [ ] `App.author-session.test.tsx` chỉ thêm ca route AUTHOR/không AUTHOR cần thiết; không dựng ma trận error ở App.
+- [ ] `AuthorBlogsPage.test.tsx` kiểm entry cạnh `Viết bài mới`; `App.author-session.test.tsx` chỉ thêm ca route AUTHOR/không AUTHOR cần thiết, không dựng ma trận error ở App.
 - [ ] `App.auth.test.tsx` giữ xanh các ca single-flight refresh/session-version khi helper raw-response được dùng; không mở rộng ma trận AI ở file này.
-- [ ] `sessionStorage` chỉ lưu version/form/outline/thẻ; không lưu preview stream, generation/key/token; reset/create thành công xóa key. Loading/empty/error/quota/timeout/cancel/completed giữ input đúng; không handoff partial/hash lệch/invalid; mobile không cuộn ngang.
+- [ ] `sessionStorage` lưu version/form/outline/thẻ; chỉ sau `completed` + hash khớp mới được lưu buffer completed + `generationId` + payload handoff và key khi đã bắt đầu create. Restore tính lại SHA trước handoff; không lưu preview dở/token; reset/create thành công xóa key. Loading/empty/error/quota/timeout/cancel/completed giữ input đúng; không handoff partial/hash lệch/invalid; mobile không cuộn ngang, sticky action ngoài `aria-live` và completed nhận focus.
 - [ ] Kiểm mắt một lượt dark/light × desktop + mobile cho `/author/blogs/ai` và banner editor; nếu thiếu môi trường ghi Chưa kiểm.
 - [ ] Các test liên quan và `npm run build` đạt; không chạy full `npm test`.
 
 Lệnh cuối task (trong `app/`):
 
 ```bash
-npx vitest run src/services/aiAssistService.test.ts src/components/articles/AiOutlineEditor.test.tsx src/pages/Author/AiArticlePage.test.tsx src/pages/Author/ArticleEditorPage.test.tsx src/App.author-session.test.tsx src/App.auth.test.tsx src/data/aiAssistI18n.test.ts
+npx vitest run src/services/aiAssistService.test.ts src/components/articles/AiOutlineEditor.test.tsx src/pages/Author/AiArticlePage.test.tsx src/pages/Author/AuthorBlogsPage.test.tsx src/pages/Author/ArticleEditorPage.test.tsx src/App.author-session.test.tsx src/App.auth.test.tsx src/data/aiAssistI18n.test.ts
 npm run build
 ```
 

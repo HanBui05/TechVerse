@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai
 
 ## Bắt đầu từ đây (cập nhật 2026-11-06)
 
-- **Task 1b đã nhận (2026-11-05), Task 1c đã nhận (2026-11-06)**; đã đánh `[x]` cả hai trong spec, commit cục bộ. Tiếp: **Cổng wireframe trước Task 2a** (không code UI; trình desktop/mobile + state/error, người dùng chốt). Thứ tự: wireframe → 2a → 2b.
+- **Tiếp: Task 2a — Giao diện tạo bài bằng AI** (session mới; bật `ui-ux-pro-max`). Làm theo “Kế hoạch thực thi” của Task 2a trong spec + `plans/ai-assist.wireframe.md` (đã duyệt 2026-11-06). Backend 1a–1c đã nhận, không sửa `server/` trong 2a. Đã chốt thêm: DELETE keepalive khi `pagehide`; giữ bản completed (sau hash khớp) + `generationId` + payload/key qua F5 trong `sessionStorage`. Thứ tự: 2a → 2b.
 - Bài học (Spring AI/Spring 7): option runtime dựng từ `getDefaultOptions().mutate()` (`AiPromptFactory.options`); `include_reasoning` đặt trong code; **emitter đã đóng khi callback timeout chạy** → service tự áp deadline trên Flux, emitter dư 5 giây.
 - Rủi ro: TPM Groq tài khoản 8000 < trần MEDIUM/LONG; có thể gặp 429 khi viết bài dài. Registry cancel chỉ một instance.
 - Chưa kiểm: stream Groq thật (smoke cuối module); lớp tích hợp khác sau đổi `ASYNC/ERROR` permitAll (CI chạy full khi mở PR).
@@ -19,6 +19,13 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai
 - (không có — Q3/Q4 hoãn sang module RAG theo Q1=A)
 
 ## Nhật ký phiên
+- 2026-11-06 — Codex: đã đưa quyết định duyệt wireframe 2a và phản hồi vòng 1 vào `ai-assist.wireframe.md`/Task 2a trong spec; mở Task 2a, API quota tách module sau.
+
+### 2026-11-06 — Claude phản biện wireframe vòng 1
+- Ghi “Phản hồi vòng 1 (Claude)” trong `plans/ai-assist.wireframe.md`: 3 sai (quota `—/10` đoán limit, nút Chọn lại taxonomy, khóa stream sau F5 tới deadline+5s), 4 thiếu (validation outline khớp `AiDraftRequest`, cách tính “Phần x/y”, map tên thẻ gợi ý, focus/aria mobile), 2 thừa, 3 đề xuất (DELETE keepalive khi rời trang; giữ bản completed qua F5 — cần người dùng chọn; API quota tách module sau).
+- Chờ Codex trả lời vòng 1, rồi người dùng duyệt wireframe; Task 2a chưa mở.
+
+- 2026-11-06 — Codex: đã viết `ai-assist.wireframe.md` cho cổng trước Task 2a (luồng, desktop/mobile, state/error, edge case và câu hỏi chốt); chưa code UI, chờ Claude phản biện và người dùng duyệt.
 ### 2026-11-06 — Giảm token toàn dự án (người dùng chốt)
 - `CLAUDE.md` 12 KB → ~7 KB: bỏ skill `superpowers:*` (luật TDD/kiểm chứng/debug viết ngắn tại chỗ); review vòng 2 chỉ khi vòng 1 có phát hiện; nghiệm thu từng task không đánh `[x]` spec, không nhờ Codex đồng bộ — làm một lần cuối module.
 - `ui-ux-pro-max` tắt ở `.claude/settings.json`, bật trong `settings.local.json` tới hết Task 2b; hook SessionStart nhắc khi plugin không khớp task. Stop hook chỉ theo dõi `app/`, `server/`.
