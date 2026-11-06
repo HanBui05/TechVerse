@@ -699,12 +699,12 @@ Lệnh cuối task (Git Bash trong `server/`, theo luật backend):
 
 **Xong khi:**
 
-- [ ] `AiDraftStreamServiceTest` với fake `Flux` kiểm success, thứ tự event, chỉ content thành delta, SHA/byte, receipt lưu trước `completed`, full validator, deadline theo length, `finishReason=LENGTH` → truncated, refund lỗi và không completed sau invalid.
-- [ ] Test cancel/disconnect dispose đúng một lần, idempotent DELETE, owner isolation, concurrent stream trả 409; active lock dọn sau terminal và tombstone tự hết hạn.
-- [ ] `AiGeneratedContentValidatorTest` kiểm raw HTML, image, unsafe link, H1/H4, H3 mồ côi, normalize tiền tố/số/punctuation của H2, sai số lượng/thứ tự H2, code fence thiếu language, UTF-8 >1 MiB.
-- [ ] `AuthorAiControllerTest` dùng `asyncDispatch` kiểm `SseEmitter`, media type/header/quota, JSON-escaped delta, callback timeout/disconnect và lỗi pre-stream là `ErrorResponse`, lỗi post-stream là event error.
-- [ ] `AuthorArticleIntegrationTest` có một stream qua security filter + async dispatch thật; chứng minh AI service không tạo row và context vẫn dùng stub chung.
-- [ ] Không log prompt/content/provider body; test mapper chỉ trả generic code/message.
+- [x] `AiDraftStreamServiceTest` với fake `Flux` kiểm success, thứ tự event, chỉ content thành delta, SHA/byte, receipt lưu trước `completed`, full validator, deadline theo length, `finishReason=LENGTH` → truncated, refund lỗi và không completed sau invalid.
+- [x] Test cancel/disconnect dispose đúng một lần, idempotent DELETE, owner isolation, concurrent stream trả 409; active lock dọn sau terminal và tombstone tự hết hạn.
+- [x] `AiGeneratedContentValidatorTest` kiểm raw HTML, image, unsafe link, H1/H4, H3 mồ côi, normalize tiền tố/số/punctuation của H2, sai số lượng/thứ tự H2, code fence thiếu language, UTF-8 >1 MiB.
+- [x] `AuthorAiControllerTest` dùng `asyncDispatch` kiểm `SseEmitter`, media type/header/quota, JSON-escaped delta, callback timeout/disconnect và lỗi pre-stream là `ErrorResponse`, lỗi post-stream là event error.
+- [x] `AuthorArticleIntegrationTest` có một stream qua security filter + async dispatch thật; chứng minh AI service không tạo row và context vẫn dùng stub chung.
+- [x] Không log prompt/content/provider body; test mapper chỉ trả generic code/message.
 
 Lệnh cuối task:
 
@@ -721,13 +721,13 @@ Lệnh cuối task:
 
 **Xong khi:**
 
-- [ ] `ArticlePublicationMigrationTest` kiểm V11 thêm `ai_assisted boolean NOT NULL DEFAULT false`, V1–V10 không đổi và article cũ/manual nhận false.
-- [ ] `docs/technical/db/final.sql` và `PROJECT_CONTEXT.md` phản ánh đúng cột/DTO mới; final.sql không được đặt vào Flyway.
-- [ ] `ArticleLifecycleTest` kiểm method provenance chỉ chuyển false → true; edit/save/submit/approve/discard/publication không xóa cờ.
-- [ ] `AuthorArticleIntegrationTest` kiểm create không marker → false; marker đúng owner/payload + `SAVE` → true; marker sai/hết hạn/payload khác/update hoặc SUBMIT kèm marker bị từ chối; cùng generation + cùng idempotency key retry không nhân bản, key khác bị chặn.
-- [ ] `AuthorArticleIntegrationTest` kiểm Author list/detail trả `aiAssisted`; `ModeratorArticleIntegrationTest` kiểm list/detail trả true và vẫn true sau APPROVE.
-- [ ] `PublishedArticleIntegrationTest` không cần thêm ma trận; kiểm tĩnh DTO/mapping `PublishedArticle*`, `SavedArticle*`, `RelatedArticle*` không có `aiAssisted` và Public JSON test hiện có không đổi.
-- [ ] Completed receipt chỉ chứa actor/generation/fingerprint/claim key, TTL 24 giờ; không chứa prompt/content. Redis lỗi không làm create thủ công thất bại nhưng create có marker phải fail closed.
+- [x] `ArticlePublicationMigrationTest` kiểm V11 thêm `ai_assisted boolean NOT NULL DEFAULT false`, V1–V10 không đổi và article cũ/manual nhận false.
+- [x] `docs/technical/db/final.sql` và `PROJECT_CONTEXT.md` phản ánh đúng cột/DTO mới; final.sql không được đặt vào Flyway.
+- [x] `ArticleLifecycleTest` kiểm method provenance chỉ chuyển false → true; edit/save/submit/approve/discard/publication không xóa cờ.
+- [x] `AuthorArticleIntegrationTest` kiểm create không marker → false; marker đúng owner/payload + `SAVE` → true; marker sai/hết hạn/payload khác/update hoặc SUBMIT kèm marker bị từ chối; cùng generation + cùng idempotency key retry không nhân bản, key khác bị chặn.
+- [x] `AuthorArticleIntegrationTest` kiểm Author list/detail trả `aiAssisted`; `ModeratorArticleIntegrationTest` kiểm list/detail trả true và vẫn true sau APPROVE.
+- [x] `PublishedArticleIntegrationTest` không cần thêm ma trận; kiểm tĩnh DTO/mapping `PublishedArticle*`, `SavedArticle*`, `RelatedArticle*` không có `aiAssisted` và Public JSON test hiện có không đổi.
+- [x] Completed receipt chỉ chứa actor/generation/fingerprint/claim key, TTL 24 giờ; không chứa prompt/content. Redis lỗi không làm create thủ công thất bại nhưng create có marker phải fail closed.
 
 Lệnh cuối task:
 

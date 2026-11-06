@@ -2,12 +2,12 @@
 
 Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai-assist.md). Ba mục đầu và “Nhật ký phiên” được hook SessionStart tự nạp sau `/clear`; giữ chúng ngắn.
 
-## Bắt đầu từ đây (cập nhật 2026-11-05)
+## Bắt đầu từ đây (cập nhật 2026-11-06)
 
-- **Task 1a đã nhận (2026-11-05)**, đã commit WIP. Spike Groq đạt; `POST /api/v1/author/ai/outlines` + quota Redis + validator + mapper; Codex review approve. Tiếp: **Task 1b** (session mới) — làm theo mục “Task 1b — Kế hoạch thực thi” cuối log. Task: 1a → 1b → 1c → wireframe → 2a → 2b.
-- Bài học cho 1b (chi tiết ở “Task 1a → Lệch khác spec”): option runtime phải dựng từ `getDefaultOptions().mutate()` (`AiPromptFactory.options`); `include_reasoning` đặt trong code, không YAML; `spring.ai.retry.*` không có tác dụng.
-- Rủi ro: TPM Groq tài khoản 8000 < trần MEDIUM/LONG; có thể gặp 429 khi viết bài dài.
-- Chưa kiểm: lớp tích hợp khác sau đổi `ASYNC/ERROR` permitAll (CI chạy full khi mở PR).
+- **Task 1b đã nhận (2026-11-05), Task 1c đã nhận (2026-11-06)**; đã đánh `[x]` cả hai trong spec, commit cục bộ. Tiếp: **Cổng wireframe trước Task 2a** (không code UI; trình desktop/mobile + state/error, người dùng chốt). Thứ tự: wireframe → 2a → 2b.
+- Bài học (Spring AI/Spring 7): option runtime dựng từ `getDefaultOptions().mutate()` (`AiPromptFactory.options`); `include_reasoning` đặt trong code; **emitter đã đóng khi callback timeout chạy** → service tự áp deadline trên Flux, emitter dư 5 giây.
+- Rủi ro: TPM Groq tài khoản 8000 < trần MEDIUM/LONG; có thể gặp 429 khi viết bài dài. Registry cancel chỉ một instance.
+- Chưa kiểm: stream Groq thật (smoke cuối module); lớp tích hợp khác sau đổi `ASYNC/ERROR` permitAll (CI chạy full khi mở PR).
 - Nền sẵn có từ `article-flow`: editor `/author/blogs/new`, `/author/blogs/:id/edit`; API Author create/save/submit (`Idempotency-Key`), `imageIssues`, validator Markdown (cấm raw HTML/link nguy hiểm, ≤1 MiB), rate-limit Redis, Moderator duyệt version. Spring Boot 4.1.1, Postgres `postgres:16-alpine` (chưa có pgvector), Redis 7.
 
 ## Quyết định người dùng chưa có trong spec
@@ -19,6 +19,27 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`ai-assist.md`](ai
 - (không có — Q3/Q4 hoãn sang module RAG theo Q1=A)
 
 ## Nhật ký phiên
+### 2026-11-06 — Claude kiểm lại Task 1b + 1c
+- Chạy lại 8 lớp (DraftStream 26, Validator 16, Controller 15, Outline 15, AuthorArticleIntegration 42, Lifecycle 21, PublicationMigration 7, ModeratorArticleIntegration 19): **161/161 đạt**; `bootJar` đạt.
+- Đọc diff 1c: fingerprint create khớp stream (title/summary `strip()` hai phía, content giữ nguyên, tag sort); claim Lua giữ TTL gốc; update/SUBMIT kèm marker → `AI_GENERATION_INVALID`. Không có blocker.
+- Task 1c đã nhận (2026-11-06): đánh `[x]` 7/7 “Xong khi” 1c, commit cục bộ 1b + 1c, nhờ Codex đồng bộ spec.
+
+### 2026-11-05 — Codex làm Task 1c, chờ Claude review
+- Đã thêm Flyway `V11__add_article_ai_assisted.sql`, entity `Article.aiAssisted` mặc định `false` và method provenance chỉ chuyển sang `true`; đồng bộ `docs/technical/db/final.sql` + `docs/PROJECT_CONTEXT.md`.
+- `ArticleWriteRequest` nhận optional `aiGenerationId`. Create chỉ nhận marker với `SAVE`; `AiCompletedGenerationRepository.claim` dùng Lua nguyên tử để đối chiếu actor/generation (qua Redis key), canonical fingerprint và bind đúng một `Idempotency-Key`. Retry cùng generation/key được replay; key/payload khác, receipt thiếu/hết hạn/foreign, marker trên update/SUBMIT trả `409 AI_GENERATION_INVALID`.
+- Receipt Redis chỉ có `fingerprint` + `claimKey`, giữ TTL gốc 24 giờ; create có marker fail-closed khi Redis lỗi, create thủ công không gọi receipt AI. Cờ giữ qua edit/save/submit/approve/discard/publication.
+- Author list/detail và Moderator list/detail/review trả `aiAssisted`; kiểm tĩnh khóa `PublishedArticle*`, `SavedArticle*`, `RelatedArticle*` không có field này.
+- TDD: migration/entity đỏ vì thiếu method/cột; integration đỏ vì chưa có contract/claim; Moderator đỏ vì thiếu mapping. Lệnh nghiệm thu 4 lớp: **89/89 đạt**. `./gradlew bootJar`: **đạt**. `git diff --check`: đạt (chỉ có cảnh báo LF/CRLF của file Task 1b có sẵn).
+- Chưa đánh `[x]` Task 1c và chưa nhận hoàn tất: chờ Claude review theo yêu cầu người dùng.
+
+### 2026-11-05 — Chuyển focus sang Task 1c
+- Người dùng cho chuyển sang Task 1c. Codex đối chiếu log Task 1b: 6/6 nhóm nghiệm thu có bằng chứng, 95/95 test mục tiêu + `bootJar` đạt, review vòng 2 không còn blocker; đã đánh `[x]` toàn bộ “Xong khi” Task 1b.
+- Cập nhật `PLAN.md` sang “Đang thực hiện”, Task hiện tại 1c. Chưa sửa code Task 1c trong bước chuyển focus.
+
+### 2026-11-05 — Claude làm Task 1b
+- Draft SSE + cancel + registry + receipt + validator draft theo “Task 1b — Kế hoạch thực thi”; 109 test đạt (5 lớp), `bootJar` đạt.
+- Phát hiện: Spring 7 đóng emitter trước callback timeout → không gửi được `AI_TIMEOUT` từ đó; service tự áp deadline (`Flux.timeout` tuyệt đối), emitter = deadline + 5s.
+- Bỏ `spring.ai.retry` khỏi `application.yaml` theo spec đồng bộ. Ghi bẫy `SseEmitter` timeout vào `.claude/rules/backend.md`. Việc dở: Codex review vòng 1 (đang chạy).
 - 2026-11-05 — Codex: đã đưa “Lệch khác spec” của Task 1a vào thân spec và giữ nguyên phạm vi/kế hoạch Task 1b.
 
 ### 2026-11-05 — Kế hoạch Task 1b + cập nhật rule/skill
@@ -115,3 +136,50 @@ Nguồn sự thật vẫn là spec mục “2. Viết draft dạng SSE” + “T
 **Lựa chọn kỹ thuật tự chốt (ghi vào “Lệch khác spec” khi code):** body >16 KiB → kiểm `Content-Length` đầu method, trả `400 VALIDATION_ERROR` field `body` (`shortcut:` chunked không có Content-Length thì chặn luôn). Draft không có repair (spec: invalid → error). Deadline = timeout của emitter = timeout request SDK theo length.
 
 **Không thuộc 1b:** `aiGenerationId` trong `ArticleWriteRequest`, V11, DTO `aiAssisted` (Task 1c); UI (2a).
+
+## Task 1b — Code + test (Claude, 2026-11-05)
+
+- Đã làm: `AiGeneratedContentValidator.validateDraft` (CommonMark riêng + `validateContent`); `AiDraftRequest` (sections lồng, `distinctHeadings`), `AiStreamEvent`, `AiGenerationStatusResponse`; `ErrorCode.AI_GENERATION_IN_PROGRESS/NOT_FOUND`; `AiGenerationRegistry`; `AiCompletedGenerationRepository` (Lua `HSET fingerprint` + `EXPIRE`, chỉ SHA-256 canonical); `AiDraftStreamService` (`start` preflight → `stream` một `end()` duy nhất); prompt draft trong `AiPromptFactory`; bean `aiSseTaskExecutor` (8 luồng, hàng đợi 16) ở `AiAssistConfiguration`; controller 2 endpoint; tách `AiOutlineService.select` dùng chung taxonomy.
+- Lệnh: `./gradlew test` 4 lớp spec + `AiOutlineServiceTest` → DraftStream 25, Validator 16, Controller 15, `AuthorArticleIntegrationTest` 38, Outline 15: **109/109 đạt**. `./gradlew bootJar` đạt. Thử đột biến: bỏ `Flux.timeout` → ca deadline đỏ.
+- Chưa kiểm: Groq stream thật; ca tích hợp/controller viết sau code (không thấy đỏ trước), service test chạy xanh ngay lần đầu.
+
+### Lệch khác spec
+
+- **Deadline do service áp, emitter dư 5 giây** (`EMITTER_GRACE`): Spring 7 đánh dấu emitter hoàn tất trước khi chạy callback timeout (`send` ném `IllegalStateException`, đã chứng minh ở `AuthorAiControllerTest`), nên event `AI_TIMEOUT` phải phát từ `Flux.timeout(deadline)` trong service. Emitter = 95/125/185s (< async 195s). Callback timeout của emitter chỉ còn là dự phòng dọn dẹp + refund. `metadata.timeoutSeconds` vẫn là 90/120/180.
+- Body >16 KiB: kiểm `Content-Length` sau khi bind → `400 VALIDATION_ERROR` `fieldErrors.body`; không có `Content-Length` (chunked) cũng bị chặn (`shortcut:` trong code).
+- Quick guard chỉ xét dòng hoàn chỉnh ngoài code fence: NUL, >1 MiB, dòng bắt đầu `![` hoặc `<tag`. `List<String>` trong code fence không bị chặn.
+- `finishReason` khác `stop`/`length` (vd. `content_filter`) → `AI_PROVIDER_UNAVAILABLE`. Draft không có repair call.
+- Receipt chỉ lưu `fingerprint` (hash Redis); không có field `claimKey` nghĩa là chưa claim (Task 1c thêm claim). Cancel dùng `AiDraftStreamService.cancel` → registry; registry dọn mục hết hạn (kể cả mục running bị rò) khi truy cập.
+- Headings trùng nhau (không phân biệt hoa thường, cả H2/H3) → `fieldErrors.distinctHeadings`.
+
+## Task 1b — Review Codex vòng 1 (2026-11-05) — 1 phát hiện P2
+
+- [P2] `AiDraftStreamService.Run.begin()` dùng `subscribeOn(Schedulers.fromExecutor(executor))`. `subscribeOn` chỉ chuyển thao tác đăng ký subscription; các signal do HTTP client/provider và timer phát vẫn có thể gọi `chunk`/`failed`/`ended`, rồi `SseEmitter.send`, ngay trên thread provider/Reactor. Điều này trái tiêu chí Task 1b yêu cầu chuyển việc ghi SSE sang executor bounded riêng và có thể chặn event-loop khi client đọc chậm. Cần chuyển toàn bộ signal/terminal callback sang `aiSseTaskExecutor` (ví dụ đặt ranh giới `publishOn` đúng phía để cả timeout error cũng đi qua executor) và thêm đúng một ca unit test cho provider phát từ thread khác, assert emitter được ghi trên executor AI.
+- Đối chiếu “Xong khi”: 6/6 nhóm có code/test tương ứng; log ghi 109/109 test mục tiêu và `bootJar` đạt. Task chưa đạt review cho tới khi sửa P2 trên.
+- Không chạy lại Gradle theo quy ước review Windows; kết luận test dựa trên kết quả Claude đã ghi trong log.
+
+### Sửa review vòng 1 (Codex thay Claude theo yêu cầu người dùng, 2026-11-05)
+
+- TDD đỏ: thêm `providerSignalsAreWrittenToTheEmitterOnTheAiExecutor`; với code cũ, cả 4 lần ghi `delta/completed` chạy trên `provider-test`, ca test thất bại đúng nguyên nhân.
+- Sửa tối thiểu: giữ `subscribeOn` cho bước subscribe provider và thêm `publishOn(Schedulers.fromExecutor(executor))` sau `timeout`, nên signal thường lẫn timeout error đều đi qua `aiSseTaskExecutor` trước `chunk`/`failed`/`ended` và `SseEmitter.send`.
+- TDD xanh: ca regression riêng đạt; toàn bộ `AiDraftStreamServiceTest` đạt 26/26.
+- Kiểm cuối task theo spec: `AiDraftStreamServiceTest` 26, `AiGeneratedContentValidatorTest` 16, `AuthorAiControllerTest` 15, `AuthorArticleIntegrationTest` 38 — **95/95 đạt**; `./gradlew bootJar` đạt. Chờ review vòng 2, chỉ xem diff sửa từ vòng 1.
+
+## Task 1b — Review Codex vòng 2 (2026-11-05) — Đạt
+
+- Chỉ xem phần sửa vòng 1: `publishOn` được đặt sau `timeout`, nên provider signal và timeout error đều đi qua `aiSseTaskExecutor` trước `chunk`/`failed`/`ended` và thao tác ghi SSE.
+- Test mới dùng provider thread và AI executor tách biệt, đã đỏ với code cũ và xanh sau sửa; log kiểm chứng ghi 95/95 test mục tiêu và `bootJar` đạt.
+- Không còn phát hiện cao/trung trong phạm vi sửa vòng 1. Không chạy lại Gradle ở bước review theo quy ước Windows; dựa vào kết quả implementer vừa ghi.
+
+## Task 1b — Đã triển khai (chờ Claude kiểm lại, chưa chốt hoàn tất)
+
+- API `POST /api/v1/author/ai/drafts:stream` trả SSE typed events `metadata`, `delta`, `completed`, `cancelled`, `error`; không tạo article trong lúc stream.
+- API `DELETE /api/v1/author/ai/generations/{generationId}` hỗ trợ cancel idempotent, owner isolation và trạng thái `CANCELLED`/`ALREADY_FINISHED`.
+- `AiDraftRequest` và validation đầu vào: title/summary/idea/audience/length, topic/tag, 3–8 H2, tối đa 4 H3 mỗi mục, heading/tag không trùng, body tối đa 16 KiB.
+- `AiDraftStreamService` gọi model theo dàn ý, chỉ phát assistant content, áp deadline theo SHORT/MEDIUM/LONG, dispose provider khi cancel/disconnect/timeout và xử lý refund quota theo contract.
+- `AiGeneratedContentValidator` kiểm toàn văn Markdown: giới hạn 1 MiB UTF-8, không raw HTML/ảnh/link nguy hiểm, chỉ H2/H3 đúng thứ tự dàn ý, H3 không mồ côi và code fence có language.
+- `AiGenerationRegistry` giới hạn một stream/Author, giữ tombstone để DELETE idempotent và dọn entry hết hạn.
+- `AiCompletedGenerationRepository` lưu receipt Redis 24 giờ dưới dạng fingerprint SHA-256 canonical; receipt được lưu trước event `completed`, chưa verify/claim sang article vì phần đó thuộc Task 1c.
+- Luồng provider signal và timeout error đi qua `aiSseTaskExecutor` trước khi ghi SSE; lỗi `subscribeOn` ở review vòng 1 đã sửa bằng `publishOn` và có test thread đỏ/xanh.
+- Kiểm chứng gần nhất: 95/95 test mục tiêu đạt (`AiDraftStreamServiceTest` 26, validator 16, controller 15, integration 38) và `bootJar` đạt. Codex review vòng 2 không còn blocker cao/trung.
+- **Chưa chốt hoàn tất:** các checkbox “Xong khi” của Task 1b trong spec vẫn để `[ ]`; chờ Claude đối chiếu lại code/test/log. Khi Claude xác nhận, cập nhật Task 1b rồi bắt đầu Task 1c.
