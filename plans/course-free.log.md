@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 
 ## Bắt đầu từ đây (cập nhật 2026-11-09)
 
-- **Task 1c đã nhận (2026-11-09)** (review vòng 1 có 2 phát hiện đã sửa, vòng 2 `approve`). Task 1a, 1b đã nhận (2026-11-07). **Tiếp: cổng wireframe trước Task 2a.**
+- **Task 1c đã nhận (2026-11-09)** (review vòng 1 có 2 phát hiện đã sửa, vòng 2 `approve`). Task 1a, 1b đã nhận (2026-11-07). **Cổng wireframe đã nhận (2026-11-09)** — [`course-free.wireframe.md`](course-free.wireframe.md). **Tiếp: Task 2a** (task giao diện: giữ plugin `ui-ux-pro-max` bật).
 - Chưa kiểm: Cloudinary thật với scope COURSE/LESSON (chỉ fake storage); OpenAPI chỉ qua `@Operation`/`@Schema`, chưa mở Swagger; start/completion đồng thời chỉ dựa `ON CONFLICT` (không có ca test song song).
 - **Spec đã chốt 2026-11-07** sau vòng 1 (không vòng 2); lịch sử phản biện ở `course-free.review.md`.
 - Hướng gốc của người dùng: mục “Miền khóa học” trong “Câu hỏi mở” của `PLAN.md`; mẫu giao diện JavaBuilder, ảnh `.playwright-mcp/jb-course.png`, `.playwright-mcp/jb-lesson.png` (gitignore).
@@ -22,11 +22,17 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
   7. Chưa có version trước → mọi chapter/lesson `NEW`; diff = working active ∪ version gần nhất, bài archive ở version cũ hơn không hiện.
 - Kỹ thuật cho 1c (đã rà): public GET course là permitAll + JWT tùy chọn (article public hiện đều `authenticated`, mặc định `denyAll` → khai riêng start/completion/`/me/courses`); `Course` chưa có moderator hide/restore/remove; GET lesson ghi `last_lesson_id` cần transaction ghi; start idempotent dựa `uq_active_course_enrollment`.
 
+- **2026-11-09 — Cổng wireframe:** duyệt `course-free.wireframe.md`, đồng ý 5 câu mục 6: khung học riêng không Sidebar app; overview dùng chung khung học có cột curriculum; reorder chương/bài bằng Lên/Xuống (không kéo-thả); AI soạn bài trong Sheet của editor (không route mới); Guest vào `/courses*` không cần đăng nhập.
+
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-09 — Cổng wireframe: bản nháp → đã nhận
+- Người dùng duyệt wireframe + đồng ý 5 câu hỏi chốt (ghi ở “Quyết định người dùng”).
+- Tạo `plans/course-free.wireframe.md` từ spec + DTO 1a–1c + ảnh JB: route/menu/quyền, Reader (catalog, khung học, overview, trang bài 3 cột, mobile, `/me/courses`), Author (workspace, tạo, editor cây + chương/bài/video/AI Sheet, mobile), Moderator (list, detail cây thay đổi + so sánh), copy vi/en, 5 câu hỏi chốt. Không sửa code.
+- Ràng buộc từ API đã phản ánh: list public/Author không có số chương/bài; bài không có phút đọc/ngày cập nhật; `/blogs` hiện bọc `AuthRoute` nhưng `/courses*` phải mở cho Guest.
 ### 2026-11-09 — Task 1c: sửa sau Codex review vòng 1
 - Vòng 1 (`adversarial-review`, 2 medium, đều đúng): (1) `/me/courses` vẫn trả tiến độ cho tài khoản đã enroll rồi được cấp MODERATOR/ADMIN → manager nhận trang rỗng (đọc như chưa enroll, theo quyết định 4; không 403); (2) completion có thể ghi cho bài vừa bị approve version mới archive → `CourseRepository.findByIdForShare` (`FOR SHARE`) trước khi đọc course/snapshot, chờ approve/hide (`FOR UPDATE`) commit. Không deadlock: learner không phải actor/author mà approve khóa.
 - Test: thêm ca manager trong `myCourses…` + `completionWaitsForAConcurrentPublicationChange` (giữ `FOR UPDATE` course bằng JDBC, completion chờ tới khi rollback); đỏ đúng chỗ rồi xanh. `./gradlew test --tests CourseLearning/PublishedCourse/ModeratorCourse/AuthorCourse*` → 4 lớp, 23 ca, 0 lỗi. Vòng 2 (chỉ phần sửa): `approve`, không phát hiện. Task 1c đã nhận (2026-11-09).
