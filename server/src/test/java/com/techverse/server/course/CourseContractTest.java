@@ -17,7 +17,9 @@ class CourseContractTest {
     static final List<Class<?>> REQUESTS =
             List.of(CourseWriteRequest.class, LessonWriteRequest.class, CourseChapterRequest.class, CourseReorderRequest.class);
     static final List<Class<?>> RESPONSES =
-            List.of(CourseResponse.class, LessonResponse.class, CourseSummaryResponse.class, CourseModerationHistoryResponse.class);
+            List.of(CourseResponse.class, LessonResponse.class, CourseSummaryResponse.class, CourseModerationHistoryResponse.class,
+                    ModeratorCourseDetailResponse.class, ModeratorCourseSummaryResponse.class, PublishedCourseSummaryResponse.class,
+                    PublishedCourseDetailResponse.class, PublishedLessonResponse.class, CourseProgressResponse.class, MyCourseResponse.class);
 
     @Test
     void noPriceOrCurrencyFields() {

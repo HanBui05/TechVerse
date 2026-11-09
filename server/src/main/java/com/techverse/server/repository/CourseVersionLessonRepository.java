@@ -12,6 +12,18 @@ public interface CourseVersionLessonRepository extends JpaRepository<CourseVersi
     @Query("select vl.content from CourseVersionLesson vl where vl.lesson.id = :lessonId")
     List<String> findContentsByLessonId(@Param("lessonId") UUID lessonId);
 
+    /** Lessons of the given snapshots in reading order, Markdown excluded. */
+    @Query(
+            "select new com.techverse.server.dto.internal.CourseLessonRow(vl.version.id, vl.lesson.id,"
+                    + " vc.id, vc.chapter.id, vl.title, vl.summary, vl.position, vl.preview,"
+                    + " case when vl.videoId is not null then true else false end,"
+                    + " case when vl.content is not null then true else false end,"
+                    + " vl.aiAssisted, vl.contentFingerprint)"
+                    + " from CourseVersionLesson vl join vl.versionChapter vc"
+                    + " where vl.version.id in :versionIds order by vc.position, vl.position")
+    List<com.techverse.server.dto.internal.CourseLessonRow> findRows(
+            @Param("versionIds") Collection<UUID> versionIds);
+
     @EntityGraph(attributePaths = {"version", "versionChapter"})
     @Query(
             "select vl from CourseVersionLesson vl where vl.version.id = :versionId"

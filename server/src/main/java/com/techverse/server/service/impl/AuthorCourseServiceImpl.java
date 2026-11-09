@@ -45,6 +45,7 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
     private final CourseAccessService access;
     private final LessonContentService content;
     private final ArticleImageService images;
+    private final CourseImageReferences imageRefs;
     private final ArticleRateLimitService limits;
     private final CourseCreationRepository receipts;
     private final AiCompletedGenerationRepository aiGenerations;
@@ -125,21 +126,21 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
      * locked phase re-derives that set and retries if it now holds an unverified image.
      */
     private CourseResponse submit(UUID actor, UUID id, CourseWriteRequest request) {
-        var verified = new HashSet<ImageRef>();
+        var verified = new HashSet<CourseImageReferences.ImageRef>();
         for (int attempt = 0; attempt < 3; attempt++) {
             var readOnly = transaction();
             readOnly.setReadOnly(true);
-            List<ImageRef> pending =
+            List<CourseImageReferences.ImageRef> pending =
                     readOnly.execute(
                             s -> {
                                 Course course = access.owned(actor, id);
                                 String description = request.has("description") ? request.getDescription() : course.getDescription();
                                 String cover = request.has("coverImageUrl") ? request.getCoverImageUrl() : course.getCoverImageUrl();
-                                return changedImages(course, description, cover);
+                                return imageRefs.changed(course, description, cover);
                             });
-            for (ImageRef ref : pending) {
+            for (var ref : pending) {
                 if (verified.contains(ref)) continue;
-                checkLive(ref);
+                imageRefs.checkLive(ref);
                 verified.add(ref);
             }
             CourseResponse result =
@@ -151,17 +152,17 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
                                         applyEdits(course, request);
                                         if (course.getSummary().isBlank() || course.getDescription().isBlank())
                                             throw new CustomException(ErrorCode.COURSE_NOT_READY);
-                                        for (ImageRef ref : allImages(course))
+                                        for (var ref : imageRefs.all(course))
                                             if (!images.isOwnManagedUrl(ref.url(), ref.target()))
                                                 throw new CustomException(ErrorCode.COURSE_NOT_READY);
-                                        var changed = changedImages(course, course.getDescription(), course.getCoverImageUrl());
+                                        var changed = imageRefs.changed(course, course.getDescription(), course.getCoverImageUrl());
                                         if (!verified.containsAll(changed)) {
                                             s.setRollbackOnly();
                                             return null;
                                         }
                                         // Cleanup deletes under this same course lock: re-read each
                                         // changed image so one removed after the pre-check fails here.
-                                        for (ImageRef ref : changed) checkLive(ref);
+                                        for (var ref : changed) imageRefs.checkLive(ref);
                                         if (!course.getTopic().isActive()
                                                 || course.getCourseTags().stream().anyMatch(t -> !t.getTag().isActive()))
                                             inactive();
@@ -434,53 +435,6 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
     }
 
     // ------------------------------------------------------------------ helpers
-
-    private record ImageRef(Target target, String url) {}
-
-    private void checkLive(ImageRef ref) {
-        try {
-            images.validateManaged(ref.url(), ref.target());
-        } catch (CustomException e) {
-            if (e.getErrorCode() == ErrorCode.ARTICLE_IMAGE_INVALID)
-                throw new CustomException(ErrorCode.COURSE_NOT_READY);
-            throw CourseErrors.translate(e, true);
-        }
-    }
-
-    /** Images of documents (course meta, lessons) that differ from the published version. */
-    private List<ImageRef> changedImages(Course course, String description, String cover) {
-        var refs = new ArrayList<ImageRef>();
-        var owner = course.getAuthor().getId();
-        var published = course.getPublishedVersion();
-        if (published == null
-                || !Objects.equals(published.getDescription(), description)
-                || !Objects.equals(published.getCoverImageUrl(), cover))
-            courseImages(refs, Target.course(owner, course.getId()), description, cover);
-        var publishedLessons = new HashMap<UUID, String>();
-        if (published != null)
-            published.getLessons().forEach(vl -> publishedLessons.put(vl.getLesson().getId(), vl.getContentFingerprint()));
-        for (Lesson lesson : course.activeLessons())
-            if (!lesson.getContentFingerprint().equals(publishedLessons.get(lesson.getId())))
-                lessonImages(refs, lesson);
-        return refs;
-    }
-
-    private List<ImageRef> allImages(Course course) {
-        var refs = new ArrayList<ImageRef>();
-        courseImages(refs, Target.course(course.getAuthor().getId(), course.getId()), course.getDescription(), course.getCoverImageUrl());
-        course.activeLessons().forEach(l -> lessonImages(refs, l));
-        return refs;
-    }
-
-    private void courseImages(List<ImageRef> refs, Target target, String description, String cover) {
-        content.imageUrls(description).forEach(url -> refs.add(new ImageRef(target, url)));
-        if (cover != null) refs.add(new ImageRef(target, cover));
-    }
-
-    private void lessonImages(List<ImageRef> refs, Lesson lesson) {
-        var target = Target.lesson(lesson.getCourse().getAuthor().getId(), lesson.getId(), lesson.getCourse().getId());
-        content.imageUrls(lesson.getContent()).forEach(url -> refs.add(new ImageRef(target, url)));
-    }
 
     private void applyEdits(Course course, CourseWriteRequest request) {
         UUID topicId = request.has("topicId") ? request.getTopicId() : course.getTopic().getId();

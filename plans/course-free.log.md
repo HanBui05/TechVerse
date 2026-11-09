@@ -2,23 +2,40 @@
 
 Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](course-free.md). Ba mục đầu và “Nhật ký phiên” được hook SessionStart tự nạp sau `/clear`; giữ chúng ngắn.
 
-## Bắt đầu từ đây (cập nhật 2026-11-07)
+## Bắt đầu từ đây (cập nhật 2026-11-09)
 
-- **Task 1b đã nhận (2026-11-07)** sau Codex review 2 vòng (vòng 2 approve). Task 1a đã nhận (2026-11-07). **Tiếp: Task 1c (Opus)** — `/clear`, `/model opus`. Lưu ý 1c: approve phải `flush()` trước `histories.save(...)` (nếu không `version_id` của history bị null — đã gặp ở test 1b).
-- Chưa kiểm: Cloudinary thật với scope COURSE/LESSON (chỉ fake storage); OpenAPI chỉ qua `@Operation`/`@Schema`, chưa mở Swagger.
+- **Task 1c đã nhận (2026-11-09)** (review vòng 1 có 2 phát hiện đã sửa, vòng 2 `approve`). Task 1a, 1b đã nhận (2026-11-07). **Tiếp: cổng wireframe trước Task 2a.**
+- Chưa kiểm: Cloudinary thật với scope COURSE/LESSON (chỉ fake storage); OpenAPI chỉ qua `@Operation`/`@Schema`, chưa mở Swagger; start/completion đồng thời chỉ dựa `ON CONFLICT` (không có ca test song song).
 - **Spec đã chốt 2026-11-07** sau vòng 1 (không vòng 2); lịch sử phản biện ở `course-free.review.md`.
 - Hướng gốc của người dùng: mục “Miền khóa học” trong “Câu hỏi mở” của `PLAN.md`; mẫu giao diện JavaBuilder, ảnh `.playwright-mcp/jb-course.png`, `.playwright-mcp/jb-lesson.png` (gitignore).
 - Nhánh `feature/course-free` (tách từ `feature/ai-assist`, PR ai-assist chưa merge → rebase lên `main` sau khi merge).
 
 ## Quyết định người dùng chưa có trong spec
 
-- (không có — 6 quyết định và 3 đề xuất ngày 2026-11-06 đã nằm trong spec đã chốt)
+- **2026-11-07 — Task 1c (người dùng OK sau khi rà spec 1c):**
+  1. `/me/courses` chỉ liệt kê khóa còn visible công khai; enrollment/progress giữ nguyên, khóa restore thì hiện lại.
+  2. Public detail thêm `viewer: { enrolled, canStart }` (owner/manager `canStart=false`) + trường info card: `chapterCount`, `lessonCount`, `updatedAt` (= `approvedAt` version hiện hành), thẻ tác giả.
+  3. `POST /start` (cả retry) trả `continueLesson` (enrollment mới = bài đầu) + progress.
+  4. Tài khoản có role MODERATOR/ADMIN dù đã enroll: đọc như chưa enroll (chỉ preview, không cập nhật last lesson, không progress); start/completion 403.
+  5. Thứ tự lỗi mở bài/completion: course không visible 404 `COURSE_NOT_FOUND` → manager 403 `ACCESS_DENIED` → bài ngoài snapshot hiện hành 404 `LESSON_NOT_FOUND` → chưa enroll 403 `LESSON_PREVIEW_ONLY` (GET) / 409 `COURSE_ENROLLMENT_REQUIRED` (completion).
+  6. Public sort newest/oldest theo `published_at` (lần đầu, như article); “ngày cập nhật” = `approvedAt` version hiện hành.
+  7. Chưa có version trước → mọi chapter/lesson `NEW`; diff = working active ∪ version gần nhất, bài archive ở version cũ hơn không hiện.
+- Kỹ thuật cho 1c (đã rà): public GET course là permitAll + JWT tùy chọn (article public hiện đều `authenticated`, mặc định `denyAll` → khai riêng start/completion/`/me/courses`); `Course` chưa có moderator hide/restore/remove; GET lesson ghi `last_lesson_id` cần transaction ghi; start idempotent dựa `uq_active_course_enrollment`.
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-09 — Task 1c: sửa sau Codex review vòng 1
+- Vòng 1 (`adversarial-review`, 2 medium, đều đúng): (1) `/me/courses` vẫn trả tiến độ cho tài khoản đã enroll rồi được cấp MODERATOR/ADMIN → manager nhận trang rỗng (đọc như chưa enroll, theo quyết định 4; không 403); (2) completion có thể ghi cho bài vừa bị approve version mới archive → `CourseRepository.findByIdForShare` (`FOR SHARE`) trước khi đọc course/snapshot, chờ approve/hide (`FOR UPDATE`) commit. Không deadlock: learner không phải actor/author mà approve khóa.
+- Test: thêm ca manager trong `myCourses…` + `completionWaitsForAConcurrentPublicationChange` (giữ `FOR UPDATE` course bằng JDBC, completion chờ tới khi rollback); đỏ đúng chỗ rồi xanh. `./gradlew test --tests CourseLearning/PublishedCourse/ModeratorCourse/AuthorCourse*` → 4 lớp, 23 ca, 0 lỗi. Vòng 2 (chỉ phần sửa): `approve`, không phát hiện. Task 1c đã nhận (2026-11-09).
+### 2026-11-07 — Task 1c: API Moderator, public course, học/progress
+- Thêm `ModeratorCourseController/Service(Impl)` (list/detail+`changes`/lesson `versionId`/history/review/publication), `PublishedCourseController/Service(Impl)` (`/courses`, detail, lesson, start, completion PUT/DELETE, `/me/courses`), entity `CourseEnrollment`/`LessonProgress` (+repo, insert `ON CONFLICT`), `CourseLessonRow` (cây không Markdown), `Course.moderatorHide/restore/remove`, 7 mã lỗi, matcher security (GET `/courses/**` permitAll). Tách `CourseImageReferences` từ `AuthorCourseServiceImpl` (dùng cho approve); `PublishedArticleSpecification.visible` nhận `From<?, ?>` (dùng chung course).
+- Test: `./gradlew test --tests 'course.*' + ModeratorArticleIntegrationTest + PublishedArticleIntegrationTest + SavedArticleIntegrationTest + ArticleLifecycleTest` → 15 lớp, 160 ca, 0 lỗi (Moderator course 4, Published course 3, Learning 4, AuthorCourse 11, Contract 3, ModeratorArticle 19, PublishedArticle 16, Saved 8).
+- Lệch khác spec: base test `course/CourseIntegrationTestBase.java` (tên không đuôi `Test`); manager/owner mở bài không preview → 403 `ACCESS_DENIED` (preview vẫn đọc được — gộp quyết định 4 và 5), owner start/completion 403; response lồng (`ModeratorCourseSummaryResponse.course`, `MyCourseResponse.course`); public list không có `chapterCount/lessonCount` (chỉ detail); taxonomy inactive khi approve → `COURSE_NOT_READY`; Moderator `imageIssues` rỗng; approve chỉ kiểm provider ảnh của document đổi so với version.
+### 2026-11-07 — Rà spec Task 1c
+- Luồng ổn, không lỗ chặn; 7 điểm mơ hồ người dùng OK theo khuyến nghị → ghi ở “Quyết định người dùng chưa có trong spec”.
 ### 2026-11-07 — Task 1b đã nhận
 - Người dùng nhận Task 1b; commit cục bộ trên `feature/course-free`.
 ### 2026-11-07 — Task 1b: sửa theo Codex review vòng 1 (1 high, 2 medium)

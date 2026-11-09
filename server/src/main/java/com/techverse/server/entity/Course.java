@@ -324,14 +324,14 @@ public class Course extends BaseEntity {
 
     public CourseModerationHistory authorHide(User actor) {
         if (publicationStatus != PUBLISHED) transitionInvalid();
-        return transition(actor, ArticleModerationAction.AUTHOR_HIDE, AUTHOR_HIDDEN);
+        return transition(actor, ArticleModerationAction.AUTHOR_HIDE, null, AUTHOR_HIDDEN);
     }
 
     public CourseModerationHistory authorUnhide(User actor) {
         if (publicationStatus == HIDDEN)
             throw new CustomException(ErrorCode.COURSE_AUTHOR_UNHIDE_NOT_ALLOWED);
         if (publicationStatus != AUTHOR_HIDDEN) transitionInvalid();
-        return transition(actor, ArticleModerationAction.AUTHOR_UNHIDE, PUBLISHED);
+        return transition(actor, ArticleModerationAction.AUTHOR_UNHIDE, null, PUBLISHED);
     }
 
     /** Never-approved courses are deleted outright; anything with a snapshot is soft-deleted. */
@@ -346,14 +346,14 @@ public class Course extends BaseEntity {
         if (publishedVersion == null || publicationStatus.isTerminal())
             throw new CustomException(ErrorCode.COURSE_NOT_DELETABLE);
         hiddenFromPublicationStatus = null;
-        return transition(actor, ArticleModerationAction.AUTHOR_DELETE, AUTHOR_DELETED);
+        return transition(actor, ArticleModerationAction.AUTHOR_DELETE, null, AUTHOR_DELETED);
     }
 
     private CourseModerationHistory transition(
-            User actor, ArticleModerationAction action, ArticlePublicationStatus to) {
+            User actor, ArticleModerationAction action, String note, ArticlePublicationStatus to) {
         var from = publicationStatus;
         publicationStatus = to;
-        return CourseModerationHistory.of(this, actor, action, null, workflowStatus, from);
+        return CourseModerationHistory.of(this, actor, action, note, workflowStatus, from);
     }
 
     private static void transitionInvalid() {
@@ -393,6 +393,28 @@ public class Course extends BaseEntity {
                 note,
                 fromWorkflow,
                 publicationStatus);
+    }
+
+    public CourseModerationHistory moderatorHide(User actor, String note) {
+        if (publicationStatus != PUBLISHED && publicationStatus != AUTHOR_HIDDEN) transitionInvalid();
+        var source = publicationStatus;
+        var history = transition(actor, ArticleModerationAction.HIDE, note, HIDDEN);
+        hiddenFromPublicationStatus = source;
+        return history;
+    }
+
+    public CourseModerationHistory restore(User actor, String note) {
+        if (publicationStatus != HIDDEN) transitionInvalid();
+        var target = hiddenFromPublicationStatus;
+        hiddenFromPublicationStatus = null;
+        return transition(actor, ArticleModerationAction.RESTORE, note, target);
+    }
+
+    public CourseModerationHistory remove(User actor, String note) {
+        if (publicationStatus != PUBLISHED && publicationStatus != AUTHOR_HIDDEN && publicationStatus != HIDDEN)
+            transitionInvalid();
+        hiddenFromPublicationStatus = null;
+        return transition(actor, ArticleModerationAction.REMOVE, note, REMOVED);
     }
 
     private void checkReviewable() {
