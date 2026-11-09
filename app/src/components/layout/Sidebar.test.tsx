@@ -55,8 +55,27 @@ it('lists only routable entries in the learner sidebar', () => {
   render(<Shell><Sidebar {...props} profile={profile} /></Shell>)
   fireEvent.click(screen.getByRole('button', { name: 'Cài đặt' }))
   expect(hrefs().filter(href => deadUserPaths.test(href))).toEqual([])
-  for (const name of ['Trang chủ', 'Bài viết', 'Tác giả', 'Thông tin cá nhân']) expect(screen.queryByRole('link', { name })).not.toBeNull()
+  for (const name of ['Trang chủ', 'Bài viết', 'Thông tin cá nhân']) expect(screen.queryByRole('link', { name })).not.toBeNull()
   for (const text of ['Tiến độ của tôi', 'Premium & thanh toán', 'Nhận thông báo', 'Giới thiệu']) expect(screen.queryByText(text)).toBeNull()
+})
+
+it('groups the Author links under a collapsed “Tác giả” menu, opens it on /author/* and keeps non-Authors on the apply link', () => {
+  render(<Shell><Sidebar {...props} profile={profile} /></Shell>)
+  const toggle = screen.getByRole('button', { name: 'Tác giả' })
+  expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  expect(screen.queryByRole('link', { name: 'Khóa học' })).toBeNull()
+  fireEvent.click(toggle)
+  expect(screen.getByRole('link', { name: 'Bài viết của tôi' }).getAttribute('href')).toBe('/author/blogs')
+  expect(screen.getByRole('link', { name: 'Khóa học' }).getAttribute('href')).toBe('/author/courses')
+  expect(screen.queryByText(/Doanh thu/)).toBeNull()
+  cleanup()
+  render(<Shell route="/author/courses"><Sidebar {...props} profile={profile} /></Shell>)
+  expect(screen.getByRole('button', { name: 'Tác giả' }).getAttribute('aria-expanded')).toBe('true')
+  expect(screen.getByRole('link', { name: 'Khóa học' }).getAttribute('aria-current')).toBe('page')
+  cleanup()
+  render(<Shell><Sidebar {...props} roles={['LEARNER']} profile={{ ...profile, roles: ['LEARNER'] }} /></Shell>)
+  expect(screen.getByRole('link', { name: 'Tác giả' }).getAttribute('href')).toBe('/author/apply')
+  expect(screen.queryByRole('link', { name: 'Khóa học' })).toBeNull()
 })
 
 it('lists only routable entries for a signed-out visitor', () => {
