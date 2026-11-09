@@ -4,6 +4,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 
 ## Bắt đầu từ đây (cập nhật 2026-11-09)
 
+- **Task 2a đã nhận (2026-11-09)** (review vòng 1 có 4 phát hiện đã sửa; vòng 2 có 2 phát hiện high, người dùng yêu cầu sửa cả hai, không chạy lại Codex). Chưa kiểm bằng mắt dark/light × desktop/mobile; `RouterProvider` chưa chạy trên trình duyệt thật. **Tiếp: Task 2b.**
+- (cũ) **Task 2a code xong, chờ review Codex vòng 1 rồi người dùng nhận (2026-11-09)** — test + build đạt (xem nhật ký). **Chưa kiểm bằng mắt** dark/light × desktop/mobile (chưa dựng backend + dev server trong phiên). Tiếp sau 2a: Task 2b. Lệch khác spec: xem nhật ký 2026-11-09 Task 2a.
 - **Task 1c đã nhận (2026-11-09)** (review vòng 1 có 2 phát hiện đã sửa, vòng 2 `approve`). Task 1a, 1b đã nhận (2026-11-07). **Cổng wireframe đã nhận (2026-11-09)** — [`course-free.wireframe.md`](course-free.wireframe.md). **Tiếp: Task 2a** (task giao diện: giữ plugin `ui-ux-pro-max` bật).
 - Chưa kiểm: Cloudinary thật với scope COURSE/LESSON (chỉ fake storage); OpenAPI chỉ qua `@Operation`/`@Schema`, chưa mở Swagger; start/completion đồng thời chỉ dựa `ON CONFLICT` (không có ca test song song).
 - **Spec đã chốt 2026-11-07** sau vòng 1 (không vòng 2); lịch sử phản biện ở `course-free.review.md`.
@@ -29,6 +31,19 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-09 — Task 2a đã nhận
+- Người dùng nhận Task 2a (giao diện Author khóa/chương/bài); commit cục bộ trên `feature/course-free`.
+### 2026-11-09 — Task 2a: sửa sau Codex review vòng 2
+- (1) Rời route khi dirty: `main.tsx` đổi `BrowserRouter` → `createBrowserRouter` + `RouterProvider` (`path:'*'` bọc `App`) để dùng `useBlocker`; `LeaveGuard` lưu trước, lỗi thì hỏi Ở lại/Rời đi; bỏ lưu-khi-unmount. Chỉ gắn khi có data router (test cũ dùng MemoryRouter không bị ảnh hưởng). (2) Upload ảnh (mô tả, bài, ảnh bìa) báo `onUploading` lên editor: khóa Lưu, Gửi duyệt, cây và ô nhập tới khi xong.
+- Test: thay ca unmount bằng 2 ca `createMemoryRouter` (lưu rồi đi; lưu lỗi → hỏi) + 1 ca khóa khi upload. `vitest` `pages/Author` + `App.author-courses` → 72 đạt; build đạt; Sidebar + App.author-session đạt. Lưu ý: `RouterProvider` chưa chạy thật trên trình duyệt (chưa kiểm).
+### 2026-11-09 — Task 2a: sửa sau Codex review vòng 1
+- Vòng 1 (`review`, 1 P1 + 3 P2, đều đúng): rời editor bằng Sidebar/Back mất thay đổi → lưu khi unmount; gửi duyệt khi form dirty bị khóa ghi nuốt → lưu panel trước khi chiếm khóa; baseline bài học không cập nhật sau lưu → `setLesson(saved)`; upload ảnh ghi đè chữ đang gõ → chèn vào giá trị hiện tại.
+- Thêm 4 ca regression ở `CourseEditorPage.test.tsx`. `npx vitest run src/pages/Author src/App.author-courses.test.tsx` → 70 đạt, 0 lỗi; `npm run build` đạt.
+### 2026-11-09 — Task 2a: giao diện Author khóa/chương/bài
+- Mới: `types/courses.ts`, `services/courseService.ts` (+test), `data/courseI18n.ts` (+test, bảng đóng `COURSE_*`/`LESSON_*`/`ACCESS_DENIED`/`VALIDATION_ERROR`/`MALFORMED_REQUEST`, `AI_*` dùng bảng AI), `pages/Author/Courses/*` (workspace, editor cây, panel khóa/chương/bài, MarkdownComposer, CourseAiSheet) + route `/author/courses{,/new,/:id/edit}`; Sidebar: nhóm “Tác giả” thu gọn (tái dùng `SettingsMenu`); `aiAssist` types thêm `targetType=LESSON`+`courseId`; `ArticleHistorySheet` thêm prop `title`.
+- Test: `npx vitest run` courseService, courseI18n, `pages/Author` (workspace 5, editor 11, AI sheet 6, + article/AI regression), Sidebar, `App.author-courses`, `App.author-session`, AiOutlineEditor, aiAssist service/i18n → 15 file, 0 lỗi (sửa 2 ca cũ Sidebar/App-session: “Tác giả” của Author nay là nút nhóm, không còn link). `npm run build` đạt. Viết test cùng lúc với code, không chạy đỏ trước (lệch TDD).
+- Lệch khác spec: (1) lưu thủ công từng panel (giống editor bài viết) + lưu tự động khi chuyển mục, không hẹn giờ; (2) tab “Bản công khai” chỉ cho bài (API `Version` không trả mô tả khóa); (3) form AI không có ô Tóm tắt riêng (API outline không nhận) — tóm tắt bài điền sẵn vào ô Ý tưởng; (4) ảnh xem trước tin URL do phiên này tải lên hoặc có sẵn không bị `imageIssues` đánh dấu, host `res.cloudinary.com`.
+- Chưa kiểm: kiểm mắt 4 tổ hợp; Cloudinary/AI thật; backend thật với editor (chỉ fake fetch).
 ### 2026-11-09 — Cổng wireframe: bản nháp → đã nhận
 - Người dùng duyệt wireframe + đồng ý 5 câu hỏi chốt (ghi ở “Quyết định người dùng”).
 - Tạo `plans/course-free.wireframe.md` từ spec + DTO 1a–1c + ảnh JB: route/menu/quyền, Reader (catalog, khung học, overview, trang bài 3 cột, mobile, `/me/courses`), Author (workspace, tạo, editor cây + chương/bài/video/AI Sheet, mobile), Moderator (list, detail cây thay đổi + so sánh), copy vi/en, 5 câu hỏi chốt. Không sửa code.
