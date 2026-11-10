@@ -22,6 +22,9 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-10 — Task 2c: bằng chứng kiểm tĩnh
+- `grep` trong `app/src/pages/Courses/*.tsx` (không tính test): không có `youtube.com`, `videoUrl`, `price`, `currency`, `VND`; iframe chỉ nhận `embedUrl()` (`youtube-nocookie.com/embed/<id>` sau khi kiểm provider + ID 11 ký tự). Test `CourseLessonPage` khẳng định không có link `youtube.com`/`youtu.be`. Mục “Kiểm tĩnh” của Task 2c đạt, chờ Codex đánh `[x]` ở lần đồng bộ sau.
+- PR/rebase chưa làm được: `feature/ai-assist` chưa merge vào `main` (nhánh course-free còn 30 commit trên `main`).
 ### 2026-11-10 — Đồng bộ spec cuối module
 - Codex: đã đưa các quyết định Task 1c và cổng wireframe vào spec.
 ### 2026-11-10 — Task 2c đã nhận
