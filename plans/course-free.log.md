@@ -2,10 +2,10 @@
 
 Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](course-free.md). Ba mục đầu và “Nhật ký phiên” được hook SessionStart tự nạp sau `/clear`; giữ chúng ngắn.
 
-## Bắt đầu từ đây (cập nhật 2026-11-09)
+## Bắt đầu từ đây (cập nhật 2026-11-10)
 
-- **Task 2a đã nhận (2026-11-09)** (review vòng 1 có 4 phát hiện đã sửa; vòng 2 có 2 phát hiện high, người dùng yêu cầu sửa cả hai, không chạy lại Codex). Chưa kiểm bằng mắt dark/light × desktop/mobile; `RouterProvider` chưa chạy trên trình duyệt thật. **Tiếp: Task 2b.**
-- (cũ) **Task 2a code xong, chờ review Codex vòng 1 rồi người dùng nhận (2026-11-09)** — test + build đạt (xem nhật ký). **Chưa kiểm bằng mắt** dark/light × desktop/mobile (chưa dựng backend + dev server trong phiên). Tiếp sau 2a: Task 2b. Lệch khác spec: xem nhật ký 2026-11-09 Task 2a.
+- **Task 2b đã nhận (2026-11-10)** (Codex vòng 1 không có lỗi phải sửa). **Tiếp: Task 2c.** — test + build đạt (nhật ký 2026-11-10). **Chưa kiểm bằng mắt** (đăng nhập Moderator trong Playwright bị chặn vì phải đưa token vào trình duyệt). DB dev đã có khóa mẫu đang chờ duyệt có bản cập nhật (`086e877a-…`, tác giả `bao.author`) để người dùng xem `/moderator/courses`. Tiếp sau 2b: Task 2c.
+- **Task 2a đã nhận (2026-11-09)** (review vòng 1 có 4 phát hiện đã sửa; vòng 2 có 2 phát hiện high, người dùng yêu cầu sửa cả hai, không chạy lại Codex). Chưa kiểm bằng mắt dark/light × desktop/mobile; `RouterProvider` chưa chạy trên trình duyệt thật.
 - **Task 1c đã nhận (2026-11-09)** (review vòng 1 có 2 phát hiện đã sửa, vòng 2 `approve`). Task 1a, 1b đã nhận (2026-11-07). **Cổng wireframe đã nhận (2026-11-09)** — [`course-free.wireframe.md`](course-free.wireframe.md). **Tiếp: Task 2a** (task giao diện: giữ plugin `ui-ux-pro-max` bật).
 - Chưa kiểm: Cloudinary thật với scope COURSE/LESSON (chỉ fake storage); OpenAPI chỉ qua `@Operation`/`@Schema`, chưa mở Swagger; start/completion đồng thời chỉ dựa `ON CONFLICT` (không có ca test song song).
 - **Spec đã chốt 2026-11-07** sau vòng 1 (không vòng 2); lịch sử phản biện ở `course-free.review.md`.
@@ -31,6 +31,13 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-10 — Task 2b đã nhận
+- Người dùng nhận Task 2b (giao diện Moderator duyệt khóa); commit cục bộ trên `feature/course-free`.
+### 2026-11-10 — Task 2b: giao diện Moderator duyệt khóa
+- `/moderator/courses` (list: 5 ô số liệu, lọc tiêu đề/chủ đề/thẻ/sắp xếp/2 trục, mặc định Chờ duyệt) + `/moderator/courses/:id` (cây thay đổi Chỉ phần thay đổi/Xem tất cả, so sánh bài theo `versionId`, video nocookie, dialog token/stale/khóa khi gửi, lịch sử); route chỉ MODERATOR, link sidebar; `moderatorCourses`, `visibleChanges`, `changedLessonFields`, `isCourseImage`; copy `moderatorCourseText` (đè copy Moderator article) + lỗi theo câu Task 1c.
+- Test: `vitest` `courseService`, `courseI18n`, `pages/Moderator` (gồm `Courses/*`), `App.moderator-courses`, `Sidebar`, `StaffPreferences` → 10 file, 133 đạt; `npm run build` đạt. Chưa kiểm bằng mắt dark/light × desktop/mobile (lý do ở trên).
+- Codex review vòng 1: 2 phát hiện P2, không sửa → không chạy vòng 2. (a) Bộ lọc chủ đề/thẻ thiếu taxonomy chỉ có ở khóa học: đúng, nhưng là shortcut đã có của article (người dùng chốt 2026-11-04), cần endpoint options Moderator ở backend → ghi Ngoài phạm vi. (b) Ảnh bìa ngoài ở list: sai — `AuthorCourseServiceImpl` từ chối `coverImageUrl` khi tạo và mọi URL không thuộc khóa khi SAVE (`isOwnManagedUrl` → `COURSE_IMAGE_INVALID`).
+- Lệch khác spec: (1) “Thông tin khóa học” không có nhãn “Đã sửa” và chỉ hiện bản đề xuất — DTO `Version` không trả metadata (kế hoạch 2b chỉ đòi diff cấu trúc/thứ tự/preview/video/content); (2) sửa nhỏ ngoài danh sách đường dẫn: `ArticleStats.tsx` thêm tham số `list`/`label` để dùng cho khóa học; `lastReturnNote` nới kiểu tham số; (3) danh sách không có lọc theo ngày/tác giả (wireframe 4b-1 không có); chủ đề/thẻ dùng lại options reader bài viết (cùng shortcut như article); (4) mobile: cây xếp trên, không accordion; so sánh một cột theo nút Đề xuất/Công khai.
 ### 2026-11-09 — Task 2a đã nhận
 - Người dùng nhận Task 2a (giao diện Author khóa/chương/bài); commit cục bộ trên `feature/course-free`.
 ### 2026-11-09 — Task 2a: sửa sau Codex review vòng 2
