@@ -39,3 +39,26 @@ export type ChangeChapter = { id: string; title: string; changeStatus: ChangeSta
 export type ModeratorCourseSummary = { course: AuthorCourseSummary; author: ArticleAuthor; authorEligible: boolean }
 /** `course` is the working copy; `history` holds the 5 newest entries; `changes` = working active nodes, then nodes only the live version has. */
 export type ModeratorCourseDetail = { course: AuthorCourse; author: ArticleAuthor; reviewToken: string; authorEligible: boolean; history: HistoryEntry[]; changes: ChangeChapter[] }
+
+// Reader shapes (PublishedCourse*Response, PublishedLessonResponse, CourseProgressResponse, MyCourseResponse): snapshot only, no money.
+export type PublicCourseSummary = {
+  id: string; title: string; summary: string | null; coverImageUrl: string | null; level: CourseLevel; topic: ArticleOption; tags: ArticleOption[]
+  author: ArticleAuthor; publishedAt: string; updatedAt: string
+}
+export type CourseFilter = { keyword: string; topicId: string; tagId: string; level: CourseLevel | ''; sort: 'NEWEST' | 'OLDEST'; page: number }
+export type Progress = { completed: number; total: number; percent: number }
+export type ContinueLesson = { id: string; title: string; chapterId: string }
+export type CourseLearning = {
+  courseId: string; progress: Progress; chapters: { chapterId: string; completed: number; total: number; percent: number }[]
+  completedLessonIds: string[]; continueLesson: ContinueLesson | null
+}
+export type Viewer = { enrolled: boolean; canStart: boolean }
+export type PublicChapter = { id: string; title: string; position: number; lessons: Omit<LessonItem, 'aiAssisted'>[] }
+export type PublicCourseDetail = PublicCourseSummary & {
+  description: string | null; versionNumber: number; chapterCount: number; lessonCount: number; chapters: PublicChapter[]; viewer: Viewer; learning: CourseLearning | null
+}
+export type PublicLesson = {
+  courseId: string; courseTitle: string; chapters: PublicChapter[]; viewer: Viewer; learning: CourseLearning | null
+  lesson: { id: string; chapterId: string; title: string; summary: string | null; content: string | null; video: { provider: string; videoId: string } | null; position: number; preview: boolean }
+}
+export type MyCourse = { course: PublicCourseSummary; progress: Progress; continueLesson: ContinueLesson | null; grantedAt: string; lastAccessedAt: string | null }

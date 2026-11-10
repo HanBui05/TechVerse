@@ -1,6 +1,7 @@
 package com.techverse.server.service.impl;
 
 import com.techverse.server.dto.internal.CourseLessonRow;
+import com.techverse.server.dto.request.ArticleOptionsFilter;
 import com.techverse.server.dto.request.PublishedCourseFilter;
 import com.techverse.server.dto.response.*;
 import com.techverse.server.dto.response.CourseProgressResponse.*;
@@ -64,6 +65,17 @@ public class PublishedCourseServiceImpl implements PublishedCourseService {
                 page.stream()
                         .map(c -> PublishedCourseSummaryResponse.from(c, tags.getOrDefault(c.getPublishedVersion().getId(), List.of())))
                         .toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PublishedArticleOptionsResponse options(ArticleOptionsFilter f) {
+        var topics = articles.findCourseTopics(f.getTopicKeyword(), PageRequest.of(f.getTopicPage(), f.getTopicSize()));
+        var tags = articles.findCourseTags(f.getTagKeyword(), PageRequest.of(f.getTagPage(), f.getTagSize()));
+        return PublishedArticleOptionsResponse.builder()
+                .topics(PageResponse.from(topics, topics.getContent()))
+                .tags(PageResponse.from(tags, tags.getContent()))
+                .build();
     }
 
     @Override

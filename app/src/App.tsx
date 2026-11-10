@@ -13,6 +13,10 @@ import { HomePage } from './pages/Home/HomePage'
 import { BlogsPage } from './pages/Blogs/BlogsPage'
 import { BlogDetailPage } from './pages/Blogs/BlogDetailPage'
 import { SavedArticlesPage } from './pages/Blogs/SavedArticlesPage'
+import { CoursesPage } from './pages/Courses/CoursesPage'
+import { CourseOverviewPage } from './pages/Courses/CourseOverviewPage'
+import { CourseLessonPage } from './pages/Courses/CourseLessonPage'
+import { MyCoursesPage } from './pages/Courses/MyCoursesPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
 import { ThemePage } from './pages/Settings/ThemePage'
 import { AuthLayout } from './components/auth/AuthLayout'
@@ -43,8 +47,8 @@ import { setAccessToken } from './services/api/client'
 import { register as registerWithApi } from './services/registerService'
 import { getMyProfile, type UserProfile } from './services/profileService'
 
-function AuthRoute({ authenticated, children }: { authenticated: boolean; children: ReactNode }) {
-  return authenticated ? children : <Navigate to="/login" replace />
+function AuthRoute({ authenticated, returnTo, children }: { authenticated: boolean; returnTo?: string; children: ReactNode }) {
+  return authenticated ? children : <Navigate to="/login" replace state={returnTo ? { returnTo } : undefined} />
 }
 
 /** Dashboard of a management account (ADMIN wins over MODERATOR); null for Reader accounts. */
@@ -159,6 +163,10 @@ export default function App() {
       <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><BlogsPage language={language} canSave={canSave} /></ReaderRoute></AuthRoute>} />
       <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><BlogDetailPage language={language} canSave={canSave} /></ReaderRoute></AuthRoute>} />
       <Route path="/me/saved-articles" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><SavedArticlesPage language={language} /></ReaderRoute></AuthRoute>} />
+      <Route path="/courses" element={<ReaderRoute roles={roles}><CoursesPage language={language} authenticated={authenticated} /></ReaderRoute>} />
+      <Route path="/courses/:id" element={<ReaderRoute roles={roles}><CourseOverviewPage language={language} authenticated={authenticated} /></ReaderRoute>} />
+      <Route path="/courses/:courseId/lessons/:lessonId" element={<ReaderRoute roles={roles}><CourseLessonPage language={language} authenticated={authenticated} /></ReaderRoute>} />
+      <Route path="/me/courses" element={<AuthRoute authenticated={authenticated} returnTo="/me/courses"><ReaderRoute roles={roles}><MyCoursesPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route element={<AuthLayout t={t} />}>
         <Route path="/login" element={<LoginPage t={t} onLogin={login} />} />
         <Route path="/register" element={<RegisterPage t={t} onRegister={register} />} />
@@ -190,7 +198,9 @@ export default function App() {
       <Route path="/settings/language" element={<LanguagePage language={language} setLanguage={setLanguage} t={t} />} />
       <Route path="*" element={<PlaceholderPage t={t} language={language} />} />
     </Routes>
-  if (isAuthPage) return <div className="min-h-svh">{routes}</div>
+  // The learning frame has its own top bar and curriculum: no app Sidebar or mobile bar around it.
+  const isLearningFrame = Boolean(matchPath('/courses/:id', location.pathname) || matchPath('/courses/:courseId/lessons/:lessonId', location.pathname))
+  if (isAuthPage || (isLearningFrame && !roles.some(role => role === 'ADMIN' || role === 'MODERATOR'))) return <div className="min-h-svh">{routes}</div>
   const sidebar = authenticated && roles.includes('MODERATOR') && (isModeratorPage || !roles.includes('ADMIN'))
     ? <ModeratorSidebar language={language} profile={profile} onLogout={logout} />
     : roles.includes('ADMIN')

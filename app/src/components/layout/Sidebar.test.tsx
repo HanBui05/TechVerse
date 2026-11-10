@@ -47,7 +47,7 @@ it('falls back to initials when the avatar fails and retries a newly changed URL
 })
 
 const hrefs = () => screen.queryAllByRole('link').map(link => link.getAttribute('href') ?? '')
-const deadUserPaths = /^\/(challenges|leaderboard|courses|resources|interview|questions|about|messages|notifications|premium|payments|learning\/)/
+const deadUserPaths = /^\/(challenges|leaderboard|resources|interview|questions|about|messages|notifications|premium|payments|learning\/)/
 const deadAdminPaths = /^\/admin\/(roles|logins|login-analytics|active-users|streaks|subscriptions|payments|courses|certificates|exercises|interview-questions|question-contributions|qa-challenges|comments)$/
 
 // Menu entries without a real route led to the "under development" page; only real routes may stay.
@@ -63,25 +63,27 @@ it('groups the Author links under a collapsed “Tác giả” menu, opens it on
   render(<Shell><Sidebar {...props} profile={profile} /></Shell>)
   const toggle = screen.getByRole('button', { name: 'Tác giả' })
   expect(toggle.getAttribute('aria-expanded')).toBe('false')
-  expect(screen.queryByRole('link', { name: 'Khóa học' })).toBeNull()
+  expect(hrefs()).not.toContain('/author/courses')
   fireEvent.click(toggle)
   expect(screen.getByRole('link', { name: 'Bài viết của tôi' }).getAttribute('href')).toBe('/author/blogs')
-  expect(screen.getByRole('link', { name: 'Khóa học' }).getAttribute('href')).toBe('/author/courses')
+  expect(hrefs()).toContain('/author/courses')
   expect(screen.queryByText(/Doanh thu/)).toBeNull()
   cleanup()
   render(<Shell route="/author/courses"><Sidebar {...props} profile={profile} /></Shell>)
   expect(screen.getByRole('button', { name: 'Tác giả' }).getAttribute('aria-expanded')).toBe('true')
-  expect(screen.getByRole('link', { name: 'Khóa học' }).getAttribute('aria-current')).toBe('page')
+  expect(screen.getAllByRole('link', { name: 'Khóa học' }).find(link => link.getAttribute('href') === '/author/courses')?.getAttribute('aria-current')).toBe('page')
   cleanup()
   render(<Shell><Sidebar {...props} roles={['LEARNER']} profile={{ ...profile, roles: ['LEARNER'] }} /></Shell>)
   expect(screen.getByRole('link', { name: 'Tác giả' }).getAttribute('href')).toBe('/author/apply')
-  expect(screen.queryByRole('link', { name: 'Khóa học' })).toBeNull()
+  expect(hrefs()).not.toContain('/author/courses')
 })
 
 it('lists only routable entries for a signed-out visitor', () => {
   render(<Shell><Sidebar {...props} authenticated={false} roles={[]} profile={null} /></Shell>)
   expect(hrefs().filter(href => deadUserPaths.test(href))).toEqual([])
   expect(screen.queryByRole('link', { name: 'Bài viết' })).not.toBeNull()
+  expect(hrefs()).toContain('/courses')
+  expect(hrefs()).not.toContain('/me/courses')
 })
 
 it('lists only routable entries in the admin sidebar and keeps the moderator link', () => {
@@ -161,7 +163,8 @@ it('gives each main menu icon its own colour tone', () => {
   render(<Shell><Sidebar {...props} profile={profile} /></Shell>)
   const tones = Array.from(screen.getByRole('navigation').querySelectorAll('svg[data-tone]')).map(icon => icon.getAttribute('data-tone'))
   expect(tones.length).toBeGreaterThanOrEqual(4)
-  expect(new Set(tones).size).toBe(tones.length)
+  // The main group (Home, Articles, Courses, Author) keeps distinct tones; later groups may reuse one.
+  expect(new Set(tones.slice(0, 4)).size).toBe(4)
 })
 
 it('marks the current route as active', () => {

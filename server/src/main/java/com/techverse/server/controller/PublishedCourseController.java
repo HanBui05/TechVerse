@@ -1,6 +1,7 @@
 package com.techverse.server.controller;
 
 import com.techverse.server.dto.request.ArticleFilter;
+import com.techverse.server.dto.request.ArticleOptionsFilter;
 import com.techverse.server.dto.request.PublishedCourseFilter;
 import com.techverse.server.dto.response.*;
 import com.techverse.server.service.PublishedCourseService;
@@ -32,6 +33,13 @@ public class PublishedCourseController {
     public ApiResponse<PageResponse<PublishedCourseSummaryResponse>> list(
             @AuthenticationPrincipal Jwt jwt, @Valid @ParameterObject @ModelAttribute PublishedCourseFilter filter) {
         return ok("Courses retrieved", service.list(actor(jwt), filter));
+    }
+
+    @GetMapping("/courses/options")
+    @Operation(summary = "Public filter options: topics and tags used by visible course snapshots")
+    public ApiResponse<PublishedArticleOptionsResponse> options(
+            @Valid @ParameterObject @ModelAttribute ArticleOptionsFilter filter) {
+        return ok("Course filter options retrieved", service.options(filter));
     }
 
     @GetMapping("/courses/{id}")

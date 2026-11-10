@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { ArrowRight, ChevronDown, FileText, GraduationCap, Heart, LogOut, Settings, UserRound, UserRoundPlus, X } from 'lucide-react'
+import { ArrowRight, ChevronDown, FileText, GraduationCap, Heart, PlayCircle, LogOut, Settings, UserRound, UserRoundPlus, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { navItems, settingsItems } from '../../data/navigation'
 import type { Language } from '../../types/preferences'
@@ -104,6 +104,7 @@ export function Sidebar({ language, t, authenticated, roles, profile, onLogout }
       <SidebarGroupLabel className="uppercase tracking-[.05em]">{language === 'vi' ? 'Góc của tôi' : 'My corner'}</SidebarGroupLabel>
       <SidebarMenu>
         <SidebarMenuItem><SidebarMenuButton asChild tooltip={language === 'vi' ? 'Bài đã lưu' : 'Saved articles'} className={activeLink}><NavLink to="/me/saved-articles" onClick={close}><Heart className={toneText.rose} data-tone="rose" /><span>{language === 'vi' ? 'Bài đã lưu' : 'Saved articles'}</span></NavLink></SidebarMenuButton></SidebarMenuItem>
+        <SidebarMenuItem><SidebarMenuButton asChild tooltip={language === 'vi' ? 'Khóa học của tôi' : 'My courses'} className={activeLink}><NavLink to="/me/courses" onClick={close}><PlayCircle className={toneText.amber} data-tone="amber" /><span>{language === 'vi' ? 'Khóa học của tôi' : 'My courses'}</span></NavLink></SidebarMenuButton></SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>}
     {/* Collapsed group for Authors only; opens itself on any /author/* route so the active link stays visible. */}

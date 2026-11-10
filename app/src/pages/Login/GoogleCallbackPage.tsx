@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { resolveReturnTo } from '../../services/returnTo'
 import { GoogleAuthButton } from '../../components/GoogleAuthButton'
 import { AuthAlertText, authInlineLink as linkClass, AuthShell } from '../../components/auth/AuthLayout'
 import { ApiError } from '../../services/api/client'
@@ -45,7 +46,7 @@ export function GoogleCallbackPage({ onAuthenticated, onResetSession }: {
     let active = true
     completion.current ??= completeGoogleSignIn()
     void completion.current.then(session => {
-      if (active) navigate(onAuthenticated(session), { replace: true })
+      if (active) navigate(resolveReturnTo(onAuthenticated(session)), { replace: true })
     }).catch(cause => {
       if (!active) return
       setError(cause instanceof ApiError && cause.status === 401
@@ -60,7 +61,7 @@ export function GoogleCallbackPage({ onAuthenticated, onResetSession }: {
     <h1 className="text-center text-2xl font-bold">{error ? 'Chưa thể đăng nhập' : 'Đang kết nối Google'}</h1>
     {error ? <>
       <AuthAlertText>{error}</AuthAlertText>
-      <GoogleAuthButton />
+      <GoogleAuthButton keep />
       <p className="text-center text-sm"><Link className={linkClass} to="/login">Đăng nhập bằng mật khẩu</Link></p>
       <p className="text-center text-sm"><Link className={linkClass} to="/register">Quay lại đăng ký</Link></p>
     </> : <p className="text-center text-sm leading-relaxed text-muted-foreground" role="status">Đang xác thực phiên và tải hồ sơ của bạn. Vui lòng chờ...</p>}

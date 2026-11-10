@@ -1,5 +1,6 @@
 package com.techverse.server.service;
 
+import com.techverse.server.dto.request.ArticleOptionsFilter;
 import com.techverse.server.dto.request.PublishedCourseFilter;
 import com.techverse.server.dto.response.*;
 
@@ -10,6 +11,9 @@ public interface PublishedCourseService {
     PageResponse<PublishedCourseSummaryResponse> list(UUID actor, PublishedCourseFilter filter);
 
     PublishedCourseDetailResponse detail(UUID actor, UUID id);
+
+    /** Topics and tags of visible course snapshots; anonymous. */
+    PublishedArticleOptionsResponse options(ArticleOptionsFilter filter);
 
     PublishedLessonResponse lesson(UUID actor, UUID courseId, UUID lessonId);
 

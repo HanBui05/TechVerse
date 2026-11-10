@@ -109,4 +109,23 @@ class PublishedCourseIntegrationTest extends CourseIntegrationTestBase {
         jdbc.update("UPDATE techverse.users SET is_active=false WHERE id=?", author);
         get(PUBLIC + "/" + hidden, null).andExpect(status().isNotFound());
     }
+
+    @Test
+    void optionsAreAnonymousAndListOnlyTaxonomyOfVisibleCourses() throws Exception {
+        jdbc.update("INSERT INTO techverse.topics(name) VALUES ('Unused topic')");
+        jdbc.update("INSERT INTO techverse.tags(name) VALUES ('Unused tag')");
+        get(PUBLIC + "/options", null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.topics.content.length()").value(0))
+                .andExpect(jsonPath("$.data.tags.content.length()").value(0));
+        String id = publishedCourse("Options");
+        get(PUBLIC + "/options", null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.topics.content[*].name", contains("Backend")))
+                .andExpect(jsonPath("$.data.tags.content[*].name", contains("Java")));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(PUBLIC + "/options").param("tagKeyword", "zzz"))
+                .andExpect(jsonPath("$.data.tags.content.length()").value(0))
+                .andExpect(jsonPath("$.data.topics.content.length()").value(1));
+        publication(id, "HIDE", "Spam").andExpect(status().isOk());
+        get(PUBLIC + "/options", null).andExpect(jsonPath("$.data.topics.content.length()").value(0));
+        get(PUBLIC + "/options?topicSize=101", null).andExpect(status().isBadRequest());
+    }
 }

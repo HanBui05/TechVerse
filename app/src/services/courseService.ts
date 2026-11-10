@@ -1,6 +1,6 @@
 import { request } from './api/client'
 import type { ArticleOption, AuthorArticleFilter, HistoryEntry, ImageIssue, ModeratorArticleFilter, Page } from '../types/articles'
-import type { AuthorCourse, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
+import type { AuthorCourse, CourseFilter, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
 
 const base = '/api/v1/author/courses'
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
@@ -134,4 +134,54 @@ export function courseReadiness(course: AuthorCourse): Readiness[] {
   for (const chapter of course.chapters) if (!chapter.lessons.length) missing.push({ kind: 'emptyChapter', chapterId: chapter.id })
   if (course.imageIssues.length) missing.push({ kind: 'images', count: course.imageIssues.length })
   return missing
+}
+
+// Reader side (PublishedCourseController): public GETs carry the optional bearer; start/completion/mine need a signed-in Reader.
+export const COURSE_PAGE_SIZE = 9
+const publicBase = '/api/v1/courses'
+export const publicCourses = {
+  list: (filter: CourseFilter) => request<Page<PublicCourseSummary>>(`${publicBase}?${query({ ...filter, size: COURSE_PAGE_SIZE })}`),
+  options: () => request<{ topics: Page<ArticleOption>; tags: Page<ArticleOption> }>(`${publicBase}/options?topicSize=100&tagSize=100`),
+  detail: (id: string) => request<PublicCourseDetail>(`${publicBase}/${encodeURIComponent(id)}`),
+  lesson: (id: string, lessonId: string) => request<PublicLesson>(`${publicBase}/${encodeURIComponent(id)}/lessons/${encodeURIComponent(lessonId)}`),
+  start: (id: string) => request<CourseLearning>(`${publicBase}/${encodeURIComponent(id)}/start`, { method: 'POST' }),
+  complete: (id: string, lessonId: string, done: boolean) => request<CourseLearning>(`${publicBase}/${encodeURIComponent(id)}/lessons/${encodeURIComponent(lessonId)}/completion`, { method: done ? 'PUT' : 'DELETE' }),
+  mine: (page: number) => request<Page<MyCourse>>(`/api/v1/me/courses?${query({ page, size: COURSE_PAGE_SIZE })}`),
+}
+
+const LEVELS: string[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED']
+/** `/courses` query → filter; unknown level/sort and malformed page fall back to the defaults. */
+export function courseFilter(params: URLSearchParams): CourseFilter {
+  const page = Number(params.get('page'))
+  const level = params.get('level') ?? ''
+  return {
+    keyword: (params.get('keyword') ?? '').trim(), topicId: params.get('topicId') ?? '', tagId: params.get('tagId') ?? '', level: LEVELS.includes(level) ? level as CourseLevel : '',
+    sort: params.get('sort') === 'OLDEST' ? 'OLDEST' : 'NEWEST', page: Number.isInteger(page) && page > 0 ? page : 0,
+  }
+}
+/** Filter → query without empty or default params (NEWEST, page 0). */
+export function courseSearch({ keyword, topicId, tagId, level, sort, page }: CourseFilter) {
+  const params = new URLSearchParams()
+  if (keyword.trim()) params.set('keyword', keyword.trim())
+  if (topicId) params.set('topicId', topicId)
+  if (tagId) params.set('tagId', tagId)
+  if (level) params.set('level', level)
+  if (sort !== 'NEWEST') params.set('sort', sort)
+  if (page > 0) params.set('page', String(page))
+  return params
+}
+
+export type LessonAccess = 'open' | 'login' | 'start' | 'locked'
+/** Wireframe 2c-2 table: enrolled or preview opens; otherwise Guest logs in, a Learner starts, the owner stays locked. */
+export function lessonAccess(lesson: { preview: boolean }, viewer: Viewer, authenticated: boolean): LessonAccess {
+  if (viewer.enrolled || lesson.preview) return 'open'
+  if (!authenticated) return 'login'
+  return viewer.canStart ? 'start' : 'locked'
+}
+
+export const flatLessons = (chapters: PublicChapter[]) => chapters.flatMap(chapter => chapter.lessons)
+
+/** The only iframe source: a YouTube id the backend already validated, re-checked here; never a raw URL. */
+export function embedUrl(video: { provider: string; videoId: string } | null) {
+  return video?.provider === 'YOUTUBE' && VIDEO_ID.test(video.videoId) ? `https://www.youtube-nocookie.com/embed/${video.videoId}` : null
 }

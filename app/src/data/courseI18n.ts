@@ -203,3 +203,47 @@ export function moderatorCourseText(language: Language) {
   return (key: keyof typeof copy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
 }
 export type ModeratorCourseText = ReturnType<typeof moderatorCourseText>
+
+// Reader (catalog, overview, lesson frame, my courses): wireframe section 5.
+const readerVi = {
+  kicker: 'Học miễn phí', title: 'Khóa học', subtitle: 'Lộ trình có chương và bài học, học thử trước khi bắt đầu.', myCourses: 'Khóa học của tôi', allCourses: 'Tất cả khóa học',
+  filters: 'Bộ lọc', search: 'Tìm khóa học', searchPlaceholder: 'Tìm khóa học…', clearSearch: 'Xóa từ khóa', tag: 'Thẻ', allTags: 'Mọi thẻ', level: 'Trình độ', allLevels: 'Mọi trình độ', sort: 'Sắp xếp',
+  newest: 'Mới nhất', oldest: 'Cũ nhất', topics: 'Chủ đề', allTopics: 'Tất cả', count: '{n} khóa học', list: 'Danh sách khóa học', loading: 'Đang tải khóa học...', loadError: 'Không thể tải khóa học.',
+  retry: 'Thử lại', optionsError: 'Không tải được bộ lọc.', empty: 'Chưa có khóa học nào', emptyText: 'Khóa học mới sẽ xuất hiện ở đây.', emptyFiltered: 'Không tìm thấy khóa học phù hợp', emptyFilteredText: 'Thử đổi hoặc xóa bộ lọc.', clearFilters: 'Xóa bộ lọc',
+  BEGINNER: 'Cơ bản', INTERMEDIATE: 'Trung cấp', ADVANCED: 'Nâng cao', updated: 'Cập nhật {date}', viewCourse: 'Xem khóa học', viewCourseOf: 'Xem khóa học {title}', author: 'Tác giả', moreTags: '+{n}',
+  back: 'Khóa học', courseFrame: 'Khung học', overview: 'Tổng quan khóa học', content: 'Nội dung khóa học', expandAll: 'Mở rộng tất cả', collapseAll: 'Thu gọn tất cả', chapterN: 'Chương {n}',
+  chapters: '{n} chương', lessons: '{n} bài học', chapterProgress: 'Đã học {x}/{y} bài', progress: '{x}/{y} bài · {p}%', progressLabel: 'Tiến độ khóa học', introTitle: 'Giới thiệu khóa học',
+  searchLessons: 'Tìm bài học…', searchLessonsLabel: 'Tìm bài học', noLessonMatch: 'Không có bài khớp', hideTree: 'Thu gọn', showTree: 'Mở nội dung khóa học', treeSheet: 'Nội dung khóa học', closeTree: 'Đóng',
+  preview: 'Học thử', startLearning: 'Bắt đầu học', continueLearning: 'Tiếp tục học', continueAt: 'Tiếp tục học: {title}', review: 'Xem lại khóa học', done: 'Đã hoàn thành', lockedLesson: 'Chưa mở', hasVideo: 'Có video', ownerNote: 'Bạn là tác giả khóa này — chỉ xem bài học thử.',
+  loginTitle: 'Đăng nhập để bắt đầu khóa học.', loginText: 'Bạn cần đăng nhập để học bài này và lưu tiến độ.', login: 'Đăng nhập', cancel: 'Hủy', startFailed: 'Không thể bắt đầu khóa học này.',
+  notFound: 'Không tìm thấy khóa học hoặc bài học.', backToCourses: 'Về danh sách khóa học', skip: 'Bỏ qua tới nội dung bài', tocTitle: 'Mục lục bài học', toc: 'Mục lục', video: 'Video: {title}',
+  complete: 'Hoàn thành bài học', uncomplete: 'Đánh dấu chưa hoàn thành', completedStatus: 'Đã hoàn thành, {x}/{y} bài', uncompletedStatus: 'Đã bỏ hoàn thành, {x}/{y} bài', completionFailed: 'Không cập nhật được tiến độ.',
+  prev: 'Bài trước', next: 'Bài tiếp theo', prevOf: 'Bài trước: {title}', nextOf: 'Bài tiếp theo: {title}', previewHint: 'Bắt đầu khóa học để học tiếp và lưu tiến độ.', lockedTitle: 'Bài học này cần bắt đầu khóa học',
+  lockedText: 'Hãy đăng nhập và bắt đầu khóa học để xem bài này.', breadcrumb: 'Đường dẫn',
+  mineKicker: 'Góc của tôi', mineCount: '{n} khóa', mineEmpty: 'Bạn chưa bắt đầu khóa học nào', mineEmptyText: 'Bắt đầu một khóa miễn phí để theo dõi tiến độ tại đây.', explore: 'Khám phá khóa học',
+  nextLesson: 'Tiếp theo: {title}', activeAgo: 'Hoạt động {when}', startedOn: 'Bắt đầu {when}', complete100: 'Hoàn thành',
+}
+type ReaderCourseCopy = typeof readerVi
+const readerEn: ReaderCourseCopy = {
+  kicker: 'Free learning', title: 'Courses', subtitle: 'Paths with chapters and lessons; preview before you start.', myCourses: 'My courses', allCourses: 'All courses',
+  filters: 'Filters', search: 'Search courses', searchPlaceholder: 'Search courses…', clearSearch: 'Clear search', tag: 'Tag', allTags: 'All tags', level: 'Level', allLevels: 'All levels', sort: 'Sort',
+  newest: 'Newest', oldest: 'Oldest', topics: 'Topics', allTopics: 'All', count: '{n} courses', list: 'Courses', loading: 'Loading courses...', loadError: 'Unable to load courses.',
+  retry: 'Retry', optionsError: 'Unable to load the filters.', empty: 'No courses yet', emptyText: 'New courses will appear here.', emptyFiltered: 'No matching courses', emptyFilteredText: 'Try changing or clearing the filters.', clearFilters: 'Clear filters',
+  BEGINNER: 'Beginner', INTERMEDIATE: 'Intermediate', ADVANCED: 'Advanced', updated: 'Updated {date}', viewCourse: 'View course', viewCourseOf: 'View course {title}', author: 'Author', moreTags: '+{n}',
+  back: 'Courses', courseFrame: 'Learning frame', overview: 'Course overview', content: 'Course content', expandAll: 'Expand all', collapseAll: 'Collapse all', chapterN: 'Chapter {n}',
+  chapters: '{n} chapters', lessons: '{n} lessons', chapterProgress: '{x}/{y} lessons completed', progress: '{x}/{y} lessons · {p}%', progressLabel: 'Course progress', introTitle: 'About this course',
+  searchLessons: 'Search lessons…', searchLessonsLabel: 'Search lessons', noLessonMatch: 'No matching lessons', hideTree: 'Collapse', showTree: 'Open course content', treeSheet: 'Course content', closeTree: 'Close',
+  preview: 'Preview', startLearning: 'Start learning', continueLearning: 'Continue learning', continueAt: 'Continue learning: {title}', review: 'Review course', done: 'Completed', lockedLesson: 'Locked', hasVideo: 'Has video', ownerNote: 'You are the author of this course — preview lessons only.',
+  loginTitle: 'Sign in to start this course.', loginText: 'Sign in to take this lesson and save your progress.', login: 'Sign in', cancel: 'Cancel', startFailed: 'Unable to start this course.',
+  notFound: 'Course or lesson not found.', backToCourses: 'Back to courses', skip: 'Skip to lesson content', tocTitle: 'Lesson contents', toc: 'Contents', video: 'Video: {title}',
+  complete: 'Complete lesson', uncomplete: 'Mark as incomplete', completedStatus: 'Completed, {x}/{y} lessons', uncompletedStatus: 'Marked incomplete, {x}/{y} lessons', completionFailed: 'Unable to update progress.',
+  prev: 'Previous lesson', next: 'Next lesson', prevOf: 'Previous lesson: {title}', nextOf: 'Next lesson: {title}', previewHint: 'Start the course to keep learning and save progress.', lockedTitle: 'Start the course to open this lesson',
+  lockedText: 'Sign in and start the course to see this lesson.', breadcrumb: 'Breadcrumb',
+  mineKicker: 'My corner', mineCount: '{n} courses', mineEmpty: 'You have not started any course', mineEmptyText: 'Start a free course to track your progress here.', explore: 'Explore courses',
+  nextLesson: 'Next: {title}', activeAgo: 'Active {when}', startedOn: 'Started {when}', complete100: 'Completed',
+}
+export function readerCourseText(language: Language) {
+  const copy = language === 'vi' ? readerVi : readerEn
+  return (key: keyof ReaderCourseCopy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
+}
+export type ReaderCourseText = ReturnType<typeof readerCourseText>

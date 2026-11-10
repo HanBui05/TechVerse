@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../services/api/client'
-import { COURSE_ERROR_CODES, courseErrorText, courseText, isCourseStale, moderatorCourseErrorText, moderatorCourseText } from './courseI18n'
+import { COURSE_ERROR_CODES, courseErrorText, courseText, isCourseStale, moderatorCourseErrorText, moderatorCourseText, readerCourseText } from './courseI18n'
 
 describe('courseI18n', () => {
   it.each(COURSE_ERROR_CODES)('maps %s in both languages without the backend message', code => {
@@ -57,5 +57,16 @@ describe('moderator course copy', () => {
       .toEqual(['Duyệt khóa học', 'Duyệt khóa', 'Yêu cầu sửa', 'Mới', 'Đã sửa', 'Đã gỡ', 'Chỉ phần thay đổi', 'Xem tất cả'])
     expect([en('title'), en('APPROVE'), en('REQUEST_CHANGES'), en('NEW'), en('CHANGED'), en('ARCHIVED'), en('changesOnly'), en('viewAll')])
       .toEqual(['Course moderation', 'Approve course', 'Request changes', 'New', 'Changed', 'Archived', 'Changes only', 'View all'])
+  })
+})
+
+describe('reader course copy', () => {
+  it('has the same keys in vi and en and keeps the spec sentences', () => {
+    const vi = readerCourseText('vi'); const en = readerCourseText('en')
+    expect(vi('loginTitle')).toBe('Đăng nhập để bắt đầu khóa học.'); expect(en('loginTitle')).toBe('Sign in to start this course.')
+    expect(vi('complete')).toBe('Hoàn thành bài học'); expect(en('uncomplete')).toBe('Mark as incomplete')
+    expect(vi('continueLearning')).toBe('Tiếp tục học'); expect(en('startLearning')).toBe('Start learning')
+    expect(vi('chapterProgress', { x: 1, y: 3 })).toBe('Đã học 1/3 bài')
+    expect(vi('notFound')).toBe('Không tìm thấy khóa học hoặc bài học.'); expect(en('notFound')).toBe('Course or lesson not found.')
   })
 })

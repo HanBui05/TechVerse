@@ -226,29 +226,39 @@ public class PublishedArticleRepository {
 
     /** Topics used by visible snapshots, including inactive historic topics. */
     public Page<ArticleTaxonomyResponse> findTopics(String keyword, Pageable pageable) {
-        return findTaxonomy(Topic.class, keyword, pageable);
+        return findTaxonomy(Topic.class, Article.class, keyword, pageable);
+    }
+
+    /** Topics of the current snapshot of visible courses. */
+    public Page<ArticleTaxonomyResponse> findCourseTopics(String keyword, Pageable pageable) {
+        return findTaxonomy(Topic.class, Course.class, keyword, pageable);
+    }
+
+    /** Tags of the current snapshot of visible courses. */
+    public Page<ArticleTaxonomyResponse> findCourseTags(String keyword, Pageable pageable) {
+        return findTaxonomy(Tag.class, Course.class, keyword, pageable);
     }
 
     /** Tags used by visible snapshots, including inactive historic tags. */
     public Page<ArticleTaxonomyResponse> findTags(String keyword, Pageable pageable) {
-        return findTaxonomy(Tag.class, keyword, pageable);
+        return findTaxonomy(Tag.class, Article.class, keyword, pageable);
     }
 
     private <T> Page<ArticleTaxonomyResponse> findTaxonomy(
-            Class<T> type, String keyword, Pageable pageable) {
+            Class<T> type, Class<?> owner, String keyword, Pageable pageable) {
         var cb = entityManager.getCriteriaBuilder();
         var countQuery = cb.createQuery(Long.class);
         var countRoot = countQuery.from(type);
         countQuery
                 .select(cb.count(countRoot))
-                .where(taxonomyPredicate(type, countRoot, countQuery, keyword));
+                .where(taxonomyPredicate(type, owner, countRoot, countQuery, keyword));
         long total = entityManager.createQuery(countQuery).getSingleResult();
         if (pageable.getOffset() >= total || pageable.getOffset() > Integer.MAX_VALUE)
             return new PageImpl<>(List.of(), pageable, total);
         var query = cb.createTupleQuery();
         var root = query.from(type);
         query.multiselect(root.get("id").alias("id"), root.get("name").alias("name"));
-        query.where(taxonomyPredicate(type, root, query, keyword));
+        query.where(taxonomyPredicate(type, owner, root, query, keyword));
         query.orderBy(cb.asc(root.get("name")), cb.asc(root.get("id")));
         var rows =
                 entityManager
@@ -262,20 +272,23 @@ public class PublishedArticleRepository {
         return new PageImpl<>(rows, pageable, total);
     }
 
-    /** Require visible-snapshot usage via EXISTS so options are never duplicated. */
+    /** Require visible-snapshot usage (article or course) via EXISTS so options are never duplicated. */
     private Predicate taxonomyPredicate(
-            Class<?> type, Root<?> root, CriteriaQuery<?> query, String keyword) {
+            Class<?> type, Class<?> owner, Root<?> root, CriteriaQuery<?> query, String keyword) {
         var cb = entityManager.getCriteriaBuilder();
         var usage = query.subquery(UUID.class);
-        var article = usage.from(Article.class);
-        Join<Article, ArticlePublicationVersion> version = article.join("publishedVersion");
+        @SuppressWarnings("unchecked") // owner is Article or Course; both expose publishedVersion
+        var article = usage.from((Class<Object>) owner);
+        Join<Object, Object> version = article.join("publishedVersion");
         if (type == Topic.class) {
             usage.select(article.get("id"))
                     .where(
                             cb.equal(version.get("topic").get("id"), root.get("id")),
                             visible(article, usage, cb));
         } else {
-            var link = usage.from(ArticlePublicationVersionTag.class);
+            Class<?> linkType = owner == Course.class ? CourseVersionTag.class : ArticlePublicationVersionTag.class;
+            @SuppressWarnings("unchecked")
+            var link = usage.from((Class<Object>) linkType);
             usage.select(article.get("id"))
                     .where(
                             cb.equal(link.get("version"), version),

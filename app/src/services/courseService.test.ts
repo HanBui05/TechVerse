@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setAccessToken } from './api/client'
-import { authorCourses, changedLessonFields, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, videoLink, visibleChanges, youtubeId } from './courseService'
+import { authorCourses, changedLessonFields, courseFilter, courseSearch, embedUrl, flatLessons, lessonAccess, publicCourses, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, videoLink, visibleChanges, youtubeId } from './courseService'
 import type { AuthorCourse, ChangeChapter, Lesson } from '../types/courses'
 
 const fetchMock = vi.fn<typeof fetch>()
@@ -145,5 +145,43 @@ describe('moderator courses', () => {
     expect(isCourseImage(`${root}/lesson/a1/c9/l1/img.png`, 'a1', 'c1')).toBe(false)
     expect(isCourseImage('https://evil.com/course/a1/c1/img.png', 'a1', 'c1')).toBe(false)
     expect(isCourseImage(`${root}/course/a1/c1/img.png?x=1`, 'a1', 'c1')).toBe(false)
+  })
+})
+
+describe('reader course API and helpers', () => {
+  it('lists with size 9, no empty params, and calls detail/lesson/start/completion/mine on the public paths', async () => {
+    fetchMock.mockResolvedValue(ok({}))
+    await publicCourses.list({ keyword: 'java', topicId: '', tagId: '', level: 'ADVANCED', sort: 'NEWEST', page: 1 })
+    expect(Object.fromEntries(call(0).url.searchParams)).toEqual({ keyword: 'java', level: 'ADVANCED', sort: 'NEWEST', page: '1', size: '9' })
+    await publicCourses.options()
+    await publicCourses.detail('c1'); await publicCourses.lesson('c1', 'l1'); await publicCourses.start('c1')
+    await publicCourses.complete('c1', 'l1', true); await publicCourses.complete('c1', 'l1', false); await publicCourses.mine(2)
+    const calls = fetchMock.mock.calls.map(([url, init]) => `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`)
+    expect(calls.slice(1)).toEqual(['GET /api/v1/courses/options', 'GET /api/v1/courses/c1', 'GET /api/v1/courses/c1/lessons/l1', 'POST /api/v1/courses/c1/start',
+      'PUT /api/v1/courses/c1/lessons/l1/completion', 'DELETE /api/v1/courses/c1/lessons/l1/completion', 'GET /api/v1/me/courses'])
+    expect(call(7).url.searchParams.get('page')).toBe('2')
+  })
+
+  it('round-trips the URL filter and falls back on unknown level/sort/page', () => {
+    const filter = courseFilter(new URLSearchParams('keyword=%20x%20&level=BAD&sort=OLDEST&page=-3&topicId=t'))
+    expect(filter).toEqual({ keyword: 'x', topicId: 't', tagId: '', level: '', sort: 'OLDEST', page: 0 })
+    expect(courseSearch({ ...filter, level: 'BEGINNER', page: 2 }).toString()).toBe('keyword=x&topicId=t&level=BEGINNER&sort=OLDEST&page=2')
+    expect(courseSearch(courseFilter(new URLSearchParams())).toString()).toBe('')
+  })
+
+  it('decides what clicking a lesson does by viewer and preview', () => {
+    const l = (preview: boolean) => ({ preview })
+    expect(lessonAccess(l(false), { enrolled: true, canStart: true }, true)).toBe('open')
+    expect(lessonAccess(l(true), { enrolled: false, canStart: true }, false)).toBe('open')
+    expect(lessonAccess(l(false), { enrolled: false, canStart: true }, false)).toBe('login')
+    expect(lessonAccess(l(false), { enrolled: false, canStart: true }, true)).toBe('start')
+    expect(lessonAccess(l(false), { enrolled: false, canStart: false }, true)).toBe('locked')
+  })
+
+  it('embeds only a valid YouTube id on youtube-nocookie and flattens lessons in order', () => {
+    expect(embedUrl({ provider: 'YOUTUBE', videoId: 'dQw4w9WgXcQ' })).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
+    expect(embedUrl({ provider: 'VIMEO', videoId: 'dQw4w9WgXcQ' })).toBeNull()
+    expect(embedUrl({ provider: 'YOUTUBE', videoId: '"><script' })).toBeNull()
+    expect(flatLessons([{ id: 'c', title: '', position: 0, lessons: [{ id: 'a' }, { id: 'b' }] }, { id: 'd', title: '', position: 1, lessons: [{ id: 'e' }] }] as never).map(x => x.id)).toEqual(['a', 'b', 'e'])
   })
 })
