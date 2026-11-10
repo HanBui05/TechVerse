@@ -16,11 +16,11 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Codex viết; Claude chỉ ghi 
 
 | Nền | Dùng lại / thay đổi bắt buộc |
 |---|---|
-| `ArticleContentService` | Tách lõi Markdown dùng chung, giữ contract article: `.md/.txt` UTF-8 ≤1 MiB, cấm NUL/raw HTML/link nguy hiểm; lesson nullable nhưng nếu có dùng cùng validator. |
+| `ArticleContentService` | Dùng LessonContentService làm facade gọi ArticleContentService, dịch lỗi theo ngữ cảnh và giữ contract article: `.md/.txt` UTF-8 ≤1 MiB, cấm NUL/raw HTML/link nguy hiểm; lesson nullable nhưng nếu có dùng cùng validator. |
 | `ArticleImageService` + storage/cleanup/rate limit | Giữ JPEG/PNG/WebP ≤5 MiB, Cloudinary, `Upload-Key`; tách scope `ARTICLE|COURSE|LESSON`, cấm asset chéo. Cleanup phải nhận scope và giữ mọi ảnh còn được working/snapshot article/course/lesson tham chiếu. |
 | `article-flow` | Giữ hai trục trạng thái, token/history/publication; snapshot metadata/tag/curriculum trong một transaction. |
 | `ai-assist` | Giữ outline→SSE/quota/cancel/receipt 24h; thêm `LESSON`, taxonomy theo course; không endpoint/quota mới. |
-| UI article | Tách editor/preview/import/upload/autosave dùng chung; lesson thêm video hoặc content; article không đổi. |
+| UI article | Dùng lại editor/preview/import/upload và cơ chế lưu; lesson thêm video hoặc content; article không đổi. |
 
 ## Ma trận quyền
 
@@ -40,12 +40,12 @@ Chỉ sửa các đường dẫn dưới đây; class mới đặt đúng packag
 - `server/src/main/java/com/techverse/server/exception/ErrorCode.java`
 - `server/src/main/java/com/techverse/server/service/impl/{ArticleContentService,ArticleImageService,ArticleImageCleanupService,ArticleAccessService,AuthorArticleServiceImpl,ModeratorArticleServiceImpl,PublishedArticleServiceImpl,ArticleRateLimitService,CloudinaryArticleImageStorage}.java`
 - `server/src/main/java/com/techverse/server/{service/ArticleImageStorage.java,dto/internal/ArticleImageAsset.java,repository/AiCompletedGenerationRepository.java,controller/AuthorAiController.java,service/AuthorAiService.java,service/impl/Ai*.java,dto/request/Ai*.java}` và response AI liên quan
-- `server/src/test/java/com/techverse/server/{course,author,moderator,ai}/**/*{Course,Lesson,Ai}*Test.java` (tạo/sửa), `author/{ArticleContentServiceTest,AuthorArticleIntegrationTest}.java`, `article/{ArticleLifecycleTest,PublishedArticleIntegrationTest,ArticleIntegrationTestBase}.java`
+- `server/src/test/java/com/techverse/server/{course,author,moderator,ai}/**/*{Course,Lesson,Ai}*Test.java` (tạo/sửa), `course/CourseIntegrationTestBase.java`, `article/ArticlePublicationMigrationTest.java`, `author/{ArticleContentServiceTest,AuthorArticleIntegrationTest}.java`, `article/{ArticleLifecycleTest,PublishedArticleIntegrationTest,ArticleIntegrationTestBase}.java`
 
 ### Giao diện
 
-- `plans/course-free.wireframe.md` (tạo); `app/src/App.tsx`, `app/src/data/{navigation,managementI18n}.ts`
-- `app/src/components/layout/{Sidebar,ModeratorSidebar}.tsx`, `app/src/components/MarkdownContent.tsx`, editor/TOC dùng chung và test trực tiếp
+- `plans/course-free.wireframe.md` (tạo); `app/src/{App,main}.tsx`, `app/src/data/{navigation,managementI18n}.ts`, `app/src/services/returnTo.ts`, `app/src/pages/Login/**`
+- `app/src/components/layout/{Sidebar,ModeratorSidebar}.tsx`, `app/src/components/MarkdownContent.tsx`, editor/TOC dùng chung, `app/src/components/articles/ArticleStats.tsx` và test trực tiếp
 - `app/src/{types/courses.ts,services/courseService.ts,data/courseI18n.ts}` và test (tạo)
 - `app/src/{types/aiAssist.ts,services/{aiAssistService,articleService}.ts,data/aiAssistI18n.ts}` và test trực tiếp
 - `app/src/pages/{Author/Courses,Moderator/Courses,Courses}/**` và test (tạo)
@@ -100,14 +100,16 @@ Chỉ sửa các đường dẫn dưới đây; class mới đặt đúng packag
 
 ### Kế hoạch thực thi
 
-- V12 + domain working/snapshot/history; dùng V10, `ArticleLifecycleTest`, trigger append-only. Không backfill; dừng nếu đã có course/lesson; giữ source ID, lesson published và payment/refunds; reorder tránh unique tạm.
+- Đã thực hiện; chi tiết và kết quả xem [log](course-free.log.md).
 
 ### Xong khi
 
-- [ ] `FreeCourseMigrationTest` dựng V1→V12, kiểm bảng/constraint/index, content/video/position/giá 0, hai cột tiếp tục học + FK lesson, append-only; V12 dừng nếu có course/lesson và không đụng payment/refunds.
-- [ ] `CourseLifecycleTest` (unit) kiểm edit/submit/withdraw/request changes/approve version; working không đổi snapshot.
-- [ ] Unit test kiểm archive chapter/lesson giữ ID/progress, version mới bỏ khỏi mẫu số, hard delete trước lần approve; parser YouTube phủ allowlist và mọi dạng bị từ chối đã nêu.
-- [ ] `FreeCourseMigrationTest`, `CourseLifecycleTest`, `ArticleLifecycleTest` đạt; full backend do CI, không chạy `scripts/verify.sh`.
+- [x] `FreeCourseMigrationTest` dựng V1→V12, kiểm bảng/constraint/index, content/video/position/giá 0, hai cột tiếp tục học + FK lesson, append-only; V12 dừng nếu có course/lesson và không đụng payment/refunds.
+- [x] `CourseLifecycleTest` (unit) kiểm edit/submit/withdraw/request changes/approve version; working không đổi snapshot.
+- [x] Unit test kiểm archive chapter/lesson giữ ID/progress, version mới bỏ khỏi mẫu số, hard delete trước lần approve; parser YouTube phủ allowlist và mọi dạng bị từ chối đã nêu.
+- [x] `FreeCourseMigrationTest`, `CourseLifecycleTest`, `ArticleLifecycleTest` đạt; full backend do CI, không chạy `scripts/verify.sh`.
+
+V12 sửa ArticlePublicationMigrationTest chấp nhận version ≥11; hard delete/archive suy từ snapshot, không thêm cột. Entity enrollment/progress và moderator hide/restore/remove được bổ sung ở Task 1c.
 
 ## Task 1b — API Author, Markdown/ảnh dùng chung và AI handoff bài học
 
@@ -139,24 +141,29 @@ Chỉ sửa các đường dẫn dưới đây; class mới đặt đúng packag
 | Create retry | Cùng key+payload trả receipt cũ; key khác payload/deleted hoặc request đang chạy | 409 `COURSE_KEY_CONFLICT` / `COURSE_REQUEST_IN_PROGRESS` | “Khóa yêu cầu đã dùng cho dữ liệu khác.” / “Yêu cầu đang xử lý, hãy thử lại cùng khóa.” |
 | Import/content | `.md/.txt`, UTF-8 ≤1 MiB; lỗi/rate/storage tách rõ | 400 `COURSE_FILE_INVALID`/`COURSE_CONTENT_INVALID`; 413 `COURSE_FILE_TOO_LARGE`; 415 `COURSE_FILE_UNSUPPORTED`; 429 `COURSE_RATE_LIMITED`; 503 `COURSE_STORAGE_UNAVAILABLE` | Copy course tương ứng contract article. |
 | Ảnh | JPEG/PNG/WebP ≤5 MiB; tối đa 50 node ảnh cho description+cover và riêng mỗi lesson; đúng scope | 400 `COURSE_IMAGE_INVALID`; 413 `COURSE_IMAGE_TOO_LARGE`; 415 `COURSE_IMAGE_UNSUPPORTED`; 429 `COURSE_RATE_LIMITED`; 502 `COURSE_IMAGE_UPLOAD_FAILED`; 503 `COURSE_STORAGE_UNAVAILABLE` | Copy upload course tương ứng article. |
-| AI lesson | `targetType=LESSON` bắt buộc `courseId`, cấm client gửi `topicId/tagIds`; server kiểm owner và lấy taxonomy khóa. Receipt lưu `targetType+courseId`; claim `LESSON:<lessonId>` khi POST hoặc PATCH, không claim chéo ARTICLE/LESSON | 409 `AI_GENERATION_INVALID`; các mã AI hiện có khác giữ nguyên | “Bản nháp AI không còn hợp lệ. Hãy tạo lại.” |
+| AI lesson | `targetType=LESSON` bắt buộc `courseId`, cấm client gửi `topicId/tagIds`; server kiểm owner và lấy taxonomy khóa. Fingerprint chứa targetType+courseId; claim `LESSON_CREATE:<Idempotency-Key>` khi POST hoặc `LESSON_UPDATE:<lessonId>` khi PATCH, không claim chéo ARTICLE/LESSON | 409 `AI_GENERATION_INVALID`; các mã AI hiện có khác giữ nguyên | “Bản nháp AI không còn hợp lệ. Hãy tạo lại.” |
 | Video/content | `videoUrl` nullable; backend parse rồi chỉ response provider/videoId; content nullable nhưng không được blank | 400 `LESSON_CONTENT_REQUIRED` / `LESSON_VIDEO_INVALID` | Như Task 1a. |
 
-AI `ARTICLE` giữ request hiện tại (`topicId/tagIds`) và claim khi create; `targetType` mặc định `ARTICLE` để không phá client. Create lesson cấp UUID trước khi claim nên retry dùng cùng `LESSON:<lessonId>`; PATCH chỉ nhận lại cùng claim key.
+AI `ARTICLE` giữ request hiện tại (`topicId/tagIds`) và claim khi create; `targetType` mặc định `ARTICLE` để không phá client. Redis không lưu riêng targetType/courseId; fingerprint và namespace claim ngăn dùng chéo type/course/key.
 
 ### Kế hoạch thực thi
 
-- Author CRUD/reorder/idempotency; content/image generic giữ facade article; AI receipt thêm lesson. SUBMIT/APPROVE chỉ kiểm storage ngoài lock cho document đổi, rồi khóa và recheck fingerprint/scope; autosave không snapshot.
+- Đã thực hiện; chi tiết và kết quả xem [log](course-free.log.md).
 
 ### Xong khi
 
-- [ ] `LessonContentServiceTest` kiểm Markdown/image/video, import/reading time, giới hạn ảnh theo document, video-only và asset scope.
-- [ ] `AuthorCourseIntegrationTest` kiểm 3–5 luồng create idempotent, CRUD/reorder, quyền/lifecycle và public không đổi sau edit/archive.
-- [ ] Test AI unit/controller kiểm `ARTICLE` không đổi; `LESSON` resolve taxonomy/owner, claim POST/PATCH và chặn receipt sai type/course/reuse.
-- [ ] `ArticleImageCleanupServiceTest` kiểm cleanup theo scope: xóa asset rời nhưng giữ ảnh course/lesson còn ở working hoặc bất kỳ snapshot.
-- [ ] `AuthorArticleIntegrationTest`, `ArticleContentServiceTest` giữ contract article sau khi tách dịch vụ.
-- [ ] OpenAPI/DTO không nhận `priceAmount`, không lưu raw `videoUrl`, response chỉ `provider/videoId`; Moderator không có trường tiền.
-- [ ] Các lớp trên + `AuthorAiControllerTest`, `AiOutlineServiceTest`, `AiDraftStreamServiceTest`, `AiGeneratedContentValidatorTest`, `ArticleImageCleanupServiceTest` đạt; full backend do CI.
+- [x] `LessonContentServiceTest` kiểm Markdown/image/video, import, giới hạn ảnh theo document và video-only; asset scope kiểm trong AuthorCourseIntegrationTest/ArticleImageCleanupServiceTest. Không thêm reading time cho lesson.
+- [x] `AuthorCourseIntegrationTest` kiểm 3–5 luồng create idempotent, CRUD/reorder, quyền/lifecycle và public không đổi sau edit/archive.
+- [x] Test AI unit/controller kiểm `ARTICLE` không đổi; `LESSON` resolve taxonomy/owner, claim POST/PATCH và chặn receipt sai type/course/reuse.
+- [x] `ArticleImageCleanupServiceTest` kiểm cleanup theo scope: xóa asset rời nhưng giữ ảnh course/lesson còn ở working hoặc bất kỳ snapshot.
+- [x] `AuthorArticleIntegrationTest`, `ArticleContentServiceTest` giữ contract article sau khi tách dịch vụ.
+- [x] DTO không nhận giá, không lưu raw videoUrl, response chỉ provider/videoId; Moderator không có trường tiền.
+- [ ] Kiểm OpenAPI trên Swagger (chưa kiểm — xem log; mới kiểm annotation).
+- [x] Các lớp trên + `AuthorAiControllerTest`, `AiOutlineServiceTest`, `AiDraftStreamServiceTest`, `AiGeneratedContentValidatorTest`, `ArticleImageCleanupServiceTest` đạt; full backend do CI.
+
+Chi tiết đã nhận: DTO CourseChapterRequest/CourseReorderRequest; storage overload theo scope và ArticleImageService.Target; reorder dịch vị trí tạm +1.000.000; chương không tồn tại trả COURSE_NOT_FOUND; options dùng AuthorArticleService.options, rate limit dùng chung article. List hasUnpublishedChanges còn N+1. SUBMIT pha hai dưới khóa kiểm lại tập target+URL và provider tránh cleanup xóa ảnh giữa hai pha; validate AI dùng @AiTarget.
+
+- [ ] Kiểm Cloudinary thật với scope COURSE/LESSON (chưa kiểm — xem log; chỉ dùng fake storage).
 
 ## Task 1c — API Moderator, public course và học/progress
 
@@ -169,10 +176,11 @@ AI `ARTICLE` giữ request hiện tại (`topicId/tagIds`) và claim khi create;
 |---|---|
 | Moderator list/detail/history/lesson | List phân trang; detail metadata tree working/published + fingerprint/token/history và trạng thái đổi từng chapter/lesson; content từng lesson qua endpoint riêng, `versionId` tùy chọn; không tiền. |
 | Moderator review/publication | `APPROVE|REQUEST_CHANGES`, `HIDE|RESTORE|REMOVE`; snapshot aggregate, review token và note theo article-flow. |
+| `GET /api/v1/courses/options` | Anonymous; topic/tag của khóa visible, dùng PublishedArticleOptionsResponse/ArticleOptionsFilter và taxonomy query chung article. |
 | `GET /api/v1/courses`, `GET /api/v1/courses/{id}` | List phân trang; detail public trả curriculum; Learner enrolled nhận completed IDs, progress khóa/chương và `continueLesson` (bài cuối nếu còn trong snapshot hiện hành, nếu không là bài đầu). |
 | `GET .../courses/{courseId}/lessons/{lessonId}` | Guest chỉ preview; Learner enrolled đọc bài hiện hành, cập nhật `last_lesson_id` + `last_accessed_at`, rồi trả curriculum/completed IDs/progress. Preview chưa enroll không cập nhật. |
-| `POST /api/v1/courses/{id}/start` | Auth Reader; tạo FREE enrollment idempotent và trả lesson đầu + progress. |
-| `GET /api/v1/me/courses` | List enrollment FREE active, mới nhất theo `last_accessed_at`, rồi `granted_at`; mỗi item trả `continueLesson` theo fallback như overview. |
+| `POST /api/v1/courses/{id}/start` | Auth Reader; tạo FREE enrollment idempotent và trả continueLesson + progress (enrollment mới dùng bài đầu). |
+| `GET /api/v1/me/courses` | List enrollment FREE active còn visible công khai, mới nhất theo `last_accessed_at`, rồi `granted_at`; mỗi item trả `continueLesson` theo fallback như overview. |
 | `PUT|DELETE /api/v1/courses/{courseId}/lessons/{lessonId}/completion` | Hoàn thành/bỏ hoàn thành idempotent; trả progress khóa + chương. |
 
 ### Quy tắc nghiệp vụ và mã lỗi
@@ -184,25 +192,33 @@ AI `ARTICLE` giữ request hiện tại (`topicId/tagIds`) và claim khi create;
 | Note review/publication | Trim, tối đa 2.000; bắt buộc với REQUEST_CHANGES và HIDE/REMOVE, RESTORE không cần | 400 `COURSE_REVIEW_NOTE_REQUIRED` / `COURSE_PUBLICATION_NOTE_REQUIRED`; quá dài `VALIDATION_ERROR` | “Cần nhập phản hồi.” / “Cần nhập lý do.” |
 | Public visibility | Snapshot `PUBLISHED`, author active/profile không suspended; còn lại che 404 | 404 `COURSE_NOT_FOUND` | “Không tìm thấy khóa học.” |
 | Preview | Guest/auth chưa enroll chỉ đọc lesson snapshot `isPreview=true`; response không lộ nội dung bài khác | 403 `LESSON_PREVIEW_ONLY` | “Hãy đăng nhập và bắt đầu khóa học để xem bài này.” |
-| Start | Chỉ course visible/free; một active FREE enrollment/user/course; retry trả cùng kết quả | 404 `COURSE_NOT_FOUND`; 403 `ACCESS_DENIED` | “Không thể bắt đầu khóa học này.” |
+| Start | Chỉ course visible/free; một active FREE enrollment/user/course; retry trả continueLesson hiện tại và progress | 404 `COURSE_NOT_FOUND`; 403 `ACCESS_DENIED` | “Không thể bắt đầu khóa học này.” |
 | Completion | Cần enrollment active; lesson thuộc snapshot hiện hành; PUT/DELETE idempotent | 409 `COURSE_ENROLLMENT_REQUIRED`; 404 `LESSON_NOT_FOUND` | “Hãy bắt đầu khóa học trước.” |
 | Progress | `x=current completed stable lesson IDs`, `y=current snapshot lessons`, `% = floor(x*100/y)`; chapter tương tự | — | Hiện `x/y (%)`, `Đã học x/y bài`. |
 
 Mọi list: `page=0`, `size=20`, size 1–100. Author/Moderator thêm workflow/publication; public có keyword/topic/tag/level + newest/oldest; `/me/courses` giữ thứ tự hoạt động cố định.
 
-So với published version gần nhất, chapter/lesson có `changeStatus`: `NEW` nếu ID chỉ ở working; `ARCHIVED` nếu chỉ ở published/đã archive; `CHANGED` nếu fingerprint, metadata hoặc thứ tự khác; còn lại `UNCHANGED`. Chapter tính cả danh sách/thứ tự lesson.
+Public detail có chapterCount, lessonCount, updatedAt = approvedAt version hiện hành, thẻ tác giả và viewer { enrolled, canStart } (owner/manager không thể start); public list không có số chương/bài. Public sort newest/oldest theo published_at lần đầu. Khóa ẩn không hiện trong /me/courses; enrollment/progress giữ nguyên và hiện lại khi restore.
+
+Manager đọc như chưa enroll: chỉ preview, không cập nhật last lesson/progress; /me/courses trả rỗng, start/completion 403. Owner cũng không start/completion; owner/manager mở bài không preview nhận 403 ACCESS_DENIED. Thứ tự kiểm lỗi: course không visible → 404 COURSE_NOT_FOUND; manager → 403 ACCESS_DENIED với thao tác bị chặn; lesson ngoài snapshot → 404 LESSON_NOT_FOUND; chưa enroll → 403 LESSON_PREVIEW_ONLY khi GET hoặc 409 COURSE_ENROLLMENT_REQUIRED khi completion. GET course public permitAll và nhận JWT tùy chọn.
+
+So với published version gần nhất, chapter/lesson có `changeStatus`: `NEW` nếu ID chỉ ở working; `ARCHIVED` nếu chỉ ở published/đã archive; `CHANGED` nếu fingerprint, metadata hoặc thứ tự khác; còn lại `UNCHANGED`. Chapter tính cả danh sách/thứ tự lesson. Chưa có version trước thì tất cả NEW; diff là working active ∪ version gần nhất, không hiện bài archive từ version cũ hơn.
 
 ### Kế hoạch thực thi
 
-- Moderator lifecycle/diff và public/learning DTO dùng helper article. Tree không nhúng content; lesson thuộc current version; tránh N+1; start/completion/access concurrent vẫn idempotent.
+- Đã thực hiện; chi tiết và kết quả xem [log](course-free.log.md).
 
 ### Xong khi
 
-- [ ] `ModeratorCourseIntegrationTest` kiểm 3–5 luồng review/self-review/stale/publication; tree/lesson fetch và đủ `NEW|CHANGED|ARCHIVED|UNCHANGED` theo fingerprint/metadata/thứ tự; snapshot bất biến, không tiền.
-- [ ] `PublishedCourseIntegrationTest` kiểm snapshot visible/filter/pagination/preview và curriculum/progress payload; hidden/removed/suspended che 404.
-- [ ] `CourseLearningIntegrationTest` kiểm start idempotent; mở bài enrolled cập nhật last lesson/time nhưng preview chưa enroll không; overview/my courses fallback tiếp tục và sort access/granted; owner/manager 403; progress sau version/archive.
-- [ ] Regression `ModeratorArticleIntegrationTest`, `PublishedArticleIntegrationTest` giữ nguyên sau khi dùng chung lifecycle/visibility helper.
-- [ ] Năm lớp course/article integration vừa nêu đạt; full backend do CI.
+- [x] `ModeratorCourseIntegrationTest` kiểm 3–5 luồng review/self-review/stale/publication; tree/lesson fetch và đủ `NEW|CHANGED|ARCHIVED|UNCHANGED` theo fingerprint/metadata/thứ tự; snapshot bất biến, không tiền.
+- [x] `PublishedCourseIntegrationTest` kiểm snapshot visible/filter/pagination/preview và curriculum/progress payload; hidden/removed/suspended che 404.
+- [x] `CourseLearningIntegrationTest` kiểm start idempotent; mở bài enrolled cập nhật last lesson/time nhưng preview chưa enroll không; overview/my courses fallback tiếp tục và sort access/granted; owner/manager 403; progress sau version/archive.
+- [x] Regression `ModeratorArticleIntegrationTest`, `PublishedArticleIntegrationTest` giữ nguyên sau khi dùng chung lifecycle/visibility helper.
+- [x] Năm lớp course/article integration vừa nêu đạt; full backend do CI.
+
+- [ ] Kiểm start/completion đồng thời (chưa kiểm — xem log; hiện dựa vào ON CONFLICT).
+
+Response list Moderator và My Courses lồng lần lượt ModeratorCourseSummaryResponse.course và MyCourseResponse.course; approve gặp taxonomy inactive trả COURSE_NOT_READY, imageIssues của Moderator rỗng. Approve chỉ kiểm provider ảnh ở document đổi so với version.
 
 ## Cổng wireframe trước Task 2a
 
@@ -215,7 +231,9 @@ So với published version gần nhất, chapter/lesson có `changeStatus`: `NEW
 
 ### Xong khi
 
-- [ ] Đủ route, responsive/collapse, focus order/action; không vượt backend; người dùng duyệt và quyết định được ghi log trước Task 2a.
+- [x] Đủ route, responsive/collapse, focus order/action; không vượt backend; người dùng duyệt và quyết định được ghi log trước Task 2a.
+
+Người dùng duyệt khung học riêng không Sidebar app, overview chung khung học với cột curriculum, reorder bằng Lên/Xuống, AI trong Sheet editor và Guest vào /courses* không cần đăng nhập; xem [wireframe](course-free.wireframe.md).
 
 ## Task 2a — Giao diện Author quản lý khóa/chương/bài
 
@@ -224,26 +242,27 @@ So với published version gần nhất, chapter/lesson có `changeStatus`: `NEW
 
 ### Phạm vi
 
-- Route `/author/courses`, `/author/courses/new`, `/author/courses/:id/edit`; form metadata, cover, curriculum reorder, lesson editor video + Markdown/import/ảnh/preview/AI, autosave/idempotency, submit/withdraw/discard/publication/history.
+- Route `/author/courses`, `/author/courses/new`, `/author/courses/:id/edit`; form metadata, cover, curriculum reorder, lesson editor video + Markdown/import/ảnh/preview/AI, lưu thủ công từng panel, tự lưu khi chuyển mục/idempotency, submit/withdraw/discard/publication/history.
 - Menu Tác giả đổi thành nhóm thu gọn chứa “Bài viết của tôi” và “Khóa học”; không thêm Doanh thu.
 
 ### Quy tắc nghiệp vụ và mã lỗi
+
+Tab “Bản công khai” chỉ có ở bài học; form AI dùng tóm tắt bài điền sẵn vào ô Ý tưởng. Ảnh xem trước tin URL do phiên này tải lên hoặc có sẵn không bị imageIssues đánh dấu, host res.cloudinary.com.
 
 Frontend validate đúng Task 1a/1b; server là nguồn cuối. `courseI18n` ánh xạ danh sách đóng toàn bộ `COURSE_*`, `LESSON_*`, `AI_*`, `ACCESS_DENIED`, `VALIDATION_ERROR`, `MALFORMED_REQUEST` trong hai bảng; unknown dùng fallback, không parse message backend.
 
 ### Kế hoạch thực thi
 
-- **Dùng lại:** types/service/i18n, editor/tree/route, TagPicker/import/upload/autosave/idempotency, AI stream/quota và lifecycle article.
-- **Bẫy/UI:** giữ class/thứ tự CSS; write mutex, keyboard reorder, chặn response cũ. Theo wireframe, shadcn/token, không gradient; contrast ≥4.5:1, target ≥44 px; mobile không cuộn ngang, sticky không che nội dung, Sheet/Accordion giữ focus.
-- **Copy vi/en chính:** Khóa học/Courses; Tạo khóa học/Create course; Gửi duyệt/Submit for review; Học thử/Preview; Có thay đổi chưa xuất bản/Unpublished changes; Dùng bản nháp này cho bài học/Use this draft for the lesson.
+- Đã thực hiện; chi tiết và kết quả xem [log](course-free.log.md).
 
 ### Xong khi
 
-- [ ] Service/i18n test đủ endpoint/error Author, idempotency/upload key, video và AI handoff dùng chung quota.
-- [ ] Workspace test khoảng 5 luồng list/filter/create, state/action và lifecycle; editor khoảng 5 luồng metadata, CRUD/reorder keyboard, video/content, Markdown/import/upload/autosave và submit tree.
-- [ ] AI lesson test kiểm restore/stream/cancel/hash/claim và regression AI article.
-- [ ] Navigation/App kiểm nhóm Tác giả thu gọn, AUTHOR route, role khác không thấy và article route không đổi.
-- [ ] Test service/i18n/workspace/editor/AI/article callers/navigation/App + `npm run build` đạt; kiểm mắt một lượt dark/light × desktop/mobile, ghi “Chưa kiểm” nếu thiếu môi trường.
+- [x] Service/i18n test đủ endpoint/error Author, idempotency/upload key, video và AI handoff dùng chung quota.
+- [x] Workspace test khoảng 5 luồng list/filter/create, state/action và lifecycle; editor khoảng 5 luồng metadata, CRUD/reorder keyboard, video/content, Markdown/import/upload/lưu khi chuyển mục và submit tree.
+- [x] AI lesson test kiểm restore/stream/cancel/hash/claim và regression AI article.
+- [x] Navigation/App kiểm nhóm Tác giả thu gọn, AUTHOR route, role khác không thấy và article route không đổi.
+- [x] Test service/i18n/workspace/editor/AI/article callers/navigation/App + `npm run build` đạt.
+- [ ] Kiểm mắt dark/light × desktop/mobile, RouterProvider, editor với backend thật và AI/Cloudinary thật (chưa kiểm — xem log).
 
 ## Task 2b — Giao diện Moderator duyệt khóa
 
@@ -256,21 +275,21 @@ Frontend validate đúng Task 1a/1b; server là nguồn cuối. `courseI18n` án
 
 ### Quy tắc nghiệp vụ và mã lỗi
 
+Thông tin metadata khóa chỉ hiện bản đề xuất, không có nhãn “Đã sửa”. Danh sách không lọc theo ngày/tác giả; bộ lọc chủ đề/thẻ dùng options reader bài viết, có thể thiếu taxonomy chỉ thuộc khóa học. Mobile xếp cây phía trên và so sánh một cột theo nút Đề xuất/Công khai.
+
 Client dẫn chiếu Task 1c: review token stale bắt buộc tải lại; không retry mutation tự động; không render/đề cập giá, doanh thu, ngân hàng hoặc hoa hồng.
 
 ### Kế hoạch thực thi
 
-- List/detail/test, route/sidebar/i18n; dùng badge/filter/comparison/dialog/BackToTopButton article. Lọc theo `changeStatus`, `UNCHANGED` không gắn nhãn; diff cấu trúc/thứ tự/preview/video/content; khóa action khi pending.
-- Khung Moderator: desktop dễ so sánh, mobile working rồi published; contrast ≥4.5:1, dialog có focus/error, action nguy hiểm không chỉ bằng màu.
-- Copy chính: Duyệt khóa học/Course moderation; Duyệt khóa/Approve course; Yêu cầu sửa/Request changes; stale dùng đúng câu Task 1c.
+- Đã thực hiện; chi tiết và kết quả xem [log](course-free.log.md).
 
 ### Xong khi
 
-- [ ] List test khoảng 5 luồng chính cho mặc định pending, filter/state, loading/empty/error và không có dữ liệu tiền.
-- [ ] Detail test kiểm metadata/tree/content, snapshot, history/token, action; mặc định chỉ bài đổi, ba nhãn vi/en đúng, “Xem tất cả” hiện cả `UNCHANGED`.
-- [ ] Stale token/validation/API error map đúng vi/en, không mutation retry tự động; action được khóa khi pending.
-- [ ] App/sidebar test route chỉ MODERATOR; ADMIN chỉ vào được khi đồng thời có role MODERATOR.
-- [ ] Test hai trang Moderator, sidebar/App, i18n + `npm run build` đạt; kiểm mắt dark/light × desktop/mobile.
+- [x] List test khoảng 5 luồng chính cho mặc định pending, filter/state, loading/empty/error và không có dữ liệu tiền.
+- [x] Detail test kiểm metadata/tree/content, snapshot, history/token, action; mặc định chỉ bài đổi, ba nhãn vi/en đúng, “Xem tất cả” hiện cả `UNCHANGED`.
+- [x] Stale token/validation/API error map đúng vi/en, không mutation retry tự động; action được khóa khi pending.
+- [x] App/sidebar test route chỉ MODERATOR; ADMIN chỉ vào được khi đồng thời có role MODERATOR.
+- [x] Test hai trang Moderator, sidebar/App, i18n + `npm run build` đạt; kiểm mắt dark/light × desktop/mobile.
 
 ## Task 2c — Giao diện public, trang học và tiến độ
 
@@ -280,9 +299,12 @@ Client dẫn chiếu Task 1c: review token stale bắt buộc tải lại; khôn
 ### Phạm vi
 
 - `/courses`, `/courses/:id`, `/courses/:courseId/lessons/:lessonId`, `/me/courses`.
+- Khung overview và bài học dùng layout riêng không Sidebar app; curriculum ở cột riêng, mobile dùng Sheet. Completion 409 tải lại bài tại chỗ; đăng nhập giữ return URL qua cả Google.
 - Tổng quan: header nhỏ, info card, số chương/bài/ngày cập nhật, accordion + mở rộng tất cả + “Học thử”. Trang học: 3 cột như yêu cầu; nhúng `youtube-nocookie.com/embed/<id>`, không link chuyển YouTube.
 
 ### Quy tắc nghiệp vụ và mã lỗi
+
+Bộ lọc Guest dùng GET /api/v1/courses/options: anonymous, không tham số, chỉ trả topic/tag của khóa visible trong ApiResponse và shape options như article.
 
 | Tình huống | Client | Copy vi | Copy en |
 |---|---|---|---|
@@ -295,19 +317,18 @@ Client dẫn chiếu Task 1c: review token stale bắt buộc tải lại; khôn
 
 ### Kế hoạch thực thi
 
-- Public/my-course/lesson pages; curriculum/progress/video, service/types/i18n/routes; dùng Markdown/TOC/Pagination/BackToTop/Reader policy article.
-- Iframe chỉ từ provider+ID hợp lệ, có title/sandbox/referrer/allow. Desktop ba cột curriculum — content — TOC; mobile control có nhãn, video 16:9, không nested scroll; reduced motion, focus/landmark/live region, contrast ≥4.5:1.
-- Copy chính: Khóa học/Courses; Khóa học của tôi/My courses; Tiếp tục học/Continue learning; Nội dung khóa học/Course content; Mở rộng tất cả/Expand all; Bài trước/Bài tiếp theo.
+- Đã thực hiện; chi tiết và kết quả xem [log](course-free.log.md).
 
 ### Xong khi
 
-- [ ] Service/i18n test public list/detail/preview/start/my courses/completion và lỗi Task 1c.
-- [ ] Catalog + overview test khoảng 5 luồng: filter/list, info/accordion/expand, preview, Guest/start, 404.
-- [ ] Lesson page test khoảng 5 luồng: search/navigation, collapse, YouTube nocookie, Markdown+TOC, completion toggle/progress và previous/next.
-- [ ] Overview/“Khóa học của tôi” test loading/empty/error, progress, CTA “Tiếp tục học”/“Continue learning”, thứ tự access/granted và fallback last lesson còn hiện hành → bài đầu; preview-only không xuất hiện nếu chưa start.
-- [ ] App/navigation test Guest public route, authenticated Reader/my courses, return URL; manager account không thấy/không gọi learning API.
-- [ ] Kiểm tĩnh iframe không dùng `youtube.com` hay raw `videoUrl`; Public DTO/component không tham chiếu working content hoặc trường tiền.
-- [ ] Test service/i18n/public/overview/my courses/lesson/Markdown/App + `npm run build` đạt; kiểm mắt dark/light × desktop/mobile cho bốn trang đổi.
+- [x] Service/i18n test public list/detail/preview/start/my courses/completion và lỗi Task 1c.
+- [x] Catalog + overview test khoảng 5 luồng: filter/list, info/accordion/expand, preview, Guest/start, 404.
+- [x] Lesson page test khoảng 5 luồng: search/navigation, collapse, YouTube nocookie, Markdown+TOC, completion toggle/progress và previous/next.
+- [x] Overview/“Khóa học của tôi” test loading/empty/error, progress, CTA “Tiếp tục học”/“Continue learning”, thứ tự access/granted và fallback last lesson còn hiện hành → bài đầu; preview-only không xuất hiện nếu chưa start.
+- [x] App/navigation test Guest public route, authenticated Reader/my courses, return URL; manager account không thấy/không gọi learning API.
+- [ ] Kiểm tĩnh iframe không dùng `youtube.com` hay raw `videoUrl`; Public DTO/component không tham chiếu working content hoặc trường tiền (chưa kiểm — xem log).
+- [x] Test service/i18n/public/overview/my courses/lesson/Markdown/App + `npm run build` đạt; đã kiểm mắt desktop dark và mobile light cho bốn trang.
+- [ ] Kiểm mắt desktop light, mobile dark và vùng chạm 44px bằng cảm ứng thật (chưa kiểm — xem log).
 
 ## Quyết định người dùng ngày 2026-11-06
 
@@ -322,4 +343,4 @@ Client dẫn chiếu Task 1c: review token stale bắt buộc tải lại; khôn
 
 - **Spec đã chốt ngày 2026-11-07** sau vòng 1 (không chạy vòng 2), gồm 6 quyết định ngày 2026-11-06 và hai đề xuất làm ngay: “Tiếp tục học”, Moderator lọc bài đổi; thời lượng ước tính tách sau.
 - Lịch sử phản biện: [`course-free.review.md`](course-free.review.md).
-- Bước tiếp theo: **Task 1a**.
+- Các task và cổng wireframe đã được người dùng nhận; chi tiết xem log.

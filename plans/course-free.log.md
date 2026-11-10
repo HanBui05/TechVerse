@@ -15,23 +15,15 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 
 ## Quyết định người dùng chưa có trong spec
 
-- **2026-11-07 — Task 1c (người dùng OK sau khi rà spec 1c):**
-  1. `/me/courses` chỉ liệt kê khóa còn visible công khai; enrollment/progress giữ nguyên, khóa restore thì hiện lại.
-  2. Public detail thêm `viewer: { enrolled, canStart }` (owner/manager `canStart=false`) + trường info card: `chapterCount`, `lessonCount`, `updatedAt` (= `approvedAt` version hiện hành), thẻ tác giả.
-  3. `POST /start` (cả retry) trả `continueLesson` (enrollment mới = bài đầu) + progress.
-  4. Tài khoản có role MODERATOR/ADMIN dù đã enroll: đọc như chưa enroll (chỉ preview, không cập nhật last lesson, không progress); start/completion 403.
-  5. Thứ tự lỗi mở bài/completion: course không visible 404 `COURSE_NOT_FOUND` → manager 403 `ACCESS_DENIED` → bài ngoài snapshot hiện hành 404 `LESSON_NOT_FOUND` → chưa enroll 403 `LESSON_PREVIEW_ONLY` (GET) / 409 `COURSE_ENROLLMENT_REQUIRED` (completion).
-  6. Public sort newest/oldest theo `published_at` (lần đầu, như article); “ngày cập nhật” = `approvedAt` version hiện hành.
-  7. Chưa có version trước → mọi chapter/lesson `NEW`; diff = working active ∪ version gần nhất, bài archive ở version cũ hơn không hiện.
 - Kỹ thuật cho 1c (đã rà): public GET course là permitAll + JWT tùy chọn (article public hiện đều `authenticated`, mặc định `denyAll` → khai riêng start/completion/`/me/courses`); `Course` chưa có moderator hide/restore/remove; GET lesson ghi `last_lesson_id` cần transaction ghi; start idempotent dựa `uq_active_course_enrollment`.
-
-- **2026-11-09 — Cổng wireframe:** duyệt `course-free.wireframe.md`, đồng ý 5 câu mục 6: khung học riêng không Sidebar app; overview dùng chung khung học có cột curriculum; reorder chương/bài bằng Lên/Xuống (không kéo-thả); AI soạn bài trong Sheet của editor (không route mới); Guest vào `/courses*` không cần đăng nhập.
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-10 — Đồng bộ spec cuối module
+- Codex: đã đưa các quyết định Task 1c và cổng wireframe vào spec.
 ### 2026-11-10 — Task 2c đã nhận
 - Người dùng nhận Task 2c (giao diện public/học/tiến độ + endpoint `courses/options`); commit cục bộ trên `feature/course-free`.
 ### 2026-11-10 — Task 2c: kiểm bằng mắt + endpoint options
