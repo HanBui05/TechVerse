@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 
 ## Bắt đầu từ đây (cập nhật 2026-11-10)
 
-- **Task 2c đã nhận (2026-11-10).** Hết Task 2a–2c; còn **đồng bộ spec một lần cuối module** (skill `codex-workflow` mục 3) và PR/rebase sau khi ai-assist merge. Codex vòng 1 (3 góp ý) + vòng 2 (1 medium) đã sửa. Endpoint `GET /api/v1/courses/options` đã thêm (backend test đạt). Chưa kiểm: vùng chạm 44px bằng cảm ứng thật (Playwright MCP không có CDP touch), light/dark chỉ đo desktop dark + mobile light; backend dev đã tắt (do mình bật). DB dev: `lan.author` đã start khóa mẫu + hoàn thành bài 1.
+- **Task 2c đã nhận (2026-11-10).** Hết Task 2a–2c; còn **đồng bộ spec một lần cuối module** (skill `codex-workflow` mục 3) và rebase lên `origin/main` + mở PR khi người dùng yêu cầu (ai-assist đã merge). Codex vòng 1 (3 góp ý) + vòng 2 (1 medium) đã sửa. Endpoint `GET /api/v1/courses/options` đã thêm (backend test đạt). Chưa kiểm: vùng chạm 44px bằng cảm ứng thật (Playwright MCP không có CDP touch), light/dark chỉ đo desktop dark + mobile light; backend dev đã tắt (do mình bật). DB dev: `lan.author` đã start khóa mẫu + hoàn thành bài 1.
 - **Task 2b đã nhận (2026-11-10)** (Codex vòng 1 không có lỗi phải sửa). Đã kiểm bằng mắt dark/light × desktop/mobile cảm ứng sau khi nhận (nhật ký “kiểm bằng mắt”). DB dev còn khóa mẫu chờ duyệt (`086e877a-…`, tác giả `bao.author`). **Tiếp: Task 2c.**
 - **Task 2a đã nhận (2026-11-09)** (review vòng 1 có 4 phát hiện đã sửa; vòng 2 có 2 phát hiện high, người dùng yêu cầu sửa cả hai, không chạy lại Codex). Chưa kiểm bằng mắt dark/light × desktop/mobile; `RouterProvider` chưa chạy trên trình duyệt thật.
 - **Task 1c đã nhận (2026-11-09)** (review vòng 1 có 2 phát hiện đã sửa, vòng 2 `approve`). Task 1a, 1b đã nhận (2026-11-07). **Cổng wireframe đã nhận (2026-11-09)** — [`course-free.wireframe.md`](course-free.wireframe.md). **Tiếp: Task 2a** (task giao diện: giữ plugin `ui-ux-pro-max` bật).
@@ -24,7 +24,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 ## Nhật ký phiên
 ### 2026-11-10 — Task 2c: bằng chứng kiểm tĩnh
 - `grep` trong `app/src/pages/Courses/*.tsx` (không tính test): không có `youtube.com`, `videoUrl`, `price`, `currency`, `VND`; iframe chỉ nhận `embedUrl()` (`youtube-nocookie.com/embed/<id>` sau khi kiểm provider + ID 11 ký tự). Test `CourseLessonPage` khẳng định không có link `youtube.com`/`youtu.be`. Mục “Kiểm tĩnh” của Task 2c đạt, chờ Codex đánh `[x]` ở lần đồng bộ sau.
-- PR/rebase chưa làm được: `feature/ai-assist` chưa merge vào `main` (nhánh course-free còn 30 commit trên `main`).
+- Đính chính: PR #3 `ai-assist` ĐÃ merge vào `origin/main` (local `main` chỉ cũ, chậm 14 commit). Rebase/PR không còn bị chặn; người dùng chọn chưa rebase (2026-11-10). Khi rebase: `git rebase --onto origin/main feature/ai-assist` để không kéo lại commit ai-assist.
 ### 2026-11-10 — Đồng bộ spec cuối module
 - Codex: đã đưa các quyết định Task 1c và cổng wireframe vào spec.
 ### 2026-11-10 — Task 2c đã nhận
