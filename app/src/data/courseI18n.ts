@@ -1,6 +1,7 @@
 import { ApiError } from '../services/api/client'
 import type { Language } from '../types/preferences'
 import { aiErrorText } from './aiAssistI18n'
+import { moderatorCopy } from './articleI18n'
 
 type Copy = { vi: string; en: string }
 const unavailable: Copy = { vi: 'Hệ thống tạm thời gián đoạn. Vui lòng thử lại sau.', en: 'The service is temporarily unavailable. Please try again later.' }
@@ -144,3 +145,61 @@ export function courseText(language: Language) {
   const copy = language === 'vi' ? vi : en
   return (key: keyof CourseCopy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
 }
+
+// Moderator: the article moderator copy with course wording on top (same screens, same dialogs).
+const moderatorErrors: Partial<Record<string, Copy>> = {
+  COURSE_SELF_REVIEW_NOT_ALLOWED: { vi: 'Bạn không thể duyệt khóa của mình.', en: 'You cannot review your own course.' },
+  COURSE_AUTHOR_INELIGIBLE: { vi: 'Tác giả không còn đủ điều kiện.', en: 'The author is no longer eligible.' },
+  COURSE_NOT_READY: { vi: 'Khóa học không còn đủ điều kiện xuất bản.', en: 'The course is no longer eligible to be published.' },
+  COURSE_REVIEW_NOTE_REQUIRED: { vi: 'Cần nhập phản hồi.', en: 'Feedback is required.' },
+  COURSE_PUBLICATION_NOTE_REQUIRED: { vi: 'Cần nhập lý do.', en: 'A reason is required.' },
+  COURSE_PUBLICATION_TRANSITION_INVALID: { vi: 'Trạng thái công khai đã thay đổi. Hãy tải lại.', en: 'The publication state changed. Reload it.' },
+  COURSE_NOT_PENDING: { vi: 'Khóa học không còn chờ duyệt. Hãy tải lại.', en: 'The course is no longer pending. Reload it.' },
+}
+export function moderatorCourseErrorText(error: unknown, language: Language, fallback: string) {
+  const copy = error instanceof ApiError && error.code ? moderatorErrors[error.code] : undefined
+  return copy ? copy[language] : courseErrorText(error, language, fallback)
+}
+/** The course changed under the moderator (token or state): the only fix is reloading the detail. */
+export const isCourseStale = (error: unknown) => error instanceof ApiError && ['COURSE_REVIEW_STALE', 'COURSE_PUBLICATION_TRANSITION_INVALID', 'COURSE_NOT_PENDING'].includes(error.code ?? '')
+
+const moderatorVi = {
+  stats: 'Khóa học cần xử lý', title: 'Duyệt khóa học', subtitle: 'Duyệt bản gửi từ tác giả và quản lý khóa học đang công khai.', search: 'Tìm theo tên khóa học', searchPlaceholder: 'Tìm theo tên khóa học...',
+  count: '{n} khóa học', list: 'Danh sách khóa học', noMatch: 'Không có khóa học khớp bộ lọc', noPending: 'Không còn khóa học chờ duyệt', loadError: 'Không thể tải khóa học.', loading: 'Đang tải khóa học...',
+  articles: 'Khóa học', notFound: 'Không tìm thấy khóa học', detailError: 'Không thể tải khóa học.', ineligibleReason: 'Tác giả không còn đủ điều kiện nên chưa thể duyệt khóa.',
+  removedBanner: 'Khóa học đã gỡ khỏi trang công khai; không còn thao tác kiểm duyệt.', deletedBanner: 'Tác giả đã xóa khóa học, chỉ còn để đối soát.',
+  APPROVE: 'Duyệt khóa', HIDE: 'Ẩn khóa', REMOVE: 'Gỡ khóa', APPROVE_title: 'Duyệt và xuất bản khóa học', HIDE_title: 'Ẩn khóa học', RESTORE_title: 'Khôi phục khóa học', REMOVE_title: 'Gỡ khóa học',
+  APPROVE_text: 'Toàn bộ khóa học (thông tin, chương, bài) thành bản công khai v{n}.', REQUEST_CHANGES_text: 'Khóa học trở về tác giả kèm phản hồi. Bản công khai (nếu có) giữ nguyên.',
+  HIDE_text: 'Khóa học biến khỏi trang công khai; tiến độ học viên được giữ.', RESTORE_text: 'Khóa học trở về trạng thái trước khi bị ẩn.', REMOVE_text: 'Khóa học bị gỡ khỏi trang công khai. Không khôi phục được.',
+  APPROVE_done: 'Đã duyệt và xuất bản khóa học.', REQUEST_CHANGES_done: 'Đã gửi yêu cầu sửa cho tác giả.', HIDE_done: 'Đã ẩn khóa học.', RESTORE_done: 'Đã khôi phục khóa học.', REMOVE_done: 'Đã gỡ khóa học.',
+  noteRequired: 'Phản hồi cho tác giả (bắt buộc)', noteMissing: 'Cần nhập phản hồi.', reasonMissing: 'Cần nhập lý do.',
+  // course-only
+  changes: 'Thay đổi', changesOnly: 'Chỉ phần thay đổi', NEW: 'Mới', CHANGED: 'Đã sửa', ARCHIVED: 'Đã gỡ', noChanges: 'Không có chương hoặc bài nào thay đổi.',
+  courseInfo: 'Thông tin khóa học', chapterN: 'Chương {n}', lessons: 'Danh sách bài', level: 'Trình độ', description: 'Mô tả chi tiết', noDescription: 'Chưa có mô tả chi tiết',
+  preview: 'Học thử', previewOn: 'Cho học thử', previewOff: 'Không cho học thử', video: 'Video', noVideo: 'Không có video', noContent: 'Không có nội dung', videoTitle: 'Video bài học — {side}',
+  lessonError: 'Không thể tải bài học.', lessonLoading: 'Đang tải bài học...', infoNote: 'Thông tin khóa học hiện theo bản đề xuất.',
+  BEGINNER: 'Cơ bản', INTERMEDIATE: 'Trung cấp', ADVANCED: 'Nâng cao',
+}
+type ModeratorCourseCopy = typeof moderatorVi
+const moderatorEn: ModeratorCourseCopy = {
+  stats: 'Courses to handle', title: 'Course moderation', subtitle: 'Review author submissions and manage live courses.', search: 'Search by course title', searchPlaceholder: 'Search by course title...',
+  count: '{n} courses', list: 'Courses', noMatch: 'No courses match the filters', noPending: 'No courses awaiting review', loadError: 'Unable to load courses.', loading: 'Loading courses...',
+  articles: 'Courses', notFound: 'Course not found', detailError: 'Unable to load the course.', ineligibleReason: 'The author is no longer eligible, so this course cannot be approved.',
+  removedBanner: 'This course was removed from the public pages; no moderation actions remain.', deletedBanner: 'The author deleted this course; it is available for audit only.',
+  APPROVE: 'Approve course', HIDE: 'Hide course', REMOVE: 'Remove course', APPROVE_title: 'Approve and publish the course', HIDE_title: 'Hide course', RESTORE_title: 'Restore course', REMOVE_title: 'Remove course',
+  APPROVE_text: 'The whole course (information, chapters, lessons) becomes live version v{n}.', REQUEST_CHANGES_text: 'The course goes back to the author with your feedback. The live version, if any, stays.',
+  HIDE_text: 'The course disappears from the public pages; learner progress is kept.', RESTORE_text: 'The course returns to its state before it was hidden.', REMOVE_text: 'The course leaves the public pages. This cannot be undone.',
+  APPROVE_done: 'Course approved and published.', REQUEST_CHANGES_done: 'Change request sent to the author.', HIDE_done: 'Course hidden.', RESTORE_done: 'Course restored.', REMOVE_done: 'Course removed.',
+  noteRequired: 'Feedback for the author (required)', noteMissing: 'Feedback is required.', reasonMissing: 'A reason is required.',
+  changes: 'Changes', changesOnly: 'Changes only', NEW: 'New', CHANGED: 'Changed', ARCHIVED: 'Archived', noChanges: 'No chapter or lesson changed.',
+  courseInfo: 'Course information', chapterN: 'Chapter {n}', lessons: 'Lessons', level: 'Level', description: 'Detailed description', noDescription: 'No detailed description',
+  preview: 'Preview', previewOn: 'Preview allowed', previewOff: 'No preview', video: 'Video', noVideo: 'No video', noContent: 'No content', videoTitle: 'Lesson video — {side}',
+  lessonError: 'Unable to load the lesson.', lessonLoading: 'Loading lesson...', infoNote: 'Course information shows the proposed version.',
+  BEGINNER: 'Beginner', INTERMEDIATE: 'Intermediate', ADVANCED: 'Advanced',
+}
+
+export function moderatorCourseText(language: Language) {
+  const copy = { ...moderatorCopy[language], ...(language === 'vi' ? moderatorVi : moderatorEn) }
+  return (key: keyof typeof copy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
+}
+export type ModeratorCourseText = ReturnType<typeof moderatorCourseText>

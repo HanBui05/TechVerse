@@ -1,6 +1,6 @@
 import { request } from './api/client'
-import type { ArticleOption, AuthorArticleFilter, HistoryEntry, ImageIssue, Page } from '../types/articles'
-import type { AuthorCourse, AuthorCourseSummary, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite } from '../types/courses'
+import type { ArticleOption, AuthorArticleFilter, HistoryEntry, ImageIssue, ModeratorArticleFilter, Page } from '../types/articles'
+import type { AuthorCourse, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
 
 const base = '/api/v1/author/courses'
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
@@ -35,6 +35,47 @@ export const authorCourses = {
   lesson: (id: string, lessonId: string, versionId?: string) => request<Lesson>(`${base}/${id}/lessons/${lessonId}${versionId ? `?versionId=${encodeURIComponent(versionId)}` : ''}`),
   updateLesson: (id: string, lessonId: string, body: LessonWrite) => request<Lesson>(`${base}/${id}/lessons/${lessonId}`, json('PATCH', body)),
   deleteLesson: (id: string, lessonId: string) => request<AuthorCourse>(`${base}/${id}/lessons/${lessonId}`, { method: 'DELETE' }),
+}
+
+const moderatorBase = '/api/v1/moderator/courses'
+const note = (text: string) => text.trim() || null
+
+export const moderatorCourses = {
+  list: (filter: ModeratorArticleFilter) => request<Page<ModeratorCourseSummary>>(`${moderatorBase}?${query(filter)}`),
+  detail: (id: string) => request<ModeratorCourseDetail>(`${moderatorBase}/${id}`),
+  lesson: (id: string, lessonId: string, versionId?: string) => request<Lesson>(`${moderatorBase}/${id}/lessons/${lessonId}${versionId ? `?versionId=${encodeURIComponent(versionId)}` : ''}`),
+  review: (id: string, decision: 'APPROVE' | 'REQUEST_CHANGES', reviewToken: string, text: string) =>
+    request<ModeratorCourseDetail>(`${moderatorBase}/${id}/review`, json('PATCH', { decision, reviewToken, moderationNote: note(text) })),
+  publication: (id: string, action: 'HIDE' | 'RESTORE' | 'REMOVE', reviewToken: string, text: string) =>
+    request<ModeratorCourseDetail>(`${moderatorBase}/${id}/publication`, json('PATCH', { action, reviewToken, moderationNote: note(text) })),
+  history: (id: string, page: number) => request<Page<HistoryEntry>>(`${moderatorBase}/${id}/history?page=${page}&size=10`),
+}
+
+/** “Changes only” hides UNCHANGED lessons, and UNCHANGED chapters left without a changed lesson. */
+export function visibleChanges(tree: ChangeChapter[], all: boolean): ChangeChapter[] {
+  if (all) return tree
+  return tree.flatMap(chapter => {
+    const lessons = chapter.lessons.filter(lesson => lesson.changeStatus !== 'UNCHANGED')
+    return chapter.changeStatus !== 'UNCHANGED' || lessons.length ? [{ ...chapter, lessons }] : []
+  })
+}
+
+export type LessonField = 'title' | 'summary' | 'preview' | 'video' | 'content'
+/** Lesson fields of the proposal that differ from the live snapshot; video compares by ID. */
+export function changedLessonFields(proposed: Lesson, live: Lesson): LessonField[] {
+  const differs: [LessonField, boolean][] = [
+    ['title', proposed.title !== live.title], ['summary', (proposed.summary ?? '') !== (live.summary ?? '')], ['preview', proposed.preview !== live.preview],
+    ['video', (proposed.video?.videoId ?? null) !== (live.video?.videoId ?? null)], ['content', (proposed.content ?? '') !== (live.content ?? '')],
+  ]
+  return differs.filter(([, d]) => d).map(([field]) => field)
+}
+
+/** ArticleImageService.prefix for COURSE (`course/<author>/<course>/`) and LESSON (`lesson/<author>/<course>/<lesson>/`) on Cloudinary; no query/port/userinfo. */
+export function isCourseImage(url: string, authorId: string, courseId: string) {
+  const match = /^https:\/\/res\.cloudinary\.com\/[^/?#:@]+\/image\/upload\/v\d+\/([A-Za-z0-9_/-]+)\/[A-Za-z0-9_-]+\.png$/.exec(url)
+  if (!match) return false
+  const path = `/${match[1]}`
+  return path.endsWith(`/course/${authorId}/${courseId}`) || new RegExp(`/lesson/${authorId}/${courseId}/[A-Za-z0-9-]+$`).test(path)
 }
 
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/

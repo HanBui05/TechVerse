@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setAccessToken } from './api/client'
-import { authorCourses, courseChangedFields, courseReadiness, lessonChangedFields, videoLink, youtubeId } from './courseService'
-import type { AuthorCourse, Lesson } from '../types/courses'
+import { authorCourses, changedLessonFields, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, videoLink, visibleChanges, youtubeId } from './courseService'
+import type { AuthorCourse, ChangeChapter, Lesson } from '../types/courses'
 
 const fetchMock = vi.fn<typeof fetch>()
 const ok = (data: unknown, status = 200) => new Response(JSON.stringify({ status, message: 'OK', data }), { status })
@@ -105,5 +105,45 @@ describe('course helpers', () => {
     const empty = { ...course, summary: '', description: ' ', chapters: [{ id: 'ch1', title: 'One', position: 0, lessons: [] }], imageIssues: [{}, {}] } as unknown as AuthorCourse
     expect(courseReadiness(empty)).toEqual([{ kind: 'summary' }, { kind: 'description' }, { kind: 'emptyChapter', chapterId: 'ch1' }, { kind: 'images', count: 2 }])
     expect(courseReadiness({ ...course, chapters: [] })).toEqual([{ kind: 'noChapter' }])
+  })
+})
+
+describe('moderator courses', () => {
+  it('sends the review token and a trimmed note (null when blank); the lesson of a snapshot goes by versionId', async () => {
+    fetchMock.mockImplementation(async () => ok({}))
+    await moderatorCourses.review('c1', 'REQUEST_CHANGES', 'tok', '  fix  ')
+    await moderatorCourses.publication('c1', 'RESTORE', 'tok', '  ')
+    await moderatorCourses.lesson('c1', 'l1', 'v1')
+    await moderatorCourses.list({ page: 0, size: 12, workflowStatus: 'PENDING', keyword: '' })
+    expect([call(0).url.pathname, call(0).init.method, JSON.parse(String(call(0).init.body))]).toEqual(['/api/v1/moderator/courses/c1/review', 'PATCH', { decision: 'REQUEST_CHANGES', reviewToken: 'tok', moderationNote: 'fix' }])
+    expect(JSON.parse(String(call(1).init.body))).toEqual({ action: 'RESTORE', reviewToken: 'tok', moderationNote: null })
+    expect(call(2).url.pathname + call(2).url.search).toBe('/api/v1/moderator/courses/c1/lessons/l1?versionId=v1')
+    expect(call(3).url.search).toBe('?page=0&size=12&workflowStatus=PENDING')
+  })
+
+  it('keeps only changed nodes by default; a chapter stays when one of its lessons changed', () => {
+    const tree: ChangeChapter[] = [
+      { id: 'a', title: 'A', changeStatus: 'UNCHANGED', lessons: [{ id: 'a1', title: 'A1', changeStatus: 'UNCHANGED' }, { id: 'a2', title: 'A2', changeStatus: 'NEW' }] },
+      { id: 'b', title: 'B', changeStatus: 'UNCHANGED', lessons: [{ id: 'b1', title: 'B1', changeStatus: 'UNCHANGED' }] },
+      { id: 'c', title: 'C', changeStatus: 'ARCHIVED', lessons: [] },
+    ]
+    expect(visibleChanges(tree, false)).toEqual([{ ...tree[0], lessons: [tree[0].lessons[1]] }, tree[2]])
+    expect(visibleChanges(tree, true)).toBe(tree)
+  })
+
+  it('compares lesson fields: title, summary, preview, video by ID and content', () => {
+    const live = { ...lesson, versionId: 'v1' }
+    expect(changedLessonFields(lesson, live)).toEqual([])
+    expect(changedLessonFields({ ...lesson, title: 'B', summary: '', preview: true, video: null, content: 'x' }, live)).toEqual(['title', 'preview', 'video', 'content'])
+  })
+
+  it('shows only images stored under this author and course (course or lesson scope)', () => {
+    const root = 'https://res.cloudinary.com/demo/image/upload/v1/techverse'
+    expect(isCourseImage(`${root}/course/a1/c1/img.png`, 'a1', 'c1')).toBe(true)
+    expect(isCourseImage(`${root}/lesson/a1/c1/l1/img.png`, 'a1', 'c1')).toBe(true)
+    expect(isCourseImage(`${root}/course/a2/c1/img.png`, 'a1', 'c1')).toBe(false)
+    expect(isCourseImage(`${root}/lesson/a1/c9/l1/img.png`, 'a1', 'c1')).toBe(false)
+    expect(isCourseImage('https://evil.com/course/a1/c1/img.png', 'a1', 'c1')).toBe(false)
+    expect(isCourseImage(`${root}/course/a1/c1/img.png?x=1`, 'a1', 'c1')).toBe(false)
   })
 })

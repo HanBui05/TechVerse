@@ -21,25 +21,26 @@ const touch = 'pointer-coarse:min-h-11 pointer-coarse:min-w-11'
 const label = ({ workflowStatus, publicationStatus }: StatFilter, language: Language) => workflowStatus ? workflowLabel[workflowStatus][language] : moderatorPublicationLabel[publicationStatus as PublicationStatus][language]
 
 /** Count-only requests (size=1). Counts are decoration: a failure shows “—” instead of blocking the page. */
-export function useArticleStats() {
+/** `list` defaults to the article queue; the course queue passes its own (same filter, same statuses). */
+export function useArticleStats(list: (filter: { page: number; size: number } & StatFilter) => Promise<{ totalElements: number }> = moderatorArticles.list) {
   const [stats, setStats] = useState<(number | null)[]>(STATS.map(() => null))
   // Only the newest round may write: an older one answering late would show counts from before a review.
   const latest = useRef(0)
   const load = useCallback(() => {
     const round = ++latest.current
-    STATS.forEach(([filter], i) => moderatorArticles.list({ page: 0, size: 1, ...filter })
+    STATS.forEach(([filter], i) => list({ page: 0, size: 1, ...filter })
       .then(result => result.totalElements, () => null)
       .then(value => { if (round === latest.current) setStats(old => old.map((v, j) => j === i ? value : v)) }))
-  }, [])
+  }, [list])
   useEffect(() => { load() }, [load])
   return [stats, load] as const
 }
 
 /** Tiles; with `onSelect` each tile is a filter toggle (pressed when it matches the current filter). */
-export function ArticleStats({ stats, language, active, onSelect }: { stats: (number | null)[]; language: Language; active?: StatFilter; onSelect?: (filter: StatFilter) => void }) {
+export function ArticleStats({ stats, language, active, onSelect, label: name }: { stats: (number | null)[]; language: Language; active?: StatFilter; onSelect?: (filter: StatFilter) => void; label?: string }) {
   const t = moderatorText(language)
   const format = (n: number | null) => n === null ? '—' : n.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')
-  return <section aria-label={t('stats')} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+  return <section aria-label={name ?? t('stats')} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
     {STATS.map(([filter, Icon, tone], i) => {
       const pressed = Boolean(active && active.workflowStatus === filter.workflowStatus && active.publicationStatus === filter.publicationStatus)
       const body = <>

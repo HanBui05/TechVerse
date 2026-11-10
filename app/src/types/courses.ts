@@ -1,5 +1,5 @@
 // Author-side shapes of the course backend (server/.../dto/response/Course*Response.java, LessonResponse.java, dto/request/*Write*Request.java).
-import type { ArticleOption, ArticleStatus, ImageIssue } from './articles'
+import type { ArticleAuthor, ArticleOption, ArticleStatus, HistoryEntry, ImageIssue } from './articles'
 
 export type CourseLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
 
@@ -31,3 +31,11 @@ export type LessonFields = { title: string; summary: string; content: string; vi
 export type LessonWrite = { title?: string; summary?: string | null; content?: string | null; videoUrl?: string | null; preview?: boolean; aiGenerationId?: string }
 
 export type CourseAction = 'viewLive' | 'withdraw' | 'discard' | 'hide' | 'unhide' | 'deleteHard' | 'deleteSoft' | 'history'
+
+// Moderator shapes (ModeratorCourseSummaryResponse, ModeratorCourseDetailResponse): no money fields in this module.
+export type ChangeStatus = 'NEW' | 'CHANGED' | 'ARCHIVED' | 'UNCHANGED'
+export type ChangeLesson = { id: string; title: string; changeStatus: ChangeStatus }
+export type ChangeChapter = { id: string; title: string; changeStatus: ChangeStatus; lessons: ChangeLesson[] }
+export type ModeratorCourseSummary = { course: AuthorCourseSummary; author: ArticleAuthor; authorEligible: boolean }
+/** `course` is the working copy; `history` holds the 5 newest entries; `changes` = working active nodes, then nodes only the live version has. */
+export type ModeratorCourseDetail = { course: AuthorCourse; author: ArticleAuthor; reviewToken: string; authorEligible: boolean; history: HistoryEntry[]; changes: ChangeChapter[] }

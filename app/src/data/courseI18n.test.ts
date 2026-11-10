@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../services/api/client'
-import { COURSE_ERROR_CODES, courseErrorText, courseText } from './courseI18n'
+import { COURSE_ERROR_CODES, courseErrorText, courseText, isCourseStale, moderatorCourseErrorText, moderatorCourseText } from './courseI18n'
 
 describe('courseI18n', () => {
   it.each(COURSE_ERROR_CODES)('maps %s in both languages without the backend message', code => {
@@ -29,5 +29,33 @@ describe('courseI18n', () => {
     expect(courseText('vi')('previewCourse')).toBe('Học thử')
     expect(courseText('en')('unpublishedChanges')).toBe('Unpublished changes')
     expect(courseText('vi')('counts', { c: 2, l: 5 })).toBe('2 chương · 5 bài')
+  })
+})
+
+describe('moderator course copy', () => {
+  it('uses the Task 1c sentences for moderator codes in vi/en and keeps the course table for the rest', () => {
+    const vi = (code: string, status = 409) => moderatorCourseErrorText(new ApiError('English', status, code), 'vi', 'F')
+    expect(vi('COURSE_REVIEW_STALE')).toBe('Khóa học đã thay đổi. Hãy tải lại trước khi duyệt.')
+    expect(vi('COURSE_SELF_REVIEW_NOT_ALLOWED', 403)).toBe('Bạn không thể duyệt khóa của mình.')
+    expect(vi('COURSE_AUTHOR_INELIGIBLE')).toBe('Tác giả không còn đủ điều kiện.')
+    expect(vi('COURSE_NOT_READY')).toBe('Khóa học không còn đủ điều kiện xuất bản.')
+    expect(vi('COURSE_REVIEW_NOTE_REQUIRED', 400)).toBe('Cần nhập phản hồi.')
+    expect(vi('COURSE_PUBLICATION_NOTE_REQUIRED', 400)).toBe('Cần nhập lý do.')
+    expect(vi('VALIDATION_ERROR', 400)).toBe('Kiểm tra lại các trường được đánh dấu.')
+    expect(moderatorCourseErrorText(new ApiError('English', 409, 'COURSE_REVIEW_STALE'), 'en', 'F')).toBe('The course has changed. Reload it before reviewing.')
+    expect(moderatorCourseErrorText(new ApiError('English', 409, 'COURSE_NOT_READY'), 'en', 'F')).toBe('The course is no longer eligible to be published.')
+  })
+
+  it('treats a stale token or a moved state as stale', () => {
+    for (const code of ['COURSE_REVIEW_STALE', 'COURSE_PUBLICATION_TRANSITION_INVALID', 'COURSE_NOT_PENDING']) expect(isCourseStale(new ApiError('x', 409, code))).toBe(true)
+    expect(isCourseStale(new ApiError('x', 409, 'COURSE_NOT_READY'))).toBe(false)
+  })
+
+  it('has the spec labels in vi/en', () => {
+    const [vi, en] = [moderatorCourseText('vi'), moderatorCourseText('en')]
+    expect([vi('title'), vi('APPROVE'), vi('REQUEST_CHANGES'), vi('NEW'), vi('CHANGED'), vi('ARCHIVED'), vi('changesOnly'), vi('viewAll')])
+      .toEqual(['Duyệt khóa học', 'Duyệt khóa', 'Yêu cầu sửa', 'Mới', 'Đã sửa', 'Đã gỡ', 'Chỉ phần thay đổi', 'Xem tất cả'])
+    expect([en('title'), en('APPROVE'), en('REQUEST_CHANGES'), en('NEW'), en('CHANGED'), en('ARCHIVED'), en('changesOnly'), en('viewAll')])
+      .toEqual(['Course moderation', 'Approve course', 'Request changes', 'New', 'Changed', 'Archived', 'Changes only', 'View all'])
   })
 })
