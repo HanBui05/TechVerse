@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 
 ## Bắt đầu từ đây (cập nhật 2026-11-10)
 
-- **Task 2b đã nhận (2026-11-10)** (Codex vòng 1 không có lỗi phải sửa). **Tiếp: Task 2c.** — test + build đạt (nhật ký 2026-11-10). **Chưa kiểm bằng mắt** (đăng nhập Moderator trong Playwright bị chặn vì phải đưa token vào trình duyệt). DB dev đã có khóa mẫu đang chờ duyệt có bản cập nhật (`086e877a-…`, tác giả `bao.author`) để người dùng xem `/moderator/courses`. Tiếp sau 2b: Task 2c.
+- **Task 2b đã nhận (2026-11-10)** (Codex vòng 1 không có lỗi phải sửa). Đã kiểm bằng mắt dark/light × desktop/mobile cảm ứng sau khi nhận (nhật ký “kiểm bằng mắt”). DB dev còn khóa mẫu chờ duyệt (`086e877a-…`, tác giả `bao.author`). **Tiếp: Task 2c.**
 - **Task 2a đã nhận (2026-11-09)** (review vòng 1 có 4 phát hiện đã sửa; vòng 2 có 2 phát hiện high, người dùng yêu cầu sửa cả hai, không chạy lại Codex). Chưa kiểm bằng mắt dark/light × desktop/mobile; `RouterProvider` chưa chạy trên trình duyệt thật.
 - **Task 1c đã nhận (2026-11-09)** (review vòng 1 có 2 phát hiện đã sửa, vòng 2 `approve`). Task 1a, 1b đã nhận (2026-11-07). **Cổng wireframe đã nhận (2026-11-09)** — [`course-free.wireframe.md`](course-free.wireframe.md). **Tiếp: Task 2a** (task giao diện: giữ plugin `ui-ux-pro-max` bật).
 - Chưa kiểm: Cloudinary thật với scope COURSE/LESSON (chỉ fake storage); OpenAPI chỉ qua `@Operation`/`@Schema`, chưa mở Swagger; start/completion đồng thời chỉ dựa `ON CONFLICT` (không có ca test song song).
@@ -31,6 +31,9 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-10 — Task 2b: kiểm bằng mắt
+- Playwright MCP (phiên Moderator do người dùng đăng nhập): `/moderator/courses` + detail khóa mẫu — desktop 1440 dark/light (cây thay đổi, so sánh 2 cột bài Đã sửa, bài Đã gỡ chỉ cột công khai), mobile 390 cảm ứng (CDP touch, `pointer: coarse`): không cuộn ngang, mọi control ≥44px, thanh thao tác dính đáy, so sánh một cột.
+- Sửa: tên bài Đã gỡ không hiện gạch ngang (line-through không vào con `inline-flex`) → icon + tên dạng inline. `vitest` `pages/Moderator/Courses` 12 đạt; build đạt.
 ### 2026-11-10 — Task 2b đã nhận
 - Người dùng nhận Task 2b (giao diện Moderator duyệt khóa); commit cục bộ trên `feature/course-free`.
 ### 2026-11-10 — Task 2b: giao diện Moderator duyệt khóa

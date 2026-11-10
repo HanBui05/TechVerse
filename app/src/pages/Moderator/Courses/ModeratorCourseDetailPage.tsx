@@ -273,7 +273,7 @@ export function ModeratorCourseDetailPage({ language = 'vi' }: { language?: Lang
             {nodes.map(chapter => <li key={chapter.id}>
               <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
                 {node(chapter.id, 'chapter', <>{numbers.has(chapter.id) && <span className={`${fieldLabel} mr-2`}>{t('chapterN', { n: numbers.get(chapter.id)! })}</span>}{chapter.title}</>, chapter.changeStatus, () => setSelected({ kind: 'chapter', id: chapter.id, status: chapter.changeStatus }))}
-                {chapter.lessons.map(lesson => node(lesson.id, 'lesson', <span className="inline-flex items-center gap-1.5"><PlayCircle aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />{lesson.title}</span>, lesson.changeStatus, () => setSelected({ kind: 'lesson', id: lesson.id, status: lesson.changeStatus }), true))}
+                {chapter.lessons.map(lesson => node(lesson.id, 'lesson', <>{/* Plain inline (not inline-flex): line-through does not reach into atomic inline children. */}<PlayCircle aria-hidden className="mr-1.5 inline size-3.5 align-[-2px] text-muted-foreground" />{lesson.title}</>, lesson.changeStatus, () => setSelected({ kind: 'lesson', id: lesson.id, status: lesson.changeStatus }), true))}
               </ul>
             </li>)}
           </ul>
