@@ -4,6 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 
 ## Bắt đầu từ đây (cập nhật 2026-11-10)
 
+- **Task 2c đã nhận (2026-11-10).** Hết Task 2a–2c; còn **đồng bộ spec một lần cuối module** (skill `codex-workflow` mục 3) và PR/rebase sau khi ai-assist merge. Codex vòng 1 (3 góp ý) + vòng 2 (1 medium) đã sửa. Endpoint `GET /api/v1/courses/options` đã thêm (backend test đạt). Chưa kiểm: vùng chạm 44px bằng cảm ứng thật (Playwright MCP không có CDP touch), light/dark chỉ đo desktop dark + mobile light; backend dev đã tắt (do mình bật). DB dev: `lan.author` đã start khóa mẫu + hoàn thành bài 1.
 - **Task 2b đã nhận (2026-11-10)** (Codex vòng 1 không có lỗi phải sửa). Đã kiểm bằng mắt dark/light × desktop/mobile cảm ứng sau khi nhận (nhật ký “kiểm bằng mắt”). DB dev còn khóa mẫu chờ duyệt (`086e877a-…`, tác giả `bao.author`). **Tiếp: Task 2c.**
 - **Task 2a đã nhận (2026-11-09)** (review vòng 1 có 4 phát hiện đã sửa; vòng 2 có 2 phát hiện high, người dùng yêu cầu sửa cả hai, không chạy lại Codex). Chưa kiểm bằng mắt dark/light × desktop/mobile; `RouterProvider` chưa chạy trên trình duyệt thật.
 - **Task 1c đã nhận (2026-11-09)** (review vòng 1 có 2 phát hiện đã sửa, vòng 2 `approve`). Task 1a, 1b đã nhận (2026-11-07). **Cổng wireframe đã nhận (2026-11-09)** — [`course-free.wireframe.md`](course-free.wireframe.md). **Tiếp: Task 2a** (task giao diện: giữ plugin `ui-ux-pro-max` bật).
@@ -31,6 +32,22 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-10 — Task 2c đã nhận
+- Người dùng nhận Task 2c (giao diện public/học/tiến độ + endpoint `courses/options`); commit cục bộ trên `feature/course-free`.
+### 2026-11-10 — Task 2c: kiểm bằng mắt + endpoint options
+- Backend: `PublishedCourseIntegrationTest` (4) + `PublishedArticleIntegrationTest` (16) đạt sau khi tổng quát `findTaxonomy(type, owner, …)`. Backend dev tự bật bằng `scratchpad/runboot.py` (nạp `.env` nguyên văn; `source .env` làm hỏng `JWT_SECRET_KEY` vì có `$`), xong đã tắt.
+- Playwright MCP (Guest, Learner `lan.author`): `/courses` (chip chủ đề từ endpoint mới), overview, trang bài (video nocookie 766×430, TOC, hoàn thành 1/3·33%, bài trước/sau), `/me/courses`, Sheet mobile 390 (focus vào ô tìm), login → quay lại đúng trang. Không cuộn ngang 4 trang ở 390.
+- Sửa sau kiểm mắt: số thứ tự chương/bài lấy theo vị trí trong mảng (backend `position` không bắt đầu từ 0 → hiện “2.”); Esc đóng Sheet trả focus về nút ☰ (`onCloseAutoFocus`). vitest 150 + build đạt.
+### 2026-11-10 — Task 2c: endpoint options khóa học
+- Backend: `GET /api/v1/courses/options` (anonymous, reuse `PublishedArticleOptionsResponse`/`ArticleOptionsFilter`), taxonomy của khóa visible qua `findTaxonomy(type, owner, …)` dùng chung với article; test mới `optionsAreAnonymousAndListOnlyTaxonomyOfVisibleCourses` (đỏ → chờ xanh). FE: Guest có bộ lọc chủ đề/thẻ; vitest courseService + pages/Courses + App.courses 53 đạt, build đạt.
+### 2026-11-10 — Task 2c: sửa theo Codex vòng 1
+- Sửa 3 góp ý đúng: start tại bài đang mở không tải lại (nay tải lại theo `location.key`); catalog gọi articles/options chỉ khi đã đăng nhập (Guest ẩn lọc chủ đề/thẻ); return URL qua Google (`services/returnTo.ts`, sessionStorage, chỉ `/courses…`/`/me/courses`, không đè home manager).
+- Test: returnTo, `pages/Courses`, App.courses, `pages/Login` = 25 đạt; build đạt.
+- Vòng 2 (adversarial): 1 phát hiện medium (thử lại Google ở callback xóa đích) → đã sửa (`GoogleAuthButton keep`), test returnTo + Login 3 đạt, build đạt; không chạy lại Codex. Còn: kiểm bằng mắt, quyết endpoint options.
+### 2026-11-10 — Task 2c: giao diện public, trang học, tiến độ
+- Mới: `pages/Courses/{CoursesPage,CourseOverviewPage,CourseLessonPage,MyCoursesPage,CourseFrame,courseParts}`, service `publicCourses` + helper (`courseFilter/Search`, `lessonAccess`, `embedUrl`), type reader, `readerCourseText`; route `/courses*` (Guest, không Sidebar app), `/me/courses`; nav + Sidebar “Khóa học”/“Khóa học của tôi”; LoginPage nhận `state.returnTo` (chỉ `/courses…`, `/me/courses`).
+- Test: `vitest` courseService, courseI18n, `pages/Courses` (4 file), `App.courses`, Sidebar, StaffPreferences, ui/{sidebar,labels,focus}, MarkdownContent = 164 đạt; `npm run build` đạt. Sửa `Sidebar.test` (courses không còn là đường chết; tone chỉ kiểm nhóm chính).
+- Lệch: khung học không dùng Sidebar app nên App bỏ shell cho `/courses/:id[/lessons/:id]`; completion 409 tải lại bài tại chỗ. Lỗi có sẵn: `ModeratorArticlesPage.tsx:72` unhandled rejection trong `StaffPreferences.test` (không điều tra).
 ### 2026-11-10 — Task 2b: kiểm bằng mắt
 - Playwright MCP (phiên Moderator do người dùng đăng nhập): `/moderator/courses` + detail khóa mẫu — desktop 1440 dark/light (cây thay đổi, so sánh 2 cột bài Đã sửa, bài Đã gỡ chỉ cột công khai), mobile 390 cảm ứng (CDP touch, `pointer: coarse`): không cuộn ngang, mọi control ≥44px, thanh thao tác dính đáy, so sánh một cột.
 - Sửa: tên bài Đã gỡ không hiện gạch ngang (line-through không vào con `inline-flex`) → icon + tên dạng inline. `vitest` `pages/Moderator/Courses` 12 đạt; build đạt.
