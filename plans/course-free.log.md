@@ -11,7 +11,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 - Chưa kiểm: Cloudinary thật với scope COURSE/LESSON (chỉ fake storage); OpenAPI chỉ qua `@Operation`/`@Schema`, chưa mở Swagger; start/completion đồng thời chỉ dựa `ON CONFLICT` (không có ca test song song).
 - **Spec đã chốt 2026-11-07** sau vòng 1 (không vòng 2); lịch sử phản biện ở `course-free.review.md`.
 - Hướng gốc của người dùng: mục “Miền khóa học” trong “Câu hỏi mở” của `PLAN.md`; mẫu giao diện JavaBuilder, ảnh `.playwright-mcp/jb-course.png`, `.playwright-mcp/jb-lesson.png` (gitignore).
-- Nhánh `feature/course-free` (tách từ `feature/ai-assist`, PR ai-assist chưa merge → rebase lên `main` sau khi merge).
+- Nhánh `feature/course-free` (tách từ `feature/ai-assist`; PR #3 ai-assist đã merge, local `main` đã kéo về `8f25296`) — chưa rebase, chờ người dùng yêu cầu rebase + PR.
 
 ## Quyết định người dùng chưa có trong spec
 
@@ -22,6 +22,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-11 — Người dùng tự test
+- Người dùng tự kiểm giao diện khóa học public/học trên máy và báo ổn (2026-11-11); phần “chưa kiểm” cảm ứng 44px vẫn chưa có bằng chứng riêng.
 ### 2026-11-10 — Task 2c: bằng chứng kiểm tĩnh
 - `grep` trong `app/src/pages/Courses/*.tsx` (không tính test): không có `youtube.com`, `videoUrl`, `price`, `currency`, `VND`; iframe chỉ nhận `embedUrl()` (`youtube-nocookie.com/embed/<id>` sau khi kiểm provider + ID 11 ký tự). Test `CourseLessonPage` khẳng định không có link `youtube.com`/`youtu.be`. Mục “Kiểm tĩnh” của Task 2c đạt, chờ Codex đánh `[x]` ở lần đồng bộ sau.
 - Đính chính: PR #3 `ai-assist` ĐÃ merge vào `origin/main` (local `main` chỉ cũ, chậm 14 commit). Rebase/PR không còn bị chặn; người dùng chọn chưa rebase (2026-11-10). Khi rebase: `git rebase --onto origin/main feature/ai-assist` để không kéo lại commit ai-assist.
