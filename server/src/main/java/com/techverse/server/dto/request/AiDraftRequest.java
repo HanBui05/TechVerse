@@ -13,7 +13,15 @@ import java.util.*;
 
 /** The full input plus the Author-edited outline; nothing from an earlier call is trusted. */
 @Getter
-public class AiDraftRequest {
+@AiTarget
+public class AiDraftRequest implements AiTarget.Request {
+    @Pattern(regexp = "ARTICLE|LESSON")
+    private String targetType = "ARTICLE";
+
+    private UUID courseId;
+
+    @JsonIgnore private final Set<String> provided = new HashSet<>();
+
     @NotNull
     @Size(min = 5, max = 255)
     private String title;
@@ -22,7 +30,7 @@ public class AiDraftRequest {
     @Size(min = 50, max = 500)
     private String summary;
 
-    @NotNull private UUID topicId;
+    private UUID topicId;
 
     @Size(max = 10)
     private List<@NotNull UUID> tagIds = List.of();
@@ -81,11 +89,13 @@ public class AiDraftRequest {
 
     @JsonSetter(value = "topicId", nulls = Nulls.FAIL)
     public void setTopicId(UUID v) {
+        provided.add("topicId");
         topicId = v;
     }
 
     @JsonSetter(value = "tagIds", nulls = Nulls.FAIL)
     public void setTagIds(List<UUID> v) {
+        provided.add("tagIds");
         // ArrayList, not List.copyOf: a null element must reach @NotNull, not throw here.
         tagIds = new ArrayList<>(v);
     }
@@ -113,6 +123,21 @@ public class AiDraftRequest {
     @JsonSetter(value = "sections", nulls = Nulls.FAIL)
     public void setSections(List<Section> v) {
         sections = new ArrayList<>(v);
+    }
+
+    @JsonSetter(value = "targetType", nulls = Nulls.FAIL)
+    public void setTargetType(String v) {
+        targetType = v;
+    }
+
+    @JsonSetter(value = "courseId", nulls = Nulls.FAIL)
+    public void setCourseId(UUID v) {
+        courseId = v;
+    }
+
+    @Override
+    public boolean has(String field) {
+        return provided.contains(field);
     }
 
     @JsonAnySetter

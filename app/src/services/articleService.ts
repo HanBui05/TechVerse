@@ -66,7 +66,7 @@ export function changedFromLive(article: AuthorArticle): CompareField[] {
  * Note of a REQUEST_CHANGES made after the latest APPROVE. APPROVE stamps reviewedAt and the new version's approvedAt with the
  * same instant, so a later reviewedAt means the last review returned the article; withdraw/resubmit keep the note.
  */
-export function lastReturnNote(article: AuthorArticle) {
+export function lastReturnNote(article: Pick<AuthorArticle, 'moderationNote' | 'reviewedAt'> & { publishedVersion: { approvedAt: string } | null }) {
   if (!article.moderationNote || !article.reviewedAt) return null
   const approvedAt = article.publishedVersion?.approvedAt
   return !approvedAt || Date.parse(article.reviewedAt) > Date.parse(approvedAt) ? article.moderationNote : null

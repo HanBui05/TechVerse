@@ -74,6 +74,9 @@ class AiOutlineServiceTest {
   final TopicRepository topics = mock(TopicRepository.class);
   final TagRepository tags = mock(TagRepository.class);
   final AiRateLimitService limits = mock(AiRateLimitService.class);
+  final com.techverse.server.service.impl.LessonAiContextService lessons =
+      mock(com.techverse.server.service.impl.LessonAiContextService.class);
+  final UUID course = UUID.randomUUID();
   final List<Prompt> prompts = new ArrayList<>();
   final Deque<Object> replies = new ArrayDeque<>();
   final AiRateLimitServiceTest.MutableClock clock =
@@ -102,7 +105,8 @@ class AiOutlineServiceTest {
         new AiProviderExceptionMapper(),
         AiRateLimitServiceTest.props(10, 5, 3),
         mock(PlatformTransactionManager.class),
-        clock);
+        clock,
+        lessons);
   }
 
   @BeforeEach
@@ -161,6 +165,40 @@ class AiOutlineServiceTest {
     out.put("suggestedTagIds", suggested.stream().map(UUID::toString).toList());
     out.put("sections", sections);
     return JSON.writeValueAsString(out);
+  }
+
+  @Test
+  void lessonTakesTaxonomyFromOwnCourseAndSuggestsNoTags() {
+    when(lessons.resolve(actor, course)).thenReturn(new com.techverse.server.service.impl.LessonAiContextService.Context(
+        "Khóa Spring", new AiPromptFactory.Ref(topic.getId(), "Backend"),
+        List.of(new AiPromptFactory.Ref(chosen.getId(), "Java"))));
+    var r = request();
+    r.remove("topicId");
+    r.remove("tagIds");
+    r.put("targetType", "LESSON");
+    r.put("courseId", course.toString());
+    reply(validJson(List.of(spring.getId())));
+    reply(validJson(List.of()));
+    var result = service(model).outline(actor, parsed(r));
+    assertThat(result.body().topicId()).isEqualTo(topic.getId());
+    assertThat(result.body().tagIds()).containsExactly(chosen.getId());
+    assertThat(result.body().suggestedTagIds()).isEmpty();
+    assertThat(prompts).hasSize(2); // first output suggested a tag: repaired
+    assertThat(prompts.getFirst().getContents()).contains("Khóa Spring").contains("\"activeTags\":[]");
+    org.mockito.Mockito.verifyNoInteractions(topics);
+  }
+
+  @Test
+  void lessonForForeignCourseIsNotFound() {
+    when(lessons.resolve(actor, course)).thenThrow(new CustomException(ErrorCode.COURSE_NOT_FOUND));
+    var r = request();
+    r.remove("topicId");
+    r.remove("tagIds");
+    r.put("targetType", "LESSON");
+    r.put("courseId", course.toString());
+    assertThatThrownBy(() -> service(model).outline(actor, parsed(r)))
+        .isInstanceOfSatisfying(CustomException.class, e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.COURSE_NOT_FOUND));
+    org.mockito.Mockito.verifyNoInteractions(limits);
   }
 
   @Test

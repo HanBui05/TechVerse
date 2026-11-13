@@ -1,6 +1,7 @@
 ---
 name: plan-review
 description: Thủ tục Claude phản biện spec do Codex viết trong plans/<module>.md (Phản hồi vòng 1/2, Đề xuất ngoài spec). Dùng khi người dùng hoặc PLAN.md yêu cầu Claude phản biện/review một spec, trước khi spec được chốt.
+model: opus
 ---
 
 # Phản biện spec

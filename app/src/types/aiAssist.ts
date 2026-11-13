@@ -3,9 +3,11 @@ export type AiLength = 'SHORT' | 'MEDIUM' | 'LONG'
 export type AiSection = { heading: string; subsections: string[] }
 export type AiQuota = { limit: number | null; remaining: number }
 
-export type AiOutlineRequest = { title?: string; topicId: string; tagIds: string[]; idea: string; length: AiLength; targetAudience: string }
+type AiInput = { idea: string; length: AiLength; targetAudience: string }
+// ARTICLE (default) needs topicId + tagIds; LESSON needs courseId and must not send topicId/tagIds (the server takes the course's taxonomy).
+export type AiOutlineRequest = AiInput & { title?: string } & ({ targetType?: 'ARTICLE'; topicId: string; tagIds: string[] } | { targetType: 'LESSON'; courseId: string })
 export type AiOutline = { title: string; summary: string; topicId: string; tagIds: string[]; suggestedTagIds: string[]; sections: AiSection[] }
-export type AiDraftRequest = Required<AiOutlineRequest> & { summary: string; sections: AiSection[] }
+export type AiDraftRequest = AiInput & { title: string; summary: string; sections: AiSection[] } & ({ targetType?: 'ARTICLE'; topicId: string; tagIds: string[] } | { targetType: 'LESSON'; courseId: string })
 
 export type AiStreamEvent =
   | { type: 'metadata'; generationId: string; timeoutSeconds: number }

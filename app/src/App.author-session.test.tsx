@@ -97,8 +97,9 @@ it('F5 on /profile after approval switches the sidebar to author blogs and stays
   let path = ''
   function Where() { path = useLocation().pathname; return null }
   render(<StrictMode><MemoryRouter initialEntries={['/profile']}><App /><Where /></MemoryRouter></StrictMode>)
-  const link = await screen.findByRole('link', { name: 'Tác giả' })
-  expect(link.getAttribute('href')).toBe('/author/blogs')
+  // Approved Author: the “Tác giả” entry is now the collapsed group, no longer the /author/apply link.
+  await screen.findByRole('button', { name: 'Tác giả' })
+  expect(screen.queryByRole('link', { name: 'Tác giả' })).toBeNull()
   expect(path).toBe('/profile')
   expect(screen.queryByRole('heading', { name: 'Chào mừng trở lại!' })).toBeNull()
   expect(getAccessToken()).toBe('test-author-access')

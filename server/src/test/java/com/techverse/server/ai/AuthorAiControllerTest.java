@@ -166,6 +166,34 @@ class AuthorAiControllerTest {
   }
 
   @Test
+  void lessonTargetNeedsCourseAndForbidsTaxonomy() throws Exception {
+    stubOk();
+    UUID course = UUID.randomUUID();
+    Consumer<Map<String, Object>> lesson = b -> {
+      b.remove("topicId");
+      b.remove("tagIds");
+      b.put("targetType", "LESSON");
+      b.put("courseId", course.toString());
+    };
+    send(body(lesson)).andExpect(status().isOk());
+    verify(service).outline(eq(actor), org.mockito.ArgumentMatchers.argThat(r ->
+        r.isLesson() && course.equals(r.getCourseId()) && r.getTopicId() == null));
+    Map<String, Consumer<Map<String, Object>>> invalid = Map.of(
+        "courseId", lesson.andThen(b -> b.remove("courseId")),
+        "topicId", lesson.andThen(b -> b.put("topicId", topic.toString())),
+        "tagIds", lesson.andThen(b -> b.put("tagIds", List.of())),
+        "targetType", b -> b.put("targetType", "COURSE"));
+    for (var entry : invalid.entrySet()) {
+      send(body(entry.getValue()))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+          .andExpect(jsonPath("$.fieldErrors." + entry.getKey()).exists());
+    }
+    send(body(b -> b.put("courseId", course.toString())))
+        .andExpect(jsonPath("$.fieldErrors.courseId").exists());
+  }
+
+  @Test
   void unknownNullAndBrokenBodiesAreMalformed() throws Exception {
     for (Object content : List.of(
         body(b -> b.put("action", "SUBMIT")),

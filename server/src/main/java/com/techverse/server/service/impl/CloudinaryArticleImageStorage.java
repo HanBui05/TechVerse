@@ -51,7 +51,12 @@ public class CloudinaryArticleImageStorage implements ArticleImageStorage {
 
     @Override
     public ArticleImageAsset upload(
-            String publicId, UUID owner, UUID article, DecodedArticleImage image) {
+            String publicId,
+            ArticleImageAsset.Scope scope,
+            UUID owner,
+            UUID article,
+            UUID parent,
+            DecodedArticleImage image) {
         checkConfigured();
         checkPublicId(publicId);
         String boundary = "techverse-" + UUID.randomUUID();
@@ -61,7 +66,11 @@ public class CloudinaryArticleImageStorage implements ArticleImageStorage {
                         + "|article="
                         + article
                         + "|fingerprint="
-                        + image.fingerprint();
+                        + image.fingerprint()
+                        // Article assets keep the original context; missing scope reads as ARTICLE.
+                        + (scope == ArticleImageAsset.Scope.ARTICLE
+                                ? ""
+                                : "|scope=" + scope + (parent == null ? "" : "|parent=" + parent));
         byte[] multipart;
         try {
             var out = new ByteArrayOutputStream();
@@ -280,6 +289,14 @@ public class CloudinaryArticleImageStorage implements ArticleImageStorage {
                                     ? Instant.parse(custom.path("touched_at").asText())
                                     : null)
                     .retiring("true".equals(custom.path("retiring").asText()))
+                    .scope(
+                            custom.path("scope").isTextual()
+                                    ? ArticleImageAsset.Scope.valueOf(custom.path("scope").asText())
+                                    : null)
+                    .parentId(
+                            custom.path("parent").isTextual()
+                                    ? UUID.fromString(custom.path("parent").asText())
+                                    : null)
                     .build();
         } catch (Exception e) {
             throw new CustomException(ErrorCode.ARTICLE_IMAGE_UPLOAD_FAILED);

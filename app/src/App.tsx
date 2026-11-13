@@ -13,6 +13,10 @@ import { HomePage } from './pages/Home/HomePage'
 import { BlogsPage } from './pages/Blogs/BlogsPage'
 import { BlogDetailPage } from './pages/Blogs/BlogDetailPage'
 import { SavedArticlesPage } from './pages/Blogs/SavedArticlesPage'
+import { CoursesPage } from './pages/Courses/CoursesPage'
+import { CourseOverviewPage } from './pages/Courses/CourseOverviewPage'
+import { CourseLessonPage } from './pages/Courses/CourseLessonPage'
+import { MyCoursesPage } from './pages/Courses/MyCoursesPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
 import { ThemePage } from './pages/Settings/ThemePage'
 import { AuthLayout } from './components/auth/AuthLayout'
@@ -30,17 +34,21 @@ import { AuthorApplyPage } from './pages/Author/AuthorApplyPage'
 import { AuthorBlogsPage } from './pages/Author/AuthorBlogsPage'
 import { ArticleEditorPage } from './pages/Author/ArticleEditorPage'
 import { AiArticlePage } from './pages/Author/AiArticlePage'
+import { AuthorCoursesPage } from './pages/Author/Courses/AuthorCoursesPage'
+import { CourseEditorPage } from './pages/Author/Courses/CourseEditorPage'
 import { ModeratorDashboardPage } from './pages/Moderator/ModeratorDashboardPage'
 import { ModeratorArticlesPage } from './pages/Moderator/ModeratorArticlesPage'
 import { ModeratorArticleDetailPage } from './pages/Moderator/ModeratorArticleDetailPage'
+import { ModeratorCoursesPage } from './pages/Moderator/Courses/ModeratorCoursesPage'
+import { ModeratorCourseDetailPage } from './pages/Moderator/Courses/ModeratorCourseDetailPage'
 import type { Language, Theme } from './types/preferences'
 import { login as loginWithApi, logout as logoutFromApi, logoutAll as logoutAllFromApi, restoreSession, type GoogleSession } from './services/authService'
 import { setAccessToken } from './services/api/client'
 import { register as registerWithApi } from './services/registerService'
 import { getMyProfile, type UserProfile } from './services/profileService'
 
-function AuthRoute({ authenticated, children }: { authenticated: boolean; children: ReactNode }) {
-  return authenticated ? children : <Navigate to="/login" replace />
+function AuthRoute({ authenticated, returnTo, children }: { authenticated: boolean; returnTo?: string; children: ReactNode }) {
+  return authenticated ? children : <Navigate to="/login" replace state={returnTo ? { returnTo } : undefined} />
 }
 
 /** Dashboard of a management account (ADMIN wins over MODERATOR); null for Reader accounts. */
@@ -155,6 +163,10 @@ export default function App() {
       <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><BlogsPage language={language} canSave={canSave} /></ReaderRoute></AuthRoute>} />
       <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><BlogDetailPage language={language} canSave={canSave} /></ReaderRoute></AuthRoute>} />
       <Route path="/me/saved-articles" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><SavedArticlesPage language={language} /></ReaderRoute></AuthRoute>} />
+      <Route path="/courses" element={<ReaderRoute roles={roles}><CoursesPage language={language} authenticated={authenticated} /></ReaderRoute>} />
+      <Route path="/courses/:id" element={<ReaderRoute roles={roles}><CourseOverviewPage language={language} authenticated={authenticated} /></ReaderRoute>} />
+      <Route path="/courses/:courseId/lessons/:lessonId" element={<ReaderRoute roles={roles}><CourseLessonPage language={language} authenticated={authenticated} /></ReaderRoute>} />
+      <Route path="/me/courses" element={<AuthRoute authenticated={authenticated} returnTo="/me/courses"><ReaderRoute roles={roles}><MyCoursesPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route element={<AuthLayout t={t} />}>
         <Route path="/login" element={<LoginPage t={t} onLogin={login} />} />
         <Route path="/register" element={<RegisterPage t={t} onRegister={register} />} />
@@ -166,6 +178,8 @@ export default function App() {
       <Route path="/moderator" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorDashboardPage language={language} /></RoleRoute>} />
       <Route path="/moderator/articles" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorArticlesPage language={language} /></RoleRoute>} />
       <Route path="/moderator/articles/:id" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorArticleDetailPage language={language} /></RoleRoute>} />
+      <Route path="/moderator/courses" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorCoursesPage language={language} /></RoleRoute>} />
+      <Route path="/moderator/courses/:id" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorCourseDetailPage language={language} /></RoleRoute>} />
       <Route path="/admin/author-applications" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AuthorApplicationsPage language={language} /></RoleRoute>} />
       <Route path="/admin/users" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminUsersPage language={language} /></RoleRoute>} />
       <Route path="/admin/topics" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="topics" language={language} /></RoleRoute>} />
@@ -176,11 +190,17 @@ export default function App() {
       <Route path="/author/blogs/ai" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AiArticlePage language={language} /></RoleRoute>} />
       <Route path="/author/blogs/new" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><ArticleEditorPage language={language} /></RoleRoute>} />
       <Route path="/author/blogs/:id/edit" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><ArticleEditorPage language={language} /></RoleRoute>} />
+      <Route path="/author/courses" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AuthorCoursesPage language={language} /></RoleRoute>} />
+      {/* Same element type on both paths: after the first create /new → /:id/edit keeps editor state. */}
+      <Route path="/author/courses/new" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><CourseEditorPage language={language} /></RoleRoute>} />
+      <Route path="/author/courses/:id/edit" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><CourseEditorPage language={language} /></RoleRoute>} />
       <Route path="/settings/theme" element={<ThemePage theme={theme} setTheme={setTheme} t={t} />} />
       <Route path="/settings/language" element={<LanguagePage language={language} setLanguage={setLanguage} t={t} />} />
       <Route path="*" element={<PlaceholderPage t={t} language={language} />} />
     </Routes>
-  if (isAuthPage) return <div className="min-h-svh">{routes}</div>
+  // The learning frame has its own top bar and curriculum: no app Sidebar or mobile bar around it.
+  const isLearningFrame = Boolean(matchPath('/courses/:id', location.pathname) || matchPath('/courses/:courseId/lessons/:lessonId', location.pathname))
+  if (isAuthPage || (isLearningFrame && !roles.some(role => role === 'ADMIN' || role === 'MODERATOR'))) return <div className="min-h-svh">{routes}</div>
   const sidebar = authenticated && roles.includes('MODERATOR') && (isModeratorPage || !roles.includes('ADMIN'))
     ? <ModeratorSidebar language={language} profile={profile} onLogout={logout} />
     : roles.includes('ADMIN')

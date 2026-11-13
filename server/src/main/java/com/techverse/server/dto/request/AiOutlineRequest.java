@@ -11,11 +11,19 @@ import lombok.Getter;
 import java.util.*;
 
 @Getter
-public class AiOutlineRequest {
+@AiTarget
+public class AiOutlineRequest implements AiTarget.Request {
+    @Pattern(regexp = "ARTICLE|LESSON")
+    private String targetType = "ARTICLE";
+
+    private UUID courseId;
+
+    @JsonIgnore private final Set<String> provided = new HashSet<>();
+
     @Size(min = 5, max = 255)
     private String title;
 
-    @NotNull private UUID topicId;
+    private UUID topicId;
 
     @Size(max = 10)
     private List<@NotNull UUID> tagIds = List.of();
@@ -40,11 +48,13 @@ public class AiOutlineRequest {
 
     @JsonSetter(value = "topicId", nulls = Nulls.FAIL)
     public void setTopicId(UUID v) {
+        provided.add("topicId");
         topicId = v;
     }
 
     @JsonSetter(value = "tagIds", nulls = Nulls.FAIL)
     public void setTagIds(List<UUID> v) {
+        provided.add("tagIds");
         // ArrayList, not List.copyOf: a null element must reach @NotNull, not throw here.
         tagIds = new ArrayList<>(v);
     }
@@ -67,6 +77,21 @@ public class AiOutlineRequest {
     @JsonSetter(value = "targetAudience", nulls = Nulls.FAIL)
     public void setTargetAudience(String v) {
         targetAudience = v.strip();
+    }
+
+    @JsonSetter(value = "targetType", nulls = Nulls.FAIL)
+    public void setTargetType(String v) {
+        targetType = v;
+    }
+
+    @JsonSetter(value = "courseId", nulls = Nulls.FAIL)
+    public void setCourseId(UUID v) {
+        courseId = v;
+    }
+
+    @Override
+    public boolean has(String field) {
+        return provided.contains(field);
     }
 
     @JsonAnySetter

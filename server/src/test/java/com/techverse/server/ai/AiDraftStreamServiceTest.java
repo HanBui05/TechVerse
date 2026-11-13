@@ -108,6 +108,8 @@ class AiDraftStreamServiceTest {
   final TagRepository tags = mock(TagRepository.class);
   final AiRateLimitService limits = mock(AiRateLimitService.class);
   final AiCompletedGenerationRepository receipts = mock(AiCompletedGenerationRepository.class);
+  final com.techverse.server.service.impl.LessonAiContextService lessons =
+      mock(com.techverse.server.service.impl.LessonAiContextService.class);
   final AiRateLimitServiceTest.MutableClock clock =
       new AiRateLimitServiceTest.MutableClock(Instant.parse("2026-11-05T03:00:00Z"));
   final AiGenerationRegistry registry = new AiGenerationRegistry(clock);
@@ -231,7 +233,8 @@ class AiDraftStreamServiceTest {
         AiRateLimitServiceTest.props(10, 5, 3),
         mock(PlatformTransactionManager.class),
         clock,
-        executor);
+        executor,
+        lessons);
   }
 
   Map<String, Object> body(String length) {
@@ -293,6 +296,28 @@ class AiDraftStreamServiceTest {
         "Spring Security: JWT và refresh token", "s".repeat(60), CONTENT, topic.getId(), List.of(tag.getId()));
     verify(receipts).save(actor, ((AiStreamEvent.Metadata) e.events.getFirst()).generationId(), expected);
     assertThat(order.subList(order.size() - 2, order.size())).containsExactly("receipt", "completed");
+  }
+
+  @Test
+  void lessonDraftUsesCourseTaxonomyAndBindsReceiptToCourse() {
+    UUID course = UUID.randomUUID();
+    when(lessons.resolve(actor, course)).thenReturn(new com.techverse.server.service.impl.LessonAiContextService.Context(
+        "Khóa Spring", new AiPromptFactory.Ref(topic.getId(), "Backend"), List.of()));
+    var b = body("MEDIUM");
+    b.remove("topicId");
+    b.remove("tagIds");
+    b.put("targetType", "LESSON");
+    b.put("courseId", course.toString());
+    var g = service.start(actor, JSON.readValue(JSON.writeValueAsString(b), AiDraftRequest.class));
+    var e = new TestEmitter();
+    service.stream(g, e);
+    String expected = AiCompletedGenerationRepository.lessonFingerprint(
+        course, "Spring Security: JWT và refresh token", "s".repeat(60), CONTENT);
+    verify(receipts).save(actor, ((AiStreamEvent.Metadata) e.events.getFirst()).generationId(), expected);
+    assertThat(expected).isNotEqualTo(AiCompletedGenerationRepository.lessonFingerprint(
+        UUID.randomUUID(), "Spring Security: JWT và refresh token", "s".repeat(60), CONTENT));
+    assertThat(prompts.getFirst().getContents()).contains("Khóa Spring");
+    org.mockito.Mockito.verifyNoInteractions(topics);
   }
 
   @Test
