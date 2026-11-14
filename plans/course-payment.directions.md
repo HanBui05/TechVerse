@@ -199,16 +199,30 @@ Trên localhost cổng thật không gọi được IPN nếu không có tunnel,
   - Hoa hồng: người dùng chưa trả lời riêng → theo khuyến nghị: tỷ lệ chung 20% lưu vào đơn, trang doanh thu của tác giả, Admin đổi tỷ lệ; chi trả cho tác giả tách module sau.
   - Mục 9 (xác minh tài liệu) đổi đối tượng: định dạng VietQR/ảnh QR và API + webhook + chữ ký của PayOS, thay cho VNPay. **Có chia hoa hồng cho nền tảng.** Video khóa trả phí: **dùng YouTube** vì là demo (thay hướng cũ “không dùng YouTube cho khóa trả phí”).
 
-## 9. Cần xác minh bằng tài liệu chính thức trước khi viết spec
+## 9. Đã xác minh bằng tài liệu chính thức (2026-11-14, thay phần VNPay cũ)
 
-Các điểm dưới đây viết theo hiểu biết sẵn có, **chưa tra lại**; sai một chi tiết là chữ ký không khớp. Opus tra tài liệu VNPay sandbox (`sandbox.vnpayment.vn/apis`) và ghi kết quả vào đây:
+Nguồn: `payos.vn/docs/api/`, `payos.vn/docs/tich-hop-webhook/kiem-tra-du-lieu-voi-signature/`, `vietqr.io/danh-sach-api/link-tao-ma-nhanh/`.
 
-- Đăng ký merchant test: nơi đăng ký, nhận `vnp_TmnCode` + khóa bí mật thế nào, nơi khai IPN URL.
-- Thuật toán ký (HMAC-SHA512), thứ tự sắp xếp tham số, quy tắc URL-encode khi dựng chuỗi ký, phiên bản API hiện hành.
-- `vnp_Amount` nhân 100; giới hạn số tiền tối thiểu/tối đa; định dạng và múi giờ của `vnp_CreateDate`/`vnp_ExpireDate`; yêu cầu duy nhất của `vnp_TxnRef`.
-- Bộ mã phản hồi ở return URL (`vnp_ResponseCode`, `vnp_TransactionStatus`) và định dạng JSON mà IPN phải trả lại (`RspCode`/`Message`) cho từng trường hợp: thành công, đã xác nhận, không thấy đơn, sai số tiền, sai chữ ký.
-- Thông tin thẻ test hiện hành của sandbox.
-- Nếu người dùng chọn Stripe thay VNPay: VND là tiền không có phần thập phân; webhook cần kiểm chữ ký `Stripe-Signature`; chuyển tiếp webhook về localhost bằng Stripe CLI.
+**VietQR (bước 1, Admin xác nhận tay)**
+
+- Ảnh QR: `https://img.vietqr.io/image/<BANK_ID>-<ACCOUNT_NO>-<TEMPLATE>.png?amount=<số tiền>&addInfo=<nội dung>&accountName=<tên>`. `BANK_ID` là BIN (vd. `970415`) hoặc tên viết tắt; `ACCOUNT_NO` ≤ 19 ký tự; `amount` số dương ≤ 13 chữ số; `addInfo` ≤ 50 ký tự, không ký tự đặc biệt. Tài liệu không nêu cần API key; giới hạn 10 QR / 10 giây / IP.
+- Backend chỉ trả các tham số (BIN, số tài khoản, tên, số tiền, nội dung) lấy từ cấu hình `.env` + DB; frontend dựng URL ảnh. Không nhận số tiền/nội dung từ client.
+- Không có xác nhận tự động: Admin đối chiếu sao kê theo nội dung = mã đơn rồi bấm “Đã nhận tiền” (có thể nhập mã giao dịch ngân hàng). Đây là ranh giới tin cậy duy nhất ở bước 1.
+
+**PayOS (bước 2, tự xác nhận)**
+
+- Tạo link: `POST https://api-merchant.payos.vn/v2/payment-requests`, header `x-client-id`, `x-api-key`. Body: `orderCode` (**số nguyên**), `amount` (số nguyên), `description` (**≤ 9 ký tự** với tài khoản không liên kết qua payOS), `returnUrl`, `cancelUrl`, `expiredAt` (Unix giây, Int32, tùy chọn), `signature`. Trả `checkoutUrl`, `qrCode`, `paymentLinkId`, `status`; `code = "00"` là thành công, lỗi chỉ có `code`/`desc` (vd. đơn đã tồn tại, sai chữ ký, kênh tạm dừng).
+- Chữ ký tạo link: HMAC-SHA256 (checksum key) trên `amount=..&cancelUrl=..&description=..&orderCode=..&returnUrl=..` (đúng 5 trường, theo thứ tự chữ cái), hex.
+- Tra cứu: `GET /v2/payment-requests/{orderCode|paymentLinkId}` (`status`, `amountPaid`, `transactions`). Hủy: `POST /v2/payment-requests/{id}/cancel`.
+- Webhook: body `{code, desc, success, data{orderCode, amount, description, accountNumber, reference, transactionDateTime, currency, paymentLinkId, code, desc, counterAccount*, virtualAccount*}, signature}`. Kiểm chữ ký: sắp key của `data` theo chữ cái, giá trị null/undefined → `""`, mảng/object → JSON (key con sắp xếp), nối `key=value` bằng `&`, HMAC-SHA256 hex bằng checksum key, so bằng hàm thời gian hằng.
+- **Chưa tìm thấy trong tài liệu:** mã HTTP/JSON webhook phải trả, chính sách gửi lại, cách đăng ký URL (có API `confirm-webhook` và trang quản trị). Spec phải: trả 2xx khi đã xử lý hoặc đã xử lý trước đó (idempotent); webhook không khớp đơn (vd. ping kiểm tra) vẫn trả 2xx nhưng không đổi dữ liệu; nguồn sự thật cuối cùng có thể đối chiếu bằng API tra cứu.
+
+**Hệ quả cho thiết kế (đưa vào spec)**
+
+- `orders.order_code` là `varchar(50)`; PayOS cần `orderCode` số nguyên và `description` ≤ 9 ký tự → spec chốt cách sinh: mã đơn hiển thị ngắn (vd. `TV` + 6 ký tự) dùng làm nội dung chuyển khoản, kèm một số nguyên duy nhất cho PayOS (cột mới hoặc sequence).
+- Bước 1 và bước 2 dùng chung một hàm xác nhận (khóa dòng, idempotent, đối chiếu số tiền với DB, trigger cấp quyền); chỉ khác nguồn xác nhận (Admin / webhook đã kiểm chữ ký).
+- Khóa PayOS (`PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`) và thông tin tài khoản nhận chỉ ở `.env` backend, thêm vào `.env.example` không giá trị; không log.
+- Test không gọi PayOS/VietQR thật: unit test chữ ký bằng vector tự dựng theo công thức trên; tích hợp dùng cổng giả lập.
 
 ## 10. Hướng người dùng đã nêu trước đây (chuyển từ `PLAN.md` ngày 2026-11-14; quyết định gốc 2026-11-06)
 
