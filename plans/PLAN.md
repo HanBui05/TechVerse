@@ -34,7 +34,7 @@ Trạng thái hợp lệ: `Đề xuất` → `Đang lập kế hoạch` → `Ch�
 
 ## Câu hỏi mở
 
-- **Lộ trình các chức năng còn lại (2026-11-13):** chờ người dùng trả lời [`roadmap.questions.md`](roadmap.questions.md); sau đó Claude viết file hướng cho module tới lượt, Codex viết spec.
+- **Lộ trình đến hạn 2026-11-28 (người dùng chốt 2026-11-14, câu trả lời ở [`roadmap.questions.md`](roadmap.questions.md)):** mỗi module vẫn Codex spec → Claude phản biện → người dùng chốt → code. Dự kiến: `course-payment` 14–19/11 (PayOS cuối, cắt được) → bài tập + AI 19–21/11 → ôn phỏng vấn 22–23/11 → diễn đàn + báo cáo 24–25/11 → số liệu dashboard 26/11 → nhắn tin 27/11 nếu còn thời gian (cắt đầu tiên) → 28/11 dự phòng. Trễ quá một ngày thì báo người dùng để cắt.
 - **Thanh toán khóa học:** hướng ở [`course-payment.directions.md`](course-payment.directions.md) (gồm cả hướng cũ 2026-11-06 về đăng ký bán, hoa hồng, không hoàn tiền, video, trợ lý AI của khóa); người dùng đã chọn hướng (2026-11-14, mục 8: VietQR theo đơn + Admin xác nhận, sau đó PayOS; có hoa hồng; video YouTube). Tiếp: Claude tra tài liệu VietQR/PayOS (mục 9) rồi Codex viết `course-payment.md`.
 - **Menu Tác giả khi có tính năng thứ hai (2026-11-04):** đổi mục sidebar “Tác giả” thành nhóm thu gọn (Bài viết của tôi, Khóa học, sau này Doanh thu); không dựng trước.
 - **Thông báo cho tác giả (2026-11-04):** báo khi bài được duyệt/trả về/ẩn/gỡ; cần module notification riêng (xem `roadmap.questions.md` T5).
