@@ -4,7 +4,7 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Codex viết; Claude chỉ ghi 
 
 **Mục tiêu:** Tác giả đặt giá, người học mua từng khóa bằng chuyển khoản ngân hàng và được cấp quyền; nền tảng lưu hoa hồng, tác giả xem doanh thu. Bước đầu Admin đối chiếu VietQR; PayOS webhook tự xác nhận là task Backend cuối có thể cắt.
 **Làn:** Đầy đủ · **Rủi ro cao:** tiền, đồng thời, webhook công khai; review vòng 1 dùng `adversarial-review`.
-**Thứ tự:** 1a → 1b → 1c → 1d → 1e (PayOS, có thể cắt) → cổng wireframe → 2a → 2b → 2c. Mỗi task dự kiến nửa ngày đến một ngày; trễ quá một ngày báo người dùng để cắt. Backend đã chọn phải xong và review trước wireframe/giao diện; nếu cắt 1e, giao diện chỉ mở VietQR.
+**Thứ tự:** 1a → 1b → 1c → 1d → cổng wireframe → 2a → 2b → 2c. **Task 1e (PayOS) hoãn** (người dùng 2026-11-14): không code, không test, không thêm cấu hình/secret PayOS trong module này; thanh toán chỉ có VietQR + Admin xác nhận. Mọi câu “nếu 1e được giữ” bên dưới coi như không áp dụng. Mỗi task dự kiến nửa ngày đến một ngày; trễ quá một ngày báo người dùng để cắt. Backend đã chọn phải xong và review trước wireframe/giao diện; nếu cắt 1e, giao diện chỉ mở VietQR.
 
 ## Đường dẫn thuộc module
 
@@ -19,18 +19,20 @@ Chỉ sửa các đường dẫn sau; file mới đặt theo kiến trúc hiện
 ## Ngoài phạm vi
 
 - Đăng ký bán, điều khoản bán nhiều phiên bản, thông tin chi trả tác giả, sổ tiền và chi trả; giỏ hàng, giảm giá, hoàn tiền, Admin cấp tặng hoặc thu hồi quyền.
+- PayOS và mọi cách tự xác nhận qua webhook (Task 1e hoãn 2026-11-14, module sau); trang return/cancel của cổng thanh toán.
+- Người học tự hủy đơn chờ (E2, không làm); xuất CSV đơn đã trả (E3, tách sau); xử lý tiền chuyển thừa/trùng trong sản phẩm (Admin xử lý ngoài hệ thống).
 - VNPay, tiền mặt, trang cổng giả lập cho người dùng, gọi VietQR/PayOS thật trong test; lưu bí mật hoặc thông tin ngân hàng vào frontend cấu hình cứng.
 - Thay provider video, bảo vệ link YouTube khỏi người đã mua chia sẻ; thời lượng, AI tutor và chức năng khóa học khác.
 
 ## Ràng buộc chung
 
 - Đổi API/DB: Có, chỉ migration mới V13; không sửa V1–V12. Giữ contract `ApiResponse`/`ErrorResponse` và hành vi khóa miễn phí. Không sửa `final.sql` trong module này.
-- Giá nguyên VND: 0 hoặc khoảng dương chờ chốt (đề xuất 10.000–50.000.000); VietQR tối đa 13 chữ số, chưa xác minh giới hạn PayOS. Giá và nội dung chuyển khoản lấy từ DB/cấu hình. Hạn MANUAL đề xuất 24 giờ, PAYOS 15 phút, chờ chốt; giá và policy snapshot khi tạo đơn.
+- Giá nguyên VND: 0 (miễn phí) hoặc 10.000–50.000.000 (người dùng chốt 2026-11-14); kiểm cả service và CHECK trong V13. Chưa xác minh giới hạn số tiền của PayOS: 1e kiểm lại trước khi bật. Giá và nội dung chuyển khoản lấy từ DB/cấu hình. Hạn đơn MANUAL 24 giờ, PAYOS 15 phút (chốt 2026-11-14); hạn chỉ quyết định trả đơn cũ hay tạo đơn mới, tiền đến sau hạn vẫn được xác nhận. Giá và policy snapshot khi tạo đơn.
 - Giá nằm trên `courses`, ngoài snapshot duyệt; đổi giá dương có hiệu lực ngay cho đơn mới. Khóa từng công khai (`published_version_id IS NOT NULL`) không đổi loại 0 ↔ dương kể cả sau ẩn/gỡ; kiểm trong transaction cùng khóa dòng course khi sửa và công khai. Moderator không nhận giá, doanh thu, thông tin ngân hàng từ API quản lý hoặc giao diện.
 - Guest xem tổng quan và bài học thử; người chưa có enrollment active không nhận nội dung/video bài thường và không tạo FREE enrollment cho khóa trả phí. Người mua/đã có enrollment active học bình thường. Owner không mua khóa mình; ADMIN/MODERATOR không mua/học theo luật `course-free`.
 - Cấu hình tài khoản nhận và secret chỉ ở backend `.env`, mẫu để trống; không log secret/chữ ký. VietQR dựng URL ảnh từ tham số backend, encode query; không gọi dịch vụ khi test. Khi dùng QR thật, trình duyệt liên hệ VietQR và chịu giới hạn 10 ảnh/10 giây/IP theo tài liệu.
 - Đối chiếu thật do Admin chịu trách nhiệm: xác nhận chỉ sau khi kiểm sao kê, mã đơn và số tiền. Không có hoàn tiền; hiển thị trước khi mua. PayOS chỉ webhook đã kiểm chữ ký được xác nhận; return/cancel trình duyệt chỉ hiển thị, không cấp quyền.
-- Nguồn tham khảo và thứ tự ưu tiên: [`course-payment.directions.md`](course-payment.directions.md) mục 8–9; mục 8 thắng hướng cũ. Quy tắc chưa chốt được nêu ở cuối spec.
+- Nguồn tham khảo và thứ tự ưu tiên: [`course-payment.directions.md`](course-payment.directions.md) mục 8–9; mục 8 thắng hướng cũ. Năm quyết định ngày 2026-11-14 ở mục “Quyết định của người dùng” đã được đưa vào thân spec.
 
 ## Task 1a — Schema, giá và quyền xem
 
@@ -46,7 +48,7 @@ Chỉ sửa các đường dẫn sau; file mới đặt theo kiến trúc hiện
 
 | Trường / tình huống | Ràng buộc | HTTP / mã lỗi | Câu hiển thị tương ứng |
 |---|---|---|---|
-| `priceAmount` | Bắt buộc số nguyên VND trong khoảng chung | 400 `COURSE_PRICE_INVALID` | Giá khóa học không hợp lệ. |
+| `priceAmount` | Bắt buộc số nguyên VND: 0 hoặc 10.000–50.000.000 (biên 9.999 và 50.000.001 bị từ chối) | 400 `COURSE_PRICE_INVALID` | Giá khóa học không hợp lệ. |
 | Người sửa giá | Chưa đăng nhập / không APPROVED / không sở hữu | 401 `AUTH_ACCESS_TOKEN_REQUIRED` / `AUTH_INVALID_ACCESS_TOKEN` / 403 `ACCESS_DENIED` / 404 `COURSE_NOT_FOUND` | Đăng nhập / không có quyền. / Không tìm thấy khóa học. |
 | Khóa từng công khai | Không đổi miễn phí ↔ trả phí, kể cả request sửa/công khai đồng thời | 409 `COURSE_PRICE_TYPE_LOCKED` | Không thể đổi loại giá của khóa đã công khai. |
 | Khóa/bài không tồn tại hoặc không công khai | Không để lộ nội dung | 404 `COURSE_NOT_FOUND` / `LESSON_NOT_FOUND` | Không tìm thấy khóa học / bài học. |
@@ -75,6 +77,7 @@ Chỉ sửa các đường dẫn sau; file mới đặt theo kiến trúc hiện
 - `POST /api/v1/orders {courseId}`, `GET /api/v1/me/orders`, `GET /api/v1/orders/{orderCode}`: mỗi đơn một khóa; chủ đơn xem QR khi chờ/hết hạn để đối chiếu; danh sách phân trang. Trả mã, snapshot tên/giá, trạng thái, thời hạn, tham số VietQR; không trả secret.
 - Sinh mã `TV` + 12 chữ số từ sequence duy nhất, ASCII, không tái sử dụng; vừa nội dung chuyển khoản ≤50 ký tự vừa không lộ UUID. Đơn PENDING quá hạn theo provider đánh EXPIRED khi đọc/tạo đơn; không scheduler. Request mới sau hết hạn tạo đơn mới.
 - Trong transaction khóa dòng user trước kiểm enrollment và đơn chờ cùng khóa; trả lại đơn PENDING còn hạn cho các request đồng thời. Public detail không trả đơn chờ: nút Mua gọi POST rồi mở đơn được trả về. Chụp giá và policy đang hiệu lực tại thời điểm tạo item; tạo order tổng 0 → insert item → đọc tổng trigger → tạo transaction MANUAL PENDING.
+- **Báo đã chuyển khoản (E1, người dùng chọn 2026-11-14):** `POST /api/v1/orders/{orderCode}/transfer-report` (không body) cho chủ đơn MANUAL đang PENDING hoặc EXPIRED: ghi `orders.transfer_reported_at` (cột mới V13) lần đầu, gọi lại giữ nguyên thời điểm cũ và trả 200. Cờ **không** đổi trạng thái đơn, không cấp quyền, không thay việc Admin đối chiếu sao kê; chỉ để Admin lọc (1c). DTO đơn của chủ đơn và của Admin trả `transferReportedAt`. Dùng chung giới hạn 5 request/phút/user với tạo đơn.
 
 ### Quy tắc nghiệp vụ và mã lỗi
 
@@ -88,6 +91,9 @@ Chỉ sửa các đường dẫn sau; file mới đặt theo kiến trúc hiện
 | Đơn hết hạn | Giữ lịch sử, tạo đơn mới; tiền về sau vẫn xử lý theo 1c | 200 `OK` | Đơn đã hết hạn; liên hệ Admin nếu đã chuyển khoản. |
 | Cấu hình ngân hàng thiếu/sai, policy không hiệu lực | Không tạo đơn không thể thanh toán; lỗi tạm thời | 503 `PAYMENT_UNAVAILABLE` | Thanh toán tạm thời không khả dụng. |
 | Tạo quá nhanh | Tối đa 5 request/phút/user, kể cả retry | 429 `ORDER_RATE_LIMITED` | Bạn thao tác quá nhanh, hãy thử lại sau. |
+| Báo đã chuyển khoản: thành công / gọi lại | Chủ đơn, đơn MANUAL PENDING hoặc EXPIRED; lần sau không đổi thời điểm | 200 `OK` | Đã báo cho Admin; quyền học được mở sau khi Admin đối chiếu. |
+| Báo đã chuyển khoản: đơn người khác / không có | Không tiết lộ đơn | 404 `ORDER_NOT_FOUND` | Không tìm thấy đơn. |
+| Báo đã chuyển khoản: đơn đã PAID, FAILED hoặc CANCELLED | Không ghi cờ | 409 `ORDER_TRANSFER_REPORT_NOT_ALLOWED` | Đơn này không cần báo chuyển khoản. |
 
 ### Kế hoạch thực thi
 
@@ -98,7 +104,7 @@ Chỉ sửa các đường dẫn sau; file mới đặt theo kiến trúc hiện
 ### Xong khi
 
 - [ ] `OrderServiceTest` (unit) và `OrderControllerTest` (`@WebMvcTest`) phủ mọi dòng bảng, định dạng mã/QR, dữ liệu ngoài phạm vi và rate limit.
-- [ ] `OrderIntegrationTest` (DB/security thật): mua, quyền/chủ sở hữu, hết hạn/tạo lại, hai request song song cùng đơn; snapshot giá/tỷ lệ và tổng trigger đúng. Không gọi VietQR thật.
+- [ ] `OrderIntegrationTest` (DB/security thật): mua, quyền/chủ sở hữu, hết hạn/tạo lại, hai request song song cùng đơn; snapshot giá/tỷ lệ và tổng trigger đúng; hạn 24 giờ của MANUAL; báo đã chuyển khoản (lần đầu, gọi lại, đơn người khác, đơn PAID) không đổi trạng thái/quyền. Không gọi VietQR thật.
 - [ ] Chạy các lớp trên và các lớp caller của rate limit nếu sửa code dùng chung; full backend do CI chạy khi mở PR.
 
 ## Task 1c — Admin xác nhận, đồng thời và doanh thu
@@ -107,10 +113,10 @@ Chỉ sửa các đường dẫn sau; file mới đặt theo kiến trúc hiện
 
 ### Phạm vi
 
-- `GET /api/v1/admin/orders` lọc trạng thái/mã, phân trang; `POST /api/v1/admin/orders/{orderCode}/confirm` nhận `amount` nguyên và `bankReference` bắt buộc 1–255 ký tự đã trim, Admin nhập từ sao kê. `GET /api/v1/author/revenue` chỉ tổng và danh sách item PAID của khóa thuộc tác giả hiện tại, gồm giá, tỷ lệ, phần nền tảng và phần tác giả, phân trang; không chứa thông tin người mua.
+- `GET /api/v1/admin/orders` lọc trạng thái/mã, `transferReported=true|false` (đơn người học đã báo chuyển khoản, 1b) và `needsReconciliation=true|false`, phân trang; `POST /api/v1/admin/orders/{orderCode}/confirm` nhận `amount` nguyên và `bankReference` bắt buộc 1–255 ký tự đã trim, Admin nhập từ sao kê. `GET /api/v1/author/revenue` chỉ tổng và danh sách item PAID của khóa thuộc tác giả hiện tại, gồm giá, tỷ lệ, phần nền tảng và phần tác giả, phân trang; không chứa thông tin người mua.
 - Hàm xác nhận chung: khóa user rồi order/transaction theo thứ tự cố định; so sánh amount với snapshot, kiểm reference duy nhất và trạng thái; ghi audit người xác nhận, thời điểm và reference, cập nhật transaction SUCCEEDED để trigger đặt PAID/cấp quyền trong cùng transaction. PENDING hoặc EXPIRED đều được xác nhận. Admin chỉ xác nhận đơn MANUAL; không xác nhận hộ PayOS.
-- **Đề xuất chờ chốt:** nếu đơn cũ thanh toán sau khi đơn khác đã cấp quyền, ghi PAID và reference cho từng khoản thật, giữ một enrollment active và cảnh báo Admin đối chiếu. V13 sửa trigger dùng `INSERT … SELECT … WHERE NOT EXISTS` enrollment active, vẫn xử lý conflict `order_item_id`, tuần tự hóa theo user; không mở chức năng revoke.
-- Retry cùng đơn/reference/số tiền trả kết quả cũ; reference đã dùng cho đơn khác báo xung đột. **Đề xuất chờ chốt:** reference mới cùng đơn PAID, đúng tiền ghi transaction SUCCEEDED mới, cảnh báo, không nhân doanh thu/item hay quyền. Sai số tiền không đánh FAILED hoặc cấp quyền.
+- **Thanh toán trùng (chốt 2026-11-14):** nếu đơn cũ thanh toán sau khi đơn khác đã cấp quyền, ghi PAID và reference cho từng khoản thật, giữ một enrollment active và cảnh báo Admin đối chiếu. V13 sửa trigger dùng `INSERT … SELECT … WHERE NOT EXISTS` enrollment active, vẫn xử lý conflict `order_item_id`, tuần tự hóa theo user; không mở chức năng revoke.
+- Retry cùng đơn/reference/số tiền trả kết quả cũ; reference đã dùng cho đơn khác báo xung đột. Reference mới cùng đơn PAID, đúng tiền: ghi transaction SUCCEEDED mới, bật cờ đối chiếu, không nhân doanh thu/item hay quyền (chốt 2026-11-14). Tiền thừa do Admin xử lý ngoài hệ thống; không hoàn tiền trong sản phẩm. Sai số tiền không đánh FAILED hoặc cấp quyền.
 - Audit: `payment_transactions.confirmed_by` nullable (MANUAL là Admin, PAYOS null), `confirmation_source`, `confirmed_at`; `orders` lưu cờ đối chiếu và người/thời điểm đóng. Admin gọi `POST /api/v1/admin/orders/{orderCode}/reconcile` để đóng cờ; khoản bất thường mới mở lại cờ, không sửa giao dịch/quyền.
 
 ### Quy tắc nghiệp vụ và mã lỗi
@@ -123,7 +129,7 @@ Chỉ sửa các đường dẫn sau; file mới đặt theo kiến trúc hiện
 | Sai số tiền | So với tổng snapshot, không thay trạng thái | 409 `PAYMENT_AMOUNT_MISMATCH` | Số tiền không khớp đơn; hãy đối chiếu sao kê. |
 | Đơn sai provider/trạng thái | Chỉ MANUAL PENDING/EXPIRED hoặc retry đúng PAID | 409 `PAYMENT_STATE_INVALID` | Không thể xác nhận đơn ở trạng thái này. |
 | Reference trùng đơn khác | Không gán cùng giao dịch cho hai đơn | 409 `PAYMENT_REFERENCE_CONFLICT` | Mã giao dịch đã được dùng hoặc không khớp. |
-| Reference mới cùng đơn PAID | Đề xuất chờ chốt: ghi khoản đúng tiền, cảnh báo, không nhân doanh thu/quyền | 200 `OK` | Đã ghi nhận; cần đối chiếu khoản trùng. |
+| Reference mới cùng đơn PAID | Ghi khoản đúng tiền, bật cờ đối chiếu, không nhân doanh thu/quyền | 200 `OK` | Đã ghi nhận; cần đối chiếu khoản trùng. |
 | Đóng cờ đối chiếu | Admin; retry trả kết quả cũ, không có cờ báo lỗi, không có đơn báo 404 | 200 `OK` / 409 `PAYMENT_RECONCILIATION_NOT_REQUIRED` / 404 `ORDER_NOT_FOUND` | Đã đối chiếu / Không có khoản cần đối chiếu / Không tìm thấy đơn. |
 | Retry đúng, xác nhận song song | Một lần chuyển trạng thái; trả kết quả cũ | 200 `OK` | Đã ghi nhận thanh toán. |
 | Đơn hết hạn hoặc đã có enrollment từ đơn khác | Ghi nhận tiền thật; chỉ một quyền active, cảnh báo đối chiếu khoản trùng | 200 `OK` | Đã ghi nhận; cần đối chiếu nếu có khoản thanh toán trùng. |
@@ -170,7 +176,9 @@ Chỉ sửa các đường dẫn sau; file mới đặt theo kiến trúc hiện
 - [ ] `CommissionPolicyServiceTest` (unit), `CommissionPolicyControllerTest` (`@WebMvcTest`): mọi dòng bảng, làm tròn và phân quyền.
 - [ ] `CommissionPolicyIntegrationTest`: đổi đồng thời và tạo đơn đồng thời với đổi policy, chỉ một policy active, snapshot cũ bất biến kể cả khi thử UPDATE trực tiếp policy/item, policy mới có ngày hiệu lực; chạy cùng `OrderIntegrationTest` và `PaymentConfirmationIntegrationTest`.
 
-## Task 1e — PayOS webhook (cuối Backend, cắt được)
+## Task 1e — PayOS webhook — HOÃN (người dùng 2026-11-14)
+
+> **Không làm trong module này.** Phần dưới giữ lại làm đầu vào cho một module sau (`course-payment-payos`), chưa được chốt và phải rà lại với code lúc đó. Hệ quả cho các task còn lại: V13 không thêm cột/sequence riêng cho PayOS; `.env.example` không thêm khóa PayOS; `SecurityConfiguration` không có webhook `permitAll`; mọi đơn là MANUAL (hạn 24 giờ). Vẫn giữ để sau cắm PayOS không phải đổi schema: cột `payment_transactions.provider`, `confirmation_source`, `confirmed_by` nullable và hàm xác nhận chung của 1c.
 
 **Giai đoạn:** Backend · **Đổi giao diện:** Không
 
@@ -249,8 +257,8 @@ Sau Backend đã chọn và trước giao diện, tạo `plans/course-payment.wi
 
 ### Phạm vi
 
-- Trang chi tiết đơn hiển thị mã, tên ngân hàng/tài khoản, số tiền, nội dung và ảnh VietQR động; danh sách đơn của tôi, trạng thái, hết hạn và đường vào học khi PAID. Không tự coi chuyển khoản hay return URL là thành công; làm mới trạng thái theo thao tác người dùng.
-- Nếu 1e được giữ, thêm nút checkout PayOS và trang return/cancel chỉ tra cứu trạng thái. Mapping lỗi/validation dẫn bảng 1b, 1e; ảnh QR lỗi vẫn hiện thông tin chuyển khoản.
+- Trang chi tiết đơn hiển thị mã, tên ngân hàng/tài khoản, số tiền, nội dung và ảnh VietQR động; danh sách đơn của tôi, trạng thái, hết hạn và đường vào học khi PAID. Không tự coi chuyển khoản hay return URL là thành công; làm mới trạng thái theo thao tác người dùng. Đơn MANUAL đang chờ/hết hạn có nút “Tôi đã chuyển khoản” (API 1b); sau khi bấm hiện thời điểm đã báo và câu chờ Admin đối chiếu, nút không bấm lại được.
+- Không có nút checkout PayOS hay trang return/cancel (1e hoãn). Mapping lỗi/validation dẫn bảng 1b; ảnh QR lỗi vẫn hiện thông tin chuyển khoản.
 
 ### Kế hoạch thực thi
 
@@ -266,6 +274,7 @@ Sau Backend đã chọn và trước giao diện, tạo `plans/course-payment.wi
 | Hết hạn | Đơn đã hết hạn; liên hệ Admin nếu đã chuyển khoản. | This order has expired; contact an admin if you already transferred. |
 | Thành công | Đã nhận tiền · Vào học | Payment received · Start learning |
 | QR lỗi | Không tải được QR; dùng thông tin chuyển khoản bên dưới. | QR unavailable; use the transfer details below. |
+| Báo chuyển khoản | Tôi đã chuyển khoản / Đã báo cho Admin lúc {time}; quyền học được mở sau khi Admin đối chiếu. | I have transferred / Reported to admin at {time}; access opens after the admin verifies the transfer. |
 
 ### UI
 
@@ -273,7 +282,7 @@ Sau Backend đã chọn và trước giao diện, tạo `plans/course-payment.wi
 
 ### Xong khi
 
-- [ ] Test unit URL QR và mapping tất cả dòng 1b/1e theo vi/en; test luồng chính đơn, QR lỗi, hết hạn, đã trả, return không tự xác nhận.
+- [ ] Test unit URL QR và mapping tất cả dòng 1b theo vi/en; test luồng chính đơn, QR lỗi, hết hạn, đã trả, báo đã chuyển khoản (thành công, lỗi 409), return không tự xác nhận.
 - [ ] Chạy test mới `Payments/*.test.tsx`, services/data liên quan, `App.courses.test.tsx`, `Sidebar.test.tsx`, `StaffPreferences.test.tsx`, `components/ui/{sidebar,labels,focus}*.test.*` khi sửa shell và test caller trực tiếp + `npm run build` trong `app/`.
 - [ ] Kiểm mắt trang đổi: dark/light × desktop/mobile, một lượt; ghi log.
 
@@ -283,7 +292,7 @@ Sau Backend đã chọn và trước giao diện, tạo `plans/course-payment.wi
 
 ### Phạm vi
 
-- Admin lọc đơn, thấy cảnh báo thanh toán trùng và đóng cờ sau đối chiếu qua API 1c; nhập số tiền/mã sao kê và xác nhận có bước kiểm tra lại; sửa tỷ lệ và xem ngày hiệu lực. Tác giả xem tổng và danh sách doanh thu theo snapshot; không đề cập đã được chi trả.
+- Admin lọc đơn (trạng thái, mã, “người học đã báo chuyển khoản”, “cần đối chiếu”), thấy nhãn và thời điểm người học báo chuyển khoản, thấy cảnh báo thanh toán trùng và đóng cờ sau đối chiếu qua API 1c; nhập số tiền/mã sao kê và xác nhận có bước kiểm tra lại; sửa tỷ lệ và xem ngày hiệu lực. Tác giả xem tổng và danh sách doanh thu theo snapshot; không đề cập đã được chi trả.
 - Validation và mapping tất cả lỗi tương ứng bảng 1c–1d. Moderator không có route hay dữ liệu doanh thu; backend vẫn là ranh giới phân quyền.
 
 ### Kế hoạch thực thi
@@ -313,89 +322,16 @@ Sau Backend đã chọn và trước giao diện, tạo `plans/course-payment.wi
 
 ## Câu hỏi mở cần người dùng chốt
 
-1. **Khoảng giá:** khuyến nghị 0 hoặc 10.000–50.000.000 VND; VietQR chỉ chứng minh giới hạn kỹ thuật 13 chữ số, PayOS chưa xác minh. Chọn khoảng nào?
-2. **Hạn đơn:** khuyến nghị MANUAL 24 giờ, PAYOS 15 phút; hết hạn cho tạo đơn mới, tiền đến sau vẫn đối chiếu. Chọn thời hạn nào?
-3. **Thanh toán trùng:** khuyến nghị ghi từng khoản đúng tiền, kể cả reference mới cùng đơn; một enrollment, doanh thu một lần/item và cờ Admin đối chiếu; xử lý tiền thừa ngoài phạm vi, không tự hoàn. Chọn phương án nào?
-4. **E1–E3:** khuyến nghị E1 tách module sau, E2 không cần lúc này, E3 tách module sau. Có chọn đưa đề xuất nào vào module này không?
-5. Chính sách hoa hồng hiệu lực ngay khi lưu, không đặt lịch: chấp nhận? Trước khi bật thật cần cấu hình tài khoản, xác minh giới hạn PayOS và quy tắc webhook/retry; 1e có thể cắt.
-
-## Phản hồi vòng 1 (Claude)
-
-Đã đối chiếu V1 (`orders`, `order_items`, `payment_transactions`, `commission_policies`, trigger 614–642, 803–831), `ErrorCode`, `ArticleRateLimitService`, `Course`, `CourseContractTest`; mọi lớp test/file frontend spec nêu đều tồn tại.
-
-**Sai**
-
-- S1. `UNAUTHORIZED`, `RATE_LIMITED` không có trong `ErrorCode`. 401 hiện là `AUTH_ACCESS_TOKEN_REQUIRED`/`AUTH_INVALID_ACCESS_TOKEN` (entry point); rate limit đặt theo miền (`COURSE_RATE_LIMITED`, `AI_RATE_LIMITED`). Đề nghị `ORDER_RATE_LIMITED` + ngưỡng cụ thể (vd. 5 đơn/phút/user), 401 ghi mã có sẵn.
-- S2. “Dùng lại `ArticleRateLimitService`”: API là `check(UUID user, boolean image)`, riêng bài viết; dùng lại = sửa code dùng chung, kéo test caller article. Đề nghị lớp rate limit riêng cho đơn theo mẫu hiện có, bỏ dòng đó khỏi “Đường dẫn”.
-- S3. 1c “khác reference trên đơn đã PAID → xung đột, không đổi dữ liệu” trái nguyên tắc “ghi nhận mọi khoản thật” của chính task. Chuyển hai lần cùng một mã đơn là ca thực tế nhất; schema cho phép: transaction SUCCEEDED thứ hai qua `validate_payment_transaction` (amount = tổng), grant trigger `ON CONFLICT (order_item_id)` không cấp thêm. Đề nghị ghi transaction thứ hai + cờ đối chiếu như ca hai đơn.
-- S4. 1e: webhook đã đúng chữ ký nhưng sai tiền/trạng thái/reference trả 409, trong khi cùng bảng cho “không khớp đơn” trả 2xx “để tránh lặp” và mục 9 nói chưa rõ chính sách retry. Đề nghị: mọi webhook đúng chữ ký trả 200 và lưu bất thường để đối chiếu; chỉ chữ ký/body sai trả 400.
-- S5. Khoảng giá 1–9.999.999.999.999 là giới hạn ô `amount` của VietQR (13 chữ số), không phải giá hợp lý cho người dùng thấy. Đề nghị 10.000–50.000.000 VND (chờ người dùng, xem câu hỏi mở 1).
-
-**Thiếu**
-
-- T1. Hạn 15 phút không hợp với xác nhận tay: Admin có thể xác nhận sau vài giờ, nên gần như mọi người mua sẽ thấy “Đơn đã hết hạn; liên hệ Admin” dù chuyển đúng. Đề nghị đơn MANUAL hạn 24 giờ (hạn chỉ quyết định trả đơn cũ hay tạo đơn mới; vẫn xác nhận được sau hạn), PayOS giữ 15 phút qua `expiredAt`. Cần người dùng chốt.
-- T2. “Khóa từng công khai” chưa định nghĩa: ghi rõ `courses.published_version_id IS NOT NULL` (snapshot còn sau ẩn/gỡ; `Course.publishedVersion`).
-- T3. Audit và cờ đối chiếu chưa nói nằm ở đâu: cột nào, bảng nào trong V13; webhook không có user nên `confirmed_by` NULL + nguồn PAYOS. Thiếu thao tác Admin “đã đối chiếu xong” để bỏ cờ, nếu không cảnh báo hiện mãi.
-- T4. Sửa trigger cấp quyền ở V13 chưa cụ thể: đề nghị `INSERT … WHERE NOT EXISTS (enrollment active cùng user, course)`. Sau khi xóa trigger refund, không còn đường revoke nào trong code → bỏ ca “không cấp lại quyền đã revoke” hoặc nói rõ hành vi.
-- T5. Policy phải bất biến: `calculate_order_item_revenue` chạy cả `BEFORE UPDATE` và đọc `rate_bps` theo `commission_policy_id`. Nếu ai sửa `rate_bps` của policy cũ hoặc update `order_items`, snapshot đơn cũ đổi theo. V13 cần chặn UPDATE `rate_bps` (chỉ cho đóng `effective_to`/`is_active`) và chặn update giá/policy của `order_items`.
-- T6. 1d “khóa tuần tự đổi policy và tạo item”: chốt cơ chế, vd. `SELECT … FOR UPDATE` dòng policy active ở cả hai đường, thay vì để người code chọn.
-- T7. Security: `/api/v1/author/revenue`, `/api/v1/orders/**`, `/api/v1/me/orders` chưa có matcher (mặc định `denyAll`); webhook `permitAll` đúng một đường. Liệt kê matcher trong Kế hoạch thực thi 1b/1c/1e.
-- T8. Người đang có đơn PENDING mở lại trang khóa thấy “Mua” hay “Xem đơn đang chờ”? API public detail có trả đơn chờ của người gọi không? Chốt ở 1b/2a.
-
-**Thừa**
-
-- X1. 1e “webhook đến trước response được lưu chờ, chỉ xác nhận khi đã kiểm link ID”: orderCode số đã lưu trước khi gọi PayOS, nên map theo orderCode + amount + chữ ký là đủ; bỏ cơ chế lưu chờ. Retry: PayOS báo “đơn đã tồn tại” với cùng orderCode → GET lấy `checkoutUrl`; không cần trạng thái “chưa rõ” riêng.
-- X2. 1d là một task riêng với ma trận đồng thời policy × đơn cho thao tác Admin hiếm dùng. Với hạn 28/11, đề nghị gộp vào 1c, giữ một ca đồng thời.
-
-**Ranh giới task**
-
-- R1. 1a chặn bài thường/start với khóa trả phí nhưng chưa có đường mua (1b/1c). Test 1a muốn kiểm “đã mua học được” phải seed order + transaction SUCCEEDED bằng SQL (`validate_course_enrollment` đòi order item PAID) → ghi rõ, hoặc 1a chỉ test nhánh “chưa mua → 403” và để ca đã mua cho 1c.
-- R2. `CourseContractTest.noPriceOrCurrencyFields` quét mọi DTO course → 1a đổi thành danh sách cho phép (Author/Public) và cấm (Moderator); spec đã nói “theo từng đối tượng”, chỉ cần nêu tên DTO.
-
-**Ngân sách:** trong ngân sách; chỉ X2 đáng cắt.
-
-### Đề xuất ngoài spec (không chặn chốt)
-
-- E1. Nút “Tôi đã chuyển khoản” cho người học: đơn có cờ “đã báo chuyển”, Admin lọc được, khỏi dò sao kê cho mọi đơn PENDING. Công: nhỏ (một cột + một endpoint + một nút). Nên làm ngay trong 1b/2b.
-- E2. Người học tự hủy đơn chờ (CANCELLED), để mua lại sau khi giá đổi mà không phải chờ hết hạn. Công: nhỏ. Làm ngay hoặc bỏ.
-- E3. Admin xuất CSV đơn PAID theo tháng để đối chiếu sổ sách. Tách sau.
-
-## Trả lời vòng 1 (Codex)
-
-- **S1 — Chấp nhận.** `rg` trên `ErrorCode` xác nhận các mã cũ không tồn tại; dùng `AUTH_ACCESS_TOKEN_REQUIRED`/`AUTH_INVALID_ACCESS_TOKEN` và thêm `ORDER_RATE_LIMITED`, giới hạn 5 request/phút/user kể cả retry.
-- **S2 — Chấp nhận.** `ArticleRateLimitService.check(UUID, boolean)` và key `article:rate:` dành cho bài viết; tạo lớp riêng theo mẫu, không sửa caller article.
-- **S3 — Một phần.** V1 cho thấy reference duy nhất theo provider, transaction gắn order; reference mới có thể là khoản khác. Đề xuất ghi thêm transaction, một doanh thu/item, một quyền và cảnh báo; chính sách tiền trùng cần người dùng chốt.
-- **S4 — Một phần.** Mục 9 `course-payment.directions.md` chưa xác minh retry PayOS. Trả 200 cho webhook đúng chữ ký có bất thường sau khi lưu bền vững; lỗi lưu trả 500, body/chữ ký sai trả 400; ping hoặc không khớp đơn trả 200. Cần xác minh provider trước vận hành.
-- **S5 — Một phần.** Mục 9 xác nhận 13 chữ số là giới hạn VietQR, không phải khoảng giá nghiệp vụ hay giới hạn PayOS. Đề xuất 10.000–50.000.000 VND, chờ người dùng chốt.
-- **T1 — Một phần.** Đối chiếu luồng MANUAL mục 8–9 với hạn 15 phút cho thấy Admin có thể xác nhận chậm; đề xuất MANUAL 24 giờ và PAYOS 15 phút, chờ người dùng chốt; tiền đến sau vẫn đối chiếu.
-- **T2 — Chấp nhận.** `Course.java` map `publishedVersion` tới `published_version_id`; dùng cột khác NULL, bao gồm ẩn/gỡ.
-- **T3 — Chấp nhận.** V1 có reference nhưng chưa có audit xác nhận/cờ đối chiếu; bổ sung vị trí audit, nguồn PAYOS không có user, endpoint Admin đóng cờ cùng lỗi/test; khoản mới mở lại cờ.
-- **T4 — Một phần.** V1 dùng `ON CONFLICT (order_item_id)` nhưng còn unique active theo user/course; thêm `WHERE NOT EXISTS` dưới khóa user và giữ xử lý conflict item. `CourseEnrollment` ghi chưa có revoke trong code; bỏ yêu cầu mơ hồ về revoke, không mở chức năng revoke.
-- **T5 — Chấp nhận.** V1 xác nhận trigger tính lại ở `BEFORE INSERT OR UPDATE`; chặn đổi tỷ lệ policy đã tạo và các trường snapshot item, test UPDATE trực tiếp, vẫn cho đóng policy.
-- **T6 — Một phần.** V1 có unique policy active; khóa dòng active có thể đổi trong lúc chờ, nên dùng cùng advisory transaction lock cố định ở cả hai luồng rồi đọc policy sau khi khóa; chụp tại thời điểm tạo item.
-- **T7 — Chấp nhận.** `SecurityConfiguration` có `/admin/**` authenticated, các đường order/revenue chưa có và kết thúc `denyAll`; thêm matcher theo method, webhook POST duy nhất permitAll, service kiểm quyền.
-- **T8 — Chấp nhận.** `PublishedCourseDetailResponse.Viewer` hiện chỉ có `enrolled`, `canStart`; public detail không chứa đơn chờ, nút Mua gọi POST và mở đơn còn hạn, không cần API tra cứu thêm.
-- **X1 — Từ chối.** Mục 9 xác nhận webhook có `orderCode` và `paymentLinkId`, nhưng không chứng minh chữ ký + orderCode đủ thay kiểm link ID hoặc mã lỗi tồn tại luôn khôi phục được `checkoutUrl`. Giữ sự kiện đến sớm bền vững, đối chiếu ID qua response/GET và tra cứu trước retry.
-- **X2 — Từ chối.** `PLAN.md` yêu cầu task backend theo thứ tự; 1d có API quản trị, snapshot và đồng thời riêng cần nghiệm thu rõ. Giữ task độc lập, một ca tạo đơn đồng thời đổi policy, không thêm ma trận tích hợp.
-- **R1 — Chấp nhận.** `validate_course_enrollment` V1 đòi item PAID cho PURCHASE; 1a kiểm chưa mua và regression miễn phí, ca mua xong học được chuyển sang 1c.
-- **R2 — Chấp nhận.** `CourseContractTest` hiện quét toàn bộ request/response; liệt kê DTO Author/Public được phép và Moderator bị cấm, giữ kiểm video URL.
-- **E1 — Tách module.** Đã kiểm 1b/1c: Admin có danh sách và xác nhận theo sao kê; cờ tự báo không chứng minh có tiền và thêm API/UI, nên hoãn giữ tiến độ. Chờ người dùng chọn.
-- **E2 — Không cần lúc này.** V1 có CANCELLED, nhưng hủy không ngăn chuyển khoản đến muộn; thêm xử lý cạnh tranh và đối chiếu. Chờ người dùng chọn.
-- **E3 — Tách module.** 1c có danh sách phân trang; CSV là tiện ích sổ sách riêng, không cần để cấp quyền. Chờ người dùng chọn.
-
-**Điểm yếu còn lại của spec:** khoảng giá, hạn MANUAL và chính sách tiền trùng chưa chốt; 1e còn phụ thuộc kiểm chứng PayOS thực tế (giới hạn tiền, link/tra cứu, retry và webhook). Đối chiếu thủ công phụ thuộc sao kê và Admin; chưa có quy trình xử lý tiền thừa trong sản phẩm. Các quy tắc chờ chốt là đề xuất, không phải quyết định đã được duyệt.
-
-## Phản hồi vòng 2 (Claude)
-
-## Trả lời vòng 2 (Codex)
+Không còn câu nào: năm câu (khoảng giá, hạn đơn, thanh toán trùng, E1–E3, hiệu lực tỷ lệ hoa hồng) đã có trả lời ngày 2026-11-14 ở mục “Quyết định của người dùng” và đã đưa vào thân spec. Việc còn lại trước khi bật tiền thật (không chặn chốt spec): cấu hình tài khoản nhận trong `.env`; riêng 1e phải xác minh giới hạn số tiền và quy tắc webhook/retry của PayOS, và có thể cắt.
 
 ## Quyết định của người dùng
 
-2026-11-14 — người dùng giao Claude trả lời các câu hỏi mở; chưa chốt spec, chưa code.
+**Người dùng chốt spec 2026-11-14** (Task 1a–1d, cổng wireframe, 2a–2c; 1e hoãn). Lịch sử phản biện: [`course-payment.review.md`](course-payment.review.md).
 
 1. Giá: 0 (miễn phí) hoặc 10.000–50.000.000 VND.
 2. Hạn đơn: MANUAL 24 giờ, PAYOS 15 phút; hết hạn thì tạo đơn mới, tiền đến sau vẫn được Admin xác nhận.
 3. Thanh toán trùng: ghi từng khoản đúng tiền (kể cả reference mới cùng đơn), một enrollment, doanh thu một lần/item, cờ đối chiếu cho Admin; tiền thừa xử lý ngoài hệ thống, không hoàn tiền.
 4. E1 (nút “Tôi đã chuyển khoản”, Admin lọc theo cờ; cờ không thay xác nhận sao kê): **làm trong module này** (1b + 2b). E2: không làm. E3: tách sau.
 5. Đổi tỷ lệ hoa hồng có hiệu lực ngay khi Admin lưu, không đặt lịch.
-- Vòng 2 phản biện: không chạy; Claude chấp nhận lý do từ chối X1, X2.
+6. **PayOS hoãn (2026-11-14):** không làm Task 1e trong module này; chỉ VietQR + Admin xác nhận. Tự xác nhận qua webhook là module sau.
+7. Vòng 2 phản biện không chạy; Claude chấp nhận lý do từ chối X1, X2. Phần “Tôi đã chuyển khoản” (quyết định 4) do Claude đưa vào thân spec sau vòng 1, chưa qua Codex soát.
