@@ -19,9 +19,10 @@ function uiPluginEnabled() {
   return true
 }
 
-// shortcut: guesses a UI task from words in the resume section; upgrade to a task field if it misfires.
+// The resume line "Giao diện: Có|Không" decides; without it, guess from words (often wrong: history mentions UI).
 function pluginHint(resume) {
-  const ui = /giao diện|wireframe|\bUI\b|app\//i.test(resume)
+  const field = resume.match(/Giao diện:\s*(Có|Không)/i)
+  const ui = field ? /^có$/i.test(field[1]) : /giao diện|wireframe|\bUI\b|app\//i.test(resume)
   const enabled = uiPluginEnabled()
   if (ui && !enabled)
     return `[Plugin] Task tiếp theo có vẻ là giao diện nhưng ${UI_PLUGIN} đang tắt: bật bằng /plugin hoặc settings.local.json rồi mở phiên mới (nếu cần).`
