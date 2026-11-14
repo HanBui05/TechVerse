@@ -20,6 +20,7 @@ Module đang làm: [course-free](course-free.md)
 | Docs + `.claude` restructure | — (làn nhẹ, 2026-11-02) | Chờ người dùng nhận kết quả | Claude | Xong; chờ người dùng nhận. | — |
 | Sidebar + login redirect | — (làn nhẹ, 2026-11-02) | Chờ người dùng nhận kết quả | Claude | Xong; chờ người dùng nhận. | — |
 | Course free | [spec](course-free.md) | Đang thực hiện | Claude | Mọi task đã nhận (2026-11-10), spec đã đồng bộ (2026-11-14); còn rebase/PR, xem log. | [log](course-free.log.md) |
+| Course payment | [spec](course-payment.md) | Chờ người dùng chốt | Claude | Chờ phản biện và người dùng chốt spec. | — |
 | AI docs optimization | — (làn nhẹ, [brief](ai-docs-optimization.brief.md), 2026-11-13) | Đang thực hiện | Claude | Đang làm; chờ người dùng trả lời câu hỏi mục 5 của brief. | — |
 
 Đã xong: Author profile (Backend) — [spec](author-profile.md), [log](author-profile.log.md) · UI foundation v2 (shadcn) — [spec](ui-foundation-v2.md), [log](ui-foundation-v2.log.md) · Article flow (2026-11-04, PR #2) — [spec](article-flow.md), [log](article-flow.log.md) · AI assist (2026-11-06, PR #3) — [spec](ai-assist.md), [log](ai-assist.log.md).
