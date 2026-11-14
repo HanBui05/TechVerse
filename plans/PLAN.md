@@ -35,7 +35,7 @@ Trạng thái hợp lệ: `Đề xuất` → `Đang lập kế hoạch` → `Ch�
 ## Câu hỏi mở
 
 - **Lộ trình các chức năng còn lại (2026-11-13):** chờ người dùng trả lời [`roadmap.questions.md`](roadmap.questions.md); sau đó Claude viết file hướng cho module tới lượt, Codex viết spec.
-- **Thanh toán khóa học:** hướng ở [`course-payment.directions.md`](course-payment.directions.md) (gồm cả hướng cũ 2026-11-06 về đăng ký bán, hoa hồng, không hoàn tiền, video, trợ lý AI của khóa); chờ người dùng chốt mục 7 rồi Codex viết `course-payment.md`.
+- **Thanh toán khóa học:** hướng ở [`course-payment.directions.md`](course-payment.directions.md) (gồm cả hướng cũ 2026-11-06 về đăng ký bán, hoa hồng, không hoàn tiền, video, trợ lý AI của khóa); người dùng đã chọn hướng (2026-11-14, mục 8: VietQR theo đơn + Admin xác nhận, sau đó PayOS; có hoa hồng; video YouTube). Tiếp: Claude tra tài liệu VietQR/PayOS (mục 9) rồi Codex viết `course-payment.md`.
 - **Menu Tác giả khi có tính năng thứ hai (2026-11-04):** đổi mục sidebar “Tác giả” thành nhóm thu gọn (Bài viết của tôi, Khóa học, sau này Doanh thu); không dựng trước.
 - **Thông báo cho tác giả (2026-11-04):** báo khi bài được duyệt/trả về/ẩn/gỡ; cần module notification riêng (xem `roadmap.questions.md` T5).
 - **Chẩn đoán lỗi Cloudinary (2026-11-04):** task backend reliability: log `status + error.message` của provider (không log secret), ánh xạ 401/403 sang `ARTICLE_STORAGE_UNAVAILABLE`. Chờ người dùng quyết có mở task không.
