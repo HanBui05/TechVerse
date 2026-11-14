@@ -59,6 +59,6 @@ User/DB lấy từ biến môi trường trong container (Compose mặc định 
 
 ## Luồng phiên đăng nhập (frontend)
 
-- Access token chỉ ở bộ nhớ (`setAccessToken`); refresh token là cookie HttpOnly. Tải lại trang thì `App` gọi `/api/v1/auth/refresh` để khôi phục, cờ `localStorage['techverse-authenticated']` cho biết có nên thử.
+- Access token ở biến bộ nhớ và `sessionStorage['techverse-access-token']` (`setAccessToken` trong `client.ts`, mất khi đóng tab); refresh token là cookie HttpOnly. Tải lại trang thì `App` gọi `/api/v1/auth/refresh` để khôi phục, cờ `localStorage['techverse-authenticated']` cho biết có nên thử.
 - Khi tự động hóa trình duyệt: đăng nhập qua form `/login`, rồi đổi route bằng `history.pushState` + `popstate` để khỏi tải lại trang.
 - Sau đăng nhập: ADMIN → `/admin`, MODERATOR → `/moderator`, còn lại → `/`.
