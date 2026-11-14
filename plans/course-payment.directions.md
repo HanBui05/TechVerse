@@ -193,7 +193,7 @@ Trên localhost cổng thật không gọi được IPN nếu không có tunnel,
 
 ## 8. Quyết định của người dùng
 
-(chưa có — Opus ghi tại đây kèm ngày sau khi người dùng trả lời)
+- **2026-11-14 (người dùng):** muốn thanh toán được bằng **tiền thật** (nguyên văn “thanh toán bằng tiền mặt được”; đang hỏi lại: tiền thật qua chuyển khoản/QR hay tiền mặt trực tiếp do Admin xác nhận). **Có chia hoa hồng cho nền tảng.** Video khóa trả phí: **dùng YouTube** vì là demo (thay hướng cũ “không dùng YouTube cho khóa trả phí”).
 
 ## 9. Cần xác minh bằng tài liệu chính thức trước khi viết spec
 
