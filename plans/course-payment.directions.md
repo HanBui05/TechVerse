@@ -193,7 +193,11 @@ Trên localhost cổng thật không gọi được IPN nếu không có tunnel,
 
 ## 8. Quyết định của người dùng
 
-- **2026-11-14 (người dùng):** muốn thanh toán được bằng **tiền thật** (nguyên văn “thanh toán bằng tiền mặt được”; đang hỏi lại: tiền thật qua chuyển khoản/QR hay tiền mặt trực tiếp do Admin xác nhận). **Có chia hoa hồng cho nền tảng.** Video khóa trả phí: **dùng YouTube** vì là demo (thay hướng cũ “không dùng YouTube cho khóa trả phí”).
+- **2026-11-14 (người dùng):** muốn thanh toán được bằng **tiền thật, chỉ qua ngân hàng** (chuyển khoản/quét QR; không tiền mặt). Thay hướng “mock + VNPay sandbox” ở mục 3:
+  - **Bước 1 (B1):** tạo đơn có mã riêng → trang thanh toán sinh **VietQR động** cho đúng đơn (số tài khoản của nền tảng, số tiền, nội dung = mã đơn) → Admin đối chiếu sao kê và bấm “Đã nhận tiền” → cấp quyền học (trigger sẵn có).
+  - **Bước 2:** tích hợp **PayOS** để tự xác nhận qua webhook (task sau, giữ nguyên đơn hàng/hoa hồng). Test tự động dùng cổng giả lập, không gọi PayOS thật.
+  - Hoa hồng: người dùng chưa trả lời riêng → theo khuyến nghị: tỷ lệ chung 20% lưu vào đơn, trang doanh thu của tác giả, Admin đổi tỷ lệ; chi trả cho tác giả tách module sau.
+  - Mục 9 (xác minh tài liệu) đổi đối tượng: định dạng VietQR/ảnh QR và API + webhook + chữ ký của PayOS, thay cho VNPay. **Có chia hoa hồng cho nền tảng.** Video khóa trả phí: **dùng YouTube** vì là demo (thay hướng cũ “không dùng YouTube cho khóa trả phí”).
 
 ## 9. Cần xác minh bằng tài liệu chính thức trước khi viết spec
 
