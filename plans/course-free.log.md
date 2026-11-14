@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 
 ## Bắt đầu từ đây (cập nhật 2026-11-14)
 
-- **Task tiếp:** đồng bộ spec một lần cuối module (skill `codex-workflow` mục 3), rồi rebase + PR khi người dùng yêu cầu · Giao diện: Không
+- **Task tiếp:** rebase lên `origin/main` + mở PR khi người dùng yêu cầu (spec đã đồng bộ cuối module 2026-11-14) · Giao diện: Không
 - Đã nhận: Task 1a, 1b (2026-11-07), 1c, cổng wireframe, 2a (2026-11-09), 2b, 2c (2026-11-10); người dùng tự test giao diện học và báo ổn (2026-11-11).
 - Chưa kiểm (còn hiệu lực): vùng chạm 44px bằng cảm ứng thật; Cloudinary thật với scope COURSE/LESSON (chỉ fake storage); Swagger chưa mở; start/completion đồng thời chỉ dựa `ON CONFLICT` (không có ca test song song).
 - Nhánh `feature/course-free` tách từ `feature/ai-assist` (PR #3 đã merge vào `origin/main`); chưa rebase. Khi rebase: `git rebase --onto origin/main feature/ai-assist`.
@@ -12,13 +12,15 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 
 ## Quyết định người dùng chưa có trong spec
 
-- Kỹ thuật cho 1c (đã rà): public GET course là permitAll + JWT tùy chọn (article public hiện đều `authenticated`, mặc định `denyAll` → khai riêng start/completion/`/me/courses`); `Course` chưa có moderator hide/restore/remove; GET lesson ghi `last_lesson_id` cần transaction ghi; start idempotent dựa `uq_active_course_enrollment`.
+- (không có)
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-14 — Đồng bộ spec cuối module
+- Codex: đã đưa quyết định kỹ thuật còn lại của Task 1c vào spec.
 ### 2026-11-14 — Rút gọn “Bắt đầu từ đây”
 - Viết lại theo luật mới ở `CLAUDE.md` (≤ 8 dòng). Chi tiết review từng task đã có ở các mục dưới. Chuyển xuống đây: Task 2a từng ghi chưa kiểm bằng mắt trang Author dark/light × desktop/mobile; mẫu JavaBuilder ở `.playwright-mcp/jb-course.png`, `jb-lesson.png` (gitignore); hướng gốc khóa học nay ở `course-payment.directions.md` mục 10.
 ### 2026-11-11 — Người dùng tự test

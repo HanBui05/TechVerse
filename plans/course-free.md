@@ -161,7 +161,7 @@ AI `ARTICLE` giữ request hiện tại (`topicId/tagIds`) và claim khi create;
 - [ ] Kiểm OpenAPI trên Swagger (chưa kiểm — xem log; mới kiểm annotation).
 - [x] Các lớp trên + `AuthorAiControllerTest`, `AiOutlineServiceTest`, `AiDraftStreamServiceTest`, `AiGeneratedContentValidatorTest`, `ArticleImageCleanupServiceTest` đạt; full backend do CI.
 
-Chi tiết đã nhận: DTO CourseChapterRequest/CourseReorderRequest; storage overload theo scope và ArticleImageService.Target; reorder dịch vị trí tạm +1.000.000; chương không tồn tại trả COURSE_NOT_FOUND; options dùng AuthorArticleService.options, rate limit dùng chung article. List hasUnpublishedChanges còn N+1. SUBMIT pha hai dưới khóa kiểm lại tập target+URL và provider tránh cleanup xóa ảnh giữa hai pha; validate AI dùng @AiTarget.
+Chi tiết đã nhận: DTO `CourseChapterRequest`/`CourseReorderRequest`; storage overload theo scope, bản bốn tham số mặc định ARTICLE và `ArticleImageService.Target`; reorder dịch vị trí tạm +1.000.000; chương không tồn tại trả `COURSE_NOT_FOUND`; options dùng `AuthorArticleService.options`, rate limit dùng chung article. List `hasUnpublishedChanges` còn N+1. SUBMIT pha hai dưới khóa so tập target+URL đã kiểm thay vì fingerprint và kiểm lại provider cho ảnh document đổi để tránh cleanup xóa ảnh giữa hai pha; validate AI dùng `@AiTarget`, giữ `fieldErrors.topicId` cho ARTICLE.
 
 - [ ] Kiểm Cloudinary thật với scope COURSE/LESSON (chưa kiểm — xem log; chỉ dùng fake storage).
 
@@ -201,6 +201,8 @@ Mọi list: `page=0`, `size=20`, size 1–100. Author/Moderator thêm workflow/p
 Public detail có chapterCount, lessonCount, updatedAt = approvedAt version hiện hành, thẻ tác giả và viewer { enrolled, canStart } (owner/manager không thể start); public list không có số chương/bài. Public sort newest/oldest theo published_at lần đầu. Khóa ẩn không hiện trong /me/courses; enrollment/progress giữ nguyên và hiện lại khi restore.
 
 Manager đọc như chưa enroll: chỉ preview, không cập nhật last lesson/progress; /me/courses trả rỗng, start/completion 403. Owner cũng không start/completion; owner/manager mở bài không preview nhận 403 ACCESS_DENIED. Thứ tự kiểm lỗi: course không visible → 404 COURSE_NOT_FOUND; manager → 403 ACCESS_DENIED với thao tác bị chặn; lesson ngoài snapshot → 404 LESSON_NOT_FOUND; chưa enroll → 403 LESSON_PREVIEW_ONLY khi GET hoặc 409 COURSE_ENROLLMENT_REQUIRED khi completion. GET course public permitAll và nhận JWT tùy chọn.
+
+Security khai riêng start/completion/`/me/courses`; GET lesson cập nhật `last_lesson_id` dùng transaction ghi, start idempotent dựa vào `uq_active_course_enrollment`.
 
 So với published version gần nhất, chapter/lesson có `changeStatus`: `NEW` nếu ID chỉ ở working; `ARCHIVED` nếu chỉ ở published/đã archive; `CHANGED` nếu fingerprint, metadata hoặc thứ tự khác; còn lại `UNCHANGED`. Chapter tính cả danh sách/thứ tự lesson. Chưa có version trước thì tất cả NEW; diff là working active ∪ version gần nhất, không hiện bài archive từ version cũ hơn.
 
@@ -242,12 +244,12 @@ Người dùng duyệt khung học riêng không Sidebar app, overview chung khu
 
 ### Phạm vi
 
-- Route `/author/courses`, `/author/courses/new`, `/author/courses/:id/edit`; form metadata, cover, curriculum reorder, lesson editor video + Markdown/import/ảnh/preview/AI, lưu thủ công từng panel, tự lưu khi chuyển mục/idempotency, submit/withdraw/discard/publication/history.
+- Route `/author/courses`, `/author/courses/new`, `/author/courses/:id/edit`; form metadata, cover, curriculum reorder, lesson editor video + Markdown/import/ảnh/preview/AI, lưu thủ công từng panel, tự lưu khi chuyển mục (không hẹn giờ)/idempotency, submit/withdraw/discard/publication/history.
 - Menu Tác giả đổi thành nhóm thu gọn chứa “Bài viết của tôi” và “Khóa học”; không thêm Doanh thu.
 
 ### Quy tắc nghiệp vụ và mã lỗi
 
-Tab “Bản công khai” chỉ có ở bài học; form AI dùng tóm tắt bài điền sẵn vào ô Ý tưởng. Ảnh xem trước tin URL do phiên này tải lên hoặc có sẵn không bị imageIssues đánh dấu, host res.cloudinary.com.
+Tab “Bản công khai” chỉ có ở bài học; form AI không có ô Tóm tắt riêng, dùng tóm tắt bài điền sẵn vào ô Ý tưởng. Ảnh xem trước tin URL do phiên này tải lên hoặc có sẵn không bị imageIssues đánh dấu, host res.cloudinary.com.
 
 Frontend validate đúng Task 1a/1b; server là nguồn cuối. `courseI18n` ánh xạ danh sách đóng toàn bộ `COURSE_*`, `LESSON_*`, `AI_*`, `ACCESS_DENIED`, `VALIDATION_ERROR`, `MALFORMED_REQUEST` trong hai bảng; unknown dùng fallback, không parse message backend.
 
@@ -275,7 +277,7 @@ Frontend validate đúng Task 1a/1b; server là nguồn cuối. `courseI18n` án
 
 ### Quy tắc nghiệp vụ và mã lỗi
 
-Thông tin metadata khóa chỉ hiện bản đề xuất, không có nhãn “Đã sửa”. Danh sách không lọc theo ngày/tác giả; bộ lọc chủ đề/thẻ dùng options reader bài viết, có thể thiếu taxonomy chỉ thuộc khóa học. Mobile xếp cây phía trên và so sánh một cột theo nút Đề xuất/Công khai.
+Thông tin metadata khóa chỉ hiện bản đề xuất, không có nhãn “Đã sửa”. Danh sách không lọc theo ngày/tác giả; bộ lọc chủ đề/thẻ dùng options reader bài viết, có thể thiếu taxonomy chỉ thuộc khóa học. Mobile xếp cây phía trên, không accordion, và so sánh một cột theo nút Đề xuất/Công khai. `ArticleStats.tsx` nhận thêm `list`/`label`, `lastReturnNote` nới kiểu tham số để dùng cho khóa học.
 
 Client dẫn chiếu Task 1c: review token stale bắt buộc tải lại; không retry mutation tự động; không render/đề cập giá, doanh thu, ngân hàng hoặc hoa hồng.
 
@@ -326,7 +328,7 @@ Bộ lọc Guest dùng GET /api/v1/courses/options: anonymous, không tham số,
 - [x] Lesson page test khoảng 5 luồng: search/navigation, collapse, YouTube nocookie, Markdown+TOC, completion toggle/progress và previous/next.
 - [x] Overview/“Khóa học của tôi” test loading/empty/error, progress, CTA “Tiếp tục học”/“Continue learning”, thứ tự access/granted và fallback last lesson còn hiện hành → bài đầu; preview-only không xuất hiện nếu chưa start.
 - [x] App/navigation test Guest public route, authenticated Reader/my courses, return URL; manager account không thấy/không gọi learning API.
-- [ ] Kiểm tĩnh iframe không dùng `youtube.com` hay raw `videoUrl`; Public DTO/component không tham chiếu working content hoặc trường tiền (chưa kiểm — xem log).
+- [x] Kiểm tĩnh iframe không dùng `youtube.com` hay raw `videoUrl`; Public DTO/component không tham chiếu working content hoặc trường tiền (xem log).
 - [x] Test service/i18n/public/overview/my courses/lesson/Markdown/App + `npm run build` đạt; đã kiểm mắt desktop dark và mobile light cho bốn trang.
 - [ ] Kiểm mắt desktop light, mobile dark và vùng chạm 44px bằng cảm ứng thật (chưa kiểm — xem log).
 
