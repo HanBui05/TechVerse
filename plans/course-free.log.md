@@ -2,16 +2,13 @@
 
 Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](course-free.md). Ba mục đầu và “Nhật ký phiên” được hook SessionStart tự nạp sau `/clear`; giữ chúng ngắn.
 
-## Bắt đầu từ đây (cập nhật 2026-11-10)
+## Bắt đầu từ đây (cập nhật 2026-11-14)
 
-- **Task 2c đã nhận (2026-11-10).** Hết Task 2a–2c; còn **đồng bộ spec một lần cuối module** (skill `codex-workflow` mục 3) và rebase lên `origin/main` + mở PR khi người dùng yêu cầu (ai-assist đã merge). Codex vòng 1 (3 góp ý) + vòng 2 (1 medium) đã sửa. Endpoint `GET /api/v1/courses/options` đã thêm (backend test đạt). Chưa kiểm: vùng chạm 44px bằng cảm ứng thật (Playwright MCP không có CDP touch), light/dark chỉ đo desktop dark + mobile light; backend dev đã tắt (do mình bật). DB dev: `lan.author` đã start khóa mẫu + hoàn thành bài 1.
-- **Task 2b đã nhận (2026-11-10)** (Codex vòng 1 không có lỗi phải sửa). Đã kiểm bằng mắt dark/light × desktop/mobile cảm ứng sau khi nhận (nhật ký “kiểm bằng mắt”). DB dev còn khóa mẫu chờ duyệt (`086e877a-…`, tác giả `bao.author`). **Tiếp: Task 2c.**
-- **Task 2a đã nhận (2026-11-09)** (review vòng 1 có 4 phát hiện đã sửa; vòng 2 có 2 phát hiện high, người dùng yêu cầu sửa cả hai, không chạy lại Codex). Chưa kiểm bằng mắt dark/light × desktop/mobile; `RouterProvider` chưa chạy trên trình duyệt thật.
-- **Task 1c đã nhận (2026-11-09)** (review vòng 1 có 2 phát hiện đã sửa, vòng 2 `approve`). Task 1a, 1b đã nhận (2026-11-07). **Cổng wireframe đã nhận (2026-11-09)** — [`course-free.wireframe.md`](course-free.wireframe.md). **Tiếp: Task 2a** (task giao diện: giữ plugin `ui-ux-pro-max` bật).
-- Chưa kiểm: Cloudinary thật với scope COURSE/LESSON (chỉ fake storage); OpenAPI chỉ qua `@Operation`/`@Schema`, chưa mở Swagger; start/completion đồng thời chỉ dựa `ON CONFLICT` (không có ca test song song).
-- **Spec đã chốt 2026-11-07** sau vòng 1 (không vòng 2); lịch sử phản biện ở `course-free.review.md`.
-- Hướng gốc của người dùng: mục “Miền khóa học” trong “Câu hỏi mở” của `PLAN.md`; mẫu giao diện JavaBuilder, ảnh `.playwright-mcp/jb-course.png`, `.playwright-mcp/jb-lesson.png` (gitignore).
-- Nhánh `feature/course-free` (tách từ `feature/ai-assist`; PR #3 ai-assist đã merge, local `main` đã kéo về `8f25296`) — chưa rebase, chờ người dùng yêu cầu rebase + PR.
+- **Task tiếp:** đồng bộ spec một lần cuối module (skill `codex-workflow` mục 3), rồi rebase + PR khi người dùng yêu cầu · Giao diện: Không
+- Đã nhận: Task 1a, 1b (2026-11-07), 1c, cổng wireframe, 2a (2026-11-09), 2b, 2c (2026-11-10); người dùng tự test giao diện học và báo ổn (2026-11-11).
+- Chưa kiểm (còn hiệu lực): vùng chạm 44px bằng cảm ứng thật; Cloudinary thật với scope COURSE/LESSON (chỉ fake storage); Swagger chưa mở; start/completion đồng thời chỉ dựa `ON CONFLICT` (không có ca test song song).
+- Nhánh `feature/course-free` tách từ `feature/ai-assist` (PR #3 đã merge vào `origin/main`); chưa rebase. Khi rebase: `git rebase --onto origin/main feature/ai-assist`.
+- DB dev: khóa mẫu chờ duyệt `086e877a-…` (tác giả `bao.author`); `lan.author` đã start khóa mẫu + hoàn thành bài 1. Lịch sử phản biện spec: `course-free.review.md`.
 
 ## Quyết định người dùng chưa có trong spec
 
@@ -22,6 +19,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-free.md`](
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-14 — Rút gọn “Bắt đầu từ đây”
+- Viết lại theo luật mới ở `CLAUDE.md` (≤ 8 dòng). Chi tiết review từng task đã có ở các mục dưới. Chuyển xuống đây: Task 2a từng ghi chưa kiểm bằng mắt trang Author dark/light × desktop/mobile; mẫu JavaBuilder ở `.playwright-mcp/jb-course.png`, `jb-lesson.png` (gitignore); hướng gốc khóa học nay ở `course-payment.directions.md` mục 10.
 ### 2026-11-11 — Người dùng tự test
 - Người dùng tự kiểm giao diện khóa học public/học trên máy và báo ổn (2026-11-11); phần “chưa kiểm” cảm ứng 44px vẫn chưa có bằng chứng riêng.
 ### 2026-11-10 — Task 2c: bằng chứng kiểm tĩnh
