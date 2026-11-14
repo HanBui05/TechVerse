@@ -1,6 +1,6 @@
 # <Tên module>
 
-Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Codex viết; Claude chỉ ghi vào mục “Phản hồi”.
+Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết; Codex chỉ ghi vào mục “Phản hồi” (D-030, 2026-11-14; tiêu đề “Phản hồi (Claude)/Trả lời (Codex)” bên dưới đổi vai tương ứng).
 
 **Mục tiêu:** <một hai câu: kết quả cuối cùng>
 **Làn:** Nhẹ / Đầy đủ

@@ -13,6 +13,8 @@ Trước mọi task, đọc [`PLAN.md`](plans/PLAN.md) (dòng “Module đang l�
 
 ## Planner
 
+**Đổi vai từ 2026-11-14 (người dùng chốt, D-030):** với module mới, **Claude viết spec, Codex phản biện**. Các luật trong mục này (mẫu, chất lượng spec, ngân sách kiểm chứng, cách trả lời phản biện) áp cho người viết spec là Claude. Codex ghi phản biện vào “Phản hồi vòng 1/2” của file spec: Đúng/Sai/Thiếu/Thừa kèm bằng chứng từ code thật, ranh giới task, chi tiết để ngỏ, kiểm chứng vượt ngân sách, và tối đa ~3 “Đề xuất ngoài spec”; không sửa thân spec. Tối đa 2 vòng rồi người dùng chốt. Các dòng dưới ghi “Codex lập spec/Claude phản biện” đọc theo vai mới; spec `course-payment` (Codex viết trước ngày này) giữ nguyên.
+
 - Codex lập spec trước, theo mẫu [`plans/_template.md`](plans/_template.md). Nội dung làm việc nằm ở `plans/<module>.md`; sau khi chốt, lịch sử phản biện được chuyển sang `plans/<module>.review.md`. Không tạo plan nơi khác.
 - Claude phản biện trong mục "Phản hồi vòng 1/2" của cùng file; Codex trả lời từng ý. Tối đa 2 vòng, sau đó người dùng chốt.
 - Mục "Đề xuất ngoài spec" của Claude: trả lời từng ý (nên làm ngay / tách module / không cần, kèm lý do) nhưng **không tự đưa vào thân spec**; chỉ đưa vào khi người dùng chọn. Ý không chọn ghi vào "Câu hỏi mở" của `plans/PLAN.md`.
