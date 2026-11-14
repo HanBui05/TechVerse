@@ -284,6 +284,10 @@ Không phải quyết định. Lấy khuyến nghị in đậm, trừ các đi�
 - **F11. Admin/Moderator có đăng hỏi và trả lời trong diễn đàn không?** **A. Có (diễn đàn là cộng đồng, khác với việc học khóa)** / B. Không, chỉ kiểm duyệt.
 - **T7. Trợ lý AI của khóa (“Hỏi AI về bài này”, ghi ở `PLAN.md`).** A. Làm bước 1 (ngữ cảnh bài đang xem) sau Ôn phỏng vấn / **B. Hoãn, chỉ làm nếu còn thời gian (cùng mức với Nhắn tin)** / C. Bỏ.
 
+- **P13. Trên localhost, cho phép trang quay về từ cổng thanh toán xác nhận đơn (vẫn kiểm chữ ký)?** **A. Có, ghi là giới hạn của đồ án** (cổng thật không gọi được IPN về máy dev nếu không có tunnel) / B. Không, demo phải dựng tunnel. (Bổ sung 2026-11-14 từ `course-payment.directions.md` mục 7 câu 8.)
+
+Opus rà lại 2026-11-14: giữ nguyên toàn bộ đề xuất trên; người dùng chỉ cần trả T1, xác nhận ba điểm đảo quyết định cũ (P2/P3/P6) và gật đầu phần còn lại.
+
 ## Câu trả lời của người dùng
 
 (chưa có)
