@@ -291,4 +291,5 @@ Opus rà lại 2026-11-14: giữ nguyên toàn bộ đề xuất trên; người
 ## Câu trả lời của người dùng
 
 - **2026-11-14 — Thanh toán:** P1 → tiền thật, chỉ qua ngân hàng: VietQR theo từng đơn + Admin xác nhận tay trước, sau đó tích hợp PayOS tự xác nhận (chi tiết `course-payment.directions.md` mục 8). Có hoa hồng cho nền tảng (P8 20%; P2 theo khuyến nghị: thêm doanh thu tác giả + Admin đổi tỷ lệ). P6 A: dùng YouTube vì là demo.
-- Chưa trả lời: T1 (hạn chót / có phải đồ án), P3 (có cần bước đăng ký bán), các câu B, I, F, M — chưa trả lời thì lấy đề xuất ở mục trên khi tới lượt module đó.
+- **2026-11-14 — T1:** hạn **2 tuần (đến 2026-11-28)**; bắt đầu làm ngay. Mọi câu còn lại lấy theo “Đề xuất trả lời của Claude” ở trên (người dùng không sửa câu nào; P13 bỏ vì không dùng VNPay; P9 thêm nút “Đã nhận tiền” cho Admin theo cách xác nhận tay).
+- **2026-11-14 — Yêu cầu chất lượng (mọi module, nhất là thanh toán):** mỗi chức năng phải xử lý đủ ngoại lệ và điều kiện nghiệp vụ của nó (dữ liệu sai, quyền, trạng thái không hợp lệ, trùng/đồng thời, lỗi dịch vụ ngoài), mỗi trường hợp có mã lỗi + câu hiển thị và có test. Ghi thành luật ở `AGENTS.md` (Planner) và `CLAUDE.md`.
