@@ -391,4 +391,11 @@ Sau Backend đã chọn và trước giao diện, tạo `plans/course-payment.wi
 
 ## Quyết định của người dùng
 
-Chờ người dùng chốt sau phản biện.
+2026-11-14 — người dùng giao Claude trả lời các câu hỏi mở; chưa chốt spec, chưa code.
+
+1. Giá: 0 (miễn phí) hoặc 10.000–50.000.000 VND.
+2. Hạn đơn: MANUAL 24 giờ, PAYOS 15 phút; hết hạn thì tạo đơn mới, tiền đến sau vẫn được Admin xác nhận.
+3. Thanh toán trùng: ghi từng khoản đúng tiền (kể cả reference mới cùng đơn), một enrollment, doanh thu một lần/item, cờ đối chiếu cho Admin; tiền thừa xử lý ngoài hệ thống, không hoàn tiền.
+4. E1 (nút “Tôi đã chuyển khoản”, Admin lọc theo cờ; cờ không thay xác nhận sao kê): **làm trong module này** (1b + 2b). E2: không làm. E3: tách sau.
+5. Đổi tỷ lệ hoa hồng có hiệu lực ngay khi Admin lưu, không đặt lịch.
+- Vòng 2 phản biện: không chạy; Claude chấp nhận lý do từ chối X1, X2.
