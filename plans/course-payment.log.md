@@ -2,7 +2,7 @@
 
 ## Bắt đầu từ đây (cập nhật 2026-11-15)
 
-- **Task tiếp:** Cổng wireframe — tạo `plans/course-payment.wireframe.md`, người dùng duyệt trước Task 2a · Giao diện: Có
+- **Task tiếp:** Task 2a — Giá và quyền học (wireframe đã duyệt 2026-11-15; câu 3: ô số tiền xác nhận điền sẵn theo đơn, áp dụng ở 2c) · Giao diện: Có
 - Spec chốt 2026-11-14: Task 1a → 1b → 1c → 1d → cổng wireframe → 2a → 2b → 2c; **Task 1e (PayOS) hoãn**. Rủi ro cao: code bằng Opus, review vòng 1 `adversarial-review`.
 - Task 1a, 1b, 1c, 1d đã nhận (2026-11-15), đã commit cục bộ trên `feature/course-payment` (1a: V13, giá, quyền xem; 1b: V14, đơn hàng, VietQR, báo chuyển khoản; 1c: V15, Admin xác nhận/đối chiếu, doanh thu tác giả; 1d: V16, chính sách hoa hồng).
 - Bẫy cho 1b–1d: `TRUNCATE users CASCADE` trong test xóa luôn `commission_policies`; test cần policy phải tự `INSERT ... (rate_bps) VALUES (2000)`.
@@ -18,6 +18,9 @@
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-15 — Cổng wireframe (đã duyệt)
+- Tạo `plans/course-payment.wireframe.md` từ DTO thật 1a–1d: giá/CTA Mua/bài khóa, trang đơn + VietQR + “Tôi đã chuyển khoản”, danh sách đơn, giá trong editor Author, doanh thu, Admin đơn/xác nhận/đối chiếu/hoa hồng; desktop + mobile + mọi trạng thái; không PayOS.
+- Chỉ kiểm tĩnh (tài liệu). Chưa kiểm: `viewer.canStart` với khóa trả phí chưa mua (xác minh ở đầu 2a); API không có lịch sử policy nên wireframe không vẽ.
 ### 2026-11-15 — Task 1d (chính sách hoa hồng) — đã nhận (2026-11-15)
 - File: V16 (trigger chặn sửa `rate_bps`/`effective_from`, chỉ cho đóng policy một lần; tính hoa hồng item chỉ khi INSERT; chặn sửa giá/policy/tỷ lệ/số tiền/`order_id`/`course_id` của item); `OrderRepository` (`COMMISSION_LOCK`, `lockCommission`, đọc/đóng/tạo policy; `activeCommissionPolicyId` dùng `clock_timestamp()`); `OrderService.commissionPolicy/changeCommission` + khóa trong `create`; `GET/PUT /api/v1/admin/commission-policy` trong `OrderController`; `CommissionPolicyResponse`; mã `COMMISSION_RATE_INVALID`.
 - Test: `PaymentConfirmationIntegrationTest` (23, +8 ca hoa hồng), `OrderIntegrationTest` (13), `OrderServiceTest` (3), `CoursePaymentMigrationTest`, `FreeCourseMigrationTest`, `ArticlePublicationMigrationTest`, `AuthorCourseIntegrationTest` (15), `CourseLearningIntegrationTest` (6): 78 test, 0 lỗi. Lần đỏ: 9 ca (chưa có endpoint/trigger).
