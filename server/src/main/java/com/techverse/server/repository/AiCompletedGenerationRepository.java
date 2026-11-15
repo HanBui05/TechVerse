@@ -64,6 +64,20 @@ public class AiCompletedGenerationRepository {
         return sha256(JSON.writeValueAsString(canonical));
     }
 
+    /**
+     * Lesson drafts bind to their course instead of a taxonomy (which may change in between), so a
+     * receipt never matches an article, another course or another target type.
+     */
+    public static String lessonFingerprint(UUID courseId, String title, String summary, String content) {
+        var canonical = new LinkedHashMap<String, Object>();
+        canonical.put("targetType", "LESSON");
+        canonical.put("courseId", courseId.toString());
+        canonical.put("title", title);
+        canonical.put("summary", summary == null ? "" : summary);
+        canonical.put("content", content == null ? "" : content);
+        return sha256(JSON.writeValueAsString(canonical));
+    }
+
     public static String sha256(String text) {
         try {
             return HexFormat.of()
@@ -93,13 +107,18 @@ public class AiCompletedGenerationRepository {
     /** Atomically verifies the completed receipt and binds it to one article idempotency key. */
     public void claim(
             UUID author, UUID generationId, String fingerprint, UUID idempotencyKey) {
+        claim(author, generationId, fingerprint, idempotencyKey.toString());
+    }
+
+    /** Lessons claim {@code LESSON_CREATE:<key>} on create and {@code LESSON_UPDATE:<lessonId>} on PATCH. */
+    public void claim(UUID author, UUID generationId, String fingerprint, String claimKey) {
         try {
             Long result =
                     redis.execute(
                             CLAIM,
                             List.of(key(author, generationId)),
                             fingerprint,
-                            idempotencyKey.toString());
+                            claimKey);
             if (result == null) throw new CustomException(ErrorCode.AI_STORAGE_UNAVAILABLE);
             if (result != 1L) throw new CustomException(ErrorCode.AI_GENERATION_INVALID);
         } catch (DataAccessException e) {

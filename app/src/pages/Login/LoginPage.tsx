@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import type { Translation } from '../../data/i18n'
+import { resolveReturnTo } from '../../services/returnTo'
 import { GoogleAuthButton } from '../../components/GoogleAuthButton'
 import { alertFor, AUTH_ALERT_ID, AuthAlertText, AuthDivider, AuthField, AuthInput, AuthIntro, authLinkClass, AuthSubmit, AuthSwitch, fieldState, PasswordInput, type AuthAlert } from '../../components/auth/AuthLayout'
 
@@ -12,6 +13,7 @@ export function LoginPage({ t, onLogin }: { t: Translation; onLogin: (email: str
   const [alert, setAlert] = useState<AuthAlert>('')
   const [invalid, setInvalid] = useState<string[]>([])
   const navigate = useNavigate()
+  const returnTo = (useLocation().state as { returnTo?: unknown } | null)?.returnTo
 
   // Validate locally, then submit and route by the authenticated user's role.
   const submit = async () => {
@@ -21,7 +23,7 @@ export function LoginPage({ t, onLogin }: { t: Translation; onLogin: (email: str
     if (wrong.length) { setAlert('info'); return }
     setLoading(true)
     setAlert('')
-    try { navigate(await onLogin(email, password)) }
+    try { const home = await onLogin(email, password); navigate(resolveReturnTo(home, returnTo)) }
     catch (cause) { setAlert(alertFor(cause)) }
     finally { setLoading(false) }
   }
@@ -40,7 +42,7 @@ export function LoginPage({ t, onLogin }: { t: Translation; onLogin: (email: str
       <AuthSubmit type="submit" disabled={loading}>{loading ? '...' : t.login}</AuthSubmit>
     </form>
     <AuthDivider label={t.or} />
-    <GoogleAuthButton />
+    <GoogleAuthButton returnTo={returnTo} />
     <AuthSwitch text={t.noAccount} to="/register" label={t.registerNow} />
   </>
 }

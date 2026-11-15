@@ -321,7 +321,6 @@ public class Article extends BaseEntity {
             String coverImageUrl,
             UUID topicId,
             Collection<UUID> tagIds) {
-        var out = new ByteArrayOutputStream();
         var fields = new ArrayList<String>();
         fields.addAll(
                 Arrays.asList(
@@ -331,6 +330,12 @@ public class Article extends BaseEntity {
                         coverImageUrl,
                         topicId == null ? null : topicId.toString()));
         tagIds.stream().map(UUID::toString).sorted().forEach(fields::add);
+        return digest(fields);
+    }
+
+    /** Shared with {@link Course}: length-prefixed SHA-256 over the given fields. */
+    static String digest(List<String> fields) {
+        var out = new ByteArrayOutputStream();
         for (String field : fields) {
             byte[] bytes = field == null ? new byte[0] : field.getBytes(StandardCharsets.UTF_8);
             out.writeBytes(ByteBuffer.allocate(4).putInt(field == null ? -1 : bytes.length).array());

@@ -75,6 +75,7 @@ public class AiDraftStreamService {
     private final PlatformTransactionManager transactionManager;
     private final Clock clock;
     private final Executor executor;
+    private final LessonAiContextService lessons;
 
     public AiDraftStreamService(
             ObjectProvider<ChatModel> chatModels,
@@ -90,7 +91,9 @@ public class AiDraftStreamService {
             AiAssistProperties properties,
             PlatformTransactionManager transactionManager,
             Clock clock,
-            @Qualifier("aiSseTaskExecutor") Executor executor) {
+            @Qualifier("aiSseTaskExecutor") Executor executor,
+            LessonAiContextService lessons) {
+        this.lessons = lessons;
         this.chatModels = chatModels;
         this.access = access;
         this.topics = topics;
@@ -114,10 +117,14 @@ public class AiDraftStreamService {
                         .execute(
                                 s -> {
                                     access.lockWriter(actor);
+                                    if (request.isLesson()) {
+                                        var ctx = lessons.resolve(actor, request.getCourseId());
+                                        return new DraftInput(request, ctx.topic(), ctx.tags(), ctx.courseTitle());
+                                    }
                                     var selection =
                                             AiOutlineService.select(
                                                     topics, tags, request.getTopicId(), request.getTagIds());
-                                    return new DraftInput(request, selection.topic(), selection.tags());
+                                    return new DraftInput(request, selection.topic(), selection.tags(), null);
                                 });
         ChatModel model = chatModels.getIfAvailable();
         if (model == null) throw new CustomException(ErrorCode.AI_CONFIGURATION_INVALID);
@@ -231,8 +238,11 @@ public class AiDraftStreamService {
                 receipts.save(
                         g.actor(),
                         g.id(),
-                        AiCompletedGenerationRepository.fingerprint(
-                                r.getTitle(), r.getSummary(), content, r.getTopicId(), r.getTagIds()));
+                        r.isLesson()
+                                ? AiCompletedGenerationRepository.lessonFingerprint(
+                                        r.getCourseId(), r.getTitle(), r.getSummary(), content)
+                                : AiCompletedGenerationRepository.fingerprint(
+                                        r.getTitle(), r.getSummary(), content, r.getTopicId(), r.getTagIds()));
             } catch (CustomException e) {
                 fail(e.getErrorCode());
                 return;

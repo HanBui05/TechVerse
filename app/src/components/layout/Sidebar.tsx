@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { ArrowRight, ChevronDown, Heart, LogOut, Settings, UserRound, UserRoundPlus, X } from 'lucide-react'
+import { ArrowRight, ChevronDown, FileText, GraduationCap, Heart, PlayCircle, LogOut, Settings, UserRound, UserRoundPlus, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { navItems, settingsItems } from '../../data/navigation'
 import type { Language } from '../../types/preferences'
@@ -45,18 +45,18 @@ export function SidebarFrame({ mobileTitle, toggleLabel, closeLabel, footer, chi
 
 type SettingsLink = { path: string; icon: LucideIcon; tone: string; label: string }
 // Collapsed by default; opens whenever the current page is one of its links so the active link stays visible.
-export function SettingsMenu({ label, links, className }: { label: string; links: SettingsLink[]; className?: string }) {
+export function SettingsMenu({ label, links, className, icon: Icon = Settings, tone = 'amber', prefix }: { label: string; links: SettingsLink[]; className?: string; icon?: LucideIcon; tone?: string; prefix?: string }) {
   const { pathname } = useLocation()
   const { iconOnly, close } = useSidebarNav()
   const { setOpen } = useSidebar()
-  const inSettings = links.some(link => link.path === pathname)
+  const inSettings = links.some(link => prefix ? pathname.startsWith(prefix) : link.path === pathname)
   const [open, setSettingsOpen] = useState(inSettings)
   useEffect(() => { if (inSettings) setSettingsOpen(true) }, [inSettings])
   return <SidebarGroup className={className}>
     <SidebarMenu>
       <SidebarMenuItem>
         <SidebarMenuButton tooltip={label} aria-expanded={open} onClick={() => { if (iconOnly) { setOpen(true); setSettingsOpen(true) } else setSettingsOpen(!open) }}>
-          <Settings className={toneText.amber} data-tone="amber" /><span>{label}</span><ChevronDown className={`ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
+          <Icon className={toneText[tone]} data-tone={tone} /><span>{label}</span><ChevronDown className={`ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
         </SidebarMenuButton>
         {open && !iconOnly && <SidebarMenuSub className="animate-in fade-in slide-in-from-top-1">
           {links.map(({ path, icon: Icon, tone, label }) => <SidebarMenuSubItem key={path}><SidebarMenuSubButton asChild className={activeLink}><NavLink to={path} onClick={close}><Icon className={toneText[tone]} data-tone={tone} /><span>{label}</span></NavLink></SidebarMenuSubButton></SidebarMenuSubItem>)}
@@ -81,6 +81,10 @@ export function Sidebar({ language, t, authenticated, roles, profile, onLogout }
     ...(authenticated ? [{ path: '/profile', icon: UserRound, tone: 'blue', label: language === 'vi' ? 'Thông tin cá nhân' : 'Personal information' }] : []),
     ...settingsItems.map(({ path, icon, key, tone }) => ({ path, icon, tone, label: t[key as 'appearance' | 'language'] })),
   ]
+  const authorLinks = [
+    { path: '/author/blogs', icon: FileText, tone: 'green', label: language === 'vi' ? 'Bài viết của tôi' : 'My articles' },
+    { path: '/author/courses', icon: GraduationCap, tone: 'blue', label: language === 'vi' ? 'Khóa học' : 'Courses' },
+  ]
   const footer = authenticated
     ? <SidebarAccount profile={profile} onLogout={onLogout} logoutLabel="Log out" />
     : <SidebarMenu>
@@ -92,7 +96,7 @@ export function Sidebar({ language, t, authenticated, roles, profile, onLogout }
       <SidebarGroupLabel className="uppercase tracking-[.05em]">{t.mainMenu}</SidebarGroupLabel>
       <SidebarMenu>
         {navItems.map(({ path, icon: Icon, label, tone }) => <SidebarMenuItem key={path}><SidebarMenuButton asChild tooltip={label[language]} className={activeLink}><NavLink to={path} end={path === '/'} onClick={close}><Icon className={toneText[tone]} data-tone={tone} /><span>{label[language]}</span></NavLink></SidebarMenuButton></SidebarMenuItem>)}
-        {authenticated && <SidebarMenuItem><SidebarMenuButton asChild tooltip={language === 'vi' ? 'Tác giả' : 'Author'} className={activeLink}><NavLink to={isAuthor ? '/author/blogs' : '/author/apply'} onClick={close}><UserRound className={toneText.violet} data-tone="violet" /><span>{language === 'vi' ? 'Tác giả' : 'Author'}</span></NavLink></SidebarMenuButton></SidebarMenuItem>}
+        {authenticated && !isAuthor && <SidebarMenuItem><SidebarMenuButton asChild tooltip={language === 'vi' ? 'Tác giả' : 'Author'} className={activeLink}><NavLink to="/author/apply" onClick={close}><UserRound className={toneText.violet} data-tone="violet" /><span>{language === 'vi' ? 'Tác giả' : 'Author'}</span></NavLink></SidebarMenuButton></SidebarMenuItem>}
       </SidebarMenu>
     </SidebarGroup>
     {/* Fixed group (no collapse, no overview); waits for loaded roles so a management account never sees it, even during session restore. */}
@@ -100,8 +104,11 @@ export function Sidebar({ language, t, authenticated, roles, profile, onLogout }
       <SidebarGroupLabel className="uppercase tracking-[.05em]">{language === 'vi' ? 'Góc của tôi' : 'My corner'}</SidebarGroupLabel>
       <SidebarMenu>
         <SidebarMenuItem><SidebarMenuButton asChild tooltip={language === 'vi' ? 'Bài đã lưu' : 'Saved articles'} className={activeLink}><NavLink to="/me/saved-articles" onClick={close}><Heart className={toneText.rose} data-tone="rose" /><span>{language === 'vi' ? 'Bài đã lưu' : 'Saved articles'}</span></NavLink></SidebarMenuButton></SidebarMenuItem>
+        <SidebarMenuItem><SidebarMenuButton asChild tooltip={language === 'vi' ? 'Khóa học của tôi' : 'My courses'} className={activeLink}><NavLink to="/me/courses" onClick={close}><PlayCircle className={toneText.amber} data-tone="amber" /><span>{language === 'vi' ? 'Khóa học của tôi' : 'My courses'}</span></NavLink></SidebarMenuButton></SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>}
+    {/* Collapsed group for Authors only; opens itself on any /author/* route so the active link stays visible. */}
+    {authenticated && isAuthor && <SettingsMenu label={language === 'vi' ? 'Tác giả' : 'Author'} icon={UserRound} tone="violet" prefix="/author/" links={authorLinks} />}
     {authenticated && <SidebarSeparator />}
     <SettingsMenu label={t.settings} links={subLinks} />
   </SidebarFrame>

@@ -95,7 +95,7 @@ export const HISTORY_TONE: Record<HistoryAction, string> = {
   RESTORE: 'bg-tone-amber-fg', AUTHOR_HIDE: 'bg-tone-slate-fg', AUTHOR_UNHIDE: 'bg-tone-slate-fg',
 }
 
-export function ArticleHistorySheet({ target, language, onClose, fetchPage = authorArticles.history }: { target: Target | null; language: Language; onClose: () => void; fetchPage?: (id: string, page: number) => Promise<Page<HistoryEntry>> }) {
+export function ArticleHistorySheet({ target, language, onClose, fetchPage = authorArticles.history, title }: { target: Target | null; language: Language; onClose: () => void; fetchPage?: (id: string, page: number) => Promise<Page<HistoryEntry>>; title?: string }) {
   const t = articleText(language)
   const [page, setPage] = useState<Page<HistoryEntry> | null>(null)
   const [entries, setEntries] = useState<HistoryEntry[]>([])
@@ -112,8 +112,8 @@ export function ArticleHistorySheet({ target, language, onClose, fetchPage = aut
   useEffect(() => { setEntries([]); setPage(null); if (target) void load(target.id, 0) }, [target, load])
   return <Sheet open={target !== null} onOpenChange={open => { if (!open) onClose() }}>
     <SheetContent closeLabel={t('close')} className="w-full gap-0 sm:max-w-md">
-      <SheetHeader className="border-b border-border p-6 pr-14"><SheetTitle>{t('historyTitle')}</SheetTitle><p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{target?.title}</p></SheetHeader>
-      <div role="region" aria-label={t('historyTitle')} tabIndex={0} className="flex-1 overflow-y-auto overscroll-contain p-6 outline-none [scrollbar-width:thin] focus-visible:ring-2 focus-visible:ring-ring">
+      <SheetHeader className="border-b border-border p-6 pr-14"><SheetTitle>{title ?? t('historyTitle')}</SheetTitle><p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{target?.title}</p></SheetHeader>
+      <div role="region" aria-label={title ?? t('historyTitle')} tabIndex={0} className="flex-1 overflow-y-auto overscroll-contain p-6 outline-none [scrollbar-width:thin] focus-visible:ring-2 focus-visible:ring-ring">
         {error && <div role="alert" className="flex flex-col items-start gap-2 text-sm text-danger">{error}<Button size="sm" variant="outline" onClick={() => target && void load(target.id, 0)}><RefreshCw />{t('retry')}</Button></div>}
         {loading && !entries.length && <div aria-busy="true" className="flex flex-col gap-4">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>}
         {!loading && !error && page && !entries.length && <p className="text-sm text-muted-foreground">{t('historyEmpty')}</p>}

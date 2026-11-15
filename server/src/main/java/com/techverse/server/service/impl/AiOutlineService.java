@@ -64,6 +64,7 @@ public class AiOutlineService implements AuthorAiService {
     private final AiAssistProperties properties;
     private final PlatformTransactionManager transactionManager;
     private final Clock clock;
+    private final LessonAiContextService lessons;
     private final BeanOutputConverter<AiOutlineModelOutput> converter =
             new BeanOutputConverter<>(AiOutlineModelOutput.class);
 
@@ -78,7 +79,7 @@ public class AiOutlineService implements AuthorAiService {
         try {
             var output = generate(model, in, started.plus(properties.outlineTimeout()));
             log.info("AI outline actor={} outcome=OK ms={}", actor, elapsedMs(started));
-            return new Outline(response(output, request), reservation.quota());
+            return new Outline(response(output, in), reservation.quota());
         } catch (RuntimeException e) {
             Quota refunded = limits.refund(reservation);
             ErrorCode code = providerErrors.map(e).getErrorCode();
@@ -99,6 +100,11 @@ public class AiOutlineService implements AuthorAiService {
 
     private OutlineInput load(UUID actor, AiOutlineRequest r) {
         access.lockWriter(actor);
+        if (r.isLesson()) {
+            // A lesson keeps its course's taxonomy, so the outline suggests no tags.
+            var ctx = lessons.resolve(actor, r.getCourseId());
+            return new OutlineInput(r, ctx.topic(), ctx.tags(), List.of(), ctx.courseTitle());
+        }
         var selection = select(topics, tags, r.getTopicId(), r.getTagIds());
         var active =
                 tags.findAll(
@@ -106,7 +112,7 @@ public class AiOutlineService implements AuthorAiService {
                                 PageRequest.of(0, MAX_PROMPT_TAGS, Sort.by("name")))
                         .map(t -> new Ref(t.getId(), t.getName()))
                         .toList();
-        return new OutlineInput(r, selection.topic(), selection.tags(), active);
+        return new OutlineInput(r, selection.topic(), selection.tags(), active, null);
     }
 
     record Selection(Ref topic, List<Ref> tags) {}
@@ -185,17 +191,17 @@ public class AiOutlineService implements AuthorAiService {
                 validator.validateOutline(
                         output,
                         in.topic().id(),
-                        in.request().getTagIds(),
+                        in.selectedTags().stream().map(Ref::id).toList(),
                         in.activeTags().stream().map(Ref::id).collect(Collectors.toSet())));
         return errors.isEmpty() ? output : null;
     }
 
-    private static AiOutlineResponse response(AiOutlineModelOutput o, AiOutlineRequest r) {
+    private static AiOutlineResponse response(AiOutlineModelOutput o, OutlineInput in) {
         return new AiOutlineResponse(
                 o.title().strip(),
                 o.summary().strip(),
-                r.getTopicId(),
-                List.copyOf(r.getTagIds()),
+                in.topic().id(),
+                in.selectedTags().stream().map(Ref::id).toList(),
                 List.copyOf(o.suggestedTagIds()),
                 o.sections().stream()
                         .map(

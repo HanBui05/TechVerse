@@ -1,6 +1,6 @@
 # Vai trò Codex: Planner và Reviewer
 
-Trước mọi task, đọc [`PLAN.md`](plans/PLAN.md) (dòng “Module đang làm” + bảng), `plans/<module>.md`, **phần đầu của `plans/<module>.log.md`** (“Bắt đầu từ đây”, “Quyết định người dùng chưa có trong spec”, “Câu hỏi mở”, “Nhật ký phiên”) và [`PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) mục 1–3 và 7 (mục khác chỉ khi liên quan). Module lấy từ `PLAN.md` hoặc từ người dùng.
+Trước mọi task, đọc [`PLAN.md`](plans/PLAN.md) (dòng “Module đang làm” + bảng), `plans/<module>.md`, **phần đầu của `plans/<module>.log.md`** (“Bắt đầu từ đây”, “Quyết định người dùng chưa có trong spec”, “Câu hỏi mở”, “Nhật ký phiên”) và [`PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) mục 1–3 và 5 (mục khác chỉ khi liên quan). Module lấy từ `PLAN.md` hoặc từ người dùng.
 
 ## Đồng bộ với Claude (log là kênh chung)
 
@@ -9,7 +9,7 @@ Trước mọi task, đọc [`PLAN.md`](plans/PLAN.md) (dòng “Module đang l�
 - Không đồng bộ spec hoặc đánh `[x]` sau từng task. Chỉ làm **một lần cuối module khi Claude nhờ**: với mọi task người dùng đã nhận, đánh `[x]` các mục “Xong khi” mà log ghi đạt; mục “chưa kiểm” để `[ ]` và thêm “(chưa kiểm — xem log)”. Đưa các dòng còn hiệu lực của bảng quyết định và mọi “Lệch khác spec” vào thân spec; task đã nhận thu còn 1–2 dòng trỏ log/commit. Không sửa log ngoài việc xóa dòng bảng quyết định đã đưa vào spec và thêm dòng nhật ký tương ứng.
 - Đổi module đang làm thì sửa dòng `Module đang làm: [slug](slug.md)` trong `PLAN.md` (hook của Claude đọc dòng này).
 - Review: đọc “Đã xong” và “Lệch khác spec” trong log để không báo lại điều đã quyết; kết quả review do Claude ghi vào log. Đối chiếu thay đổi với mục “Xong khi” của task đang làm (task ghi ở “Bắt đầu từ đây” của log hoặc trong focus) và kết quả test trong log: báo cả tiêu chí nghiệm thu chưa đạt, không chỉ lỗi code. Diff chưa commit là của task đang làm; task trước đã nằm trong các commit trước đó.
-- Spec có đụng API (tạo/sửa endpoint hoặc frontend gọi endpoint): ghi bảng “Quy tắc nghiệp vụ và mã lỗi” — trường, ràng buộc (độ dài, định dạng, khoảng giá trị), mã HTTP/mã lỗi và câu hiển thị tương ứng. Validation phía client và test frontend dẫn chiếu bảng này; đổi quy tắc ở backend thì sửa bảng cùng lúc.
+- Spec có đụng API (tạo/sửa endpoint hoặc frontend gọi endpoint): ghi bảng “Quy tắc nghiệp vụ và mã lỗi” — trường, ràng buộc (độ dài, định dạng, khoảng giá trị), mã HTTP/mã lỗi và câu hiển thị tương ứng. Validation phía client và test frontend dẫn chiếu bảng này; đổi quy tắc ở backend thì sửa bảng cùng lúc. **Bảng phải phủ đủ ngoại lệ và điều kiện** (người dùng chốt 2026-11-14): dữ liệu sai, thiếu quyền/không phải chủ sở hữu, trạng thái không cho phép, trùng lặp và request đồng thời, lỗi dịch vụ ngoài; mỗi dòng có test ở “Xong khi”. Module có tiền: thêm ca số tiền lệch, callback trùng/sai chữ ký, đơn hết hạn, và review vòng 1 dùng `adversarial-review`.
 
 ## Planner
 
@@ -32,7 +32,7 @@ Trước mọi task, đọc [`PLAN.md`](plans/PLAN.md) (dòng “Module đang l�
 
 ### Ngân sách kiểm chứng (bắt buộc khi viết spec)
 
-Mục tiêu: đúng nhưng nhanh; mỗi tiêu chí phải bắt được một lỗi thật, không thêm kiểm chứng “cho chắc”.
+Mục tiêu: đúng nhưng nhanh; mỗi tiêu chí phải bắt được một lỗi thật, không thêm kiểm chứng “cho chắc”. Luật thực thi phía Claude ở `.claude/rules/backend.md`, `.claude/rules/frontend.md`; hai nơi lệch nhau thì báo người dùng.
 
 - **Lệnh kiểm theo phần bị sửa.** Task chỉ sửa `app/`: “Xong khi” ghi các file test frontend liên quan (test của component/trang bị sửa + nơi dùng trực tiếp) + `npm run build` trong `app/`; không ghi full `npm test` hay `scripts/verify.sh` (người dùng chốt 2026-11-03: full suite chậm, phần lớn không liên quan). Task có sửa `server/`: “Xong khi” ghi danh sách lớp test bị ảnh hưởng (lớp của task + regression + lớp gọi code dùng chung bị sửa), không ghi `scripts/verify.sh`; full backend do CI (`.github/workflows/ci.yml`) chạy khi mở PR. Không ghi chạy test backend cho task chỉ sửa giao diện.
 - **Mức test.** Logic thuần (phân loại lỗi, validation, format, mapping) yêu cầu unit test gọi thẳng hàm; ma trận (ngôn ngữ × status × màn) đặt ở đây. Test tích hợp render cả `App` chỉ cho luồng chính, khoảng 5 ca mỗi màn. Không yêu cầu ma trận ở mức tích hợp.
@@ -47,7 +47,7 @@ Mục tiêu: đúng nhưng nhanh; mỗi tiêu chí phải bắt được một l
 
 ## Reviewer
 
-- Dùng `/codex:review --background`; chỉ dùng `/codex:adversarial-review` cho task rủi ro cao (ví dụ auth, bảo mật).
+- Review do Claude khởi chạy theo skill `codex-workflow` (Codex không tự gọi lệnh). Vòng 1 là `review`; task rủi ro cao (auth, bảo mật, tiền, đồng thời) là `adversarial-review`.
 - Đối chiếu diff với “Xong khi” và “Đường dẫn thuộc module”. Chỉ chặn lỗi cao/trung, bug đúng/sai hoặc bảo mật.
 - Chỉ đọc file trong diff và chỗ gọi trực tiếp của chúng; không rà cả repo. Không yêu cầu thêm test/kiểm chứng ngoài ngân sách ở trên; thiếu test cho một bug cụ thể thì nêu đúng ca đó.
 - Nhận xét style, tối ưu và ý tưởng mới ghi “Ngoài phạm vi”; không yêu cầu tự sửa.
