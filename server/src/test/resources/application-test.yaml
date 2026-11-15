@@ -23,3 +23,8 @@ cloudinary:
   api-key: ''
   api-secret: ''
   cleanup-enabled: false
+
+vietqr:
+  bank-id: "970422"
+  account-no: "0123456789"
+  account-name: NGUYEN VAN A
