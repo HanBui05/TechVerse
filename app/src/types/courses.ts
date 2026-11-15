@@ -74,3 +74,14 @@ export type CourseOrder = {
   orderCode: string; courseId: string; courseTitle: string; amount: number; currency: string; status: OrderStatus
   createdAt: string; expiresAt: string; paidAt: string | null; transferReportedAt: string | null; vietQr: VietQr | null
 }
+
+// Admin / Author payment shapes (AdminOrderResponse, CommissionPolicyResponse, AuthorRevenueResponse).
+export type AdminPayment = { reference: string; amount: number; source: string; confirmedAt: string }
+export type AdminOrder = {
+  orderCode: string; buyerId: string; buyerName: string | null; buyerEmail: string | null; courseId: string; courseTitle: string; amount: number; currency: string; status: OrderStatus
+  createdAt: string; expiresAt: string; paidAt: string | null; transferReportedAt: string | null; needsReconciliation: boolean; reconciledAt: string | null; payments: AdminPayment[]
+}
+export type AdminOrderFilter = { status?: OrderStatus; code?: string; transferReported?: boolean; needsReconciliation?: boolean; page?: number }
+export type CommissionPolicy = { id: string; rateBps: number; effectiveFrom: string }
+export type RevenueItem = { courseId: string; courseTitle: string; paidAt: string; unitPriceAmount: number; commissionRateBps: number; commissionAmount: number; authorNetAmount: number }
+export type AuthorRevenue = { totals: { itemCount: number; grossAmount: number; platformAmount: number; authorAmount: number }; items: import('./articles').Page<RevenueItem> }

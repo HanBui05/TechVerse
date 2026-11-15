@@ -67,7 +67,7 @@ it('groups the Author links under a collapsed “Tác giả” menu, opens it on
   fireEvent.click(toggle)
   expect(screen.getByRole('link', { name: 'Bài viết của tôi' }).getAttribute('href')).toBe('/author/blogs')
   expect(hrefs()).toContain('/author/courses')
-  expect(screen.queryByText(/Doanh thu/)).toBeNull()
+  expect(screen.getByRole('link', { name: 'Doanh thu' }).getAttribute('href')).toBe('/author/revenue')
   cleanup()
   render(<Shell route="/author/courses"><Sidebar {...props} profile={profile} /></Shell>)
   expect(screen.getByRole('button', { name: 'Tác giả' }).getAttribute('aria-expanded')).toBe('true')

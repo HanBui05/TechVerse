@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../services/api/client'
-import { COURSE_ERROR_CODES, courseErrorText, courseText, isCourseStale, moderatorCourseErrorText, moderatorCourseText, readerCourseText } from './courseI18n'
+import { COURSE_ERROR_CODES, courseErrorText, courseText, isCourseStale, moderatorCourseErrorText, moderatorCourseText, readerCourseText, payAdminText } from './courseI18n'
 
 describe('courseI18n', () => {
   it.each(COURSE_ERROR_CODES)('maps %s in both languages without the backend message', code => {
@@ -97,5 +97,29 @@ describe('payment copy (Tasks 1a–1b table rows)', () => {
     expect([ren('free'), ren('buy'), ren('purchaseRequired'), ren('noRefund')]).toEqual(['Free', 'Buy course', 'Buy this course to continue.', 'Purchased courses are non-refundable.'])
     expect(avi('share', { rate: 20, amount: '280.000 ₫' })).toBe('Nền tảng giữ 20%, bạn nhận 280.000 ₫')
     expect(aen('share', { rate: 20, amount: '₫280,000' })).toBe('Platform keeps 20%; you receive ₫280,000')
+  })
+})
+
+describe('admin payment copy (Task 2c)', () => {
+  it('uses the 1c-1d sentences for the new codes', () => {
+    const vi = (code: string, status = 409) => courseErrorText(new ApiError('English', status, code), 'vi', 'F')
+    expect(vi('PAYMENT_INVALID', 400)).toBe('Thông tin đối chiếu không hợp lệ.')
+    expect(vi('PAYMENT_AMOUNT_MISMATCH')).toBe('Số tiền không khớp đơn; hãy đối chiếu sao kê.')
+    expect(vi('PAYMENT_STATE_INVALID')).toBe('Không thể xác nhận đơn ở trạng thái này.')
+    expect(vi('PAYMENT_REFERENCE_CONFLICT')).toBe('Mã giao dịch đã được dùng hoặc không khớp.')
+    expect(vi('PAYMENT_RECONCILIATION_NOT_REQUIRED')).toBe('Không có khoản cần đối chiếu.')
+    expect(vi('PAYMENT_RECONCILIATION_STALE')).toBe('Có khoản thanh toán mới; hãy xem lại danh sách.')
+    expect(vi('COMMISSION_RATE_INVALID', 400)).toBe('Tỷ lệ không hợp lệ.')
+    expect(courseErrorText(new ApiError('English', 409, 'PAYMENT_AMOUNT_MISMATCH'), 'en', 'F')).toMatch(/does not match/)
+  })
+
+  it('has the spec copy in both languages and fills placeholders', () => {
+    expect(payAdminText('vi')('received')).toBe('Đã nhận tiền')
+    expect(payAdminText('vi')('duplicate')).toBe('Có khoản thanh toán trùng cần đối chiếu')
+    expect(payAdminText('en')('duplicate')).toBe('Duplicate payment requires reconciliation')
+    expect(payAdminText('vi')('policy', { date: '14/11/2026' })).toBe('Tỷ lệ hoa hồng · Hiệu lực từ 14/11/2026')
+    expect(payAdminText('en')('policy', { date: '11/14/2026' })).toBe('Commission rate · Effective from 11/14/2026')
+    expect(payAdminText('vi')('revenueTitle')).toBe('Doanh thu tác giả')
+    expect(payAdminText('en')('yourShare')).toBe('Your share')
   })
 })

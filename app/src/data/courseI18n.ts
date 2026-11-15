@@ -18,6 +18,7 @@ export const COURSE_ERROR_CODES = [
   'COURSE_PUBLICATION_NOTE_REQUIRED', 'LESSON_PREVIEW_ONLY', 'COURSE_ENROLLMENT_REQUIRED', 'ACCESS_DENIED', 'VALIDATION_ERROR', 'MALFORMED_REQUEST',
   'COURSE_PRICE_INVALID', 'COURSE_PRICE_TYPE_LOCKED', 'COURSE_PURCHASE_REQUIRED', 'ORDER_INVALID', 'ORDER_COURSE_UNAVAILABLE', 'ORDER_ALREADY_ENROLLED', 'PAYMENT_UNAVAILABLE',
   'ORDER_RATE_LIMITED', 'ORDER_NOT_FOUND', 'ORDER_TRANSFER_REPORT_NOT_ALLOWED', 'AUTH_ACCESS_TOKEN_REQUIRED', 'AUTH_INVALID_ACCESS_TOKEN',
+  'PAYMENT_INVALID', 'PAYMENT_AMOUNT_MISMATCH', 'PAYMENT_STATE_INVALID', 'PAYMENT_REFERENCE_CONFLICT', 'PAYMENT_RECONCILIATION_NOT_REQUIRED', 'PAYMENT_RECONCILIATION_STALE', 'COMMISSION_RATE_INVALID',
 ] as const
 
 const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
@@ -68,6 +69,13 @@ const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
   ORDER_RATE_LIMITED: { vi: 'Bạn thao tác quá nhanh, hãy thử lại sau.', en: 'You are going too fast; try again later.' },
   ORDER_NOT_FOUND: { vi: 'Không tìm thấy đơn.', en: 'Order not found.' },
   ORDER_TRANSFER_REPORT_NOT_ALLOWED: { vi: 'Đơn này không cần báo chuyển khoản.', en: 'This order does not need a transfer report.' },
+  PAYMENT_INVALID: { vi: 'Thông tin đối chiếu không hợp lệ.', en: 'The reconciliation details are invalid.' },
+  PAYMENT_AMOUNT_MISMATCH: { vi: 'Số tiền không khớp đơn; hãy đối chiếu sao kê.', en: 'The amount does not match the order; check the bank statement.' },
+  PAYMENT_STATE_INVALID: { vi: 'Không thể xác nhận đơn ở trạng thái này.', en: 'This order cannot be confirmed in its current state.' },
+  PAYMENT_REFERENCE_CONFLICT: { vi: 'Mã giao dịch đã được dùng hoặc không khớp.', en: 'This reference is already used or does not match.' },
+  PAYMENT_RECONCILIATION_NOT_REQUIRED: { vi: 'Không có khoản cần đối chiếu.', en: 'Nothing needs reconciling.' },
+  PAYMENT_RECONCILIATION_STALE: { vi: 'Có khoản thanh toán mới; hãy xem lại danh sách.', en: 'A new payment arrived; review the list again.' },
+  COMMISSION_RATE_INVALID: { vi: 'Tỷ lệ không hợp lệ.', en: 'The rate is invalid.' },
   AUTH_ACCESS_TOKEN_REQUIRED: { vi: 'Hãy đăng nhập để tiếp tục.', en: 'Sign in to continue.' },
   AUTH_INVALID_ACCESS_TOKEN: { vi: 'Hãy đăng nhập để tiếp tục.', en: 'Sign in to continue.' },
 }
@@ -301,4 +309,55 @@ const orderEn: OrderCopy = {
 export function orderText(language: Language) {
   const copy = language === 'vi' ? orderVi : orderEn
   return (key: keyof OrderCopy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
+}
+
+// Admin orders, commission policy and Author revenue (Task 2c).
+const payVi = {
+  ordersTitle: 'Đơn hàng', count: '{n} đơn', loading: 'Đang tải đơn hàng...', loadError: 'Không tải được đơn hàng.', retry: 'Thử lại', filters: 'Bộ lọc', kicker: 'Thanh toán',
+  code: 'Mã đơn', codePlaceholder: 'Mã đơn đầy đủ, vd. TV000000000123', applyCode: 'Tìm mã đơn', clearCode: 'Xóa mã đơn', status: 'Trạng thái', all: 'Tất cả',
+  PENDING: 'Chờ xác nhận', PAID: 'Đã nhận tiền', EXPIRED: 'Hết hạn', FAILED: 'Không còn hiệu lực', CANCELLED: 'Không còn hiệu lực',
+  reportedFilter: 'Đã báo chuyển khoản', reconFilter: 'Cần đối chiếu', reportedAt: 'Người học đã báo chuyển khoản {time}', reportedHint: 'Cần kiểm tra sao kê trước khi xác nhận.',
+  duplicate: 'Có khoản thanh toán trùng cần đối chiếu', reconciled: 'Đã đối chiếu', received: 'Đã nhận tiền', created: 'Tạo {when}', expires: 'Hết hạn {when}', paidOn: 'Thanh toán {when}',
+  confirmBtn: 'Đối chiếu & xác nhận', viewBtn: 'Xem · Đối chiếu', empty: 'Không có đơn phù hợp', clearFilters: 'Xóa bộ lọc',
+  sheetTitle: 'Xác nhận đơn {code}', reviewTitle: 'Đối chiếu đơn {code}', due: 'Số tiền cần nhận (theo đơn)', check: 'Kiểm tra sao kê ngân hàng (mã đơn, số tiền) trước khi xác nhận.',
+  stmtAmount: 'Số tiền trên sao kê', stmtRef: 'Mã giao dịch sao kê', amountInvalid: 'Số tiền phải là số nguyên dương.', refInvalid: 'Mã giao dịch từ 1 đến 255 ký tự.',
+  review: 'Kiểm tra lại…', cancel: 'Hủy', back: 'Quay lại', close: 'Đóng', reload: 'Tải lại', confirmReceived: 'Xác nhận đã nhận tiền',
+  confirmQ: 'Xác nhận đã nhận {amount} cho đơn {code}, mã giao dịch {ref}? Hành động ghi nhận thanh toán và mở quyền học.',
+  paymentsTitle: 'Đã nhận {n} khoản', dupBlock: 'Có khoản thanh toán trùng cần đối chiếu — tiền thừa xử lý ngoài hệ thống, không hoàn tiền trong sản phẩm.', addPayment: 'Ghi thêm khoản trùng',
+  closeFlag: 'Đóng cờ đối chiếu', closeFlagQ: 'Đánh dấu đã đối chiếu {n} khoản thanh toán của đơn này?', markReconciled: 'Đánh dấu đã đối chiếu',
+  okConfirm: 'Đã ghi nhận thanh toán.', okDuplicate: 'Đã ghi nhận; cần đối chiếu khoản thanh toán trùng.', okReconciled: 'Đã đối chiếu.', confirmFailed: 'Không thể xác nhận thanh toán.', reconcileFailed: 'Không thể đóng cờ đối chiếu.',
+  commissionTitle: 'Tỷ lệ hoa hồng nền tảng', current: 'Hiện hành', platformKeeps: 'Nền tảng giữ', policy: 'Tỷ lệ hoa hồng · Hiệu lực từ {date}', policyNote: 'Đổi tỷ lệ có hiệu lực ngay cho đơn mới; đơn đã tạo giữ tỷ lệ cũ.',
+  changeTitle: 'Đổi tỷ lệ', newRate: 'Tỷ lệ mới (%)', saveRate: 'Lưu tỷ lệ', example: 'Ví dụ: khóa {price} → nền tảng giữ {platform}, tác giả nhận {author}', rateInvalid: 'Tỷ lệ không hợp lệ.',
+  rateQ: 'Đổi tỷ lệ nền tảng giữ thành {rate}% ngay bây giờ? Áp dụng cho đơn tạo từ lúc này.', changeRate: 'Đổi tỷ lệ', rateUpdated: 'Đã cập nhật tỷ lệ.', rateUnchanged: 'Tỷ lệ hiện tại không đổi.',
+  noPolicy: 'Chưa có tỷ lệ; thanh toán tạm thời không khả dụng.', rateLoadError: 'Không tải được tỷ lệ hoa hồng.', rateLoading: 'Đang tải tỷ lệ...', rateFailed: 'Không thể đổi tỷ lệ.',
+  revenueTitle: 'Doanh thu tác giả', authorSpace: 'Không gian tác giả', orders: 'Số đơn', gross: 'Tổng bán', platformShare: 'Nền tảng giữ', yourShare: 'Bạn nhận',
+  snapshotNote: 'Số liệu theo tỷ lệ tại thời điểm mỗi đơn được tạo.', itemLine: 'Giá {price} · Nền tảng giữ {rate}% ({platform}) · Bạn nhận {author}',
+  revenueEmpty: 'Chưa có doanh thu', revenueEmptyText: 'Doanh thu hiện khi có người học thanh toán khóa của bạn.', revenueLoading: 'Đang tải doanh thu...', revenueLoadError: 'Không tải được doanh thu.',
+}
+type PayCopy = typeof payVi
+const payEn: PayCopy = {
+  ordersTitle: 'Orders', count: '{n} orders', loading: 'Loading orders...', loadError: 'Unable to load orders.', retry: 'Retry', filters: 'Filters', kicker: 'Payments',
+  code: 'Order code', codePlaceholder: 'Full order code, e.g. TV000000000123', applyCode: 'Find order code', clearCode: 'Clear order code', status: 'Status', all: 'All',
+  PENDING: 'Awaiting confirmation', PAID: 'Payment received', EXPIRED: 'Expired', FAILED: 'No longer valid', CANCELLED: 'No longer valid',
+  reportedFilter: 'Transfer reported', reconFilter: 'Needs reconciliation', reportedAt: 'Buyer reported a transfer {time}', reportedHint: 'Check the bank statement before confirming.',
+  duplicate: 'Duplicate payment requires reconciliation', reconciled: 'Reconciled', received: 'Payment received', created: 'Created {when}', expires: 'Expires {when}', paidOn: 'Paid {when}',
+  confirmBtn: 'Check & confirm', viewBtn: 'View · Reconcile', empty: 'No matching orders', clearFilters: 'Clear filters',
+  sheetTitle: 'Confirm order {code}', reviewTitle: 'Reconcile order {code}', due: 'Amount due (per order)', check: 'Check the bank statement (order code, amount) before confirming.',
+  stmtAmount: 'Statement amount', stmtRef: 'Statement reference', amountInvalid: 'The amount must be a positive whole number.', refInvalid: 'The reference must be 1 to 255 characters.',
+  review: 'Review…', cancel: 'Cancel', back: 'Go back', close: 'Close', reload: 'Reload', confirmReceived: 'Confirm payment received',
+  confirmQ: 'Confirm that {amount} was received for order {code}, reference {ref}? This records the payment and unlocks the course.',
+  paymentsTitle: '{n} payments received', dupBlock: 'Duplicate payment requires reconciliation — excess money is handled outside the system; no refunds in the product.', addPayment: 'Record another duplicate payment',
+  closeFlag: 'Close reconciliation flag', closeFlagQ: 'Mark {n} payments of this order as reconciled?', markReconciled: 'Mark as reconciled',
+  okConfirm: 'Payment recorded.', okDuplicate: 'Recorded; the duplicate payment needs reconciliation.', okReconciled: 'Reconciled.', confirmFailed: 'Unable to confirm the payment.', reconcileFailed: 'Unable to close the flag.',
+  commissionTitle: 'Platform commission rate', current: 'Current', platformKeeps: 'Platform share', policy: 'Commission rate · Effective from {date}', policyNote: 'A new rate applies at once to new orders; existing orders keep their old rate.',
+  changeTitle: 'Change rate', newRate: 'New rate (%)', saveRate: 'Save rate', example: 'Example: a {price} course → platform keeps {platform}, author gets {author}', rateInvalid: 'The rate is invalid.',
+  rateQ: 'Change the platform share to {rate}% right now? It applies to orders created from this moment.', changeRate: 'Change rate', rateUpdated: 'Rate updated.', rateUnchanged: 'The current rate is unchanged.',
+  noPolicy: 'No rate is set; payment is temporarily unavailable.', rateLoadError: 'Unable to load the commission rate.', rateLoading: 'Loading rate...', rateFailed: 'Unable to change the rate.',
+  revenueTitle: 'Author revenue', authorSpace: 'Author space', orders: 'Orders', gross: 'Gross sales', platformShare: 'Platform share', yourShare: 'Your share',
+  snapshotNote: 'Figures use the rate at the time each order was created.', itemLine: 'Price {price} · Platform share {rate}% ({platform}) · Your share {author}',
+  revenueEmpty: 'No revenue yet', revenueEmptyText: 'Revenue appears when learners pay for your courses.', revenueLoading: 'Loading revenue...', revenueLoadError: 'Unable to load revenue.',
+}
+export function payAdminText(language: Language) {
+  const copy = language === 'vi' ? payVi : payEn
+  return (key: keyof PayCopy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
 }

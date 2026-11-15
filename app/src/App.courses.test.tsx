@@ -25,6 +25,9 @@ beforeEach(() => {
     if (path === '/api/v1/courses/c1') return json(detail())
     if (path === '/api/v1/me/courses') return json(page([]))
     if (path.startsWith('/api/v1/orders/')) return json(order)
+    if (path === '/api/v1/author/revenue') return json({ totals: { itemCount: 0, grossAmount: 0, platformAmount: 0, authorAmount: 0 }, items: page([]) })
+    if (path === '/api/v1/admin/commission-policy') return json(null)
+    if (path === '/api/v1/admin/orders') return json(page([]))
     return json(page([summary]))
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -98,4 +101,24 @@ it('returns a Reader to the course page they came from, but never to an unlisted
   loginAt('/courses/c1', '/moderator')
   await submitLogin()
   expect((await screen.findByTestId('where')).textContent).toBe('/moderator')
+})
+
+it('serves the payment pages only to their role: Admin orders/commission, Author revenue; others go to their profile without calling the payment API', async () => {
+  const paymentCalls = () => fetchMock.mock.calls.filter(([url]) => /\/api\/v1\/(admin\/(orders|commission-policy)|author\/revenue)/.test(String(url)))
+  const cases = [['ADMIN', '/admin/orders', 'Đơn hàng'], ['ADMIN', '/admin/commission', 'Tỷ lệ hoa hồng nền tảng'], ['AUTHOR', '/author/revenue', 'Doanh thu tác giả']] as const
+  for (const [role, path, title] of cases) {
+    roles = [role]
+    localStorage.setItem('techverse-authenticated', 'true'); setAccessToken('tok')
+    renderAt(path)
+    expect(await screen.findByRole('heading', { level: 1, name: new RegExp(title) })).toBeTruthy()
+    cleanup()
+  }
+  for (const [role, path] of [['MODERATOR', '/admin/orders'], ['MODERATOR', '/admin/commission'], ['LEARNER', '/admin/orders'], ['LEARNER', '/author/revenue'], ['MODERATOR', '/author/revenue']] as const) {
+    roles = [role]
+    fetchMock.mockClear()
+    renderAt(path)
+    await vi.waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/profile'))
+    expect(paymentCalls()).toHaveLength(0)
+    cleanup()
+  }
 })

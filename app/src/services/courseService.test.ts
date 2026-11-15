@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setAccessToken } from './api/client'
-import { authorCourses, authorShare, changedLessonFields, courseFilter, courseSearch, embedUrl, flatLessons, lessonAccess, publicCourses, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, orders, priceValid, qrSrc, videoLink, visibleChanges, vnd, youtubeId } from './courseService'
+import { authorCourses, authorShare, changedLessonFields, courseFilter, courseSearch, embedUrl, flatLessons, lessonAccess, publicCourses, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, orders, adminOrders, commission, revenue, rateBps, amountText, priceValid, qrSrc, videoLink, visibleChanges, vnd, youtubeId } from './courseService'
 import type { AuthorCourse, ChangeChapter, Lesson, ModeratorCourseDetail } from '../types/courses'
 
 const fetchMock = vi.fn<typeof fetch>()
@@ -250,5 +250,38 @@ describe('moderator shapes carry no money', () => {
     // @ts-expect-error nor the commission rate
     void detail.course.commissionRateBps
     expect(true).toBe(true)
+  })
+})
+
+describe('admin payment services (Task 2c)', () => {
+  it('lists admin orders with the filters that are set (undefined ones are dropped) and POSTs the exact confirm/reconcile bodies', async () => {
+    fetchMock.mockResolvedValue(ok({}))
+    await adminOrders.list({ status: 'PENDING', code: 'TV1', transferReported: true, needsReconciliation: false, page: 2 })
+    expect(call(0).url.pathname).toBe('/api/v1/admin/orders')
+    expect(call(0).url.searchParams.get('status')).toBe('PENDING'); expect(call(0).url.searchParams.get('code')).toBe('TV1')
+    expect(call(0).url.searchParams.get('transferReported')).toBe('true'); expect(call(0).url.searchParams.get('needsReconciliation')).toBe('false')
+    expect(call(0).url.searchParams.get('page')).toBe('2')
+    await adminOrders.confirm('TV000000000123', 350000, 'FT123')
+    expect(call(1).url.pathname).toBe('/api/v1/admin/orders/TV000000000123/confirm'); expect(call(1).init.method).toBe('POST'); expect(JSON.parse(String(call(1).init.body))).toEqual({ amount: 350000, bankReference: 'FT123' })
+    await adminOrders.reconcile('TV000000000123', 2)
+    expect(call(2).url.pathname).toBe('/api/v1/admin/orders/TV000000000123/reconcile'); expect(JSON.parse(String(call(2).init.body))).toEqual({ paymentCount: 2 })
+  })
+
+  it('reads and changes the commission policy with an integer rateBps only; revenue is paged', async () => {
+    fetchMock.mockResolvedValue(ok({}))
+    await commission.get(); await commission.change(1500); await revenue(1)
+    expect(call(0).url.pathname).toBe('/api/v1/admin/commission-policy')
+    expect(call(1).init.method).toBe('PUT'); expect(JSON.parse(String(call(1).init.body))).toEqual({ rateBps: 1500 })
+    expect(call(2).url.pathname).toBe('/api/v1/author/revenue'); expect(call(2).url.searchParams.get('page')).toBe('1')
+  })
+
+  it('turns a percent into whole basis points: 0-100 with at most 2 decimals, else null', () => {
+    expect(rateBps('15')).toBe(1500); expect(rateBps('12.5')).toBe(1250); expect(rateBps('12,34')).toBe(1234); expect(rateBps(' 0 ')).toBe(0); expect(rateBps('100')).toBe(10000); expect(rateBps('1.15')).toBe(115)
+    for (const bad of ['', 'abc', '-1', '100.01', '101', '1.234', '1e2', '.5', '5.', '1 5']) expect(rateBps(bad)).toBeNull()
+  })
+
+  it('accepts a statement amount only as a positive whole number of at most 15 digits', () => {
+    expect(amountText('350000')).toBe(350000); expect(amountText(' 10000 ')).toBe(10000)
+    for (const bad of ['', '0', '-5', '1.5', '1,000', 'abc', '0123', '1'.repeat(16)]) expect(amountText(bad)).toBeNull()
   })
 })

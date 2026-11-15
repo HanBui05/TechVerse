@@ -1,10 +1,10 @@
 ﻿# Course payment — nhật ký
 
-## Bắt đầu từ đây (cập nhật 2026-11-15)
+## Bắt đầu từ đây (cập nhật 2026-11-16)
 
-- **Task tiếp:** Task 2c — Admin và doanh thu tác giả (Admin lọc/xác nhận đơn, đổi tỷ lệ hoa hồng; Author xem doanh thu) · Giao diện: Có
+- **Task tiếp:** Cuối module: nhờ Codex đồng bộ spec một lần (skill `codex-workflow` mục 3) · Giao diện: Không
 - Spec chốt 2026-11-14: Task 1a → 1b → 1c → 1d → cổng wireframe → 2a → 2b → 2c; **Task 1e (PayOS) hoãn**. Rủi ro cao: code bằng Opus, review vòng 1 `adversarial-review`.
-- Task 1a, 1b, 1c, 1d, 2a đã nhận (2026-11-15), Task 2b đã nhận (2026-11-16), đã commit cục bộ trên `feature/course-payment` (1a: V13, giá, quyền xem; 1b: V14, đơn hàng, VietQR, báo chuyển khoản; 1c: V15, Admin xác nhận/đối chiếu, doanh thu tác giả; 1d: V16, chính sách hoa hồng).
+- Task 1a, 1b, 1c, 1d, 2a đã nhận (2026-11-15), Task 2b, 2c đã nhận (2026-11-16), đã commit cục bộ trên `feature/course-payment` (1a: V13, giá, quyền xem; 1b: V14, đơn hàng, VietQR, báo chuyển khoản; 1c: V15, Admin xác nhận/đối chiếu, doanh thu tác giả; 1d: V16, chính sách hoa hồng).
 - Bẫy cho 1b–1d: `TRUNCATE users CASCADE` trong test xóa luôn `commission_policies`; test cần policy phải tự `INSERT ... (rate_bps) VALUES (2000)`.
 - Module đi kèm: [`course-ai-tutor.md`](course-ai-tutor.md) — Task 1 làm sau Task 1a. Người dùng cần chuẩn bị tài khoản nhận tiền cho `.env` trước khi thử thật.
 
@@ -18,6 +18,13 @@
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-16 — Task 2c (Admin đơn/hoa hồng, doanh thu Author, giao diện) — đã nhận (2026-11-16)
+- File: `pages/Admin/Orders/{AdminOrdersPage,AdminOrders.test}.tsx`, `pages/Admin/Commission/{AdminCommissionPage,AdminCommission.test}.tsx`, `pages/Author/Revenue/{AuthorRevenuePage,AuthorRevenue.test}.tsx` (mới); `types/courses.ts` (`AdminOrder`, `CommissionPolicy`, `AuthorRevenue`), `courseService.ts` (`adminOrders`, `commission`, `revenue`, `rateBps`, `amountText`), `courseI18n.ts` (7 mã `PAYMENT_*`/`COMMISSION_*`, `payAdminText`), `App.tsx` (`/admin/orders`, `/admin/commission`, `/author/revenue`), `AdminSidebar` (nhóm Thanh toán), `Sidebar` (Doanh thu), `Sidebar.test`, `App.courses.test`.
+- Test: `vitest --maxWorkers=3 --testTimeout=20000` trên `Admin/{Orders,Commission}`, `Author/Revenue`, `courseService`, `courseI18n`, `Sidebar`, `StaffPreferences`, `ui/{sidebar,labels,focus}`, `App.courses`: 219/219 đạt; `npm run build` đạt. Lỗi có sẵn (không điều tra): `App.author-courses` “multiple links Khóa học” (hỏng cả khi stash), `StaffPreferences` báo unhandled `ModeratorArticlesPage` `content` (có cả khi stash).
+- Lệch khác spec: (1) Bộ lọc Admin là ô mã + select trạng thái + 2 checkbox, mobile chỉ xếp dọc, không Sheet đáy. (2) Lỗi server trong Sheet hiện ở Alert đầu Sheet (kể cả `PAYMENT_INVALID`); lỗi client dưới ô. (3) Không có backend ghi chú đổi/không đổi: so `id` policy trả về với policy hiện tại để chọn “không đổi”. (4) Nút Xóa bộ lọc chỉ ở trạng thái rỗng. (5) Không tách `AdminOrder`/Commission test theo lớp riêng ngoài 3 file trang. (6) Sửa guard cũ ở `Sidebar.test` (“chưa có Doanh thu”) thành khẳng định link `/author/revenue`.
+- Review vòng 1 (adversarial): [high] đơn PAID chưa có cờ (vừa trả hoặc đã đóng cờ) không mở được Sheet nên không ghi được khoản chuyển trùng đầu tiên → mọi đơn PAID có nút “Xem · Đối chiếu” (xem khoản + ghi thêm khoản; nút đóng cờ/khối cảnh báo chỉ khi cờ mở). Lệch wireframe 4c-1 (“PAID bình thường chỉ xem”). Thêm 2 ca test; 11 file 220/220 đạt, build đạt.
+- Vòng 2: approve, không phát hiện.
+- Kiểm mắt (Playwright MCP, Vite thật cổng 3000, API giả bằng `route`, dữ liệu tên/email/tiêu đề dài): `/admin/orders` (+ Sheet đối chiếu), `/admin/commission`, `/author/revenue` × dark/light × desktop 1440 / mobile cảm ứng 390 (`pointer: coarse` đạt): không cuộn ngang, mọi nút/ô ≥ 44px, không tràn chữ; Sheet 480px desktop, toàn màn hình mobile; ảnh Sheet dark desktop + light mobile. Vite đã tắt. Chưa kiểm với backend thật.
 ### 2026-11-15 — Task 2b (đơn của tôi + thanh toán VietQR, giao diện) — đã nhận (2026-11-16)
 - File: `pages/Payments/{OrdersPage,OrderDetailPage,Payments.test}.tsx` (mới), `courseService.ts` (`orders.mine/get/reportTransfer`, `qrSrc` chỉ nhận https), `courseI18n.ts` (`orderText`; mã lỗi đã có từ 2a), `App.tsx` (`/me/orders`, `/me/orders/:orderCode`, AuthRoute + ReaderRoute), `Sidebar.tsx` (“Đơn hàng của tôi”), `App.courses.test.tsx`.
 - Test: `vitest --maxWorkers=3 --testTimeout=20000` trên `pages/Payments`, `courseService`, `courseI18n`, `App.courses`, `Sidebar`, `StaffPreferences`, `components/ui/{sidebar,labels,focus}`: đạt hết; `npm run build` đạt.
