@@ -2,9 +2,9 @@
 
 ## Bắt đầu từ đây (cập nhật 2026-11-15)
 
-- **Task tiếp:** Task 1c — Admin xác nhận, đồng thời và doanh thu (migration mới V15, không sửa V13/V14) · Giao diện: Không
+- **Task tiếp:** Task 1d — Chính sách hoa hồng · Giao diện: Không
 - Spec chốt 2026-11-14: Task 1a → 1b → 1c → 1d → cổng wireframe → 2a → 2b → 2c; **Task 1e (PayOS) hoãn**. Rủi ro cao: code bằng Opus, review vòng 1 `adversarial-review`.
-- Task 1a, 1b đã nhận (2026-11-15), đã commit cục bộ trên `feature/course-payment` (1a: V13, giá, quyền xem; 1b: V14, đơn hàng, VietQR, báo chuyển khoản).
+- Task 1a, 1b, 1c đã nhận (2026-11-15), đã commit cục bộ trên `feature/course-payment` (1a: V13, giá, quyền xem; 1b: V14, đơn hàng, VietQR, báo chuyển khoản; 1c: V15, Admin xác nhận/đối chiếu, doanh thu tác giả).
 - Bẫy cho 1b–1d: `TRUNCATE users CASCADE` trong test xóa luôn `commission_policies`; test cần policy phải tự `INSERT ... (rate_bps) VALUES (2000)`.
 - Module đi kèm: [`course-ai-tutor.md`](course-ai-tutor.md) — Task 1 làm sau Task 1a. Người dùng cần chuẩn bị tài khoản nhận tiền cho `.env` trước khi thử thật.
 
@@ -18,6 +18,11 @@
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-15 — Task 1c (Admin xác nhận, thanh toán trùng, doanh thu) — đã nhận (2026-11-15)
+- File: V15 (audit `payment_transactions.confirmed_by/confirmation_source/confirmed_at`, `orders.needs_reconciliation/reconciled_by/reconciled_at`, trigger cấp quyền mới: khóa user, `NOT EXISTS` enrollment active, đơn đã PAID hoặc đã có quyền → bật cờ, giữ `paid_at` đầu); entity `PaymentTransaction` (chỉ đọc); `OrderService.confirm/reconcile/adminOrders/revenue`; endpoint trong `OrderController`; DTO `AdminOrderResponse`, `AuthorRevenueResponse`; 5 mã lỗi `PAYMENT_*`; security `GET /api/v1/author/revenue`.
+- Test: `PaymentConfirmationIntegrationTest` (14, mới), `OrderIntegrationTest` (13), `OrderServiceTest` (3), `CourseLearningIntegrationTest` (6), `CoursePaymentMigrationTest`, `FreeCourseMigrationTest`, `ArticlePublicationMigrationTest`: 54 test, 0 lỗi. Lần đỏ: 500 do chưa có endpoint.
+- Lệch khác spec: (1) V15 thay vì sửa V13. (2) Không tạo `PaymentConfirmationService`, `AdminOrderController`, `AuthorRevenueController`, các lớp `@WebMvcTest`/unit và `AuthorRevenueIntegrationTest` (luật ít class 2026-11-15): code vào `OrderService`/`OrderController`, mọi dòng bảng kiểm trong `PaymentConfirmationIntegrationTest`. (3) Lọc `code` khớp chính xác (không phân biệt hoa thường). (4) Body xác nhận đúng 2 trường; `amount` phải là số nguyên JSON (chuỗi/số thực → 400). (5) Kiểm trạng thái trước số tiền: đơn CANCELLED/FAILED → `PAYMENT_STATE_INVALID` dù tiền sai. (6) Admin thấy tên/email người mua và danh sách khoản đã xác nhận (để đối chiếu). (7) Doanh thu cần role AUTHOR (tác giả bị đình chỉ mất role → 403). (8) Reference trùng đơn khác do hai request song song: bắt unique index → 409 `PAYMENT_REFERENCE_CONFLICT`. (9) Đóng cờ cần body `{paymentCount}` (số khoản Admin đã xem); lệch → 409 `PAYMENT_RECONCILIATION_STALE` (mã mới), cờ giữ nguyên.
+- Review vòng 1 (adversarial): [high] retry đóng cờ trễ có thể đóng cờ do khoản trùng mới mở lại → sửa bằng `paymentCount` (lệch 9); [medium] chưa test tranh reference giữa hai người mua → thêm `aReferenceCommittedConcurrentlyForAnotherBuyerIsAConflict` (giữ insert chưa commit, request chờ unique index rồi 409). `PaymentConfirmationIntegrationTest`: 15 test, 0 lỗi. Vòng 2: approve, không phát hiện.
 ### 2026-11-15 — Task 1b (đơn hàng, VietQR, báo đã chuyển khoản) — đã nhận (2026-11-15)
 - File: V14 (`order_code_seq`, `orders.transfer_reported_at`), `CourseOrder`/`OrderItem` (chỉ đọc; ghi bằng native để trigger tính tổng/hoa hồng), `OrderRepository`, `service/impl/OrderService` (gồm rate limit Redis 5/phút chung tạo đơn + báo chuyển khoản, dựng VietQR), `OrderController`, `OrderResponse`, 7 mã lỗi, security, `vietqr.*` trong yaml/`.env.example`.
 - Test: `OrderIntegrationTest` (12), `OrderServiceTest` (3), `CoursePaymentMigrationTest`, `FreeCourseMigrationTest`, `ArticlePublicationMigrationTest`, `PublishedCourseIntegrationTest`, `CourseLearningIntegrationTest`: 44 test, 0 lỗi. Chưa chạy full backend (CI).

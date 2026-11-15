@@ -20,7 +20,7 @@ Module đang làm: [course-payment](course-payment.md)
 | Docs + `.claude` restructure | — (làn nhẹ, 2026-11-02) | Chờ người dùng nhận kết quả | Claude | Xong; chờ người dùng nhận. | — |
 | Sidebar + login redirect | — (làn nhẹ, 2026-11-02) | Chờ người dùng nhận kết quả | Claude | Xong; chờ người dùng nhận. | — |
 | Course free | [spec](course-free.md) | Đang thực hiện | Claude | Mọi task đã nhận (2026-11-10), spec đã đồng bộ (2026-11-14); PR #4 đang mở, CI backend fail (kiểm 2026-11-14), chưa merge; xem log. | [log](course-free.log.md) |
-| Course payment | [spec](course-payment.md) | Đã chốt | Claude | Spec chốt 2026-11-14 (PayOS hoãn); Task 1a, 1b đã nhận (2026-11-15); tiếp Task 1c (Admin xác nhận, doanh thu), xem log. | [log](course-payment.log.md) |
+| Course payment | [spec](course-payment.md) | Đã chốt | Claude | Spec chốt 2026-11-14 (PayOS hoãn); Task 1a, 1b, 1c đã nhận (2026-11-15); tiếp Task 1d (chính sách hoa hồng), xem log. | [log](course-payment.log.md) |
 | Course AI tutor | [spec](course-ai-tutor.md) | Đã chốt | Claude | Spec chốt 2026-11-14 (chưa qua Codex phản biện); Task 1 làm sau Task 1a của `course-payment`. | — |
 | Exercise practice | [spec](exercise-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `course-payment` + `course-ai-tutor`, bắt đầu Task 1a. | — |
 | Interview practice | [spec](interview-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định, Admin/Moderator không vào trang; Codex phản biện một vòng); làm sau `exercise-practice`, bắt đầu Task 1a. | — |
