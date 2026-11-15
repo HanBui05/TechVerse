@@ -2,9 +2,9 @@
 
 ## Bắt đầu từ đây (cập nhật 2026-11-15)
 
-- **Task tiếp:** Task 1b — Đơn hàng và VietQR (chỉ nhận tay, Admin xác nhận; không PayOS/tự động) · Giao diện: Không
+- **Task tiếp:** Task 1c — Admin xác nhận, đồng thời và doanh thu (migration mới V15, không sửa V13/V14) · Giao diện: Không
 - Spec chốt 2026-11-14: Task 1a → 1b → 1c → 1d → cổng wireframe → 2a → 2b → 2c; **Task 1e (PayOS) hoãn**. Rủi ro cao: code bằng Opus, review vòng 1 `adversarial-review`.
-- Task 1a đã nhận (2026-11-15), đã commit cục bộ trên `feature/course-payment` (V13, giá/khóa loại giá, quyền xem khóa trả phí).
+- Task 1a, 1b đã nhận (2026-11-15), đã commit cục bộ trên `feature/course-payment` (1a: V13, giá, quyền xem; 1b: V14, đơn hàng, VietQR, báo chuyển khoản).
 - Bẫy cho 1b–1d: `TRUNCATE users CASCADE` trong test xóa luôn `commission_policies`; test cần policy phải tự `INSERT ... (rate_bps) VALUES (2000)`.
 - Module đi kèm: [`course-ai-tutor.md`](course-ai-tutor.md) — Task 1 làm sau Task 1a. Người dùng cần chuẩn bị tài khoản nhận tiền cho `.env` trước khi thử thật.
 
@@ -18,6 +18,12 @@
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-15 — Task 1b (đơn hàng, VietQR, báo đã chuyển khoản) — đã nhận (2026-11-15)
+- File: V14 (`order_code_seq`, `orders.transfer_reported_at`), `CourseOrder`/`OrderItem` (chỉ đọc; ghi bằng native để trigger tính tổng/hoa hồng), `OrderRepository`, `service/impl/OrderService` (gồm rate limit Redis 5/phút chung tạo đơn + báo chuyển khoản, dựng VietQR), `OrderController`, `OrderResponse`, 7 mã lỗi, security, `vietqr.*` trong yaml/`.env.example`.
+- Test: `OrderIntegrationTest` (12), `OrderServiceTest` (3), `CoursePaymentMigrationTest`, `FreeCourseMigrationTest`, `ArticlePublicationMigrationTest`, `PublishedCourseIntegrationTest`, `CourseLearningIntegrationTest`: 44 test, 0 lỗi. Chưa chạy full backend (CI).
+- Lệch khác spec: (1) V14 thay vì sửa V13 (DB dev có thể đã áp V13). (2) Không tạo `OrderRateLimitService`/`OrderControllerTest` (luật ít class 2026-11-15); validation body kiểm trong `OrderIntegrationTest`. (3) Body phải đúng một trường `courseId` dạng UUID chuẩn, thừa trường (vd. `priceAmount`) → 400 `ORDER_INVALID`; JSON hỏng vẫn 400 `MALFORMED_REQUEST`. (4) Thiếu cấu hình VietQR chỉ chặn tạo đơn mới (503); đơn chờ đã có vẫn trả về, `vietQr` = null. (5) Mã đơn sai định dạng → 404 `ORDER_NOT_FOUND`. (6) Báo chuyển khoản chưa kiểm provider MANUAL (mọi đơn đều MANUAL khi 1e hoãn; ghi `shortcut:` trong code).
+- Review vòng 1 (adversarial): `expireOverdue` dùng `now()` (giờ bắt đầu transaction) → request chờ khóa user qua hạn vẫn nhận đơn cũ. Sửa: `clock_timestamp()`; test `aRequestThatWaitsForTheUserLockPastTheDeadlineGetsANewOrder` đỏ với code cũ. `OrderIntegrationTest` + `OrderServiceTest`: 16 test, 0 lỗi. Vòng 2: approve, không phát hiện.
+- Bẫy: `src/test/resources/application-test.yaml` che file cùng tên ở `src/main/resources` — cấu hình test đặt ở test resources.
 ### 2026-11-15 — Task 1a (V13, giá, quyền xem) — đã nhận (2026-11-15)
 - Test: `CoursePaymentMigrationTest`, `CoursePriceServiceTest`, Author/Published/Learning/Moderator integration, `CourseContractTest`, `FreeCourseMigrationTest`, `CoursePersistence...`, `CourseLifecycleTest`, `ArticlePublicationMigrationTest`: 87 test, 0 lỗi. Chưa chạy full backend (CI).
 - Lệch khác spec: (1) `priceAmount` vắng khi tạo = 0 (spec ghi “bắt buộc”) để client cũ không vỡ; PATCH có thì kiểm. (2) Sửa giá chỉ-giá được phép cả khi PENDING (giá ngoài kiểm duyệt), khóa loại giá vẫn áp. (3) Moderator dùng DTO riêng `ModeratorCourseResponse`/`ModeratorCourseSummaryResponse.Item` vì DTO cũ nhúng `CourseResponse` có tiền. (4) Khóa trả phí: khách/người học chưa mua đọc bài thường → 403 `COURSE_PURCHASE_REQUIRED` (chủ/Mod/Admin giữ `ACCESS_DENIED`). (5) `CourseContractTest` cho `MyCourseResponse` có tiền vì nhúng thẻ công khai. (6) Tác giả nhận `commissionRateBps` trong `CourseResponse` (đọc native `commission_policies`; 1d sẽ có entity).

@@ -11,6 +11,11 @@ paths:
 - Không dùng `ui-styling`, `banner-design`, `brand`, `slides`, `design`. Không thêm thư viện UI/form thứ hai ngoài shadcn/ui + Tailwind (D-024).
 - Ghép trang theo skill `ui-components` (danh mục primitive, mẫu bố cục, Badge tone, điều cấm).
 
+## Ít file (người dùng chốt 2026-11-15)
+
+- Code mới viết vào file sẵn có (trang, service, types, component của miền) nếu đặt vào đó được; chỉ tạo file mới khi là trang/route mới hoặc component được dùng lại ở ≥2 nơi.
+- Không tách hook/helper/component con ra file riêng chỉ để “một file một việc”: để cùng file với nơi dùng. Test gộp vào file test có sẵn của trang/miền.
+
 ## Ngân sách test
 
 - **Chỉ chạy test liên quan, không full `npm test`** (người dùng chốt 2026-11-03). Liên quan = file test của component/trang bị sửa + nơi dùng trực tiếp (grep import). Cuối task: các file đó + `npm run build` một lần, song song; log ghi tên file đã chạy. Full suite chỉ khi người dùng yêu cầu; “Xong khi” ghi `npm test` thì hiểu theo luật này.
