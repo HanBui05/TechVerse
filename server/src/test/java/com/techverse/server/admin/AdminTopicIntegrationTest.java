@@ -292,7 +292,7 @@ class AdminTopicIntegrationTest {
     void inactivePreservesAllFourReferencingContentTypesWithoutChangingRows() throws Exception {
         UUID id = newTopic("Backend", "Shared taxonomy");
         jdbc.update("INSERT INTO techverse.articles(author_id,topic_id,title,summary,content,content_fingerprint) VALUES (?,?,'Article','Summary','Content',repeat('0',64))", learnerId, id);
-        jdbc.update("INSERT INTO techverse.courses(author_id,topic_id,title,summary,description,level,status,published_at) VALUES (?,?,'Course','Summary','Description','BEGINNER','PUBLISHED',now())", learnerId, id);
+        jdbc.update("INSERT INTO techverse.courses(author_id,topic_id,title,summary,description,level,content_fingerprint) VALUES (?,?,'Course','Summary','Description','BEGINNER',repeat('0',64))", learnerId, id);
         jdbc.update("INSERT INTO techverse.exercise_sets(author_id,topic_id,title,description,exercise_type,difficulty,status,published_at) VALUES (?,?,'Exercises','Description','MULTIPLE_CHOICE','EASY','PUBLISHED',now())", learnerId, id);
         jdbc.update("INSERT INTO techverse.interview_questions(author_id,topic_id,level,question,sample_answer,status,published_at) VALUES (?,?,'EASY','Question','Answer','PUBLISHED',now())", learnerId, id);
         var snapshots = new java.util.LinkedHashMap<String, List<Map<String, Object>>>();
