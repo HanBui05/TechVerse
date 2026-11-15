@@ -18,10 +18,10 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 - `server/src/main/resources/db/migration/V<n>__exercise_practice.sql` (tạo; `<n>` là số kế tiếp lúc code, V14 nếu V13 của `course-payment` đã có).
 - `server/src/main/java/com/techverse/server/{controller,entity,enums,dto,repository,service}/**/*Exercise*.java` (tạo); `configuration/SecurityConfiguration.java`, `exception/ErrorCode.java`.
-- `server/src/main/java/com/techverse/server/service/impl/{AiPromptFactory,AiRateLimitService}.java`, `properties/AiAssistProperties.java`, `server/src/main/resources/application*.yaml`, `.env.example` (Task 1c).
+- `server/src/main/java/com/techverse/server/service/impl/{AiPromptFactory,AiRateLimitService,AiOutlineService}.java`, `dto/response/AiQuotaResponse.java`, `properties/AiAssistProperties.java`, `server/src/main/resources/application*.yaml`, `.env.example` (Task 1c).
 - `server/src/test/java/com/techverse/server/exercise/**` (tạo) và test trực tiếp của file dùng chung bị sửa (`ai/**`).
 - `plans/exercise-practice.wireframe.md` (tạo ở cổng wireframe).
-- `app/src/pages/{Practice,Author/Exercises,Moderator/Exercises}/**` và test (tạo); `app/src/{types/exercises.ts,services/exerciseService.ts,data/exerciseI18n.ts}` và test (tạo).
+- `app/src/pages/{Practice,Author/Exercises,Moderator/Exercises}/**` và test (tạo); `app/src/{types/exercises.ts,services/exerciseService.ts,data/exerciseI18n.ts}` và test (tạo); `app/src/services/aiAssistService.ts` và test (kiểu quota thêm `exercise`, Task 2a).
 - `app/src/{App.tsx,App.*.test.tsx}`, `app/src/data/{navigation,managementI18n}.ts`, `app/src/components/layout/{Sidebar,ModeratorSidebar}.tsx` và test trực tiếp; `app/src/components/ui/{sidebar,labels,focus}*.test.*` khi sửa shell.
 
 ## Ngoài phạm vi
@@ -40,10 +40,11 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 - Đáp án và giải thích của bộ trắc nghiệm **không bao giờ** rời server trước khi người học nộp bài; server chấm, client không tự chấm.
 - Mỗi lượt làm lưu `attempt_snapshot` gồm đủ câu hỏi, lựa chọn, đáp án đúng, giải thích và câu trả lời của người học tại thời điểm nộp, để xem lại được kể cả khi bộ bị ẩn/gỡ.
 - Vai trò: Guest xem danh sách và trang giới thiệu bộ. Tài khoản đã đăng nhập không mang role ADMIN/MODERATOR được làm bài (kể cả tác giả làm bộ của người khác). Chủ bộ không làm bộ của chính mình (xem trước trong trình soạn). ADMIN/MODERATOR không làm bài (cùng luật không học khóa); ADMIN chỉ duyệt nếu đồng thời có role MODERATOR.
-- Tác giả bị đình chỉ (`author_profiles.status = SUSPENDED`) hoặc tài khoản bị khóa: không tạo/sửa/gửi duyệt; bộ đã công khai của họ không hiện ở khu Luyện tập (cùng luật hiển thị bài viết). Vẫn xem và xóa được bộ của mình.
+- Tác giả bị đình chỉ (`author_profiles.status = SUSPENDED`) hoặc tài khoản bị khóa: không tạo/sửa/gửi duyệt; bộ đã công khai của họ không hiện ở khu Luyện tập (cùng luật hiển thị bài viết). Tác giả bị đình chỉ vẫn xem và xóa được bộ của mình; tài khoản bị khóa thì mọi API cần đăng nhập của module bị từ chối theo cách kiểm người dùng đang hoạt động hiện có (`lockActiveUser`/`lockWriter`), không có ngoại lệ đọc/xóa.
 - Chủ đề phải đang hoạt động khi lưu, gửi duyệt và khi Moderator duyệt.
-- Markdown trong `content`/`explanation`/mặt flashcard dùng cùng bộ kiểm của bài viết (cấm HTML thô, link nguy hiểm, NUL); không hỗ trợ ảnh.
+- Markdown trong `content`/`explanation`/mặt flashcard dùng cùng bộ kiểm của bài viết (cấm HTML thô, link nguy hiểm, NUL); không hỗ trợ ảnh: cú pháp ảnh Markdown `![…](…)` bị từ chối bằng `EXERCISE_CONTENT_INVALID` (bộ kiểm bài viết cho phép ảnh nên phải chặn thêm).
 - Mọi thao tác đổi trạng thái khóa dòng bộ bài tập trong transaction; hai request đồng thời chỉ một request thắng, request kia nhận lỗi trạng thái.
+- Sửa nội dung (PATCH metadata, PUT câu hỏi) dùng khóa lạc quan: client gửi `version` đã đọc; lệch thì 409 `EXERCISE_VERSION_CONFLICT`, không ghi đè. `version` tăng ở **mọi** thay đổi của bộ, kể cả khi chỉ thay câu con hoặc chỉ đặt `ai_assisted` (tăng tường minh, không trông vào JPA tự tăng khi đổi hàng con).
 
 ### Trạng thái bộ bài tập
 
@@ -55,9 +56,9 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 ### Phạm vi
 
-- Migration: thêm `AUTHOR_HIDDEN` vào CHECK `status`; cột `hidden_from_status` (NULL trừ khi `HIDDEN`), `ai_assisted boolean NOT NULL DEFAULT false`, `version integer NOT NULL DEFAULT 0` (khóa lạc quan + review token); CHECK `time_limit_seconds IS NULL`; dừng nếu bảng đã có dữ liệu (không backfill, D-022).
-- `POST /api/v1/author/exercise-sets` (tạo DRAFT: `title`, `description`, `topicId`, `type`, `difficulty`), `GET /api/v1/author/exercise-sets` (của mình, lọc `status`, `type`, `keyword`, phân trang), `GET …/{id}` (kèm toàn bộ câu hỏi và đáp án), `PATCH …/{id}` (metadata, không đổi `type`), `PUT …/{id}/questions` (thay **toàn bộ** danh sách câu theo thứ tự gửi lên, một transaction), `POST …/{id}/submit`, `POST …/{id}/withdraw`, `PATCH …/{id}/visibility {action: HIDE|UNHIDE}`, `POST …/{id}/copy` (tạo DRAFT mới cùng nội dung, tiêu đề thêm “(bản sao)” cắt ở 255 ký tự, `ai_assisted` giữ nguyên), `DELETE …/{id}`, `GET /api/v1/author/exercise-sets/options` (chủ đề đang hoạt động).
-- Sửa metadata/câu hỏi chỉ khi `DRAFT` hoặc `CHANGES_REQUESTED`. Xóa: xóa cứng khi chưa từng công khai (`published_at IS NULL`) và không ở `PENDING`; bộ từng công khai không xóa (tác giả dùng ẩn).
+- Migration: thêm `AUTHOR_HIDDEN` vào CHECK `status`; cột `hidden_from_status` (NULL trừ khi `HIDDEN`), `ai_assisted boolean NOT NULL DEFAULT false`, `version integer NOT NULL DEFAULT 0` (khóa lạc quan + review token); CHECK `time_limit_seconds IS NULL`; `exercise_attempts.idempotency_key uuid NOT NULL` + UNIQUE `(user_id, idempotency_key)` (dùng ở 1b); dừng nếu một trong ba bảng bài tập đã có dữ liệu (không backfill, D-022).
+- `POST /api/v1/author/exercise-sets` (tạo DRAFT: `title`, `description`, `topicId`, `type`, `difficulty`), `GET /api/v1/author/exercise-sets` (của mình, lọc `status`, `type`, `keyword`, phân trang), `GET …/{id}` (kèm toàn bộ câu hỏi, đáp án và `version`), `PATCH …/{id}` (metadata + `version`, không đổi `type`), `PUT …/{id}/questions` (`version` + thay **toàn bộ** danh sách câu theo thứ tự gửi lên, một transaction; phản hồi mọi thao tác ghi trả `version` mới), `POST …/{id}/submit`, `POST …/{id}/withdraw`, `PATCH …/{id}/visibility {action: HIDE|UNHIDE}`, `POST …/{id}/copy` (tạo DRAFT mới cùng nội dung, tiêu đề thêm “(bản sao)” cắt ở 255 ký tự, `ai_assisted` giữ nguyên), `DELETE …/{id}`, `GET /api/v1/author/exercise-sets/options` (chủ đề đang hoạt động).
+- Sửa metadata/câu hỏi chỉ khi `DRAFT` hoặc `CHANGES_REQUESTED`. Xóa: xóa cứng (xóa câu con trước rồi mới xóa bộ, cùng transaction, vì FK câu hỏi là `ON DELETE RESTRICT`) khi chưa từng công khai (`published_at IS NULL`) và không ở `PENDING`; bộ từng công khai không xóa (tác giả dùng ẩn).
 - Câu trắc nghiệm: `content`, `codeSnippet`/`codeLanguage` tùy chọn, `options` 2–6 chuỗi, `correctIndex`, `explanation` bắt buộc. Lưu `answer` = chỉ số đáp án đúng dạng chuỗi. Thẻ flashcard: `front` (→ `content`), `back` (→ `answer`), `explanation` tùy chọn (rỗng lưu `""`), `options` NULL.
 
 ### Quy tắc nghiệp vụ và mã lỗi
@@ -74,7 +75,7 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 | Thẻ flashcard | `front`, `back` sau trim 1–1.000; `explanation` ≤ 2.000; không nhận `options`/`correctIndex` | 400 `EXERCISE_QUESTIONS_INVALID` | Thẻ {n}: thông tin chưa hợp lệ. |
 | Nội dung Markdown | HTML thô, link nguy hiểm, ký tự NUL | 400 `EXERCISE_CONTENT_INVALID` | Nội dung chứa định dạng không được hỗ trợ. |
 | Chưa đăng nhập / token sai | — | 401 `AUTH_ACCESS_TOKEN_REQUIRED` / `AUTH_INVALID_ACCESS_TOKEN` | Đăng nhập để tiếp tục. |
-| Không có role AUTHOR, hồ sơ tác giả không `APPROVED`, tài khoản bị khóa (thao tác ghi) | Đọc và xóa bộ của mình vẫn được khi bị đình chỉ | 403 `ACCESS_DENIED` | Bạn không có quyền. |
+| Không có role AUTHOR, hồ sơ tác giả không `APPROVED`, tài khoản bị khóa (thao tác ghi) | Đọc và xóa bộ của mình vẫn được khi bị đình chỉ (tài khoản bị khóa thì không) | 403 `ACCESS_DENIED` | Bạn không có quyền. |
 | Bộ không tồn tại hoặc của người khác | Không lộ sự tồn tại | 404 `EXERCISE_SET_NOT_FOUND` | Không tìm thấy bộ bài tập. |
 | Sửa khi không ở DRAFT/CHANGES_REQUESTED | — | 409 `EXERCISE_NOT_EDITABLE` | Bộ bài tập đang ở trạng thái không sửa được. |
 | Gửi duyệt khi chưa đủ | Trắc nghiệm ≥ 3 câu, flashcard ≥ 5 thẻ; mọi câu hợp lệ; chủ đề còn hoạt động | 409 `EXERCISE_NOT_READY` | Bộ bài tập chưa đủ điều kiện gửi duyệt. |
@@ -82,8 +83,11 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 | Rút khi không `PENDING` | Kể cả Moderator vừa duyệt xong | 409 `EXERCISE_STATE_INVALID` | Không thực hiện được ở trạng thái hiện tại. |
 | Ẩn/hiện của tác giả | HIDE chỉ từ `PUBLISHED`; UNHIDE chỉ từ `AUTHOR_HIDDEN`; bộ do Moderator ẩn/gỡ thì không | 409 `EXERCISE_STATE_INVALID` | Không thực hiện được ở trạng thái hiện tại. |
 | Xóa bộ từng công khai hoặc đang `PENDING` | — | 409 `EXERCISE_NOT_DELETABLE` | Không xóa được bộ đã công khai hoặc đang chờ duyệt. |
-| Hai request sửa cùng lúc | Khóa dòng; request sau áp lên dữ liệu mới nhất, không mất câu | 200 | — |
+| `version` khi PATCH/PUT | Bắt buộc, số nguyên ≥ 0; thiếu hoặc sai kiểu bị từ chối | 400 `VALIDATION_ERROR` | — |
+| Hai request sửa cùng lúc / sửa trên dữ liệu cũ | Khóa dòng rồi so `version`; lệch thì không ghi gì (hai tab cùng đọc A, gửi A+B rồi A+C: lần sau bị từ chối, B không mất) | 409 `EXERCISE_VERSION_CONFLICT` | Bộ bài tập đã được sửa ở nơi khác. Hãy tải lại trước khi lưu. |
 | Tạo quá nhanh | Tối đa 10 lần tạo/sao chép mỗi phút mỗi người | 429 `EXERCISE_RATE_LIMITED` | Bạn thao tác quá nhanh, hãy thử lại sau. |
+| Redis lỗi khi kiểm nhịp (cả 1a và 1b) | Không cho qua | 503 `EXERCISE_STORAGE_UNAVAILABLE` | Dịch vụ đang gián đoạn. Hãy thử lại. |
+| Tham số lọc/phân trang sai | `page ≥ 0`, `size` 1–50, enum hợp lệ, `keyword` ≤ 100 | 400 `VALIDATION_ERROR` | — |
 
 ### Kế hoạch thực thi
 
@@ -93,10 +97,11 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 ### Xong khi
 
-- [ ] `ExercisePracticeMigrationTest` (Flyway thuần): CHECK trạng thái mới, ba cột mới, CHECK `time_limit_seconds`, dừng khi bảng có dữ liệu.
+- [ ] `ExercisePracticeMigrationTest` (Flyway thuần): CHECK trạng thái mới, ba cột mới, CHECK `time_limit_seconds`, cột + UNIQUE `idempotency_key`, dừng khi bảng có dữ liệu.
+- [ ] `ExerciseLifecycleTest` (unit, logic thuần): ma trận mọi chuyển trạng thái hợp lệ/sai của tác giả và Moderator, điều kiện gửi duyệt (3 câu/5 thẻ), điều kiện xóa.
 - [ ] `ExerciseQuestionValidatorTest` (unit): từng dòng của hai hàng “Câu trắc nghiệm”, “Thẻ flashcard” và các biên (2/6/7 lựa chọn, 50/51 câu, lựa chọn trùng, `correctIndex` ngoài khoảng, snippet thiếu ngôn ngữ).
 - [ ] `AuthorExerciseControllerTest` (`@WebMvcTest`): validation metadata, 401, mapping mã lỗi.
-- [ ] `AuthorExerciseIntegrationTest` (DB/security thật): tạo → lưu câu → gửi → rút → gửi lại; từng chuyển trạng thái sai; quyền (không phải tác giả, tác giả bị đình chỉ, bộ người khác → 404); sao chép; ẩn/hiện; xóa các ca; chủ đề ngừng hoạt động; hai request gửi duyệt song song chỉ một thành công.
+- [ ] `AuthorExerciseIntegrationTest` (DB/security thật): tạo → lưu câu → gửi → rút → gửi lại; một ca chuyển trạng thái sai (ma trận đầy đủ ở unit); quyền (không phải tác giả, tác giả bị đình chỉ, tài khoản bị khóa, bộ người khác → 404); sao chép; ẩn/hiện; xóa nháp **đã có câu** và xóa bị từ chối; chủ đề ngừng hoạt động; hai request gửi duyệt song song chỉ một thành công; PUT với `version` cũ → 409 và câu của lần lưu trước còn nguyên; PUT chỉ đổi câu vẫn tăng `version`.
 - [ ] Chạy các lớp trên (cần Docker); full backend do CI chạy khi mở PR.
 
 ## Task 1b — Moderator duyệt, khu Luyện tập và lượt làm
@@ -105,7 +110,7 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 ### Phạm vi
 
-- Moderator: `GET /api/v1/moderator/exercise-sets` (mọi bộ trừ DRAFT chưa từng gửi; lọc `status`, `type`, `topicId`, `keyword`; mặc định chờ duyệt; có `authorEligible`, `aiAssisted`), `GET …/{id}` (đủ câu hỏi + đáp án + `reviewToken`), `PATCH …/{id}/review {decision: APPROVE|REQUEST_CHANGES, note, reviewToken}`, `PATCH …/{id}/publication {action: HIDE|RESTORE|REMOVE, reason, reviewToken}`.
+- Moderator: `GET /api/v1/moderator/exercise-sets` (mọi bộ trừ `DRAFT`, kể cả nháp đã rút, vì schema không ghi được “đã từng gửi”; lọc `status`, `type`, `topicId`, `keyword`; mặc định chờ duyệt; có `authorEligible`, `aiAssisted`), `GET …/{id}` (đủ câu hỏi + đáp án + `reviewToken`), `PATCH …/{id}/review {decision: APPROVE|REQUEST_CHANGES, note, reviewToken}`, `PATCH …/{id}/publication {action: HIDE|RESTORE|REMOVE, reason, reviewToken}`.
 - Duyệt kiểm lại: tác giả còn đủ điều kiện, chủ đề còn hoạt động, bộ vẫn đạt điều kiện gửi duyệt. `REQUEST_CHANGES`, `HIDE`, `REMOVE` bắt buộc ghi chú. Ghi `moderation_note`, `reviewed_by/at`; lần duyệt đầu đặt `published_at`.
 - Công khai: `GET /api/v1/exercise-sets` (`permitAll`; chỉ `PUBLISHED` của tác giả còn hiển thị; lọc `topicId`, `difficulty`, `type`, `keyword`; sắp xếp mới nhất; phân trang; mỗi mục có số câu và, với người đã đăng nhập, kết quả lần làm gần nhất), `GET /api/v1/exercise-sets/options`, `GET /api/v1/exercise-sets/{id}` (`permitAll`; giới thiệu: tiêu đề, mô tả, chủ đề, độ khó, loại, số câu, tác giả, `viewer.canAttempt` + lý do; **không có câu hỏi**).
 - Làm bài: `GET /api/v1/exercise-sets/{id}/questions` (đăng nhập, đủ quyền làm): trắc nghiệm trả câu + lựa chọn theo thứ tự tác giả, không có đáp án/giải thích; flashcard trả cả hai mặt + giải thích. `POST /api/v1/exercise-sets/{id}/attempts`: trắc nghiệm gửi `answers: [{questionId, selectedIndex|null}]` + `durationSeconds`, server chấm và trả kết quả đầy đủ; flashcard gửi `results: [{questionId, remembered}]` + `durationSeconds`, server lưu số “đã nhớ”/tổng.
@@ -117,10 +122,11 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 | Trường / tình huống | Ràng buộc | HTTP / mã lỗi | Copy hiển thị |
 |---|---|---|---|
 | Không phải MODERATOR gọi API moderator | ADMIN không kèm MODERATOR cũng bị từ chối | 401 / 403 `ACCESS_DENIED` | Bạn không có quyền. |
-| Bộ không tồn tại hoặc là DRAFT chưa từng gửi | — | 404 `EXERCISE_SET_NOT_FOUND` | Không tìm thấy bộ bài tập. |
+| Bộ không tồn tại hoặc đang `DRAFT` | — | 404 `EXERCISE_SET_NOT_FOUND` | Không tìm thấy bộ bài tập. |
+| `decision` / `action` / `reviewToken` | Bắt buộc; enum hợp lệ; token đúng định dạng | 400 `VALIDATION_ERROR` | — |
 | `note`/`reason` | Bắt buộc 1–1.000 ký tự cho REQUEST_CHANGES/HIDE/REMOVE; tùy chọn ≤ 1.000 cho APPROVE/RESTORE | 400 `VALIDATION_ERROR` | Hãy ghi lý do (tối đa 1.000 ký tự). |
-| `reviewToken` lệch (bộ đã đổi từ lúc mở) | Không áp dụng quyết định | 409 `EXERCISE_REVIEW_STALE` | Bộ bài tập đã thay đổi. Hãy tải lại trước khi duyệt. |
-| Review khi không `PENDING` (kể cả hai Moderator duyệt đồng thời) | Một người thắng | 409 `EXERCISE_STATE_INVALID` | Không thực hiện được ở trạng thái hiện tại. |
+| `reviewToken` lệch (bộ đã đổi từ lúc mở; kể cả hai Moderator thao tác đồng thời: người sau cầm token cũ) | Khóa dòng, so token **trước** rồi mới xét trạng thái; không áp dụng quyết định | 409 `EXERCISE_REVIEW_STALE` | Bộ bài tập đã thay đổi. Hãy tải lại trước khi duyệt. |
+| Review khi token khớp nhưng bộ không `PENDING` | — | 409 `EXERCISE_STATE_INVALID` | Không thực hiện được ở trạng thái hiện tại. |
 | Duyệt khi tác giả mất điều kiện / chủ đề ngừng / bộ không còn đạt | Không công khai | 409 `EXERCISE_AUTHOR_INELIGIBLE` / `EXERCISE_TOPIC_INACTIVE` / `EXERCISE_NOT_READY` | Tác giả không còn đủ điều kiện. / Chủ đề đã ngừng hoạt động. / Bộ bài tập chưa đủ điều kiện. |
 | HIDE / RESTORE / REMOVE sai trạng thái | HIDE từ PUBLISHED hoặc AUTHOR_HIDDEN; RESTORE chỉ từ HIDDEN về trạng thái đã nhớ; REMOVE từ PUBLISHED/AUTHOR_HIDDEN/HIDDEN; REMOVED không đổi được nữa | 409 `EXERCISE_STATE_INVALID` | Không thực hiện được ở trạng thái hiện tại. |
 | Bộ không công khai hoặc tác giả không còn hiển thị (API công khai, câu hỏi, nộp bài) | Kể cả bộ bị ẩn trong lúc đang làm | 404 `EXERCISE_SET_NOT_FOUND` | Bộ bài tập không còn khả dụng. |
@@ -128,7 +134,7 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 | ADMIN/MODERATOR hoặc chủ bộ lấy câu hỏi / nộp bài | — | 403 `ACCESS_DENIED` | Bạn không có quyền làm bộ bài tập này. |
 | `answers`/`results` | Mỗi `questionId` thuộc bộ, không lặp; thiếu câu = bỏ trống (trắc nghiệm) hoặc “chưa nhớ” (flashcard); `selectedIndex` nằm trong số lựa chọn; gửi sai dạng so với loại bộ bị từ chối | 400 `EXERCISE_ATTEMPT_INVALID` | Bài làm không hợp lệ. Hãy tải lại và làm lại. |
 | `durationSeconds` | Số nguyên 0–86.400; thiếu = 0 | 400 `EXERCISE_ATTEMPT_INVALID` | Bài làm không hợp lệ. |
-| Nộp trùng (bấm hai lần, gửi lại do mạng) | Header `Idempotency-Key` (UUID) bắt buộc; cùng khóa trả lại đúng kết quả cũ, không tạo lượt mới; khóa dùng cho dữ liệu khác bị từ chối | 400 `VALIDATION_ERROR` (thiếu khóa) / 409 `EXERCISE_ATTEMPT_KEY_CONFLICT` | — / Yêu cầu trùng. Hãy làm lại. |
+| Nộp trùng (bấm hai lần, gửi lại do mạng) | Header `Idempotency-Key` (UUID) bắt buộc. Khóa lưu ngay trong dòng lượt làm (UNIQUE `(user_id, idempotency_key)`, cùng transaction với lượt làm, không dùng Redis, không hết hạn). Thứ tự: kiểm quyền → kiểm định dạng khóa → tìm lượt cùng người + khóa: có và cùng bộ thì trả lại kết quả đã lưu (kể cả khi bộ đã bị ẩn/gỡ, không tính vào nhịp nộp); có nhưng của bộ khác thì từ chối; chưa có thì mới kiểm nhịp, trạng thái bộ, chấm và lưu. Hai request cùng khóa chạy song song: request thua ở ràng buộc UNIQUE đọc lại và trả đúng lượt đã lưu | 400 `VALIDATION_ERROR` (thiếu khóa / không phải UUID) / 409 `EXERCISE_ATTEMPT_KEY_CONFLICT` | — / Yêu cầu trùng. Hãy làm lại. |
 | Nộp quá nhanh | Tối đa 20 lượt nộp mỗi phút mỗi người | 429 `EXERCISE_RATE_LIMITED` | Bạn thao tác quá nhanh, hãy thử lại sau. |
 | Xem lượt làm của người khác / không tồn tại | — | 404 `EXERCISE_ATTEMPT_NOT_FOUND` | Không tìm thấy lượt làm. |
 | Tham số lọc/phân trang sai | `page ≥ 0`, `size` 1–50, enum hợp lệ | 400 `VALIDATION_ERROR` | — |
@@ -136,7 +142,7 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 ### Kế hoạch thực thi
 
 - **File cần đụng:** `ModeratorExerciseController`, `PublishedExerciseController`, service/repository tương ứng; `ExerciseGrader` (logic thuần: chấm, dựng snapshot); entity `ExerciseAttempt`; `SecurityConfiguration` (GET `/api/v1/exercise-sets`, `/options`, `/{id}` là `permitAll`; `/{id}/questions`, `/{id}/attempts`, `/api/v1/me/exercise-attempts/**` authenticated — khai đường cụ thể trước đường `permitAll` rộng; `/api/v1/moderator/exercise-sets/**` authenticated); `ErrorCode`.
-- **Phần dùng lại:** điều kiện “tác giả còn hiển thị” của bài viết/khóa học công khai; cách chặn ADMIN/MODERATOR của `CourseAccessService.checkReader`; mẫu `reviewToken` của bài viết (dùng `version` mới); receipt idempotency trên Redis như tạo bài/khóa.
+- **Phần dùng lại:** điều kiện “tác giả còn hiển thị” của bài viết/khóa học công khai; cách chặn ADMIN/MODERATOR của `CourseAccessService.checkReader`; mẫu `reviewToken` của bài viết (dùng `version` mới). Idempotency **không** dùng receipt Redis như tạo bài/khóa (Redis không cùng transaction với PostgreSQL): dùng cột `idempotency_key` của 1a.
 - **Bẫy đã biết:** matcher `permitAll` không được che `/questions`; DTO câu hỏi cho người làm phải là kiểu riêng không có trường đáp án (không dùng lại DTO tác giả rồi bỏ trường); `attempt_snapshot` phải là object (CHECK); `correct_count` và `total_count` cùng có hoặc cùng NULL; đọc và chấm trong cùng transaction với kiểm trạng thái bộ.
 
 ### Xong khi
@@ -144,8 +150,8 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 - [ ] `ExerciseGraderTest` (unit): đúng/sai/bỏ trống, phần trăm làm tròn xuống, flashcard đếm “đã nhớ”, snapshot đủ trường, từng dòng `EXERCISE_ATTEMPT_INVALID`.
 - [ ] `ExerciseContractTest` (unit, quét kiểu): DTO câu hỏi cho người làm trắc nghiệm không có trường `answer`/`correctIndex`/`explanation`.
 - [ ] `ModeratorExerciseControllerTest`, `PublishedExerciseControllerTest` (`@WebMvcTest`): validation, 401/403, mapping mã lỗi, tham số lọc sai.
-- [ ] `ModeratorExerciseIntegrationTest`: duyệt/yêu cầu sửa; token lệch; hai Moderator duyệt song song; từng dòng không đủ điều kiện; ẩn → khôi phục về đúng trạng thái trước (cả `PUBLISHED` và `AUTHOR_HIDDEN`); gỡ; ADMIN không kèm MODERATOR.
-- [ ] `ExercisePracticeIntegrationTest`: Guest xem danh sách/giới thiệu và bị 401 ở câu hỏi; làm trắc nghiệm và flashcard; chủ bộ/ADMIN/MODERATOR bị 403; bộ bị ẩn giữa chừng → 404 khi nộp; nộp trùng cùng khóa → một lượt; lịch sử chỉ của mình và vẫn xem được sau khi bộ bị gỡ; tác giả bị đình chỉ → bộ biến mất khỏi danh sách.
+- [ ] `ModeratorExerciseIntegrationTest`: duyệt/yêu cầu sửa; token lệch; hai Moderator duyệt song song (một thành công, một `EXERCISE_REVIEW_STALE`); nháp đã rút không hiện và trả 404; từng dòng không đủ điều kiện; ẩn → khôi phục về đúng trạng thái trước (cả `PUBLISHED` và `AUTHOR_HIDDEN`); gỡ; ADMIN không kèm MODERATOR.
+- [ ] `ExercisePracticeIntegrationTest`: Guest xem danh sách/giới thiệu và bị 401 ở câu hỏi; làm trắc nghiệm và flashcard; chủ bộ/ADMIN/MODERATOR bị 403; bộ bị ẩn giữa chừng → 404 khi nộp; nộp trùng cùng khóa → một lượt (tuần tự và hai request song song); nộp lại cùng khóa sau khi bộ bị ẩn → vẫn trả kết quả cũ; cùng khóa cho bộ khác → 409; lịch sử chỉ của mình và vẫn xem được sau khi bộ bị gỡ; tác giả bị đình chỉ → bộ biến mất khỏi danh sách.
 - [ ] Chạy các lớp trên + `AuthorExerciseIntegrationTest`; full backend do CI.
 
 ## Task 1c — AI sinh câu hỏi cho tác giả
@@ -156,8 +162,8 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 - `POST /api/v1/author/exercise-sets/{id}/ai/questions` — body `{instruction, sourceText, count}`; trả danh sách câu **đề xuất** đúng dạng của loại bộ (trắc nghiệm: câu, 4 lựa chọn, chỉ số đúng, giải thích; flashcard: mặt trước, mặt sau). **Không lưu vào bộ**: tác giả xem, sửa, chọn rồi lưu bằng `PUT …/questions`. Không stream.
 - Ngữ cảnh gửi model: tiêu đề, mô tả, chủ đề, độ khó, loại của bộ; các câu hiện có (để tránh trùng); `instruction`; `sourceText`. Tất cả là dữ liệu không tin cậy; system prompt cố định; trả lời tiếng Việt.
-- Kết quả phải qua đúng `ExerciseQuestionValidator` của 1a; câu không đạt bị loại; không còn câu nào đạt → lỗi và hoàn lượt. Gọi thành công thì đặt `ai_assisted = true` cho bộ (một chiều; Tác giả và Moderator thấy, người học không thấy).
-- Quota riêng `EXERCISE`: mặc định 10 lần/ngày/tác giả (`AI_EXERCISE_PER_DAY`), dùng chung `burst-per-minute`. `GET /api/v1/author/ai/quota` hiện có trả thêm quota này. Hoàn lượt khi lỗi nhà cung cấp, hết giờ, kết quả không dùng được.
+- Kết quả phải qua đúng `ExerciseQuestionValidator` của 1a; câu không đạt bị loại; không còn câu nào đạt → lỗi và hoàn lượt. Sau khi model trả kết quả: khóa dòng bộ, kiểm lại chủ sở hữu, điều kiện tác giả và trạng thái sửa được; không còn đạt thì trả lỗi tương ứng, hoàn lượt, không trả câu đề xuất và không đặt cờ. Còn đạt thì đặt `ai_assisted = true` (tăng `version`; một chiều; Tác giả và Moderator thấy, người học không thấy).
+- Quota riêng `EXERCISE`: mặc định 10 lần/ngày/tác giả (`AI_EXERCISE_PER_DAY`), dùng chung `burst-per-minute`. `GET /api/v1/author/ai/quota` hiện có trả thêm trường `exercise` cùng dạng `outline`/`draft` (chỉ thêm, không đổi trường cũ); phản hồi sinh câu hỏi mang header lượt còn lại như endpoint dàn ý. Hoàn lượt khi lỗi nhà cung cấp, hết giờ, kết quả không dùng được.
 
 ### Quy tắc nghiệp vụ và mã lỗi
 
@@ -166,25 +172,25 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 | `instruction` | Tùy chọn, ≤ 500 ký tự | 400 `VALIDATION_ERROR` | Yêu cầu tối đa 500 ký tự. |
 | `sourceText` | Tùy chọn, ≤ 8.000 ký tự | 400 `VALIDATION_ERROR` | Nội dung nguồn tối đa 8.000 ký tự. |
 | `count` | Bắt buộc 1–10; cộng số câu hiện có không vượt 50 | 400 `VALIDATION_ERROR` / 409 `EXERCISE_QUESTIONS_INVALID` | Số câu từ 1 đến 10. / Mỗi bộ tối đa 50 câu. |
-| Quyền và trạng thái | Như sửa câu hỏi ở 1a: chủ bộ, tác giả đủ điều kiện, bộ ở DRAFT/CHANGES_REQUESTED | 401 / 403 `ACCESS_DENIED` / 404 `EXERCISE_SET_NOT_FOUND` / 409 `EXERCISE_NOT_EDITABLE` | Như 1a. |
+| Quyền và trạng thái | Như sửa câu hỏi ở 1a: chủ bộ, tác giả đủ điều kiện, bộ ở DRAFT/CHANGES_REQUESTED; kiểm **trước** khi gọi model và **kiểm lại** sau khi model trả (bộ bị gửi/xóa hoặc tác giả mất quyền trong lúc chờ → lỗi, hoàn lượt) | 401 / 403 `ACCESS_DENIED` / 404 `EXERCISE_SET_NOT_FOUND` / 409 `EXERCISE_NOT_EDITABLE` | Như 1a. |
 | Quá nhịp / hết lượt ngày | — | 429 `AI_RATE_LIMITED` / `AI_QUOTA_EXCEEDED` | Bạn thao tác quá nhanh. / Bạn đã dùng hết lượt AI hôm nay. |
 | Model trả sai định dạng sau một lần sửa, hoặc không câu nào đạt | Hoàn lượt | 422 `AI_OUTPUT_INVALID` | AI trả về nội dung không dùng được. Hãy thử lại. |
 | Bị cắt do giới hạn token | Hoàn lượt | 422 `AI_OUTPUT_TRUNCATED` | Kết quả bị cắt. Hãy giảm số câu. |
-| Lỗi nhà cung cấp / hết giờ / chưa cấu hình / Redis lỗi | Hoàn lượt (trừ khi chưa giữ lượt) | `AI_PROVIDER_*` / `AI_TIMEOUT` / `AI_CONFIGURATION_INVALID` / `AI_STORAGE_UNAVAILABLE` | Dịch vụ AI đang gián đoạn. Hãy thử lại. |
+| Lỗi nhà cung cấp / hết giờ / chưa cấu hình / Redis lỗi | Hoàn lượt (trừ khi chưa giữ lượt) | 502 `AI_PROVIDER_UNAVAILABLE`, `AI_PROVIDER_REQUEST_REJECTED` / 503 `AI_PROVIDER_AUTH_FAILED`, `AI_PROVIDER_RATE_LIMITED`, `AI_STORAGE_UNAVAILABLE` / 504 `AI_TIMEOUT` / `AI_CONFIGURATION_INVALID` (HTTP theo `ErrorCode` hiện có) | Dịch vụ AI đang gián đoạn. Hãy thử lại. |
 | Trả ít câu hơn yêu cầu nhưng có câu đạt | Vẫn thành công, trừ một lượt, trả số câu thực có | 200 | AI tạo được {n}/{count} câu. |
-| Hai request AI đồng thời của một tác giả | Request sau bị từ chối, không trừ lượt | 409 `AI_GENERATION_IN_PROGRESS` | AI đang xử lý yêu cầu trước. |
+| Hai request AI đồng thời của một tác giả | Giữ chỗ bằng `AiGenerationRegistry.start(author, timeout)` trước khi trừ lượt, `finish` trong `finally` (chỗ tự hết hạn theo timeout); dùng chung chỗ với sinh bản nháp bài viết nên đang sinh bài viết cũng bị từ chối. Request sau bị từ chối, không trừ lượt | 409 `AI_GENERATION_IN_PROGRESS` | AI đang xử lý yêu cầu trước. |
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** `ExerciseAiService` + endpoint trong `AuthorExerciseController`; `AiPromptFactory` thêm prompt và schema JSON cho hai loại; `AiRateLimitService.Kind.EXERCISE`; `AiAssistProperties` thêm `exercisePerDay`, timeout và khóa token `EXERCISE`; YAML, `.env.example`.
+- **File cần đụng:** `ExerciseAiService` + endpoint trong `AuthorExerciseController`; `AiPromptFactory` thêm prompt và schema JSON cho hai loại; `AiRateLimitService.Kind.EXERCISE`; `AiOutlineService.quota` + `AiQuotaResponse` thêm `exercise`; `AiAssistProperties` thêm `exercisePerDay`, timeout và khóa token `EXERCISE`; YAML, `.env.example`.
 - **Phần dùng lại:** luồng gọi model có schema + một lần sửa của `AiOutlineService`; `AiProviderExceptionMapper`; `AiPromptFactory.options(...)`.
 - **Bẫy đã biết:** luật trong `backend-ai.md` (option runtime, `extra-body`, retry); `AiAssistProperties` kiểm danh sách khóa token cố định — thêm `EXERCISE` ở cả code và YAML; không giữ transaction DB khi gọi model; đặt `ai_assisted` trong transaction riêng sau khi có kết quả.
 
 ### Xong khi
 
-- [ ] `ExerciseAiServiceTest` (unit, model giả): thành công hai loại; loại câu không đạt; không câu nào đạt → hoàn lượt; từng dòng lỗi nhà cung cấp/hết giờ/bị cắt; đặt `ai_assisted`; request đồng thời.
+- [ ] `ExerciseAiServiceTest` (unit, model giả): thành công hai loại; loại câu không đạt; không câu nào đạt → hoàn lượt; từng dòng lỗi nhà cung cấp/hết giờ/bị cắt; đặt `ai_assisted` và tăng `version`; request đồng thời; bộ bị gửi duyệt/xóa trong lúc chờ model → lỗi, hoàn lượt, không đặt cờ; chỗ giữ được nhả khi lỗi.
 - [ ] `AiPromptFactoryTest`: prompt chứa đủ ngữ cảnh dạng dữ liệu và schema đúng loại.
-- [ ] `AuthorExerciseIntegrationTest` thêm 3–4 ca: quyền/trạng thái, quota hết → 429, gọi thành công không tự lưu câu. Chạy thêm các lớp `Ai*` dùng `AiRateLimitService`/`AiAssistProperties`. Không test nào gọi model thật.
+- [ ] `AuthorExerciseIntegrationTest` thêm 3–4 ca: quyền/trạng thái, quota hết → 429, gọi thành công không tự lưu câu, API quota trả thêm `exercise` và giữ nguyên `outline`/`draft`. Chạy thêm các lớp `Ai*` dùng `AiRateLimitService`/`AiAssistProperties`. Không test nào gọi model thật.
 
 ## Cổng wireframe
 
@@ -239,13 +245,13 @@ Câu hiển thị cho từng mã lỗi lấy từ cột “Copy hiển thị” 
 
 ### Phạm vi
 
-- `/moderator/exercises` (danh sách theo chuẩn màn duyệt bài viết: ô số liệu theo trạng thái, bộ lọc, mặc định “Chờ duyệt”, nhãn “Có dùng AI”, cảnh báo tác giả không còn đủ điều kiện), `/moderator/exercises/:id` (xem toàn bộ câu kèm đáp án đúng được đánh dấu; Duyệt / Yêu cầu sửa; Ẩn / Khôi phục / Gỡ với hộp thoại nhập lý do).
+- `/moderator/exercises` (danh sách theo chuẩn màn duyệt bài viết nhưng **không có ô số liệu**: API bài tập chỉ có một trục `status`, khác hai trục của `ArticleStats`; bộ lọc `status`, mặc định “Chờ duyệt”, nhãn “Có dùng AI”, cảnh báo tác giả không còn đủ điều kiện), `/moderator/exercises/:id` (xem toàn bộ câu kèm đáp án đúng được đánh dấu; Duyệt / Yêu cầu sửa; Ẩn / Khôi phục / Gỡ với hộp thoại nhập lý do).
 - Mapping lỗi theo bảng 1b; lỗi token lệch có nút tải lại. Thêm mục “Bài tập” vào sidebar Moderator.
 
 ### Kế hoạch thực thi
 
 - **File cần đụng:** `pages/Moderator/Exercises/**`, `ModeratorSidebar.tsx`, `managementI18n.ts`, `App.tsx`, service/types.
-- **Phần dùng lại:** bố cục và component của `Moderator/Courses`, `ArticleStats`, hộp thoại lý do hiện có.
+- **Phần dùng lại:** bố cục và component của `Moderator/Courses`, hộp thoại lý do hiện có (không dùng `ArticleStats`).
 - **Bẫy đã biết:** không tự retry thao tác duyệt; sau thành công tải lại từ server; lý do bắt buộc ở client khớp bảng 1b.
 
 ### Copy vi/en
@@ -317,27 +323,12 @@ Câu hiển thị cho từng mã lỗi lấy từ cột “Copy hiển thị” 
 
 ## Câu hỏi mở cần người dùng chốt
 
-Mỗi câu đã có mặc định viết trong thân spec; không trả lời = giữ mặc định.
-
-1. **Bộ đã công khai không sửa được, muốn sửa thì tạo bản sao và gửi duyệt lại** (vì bộ bài tập không có phiên bản). Giữ, hay cho sửa trực tiếp rồi duyệt lại (thêm khoảng một ngày công)?
-2. **Tác giả tự ẩn/hiện bộ đã công khai của mình** (không cần Moderator). Giữ?
-3. **Điều kiện gửi duyệt: ≥ 3 câu trắc nghiệm hoặc ≥ 5 thẻ; tối đa 50 câu mỗi bộ; trắc nghiệm 2–6 lựa chọn, một đáp án đúng.** Giữ, hay số khác?
-4. **AI: 10 lần sinh câu hỏi mỗi ngày mỗi tác giả, mỗi lần tối đa 10 câu; bộ có dùng AI hiện nhãn cho Tác giả và Moderator.** Giữ?
-5. **Tác giả không làm bộ của chính mình; Admin/Moderator không làm bài.** Giữ?
-6. **Bài đang làm dở không lưu** (tải lại trang là làm lại). Giữ?
-
-## Phản hồi vòng 1 (Codex)
-
-Đúng / Sai / Thiếu / Thừa:
-
-### Đề xuất ngoài spec (không chặn chốt)
-
-## Trả lời vòng 1 (Claude)
-
-## Phản hồi vòng 2 (Codex)
-
-## Trả lời vòng 2 (Claude)
+- (không có — sáu câu hỏi mở đã chốt giữ mặc định, xem mục dưới)
 
 ## Quyết định của người dùng
 
-Chốt theo: (chưa chốt)
+**Người dùng chốt spec 2026-11-15** (Task 1a–1c, cổng wireframe, 2a–2c). Lịch sử phản biện: [`exercise-practice.review.md`](exercise-practice.review.md).
+
+- Sáu câu hỏi mở giữ mặc định: bộ đã công khai không sửa (tạo bản sao); tác giả tự ẩn/hiện; ≥ 3 câu hoặc ≥ 5 thẻ, tối đa 50 câu, 2–6 lựa chọn, một đáp án đúng; AI 10 lần/ngày, 10 câu/lần, có nhãn; tác giả không làm bộ của mình, Admin/Moderator không làm bài; bài làm dở không lưu.
+- Chấp nhận ba thay đổi sau phản biện vòng 1: Moderator không thấy bộ `DRAFT` nào (kể cả nháp đã rút); màn Moderator không có ô số liệu; sinh câu hỏi AI dùng chung chỗ giữ lượt với sinh bản nháp bài viết.
+- Phần Claude sửa thân spec sau vòng 1 chưa qua Codex soát vòng 2.
