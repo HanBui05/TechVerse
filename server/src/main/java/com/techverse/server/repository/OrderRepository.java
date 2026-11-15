@@ -15,6 +15,9 @@ import java.util.*;
 
 /** Orders are inserted natively: triggers compute the revenue split and the order total. */
 public interface OrderRepository extends JpaRepository<CourseOrder, UUID> {
+    /** Advisory lock key serialising commission policy changes with order item creation. */
+    long COMMISSION_LOCK = 7_305_001L;
+
     /**
      * Marks the user's overdue PENDING orders (and their pending transactions) EXPIRED; no scheduler.
      * {@code clock_timestamp()}, not {@code now()}: a request that waited for the user lock past the
@@ -29,17 +32,53 @@ public interface OrderRepository extends JpaRepository<CourseOrder, UUID> {
             nativeQuery = true)
     int expireOverdue(@Param("userId") UUID userId);
 
+    /** Transaction-scoped: held to commit by both a policy change and an order item insert. */
+    @Query(value = "SELECT count(*) FROM (SELECT pg_advisory_xact_lock(" + COMMISSION_LOCK + ")) l", nativeQuery = true)
+    long lockCommission();
+
+    /**
+     * {@code clock_timestamp()}, not {@code now()}: after waiting for the commission lock, a policy that
+     * took effect after this transaction started must count as active.
+     */
     @Query(
-            value = "SELECT id FROM commission_policies WHERE is_active AND effective_from <= now()"
-                    + " AND (effective_to IS NULL OR effective_to > now())",
+            value = "SELECT id FROM commission_policies WHERE is_active AND effective_from <= clock_timestamp()"
+                    + " AND (effective_to IS NULL OR effective_to > clock_timestamp())",
             nativeQuery = true)
     Optional<UUID> activeCommissionPolicyId();
 
+    interface CommissionPolicyRow {
+        UUID getId();
+        Integer getRateBps();
+        java.time.Instant getEffectiveFrom();
+    }
+
+    @Query(
+            value = "SELECT id, rate_bps AS rateBps, effective_from AS effectiveFrom FROM commission_policies WHERE is_active",
+            nativeQuery = true)
+    Optional<CommissionPolicyRow> activeCommissionPolicy();
+
+    @Query(value = "SELECT clock_timestamp()", nativeQuery = true)
+    java.time.Instant clockTimestamp();
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value = "UPDATE commission_policies SET is_active = false, effective_to = :at, updated_by = :admin WHERE id = :id",
+            nativeQuery = true)
+    void closeCommissionPolicy(@Param("id") UUID id, @Param("at") java.time.Instant at, @Param("admin") UUID admin);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value = "INSERT INTO commission_policies (rate_bps, effective_from, is_active, created_by, updated_by)"
+                    + " VALUES (:rate, :at, true, :admin, :admin)",
+            nativeQuery = true)
+    void insertCommissionPolicy(@Param("rate") int rate, @Param("at") java.time.Instant at, @Param("admin") UUID admin);
+
+    /** {@code clock_timestamp()}: created after the commission lock, never before the policy it snapshots. */
     @Modifying
     @Query(
-            value = "INSERT INTO orders (id, user_id, order_code, expires_at, created_by, updated_by)"
+            value = "INSERT INTO orders (id, user_id, order_code, expires_at, created_at, created_by, updated_by)"
                     + " VALUES (:id, :userId, 'TV' || lpad(nextval('order_code_seq')::text, 12, '0'),"
-                    + " now() + make_interval(hours => :hours), :userId, :userId)",
+                    + " clock_timestamp() + make_interval(hours => :hours), clock_timestamp(), :userId, :userId)",
             nativeQuery = true)
     void insertOrder(@Param("id") UUID id, @Param("userId") UUID userId, @Param("hours") int hours);
 
@@ -47,8 +86,8 @@ public interface OrderRepository extends JpaRepository<CourseOrder, UUID> {
     @Modifying
     @Query(
             value = "INSERT INTO order_items (order_id, course_id, course_title_snapshot, unit_price_amount,"
-                    + " commission_policy_id, created_by, updated_by)"
-                    + " VALUES (:orderId, :courseId, :title, :price, :policyId, :userId, :userId)",
+                    + " commission_policy_id, created_at, created_by, updated_by)"
+                    + " VALUES (:orderId, :courseId, :title, :price, :policyId, clock_timestamp(), :userId, :userId)",
             nativeQuery = true)
     void insertItem(
             @Param("orderId") UUID orderId,

@@ -2,6 +2,7 @@ package com.techverse.server.service.impl;
 
 import com.techverse.server.dto.response.AdminOrderResponse;
 import com.techverse.server.dto.response.AuthorRevenueResponse;
+import com.techverse.server.dto.response.CommissionPolicyResponse;
 import com.techverse.server.dto.response.OrderResponse;
 import com.techverse.server.dto.response.PageResponse;
 import com.techverse.server.entity.*;
@@ -87,12 +88,42 @@ public class OrderService {
 
         // Never create an order nobody can pay.
         if (!qrConfigured()) throw new CustomException(ErrorCode.PAYMENT_UNAVAILABLE);
-        UUID policy = orders.activeCommissionPolicyId().orElseThrow(() -> new CustomException(ErrorCode.PAYMENT_UNAVAILABLE));
+        orders.lockCommission();
+        UUID policy =orders.activeCommissionPolicyId().orElseThrow(() -> new CustomException(ErrorCode.PAYMENT_UNAVAILABLE));
         UUID id = UUID.randomUUID();
         orders.insertOrder(id, actor, MANUAL_HOURS);
         orders.insertItem(id, courseId, title, price, policy, actor);
         orders.insertManualTransaction(id, actor);
         return response(orders.findItem(id).orElseThrow());
+    }
+
+    /** The active commission policy, or null when none is set (orders are then unavailable). */
+    @Transactional(readOnly = true)
+    public CommissionPolicyResponse commissionPolicy() {
+        return orders.activeCommissionPolicy().map(OrderService::policyView).orElse(null);
+    }
+
+    public record CommissionChange(CommissionPolicyResponse policy, boolean changed) {}
+
+    /**
+     * Effective at once: closes the active policy and opens a new one at the same instant, under the
+     * lock order creation takes, so every item snapshots exactly one policy. Same rate: no new row.
+     */
+    @Transactional
+    public CommissionChange changeCommission(UUID admin, int rateBps) {
+        orders.lockCommission();
+        var current = orders.activeCommissionPolicy();
+        if (current.isPresent() && current.get().getRateBps() == rateBps)
+            return new CommissionChange(policyView(current.get()), false);
+        // Read after the lock: later than the closed policy's effective_from, so the range check holds.
+        var at = orders.clockTimestamp();
+        current.ifPresent(p -> orders.closeCommissionPolicy(p.getId(), at, admin));
+        orders.insertCommissionPolicy(rateBps, at, admin);
+        return new CommissionChange(policyView(orders.activeCommissionPolicy().orElseThrow()), true);
+    }
+
+    private static CommissionPolicyResponse policyView(OrderRepository.CommissionPolicyRow p) {
+        return new CommissionPolicyResponse(p.getId(), p.getRateBps(), p.getEffectiveFrom());
     }
 
     @Transactional

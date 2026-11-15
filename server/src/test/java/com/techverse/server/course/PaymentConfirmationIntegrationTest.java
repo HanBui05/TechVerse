@@ -1,7 +1,9 @@
 package com.techverse.server.course;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -309,7 +311,7 @@ class PaymentConfirmationIntegrationTest extends CourseIntegrationTestBase {
         assertThat(revenue.toString()).doesNotContain("example.com", "userId", "buyer", "orderCode", "TV0");
 
         // Snapshot: a later policy change does not rewrite paid items.
-        jdbc.update("UPDATE techverse.commission_policies SET rate_bps = 3000");
+        send(put(POLICY), adminToken, Map.of("rateBps", 3000)).andExpect(status().isOk());
         get(REVENUE, authorToken).andExpect(jsonPath("$.data.totals.platformAmount").value(79_600));
 
         user("author2@example.com", "AUTHOR");
@@ -323,7 +325,178 @@ class PaymentConfirmationIntegrationTest extends CourseIntegrationTestBase {
             get(REVENUE, token).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
 
+    // ------------------------------------------------------------------ commission policy
+
+    @Test
+    void adminChangesTheRateAtOnceKeepingHistoryAndOldSnapshots() throws Exception {
+        get(POLICY, adminToken).andExpect(status().isOk()).andExpect(jsonPath("$.data.rateBps").value(2000));
+        String oldOrder = buy(learnerToken);
+
+        var changed = send(put(POLICY), adminToken, Map.of("rateBps", 3333)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Commission rate updated"));
+        var policy = data(changed);
+        assertThat(policy.path("rateBps").asInt()).isEqualTo(3333);
+        assertThat(policy.path("effectiveFrom").asText()).isNotBlank();
+        // Same rate: no new row.
+        send(put(POLICY), adminToken, Map.of("rateBps", 3333)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Commission rate unchanged"))
+                .andExpect(jsonPath("$.data.id").value(policy.path("id").asText()));
+        get(POLICY, adminToken).andExpect(jsonPath("$.data.id").value(policy.path("id").asText()));
+
+        var rows = jdbc.queryForList("SELECT rate_bps, is_active, effective_from, effective_to, created_by"
+                + " FROM techverse.commission_policies ORDER BY effective_from");
+        assertThat(rows).hasSize(2);
+        assertThat(rows.get(0)).containsEntry("rate_bps", 2000).containsEntry("is_active", false);
+        assertThat(rows.get(0).get("effective_to")).isEqualTo(rows.get(1).get("effective_from"));
+        assertThat(rows.get(1)).containsEntry("rate_bps", 3333).containsEntry("is_active", true)
+                .containsEntry("effective_to", null).containsEntry("created_by", admin);
+
+        user("other@example.com", null);
+        String newOrder = buy(login("other@example.com"));
+        // floor(199000 × 3333 / 10000) = floor(66326.7)
+        assertThat(item(newOrder)).containsEntry("commission_rate_bps", 3333)
+                .containsEntry("commission_amount", 66_326L).containsEntry("author_net_amount", 132_674L);
+        assertThat(item(oldOrder)).containsEntry("commission_rate_bps", 2000).containsEntry("commission_amount", 39_800L);
+        get(AUTHOR + "/" + paid, authorToken).andExpect(jsonPath("$.data.commissionRateBps").value(3333));
+
+        send(put(POLICY), adminToken, Map.of("rateBps", 0)).andExpect(jsonPath("$.data.rateBps").value(0));
+        send(put(POLICY), adminToken, Map.of("rateBps", 10000)).andExpect(jsonPath("$.data.rateBps").value(10000));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.commission_policies WHERE is_active", Long.class)).isEqualTo(1);
+    }
+
+    @Test
+    void rejectsInvalidRates() throws Exception {
+        for (Map<String, ?> body : List.<Map<String, ?>>of(Map.of(),Map.of("rateBps", -1), Map.of("rateBps", 10001), Map.of("rateBps", "1500"),
+                Map.of("rateBps", 15.5), Map.of("rateBps", 5_000_000_000L), Map.of("rateBps", 1500, "effectiveFrom", "2030-01-01T00:00:00Z")))
+            send(put(POLICY), adminToken, body).andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("COMMISSION_RATE_INVALID"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.commission_policies", Long.class)).isEqualTo(1);
+    }
+
+    @Test
+    void onlyAdminsManageTheCommissionPolicy() throws Exception {
+        get(POLICY, null).andExpect(status().isUnauthorized());
+        send(put(POLICY), null, Map.of("rateBps", 1000)).andExpect(status().isUnauthorized());
+        for (String token : new String[] {learnerToken, authorToken, modToken}) {
+            get(POLICY, token).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+            send(put(POLICY), token, Map.of("rateBps", 1000)).andExpect(status().isForbidden());
+        }
+        assertThat(jdbc.queryForObject("SELECT rate_bps FROM techverse.commission_policies WHERE is_active", Integer.class))
+                .isEqualTo(2000);
+    }
+
+    @Test
+    void withoutAPolicyTheAdminSeesNoneAndCanSetOne() throws Exception {
+        jdbc.update("UPDATE techverse.commission_policies SET is_active = false, effective_to = clock_timestamp()");
+        get(POLICY, adminToken).andExpect(status().isOk()).andExpect(jsonPath("$.data").doesNotExist());
+        send(post(ORDERS), learnerToken, Map.of("courseId", paid)).andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("PAYMENT_UNAVAILABLE"));
+        send(put(POLICY), adminToken, Map.of("rateBps", 1000)).andExpect(jsonPath("$.data.rateBps").value(1000));
+        assertThat(item(buy(learnerToken))).containsEntry("commission_rate_bps", 1000);
+    }
+
+    @Test
+    void concurrentChangesLeaveOneActivePolicyAndAnUnbrokenHistory() throws Exception {
+        var pool = Executors.newFixedThreadPool(4);
+        try {
+            var calls = new ArrayList<Future<Integer>>();
+            for (int rate : new int[] {1000, 1500, 2500, 3000})
+                calls.add(pool.submit(() -> send(put(POLICY), adminToken, Map.of("rateBps", rate)).andReturn().getResponse().getStatus()));
+            for (var call : calls) assertThat(call.get(20, TimeUnit.SECONDS)).isEqualTo(200);
+        } finally {
+            pool.shutdownNow();
+        }
+        var rows = jdbc.queryForList("SELECT is_active, effective_from, effective_to FROM techverse.commission_policies"
+                + " ORDER BY effective_from");
+        assertThat(rows).hasSize(5);
+        assertThat(rows.stream().filter(r -> (Boolean) r.get("is_active")).count()).isEqualTo(1);
+        for (int i = 0; i < rows.size() - 1; i++)
+            assertThat(rows.get(i).get("effective_to")).isEqualTo(rows.get(i + 1).get("effective_from"));
+    }
+
+    @Test
+    void anOrderCreatedDuringAPolicyChangeWaitsAndTakesTheNewRate() throws Exception {
+        try (var connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            // A policy change in progress holds the commission lock; the order's transaction starts meanwhile.
+            try (var change = connection.createStatement()) {
+                change.execute("SELECT pg_advisory_xact_lock(" + com.techverse.server.repository.OrderRepository.COMMISSION_LOCK + ")");
+                var pending = CompletableFuture.supplyAsync(() -> {
+                    try {
+                        return buy(learnerToken);
+                    } catch (Exception e) {
+                        throw new IllegalStateException(e);
+                    }
+                });
+                Thread.sleep(1500);
+                assertThat(pending).isNotDone();
+                change.execute("UPDATE techverse.commission_policies SET is_active = false, effective_to = clock_timestamp()");
+                change.execute("INSERT INTO techverse.commission_policies (rate_bps, effective_from) VALUES (1000, clock_timestamp())");
+                connection.commit();
+                String code = pending.get(10, TimeUnit.SECONDS);
+                assertThat(item(code)).containsEntry("commission_rate_bps", 1000);
+                // The order's own timestamps must not predate the policy it snapshots.
+                assertThat(jdbc.queryForObject("SELECT o.created_at >= p.effective_from AND i.created_at >= p.effective_from"
+                        + " FROM techverse.orders o JOIN techverse.order_items i ON i.order_id = o.id"
+                        + " JOIN techverse.commission_policies p ON p.id = i.commission_policy_id WHERE o.order_code = ?",
+                        Boolean.class, code)).isTrue();
+            }
+        }
+    }
+
+    @Test
+    void aPolicyChangeWaitsForAnOrderBeingCreated() throws Exception {
+        try (var connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (var lock = connection.createStatement()) {
+                lock.execute("SELECT pg_advisory_xact_lock(" + com.techverse.server.repository.OrderRepository.COMMISSION_LOCK + ")");
+            }
+            var pending = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return send(put(POLICY), adminToken, Map.of("rateBps", 1000)).andReturn().getResponse().getStatus();
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+            Thread.sleep(1500);
+            assertThat(pending).isNotDone();
+            connection.commit();
+            assertThat(pending.get(10, TimeUnit.SECONDS)).isEqualTo(200);
+        }
+    }
+
+    @Test
+    void policyAndItemSnapshotsCannotBeRewritten() throws Exception {
+        String code = buy(learnerToken);
+        for (String sql : List.of(
+                "UPDATE techverse.commission_policies SET rate_bps = 100",
+                "UPDATE techverse.commission_policies SET effective_from = now() - interval '1 day'",
+                "UPDATE techverse.order_items SET commission_amount = 0, author_net_amount = unit_price_amount",
+                "UPDATE techverse.order_items SET unit_price_amount = 10000",
+                "UPDATE techverse.order_items SET commission_rate_bps = 0"))
+            assertThatThrownBy(() -> jdbc.update(sql)).as(sql).hasMessageContaining("immutable");
+        // A closed policy cannot be reopened or re-dated; an item cannot move to another policy.
+        send(put(POLICY), adminToken, Map.of("rateBps", 1000)).andExpect(status().isOk());
+        assertThatThrownBy(() -> jdbc.update("UPDATE techverse.order_items SET commission_policy_id ="
+                + " (SELECT id FROM techverse.commission_policies WHERE is_active)")).hasMessageContaining("immutable");
+        assertThatThrownBy(() -> jdbc.update("UPDATE techverse.commission_policies SET is_active = true WHERE NOT is_active"))
+                .hasMessageContaining("immutable");
+        assertThatThrownBy(() -> jdbc.update("UPDATE techverse.commission_policies SET effective_to = now() + interval '1 day'"
+                + " WHERE NOT is_active")).hasMessageContaining("immutable");
+        // Other columns stay updatable.
+        jdbc.update("UPDATE techverse.order_items SET updated_by = ?", admin);
+        assertThat(item(code)).containsEntry("commission_rate_bps", 2000).containsEntry("commission_amount", 39_800L)
+                .containsEntry("unit_price_amount", 199_000L);
+    }
+
     // ------------------------------------------------------------------ helpers
+
+    static final String POLICY = "/api/v1/admin/commission-policy";
+
+    Map<String, Object> item(String code) {
+        return jdbc.queryForMap("SELECT i.unit_price_amount, i.commission_rate_bps, i.commission_amount, i.author_net_amount"
+                + " FROM techverse.order_items i JOIN techverse.orders o ON o.id = i.order_id WHERE o.order_code = ?", code);
+    }
 
     static final String ORDERS = "/api/v1/orders";
 

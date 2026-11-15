@@ -83,6 +83,7 @@ public enum ErrorCode {
 	PAYMENT_STATE_INVALID(HttpStatus.CONFLICT, "PAYMENT_STATE_INVALID", "This order cannot be confirmed in its current state"),
 	PAYMENT_REFERENCE_CONFLICT(HttpStatus.CONFLICT, "PAYMENT_REFERENCE_CONFLICT", "This bank reference is already used or does not match"),
 	PAYMENT_RECONCILIATION_NOT_REQUIRED(HttpStatus.CONFLICT, "PAYMENT_RECONCILIATION_NOT_REQUIRED", "This order has no payment to reconcile"),
+	COMMISSION_RATE_INVALID(HttpStatus.BAD_REQUEST, "COMMISSION_RATE_INVALID", "Commission rate must be a whole number from 0 to 10000 basis points"),
 	PAYMENT_RECONCILIATION_STALE(HttpStatus.CONFLICT, "PAYMENT_RECONCILIATION_STALE", "A new payment arrived; reload the order and reconcile again"),
 	EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "AUTH_EMAIL_ALREADY_REGISTERED", "Email is already registered"),
 	INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_INVALID_CREDENTIALS", "Email or password is invalid"),

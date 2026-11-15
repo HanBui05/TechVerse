@@ -77,7 +77,8 @@ class OrderIntegrationTest extends CourseIntegrationTestBase {
         }
         // Price and policy changes after creation do not touch the order.
         jdbc.update("UPDATE techverse.courses SET price_amount = 500000 WHERE id = ?::uuid", paid);
-        jdbc.update("UPDATE techverse.commission_policies SET rate_bps = 3000");
+        jdbc.update("UPDATE techverse.commission_policies SET is_active = false, effective_to = clock_timestamp()");
+        jdbc.update("INSERT INTO techverse.commission_policies (rate_bps) VALUES (3000)");
         var again = data(buy(paid, learnerToken).andExpect(status().isOk()));
         assertThat(again.path("amount").asLong()).isEqualTo(199_000);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.orders", Long.class)).isEqualTo(1);

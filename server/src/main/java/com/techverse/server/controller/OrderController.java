@@ -92,6 +92,25 @@ public class OrderController {
         return ok("Order reconciled", service.reconcile(actor(jwt), orderCode, count));
     }
 
+    @GetMapping("/admin/commission-policy")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin: active commission policy (null when none is set)")
+    public ApiResponse<CommissionPolicyResponse> commissionPolicy() {
+        return ok("Commission policy retrieved", service.commissionPolicy());
+    }
+
+    @PutMapping("/admin/commission-policy")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin: body {rateBps} 0–10000; effective at once for new orders, old orders keep their snapshot")
+    public ApiResponse<CommissionPolicyResponse> changeCommission(
+            @AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) Map<String, Object> body) {
+        // Integer only: "1500", 15.5 and out-of-int numbers are rejected; no effective date from the client.
+        if (body == null || body.size() != 1 || !(body.get("rateBps") instanceof Integer rate) || rate < 0 || rate > 10_000)
+            throw new CustomException(ErrorCode.COMMISSION_RATE_INVALID);
+        var change = service.changeCommission(actor(jwt), rate);
+        return ok(change.changed() ? "Commission rate updated" : "Commission rate unchanged", change.policy());
+    }
+
     @GetMapping("/author/revenue")
     @PreAuthorize("hasRole('AUTHOR')")
     @Operation(summary = "Author: totals and PAID items of own courses (order-time snapshot, no buyer data), newest first")
