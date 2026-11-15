@@ -2,6 +2,7 @@ package com.techverse.server.controller;
 
 import com.techverse.server.dto.request.ArticleFilter;
 import com.techverse.server.dto.response.*;
+import com.techverse.server.entity.CourseOrder;
 import com.techverse.server.exception.*;
 import com.techverse.server.service.impl.OrderService;
 
@@ -51,6 +52,52 @@ public class OrderController {
     @Operation(summary = "Tell the Admin you have transferred (idempotent); does not grant access")
     public ApiResponse<OrderResponse> reportTransfer(@AuthenticationPrincipal Jwt jwt, @PathVariable String orderCode) {
         return ok("Transfer reported", service.reportTransfer(actor(jwt), orderCode));
+    }
+
+    @GetMapping("/admin/orders")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin: orders newest first, filtered by status, exact order code, transfer report and reconciliation flag")
+    public ApiResponse<PageResponse<AdminOrderResponse>> adminOrders(
+            @RequestParam(required = false) CourseOrder.Status status,
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) Boolean transferReported,
+            @RequestParam(required = false) Boolean needsReconciliation,
+            @Valid @ParameterObject @ModelAttribute ArticleFilter filter) {
+        return ok("Orders retrieved",
+                service.adminOrders(status, code, transferReported, needsReconciliation, filter.getPage(), filter.getSize()));
+    }
+
+    @PostMapping("/admin/orders/{orderCode}/confirm")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin: body {amount, bankReference} from the bank statement; retry-safe; a new reference on a PAID order flags reconciliation")
+    public ApiResponse<AdminOrderResponse> confirm(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable String orderCode, @RequestBody(required = false) Map<String, Object> body) {
+        if (body == null || body.size() != 2
+                || !(body.get("amount") instanceof Integer || body.get("amount") instanceof Long)
+                || ((Number) body.get("amount")).longValue() <= 0
+                || !(body.get("bankReference") instanceof String reference)
+                || reference.strip().isEmpty() || reference.strip().length() > 255)
+            throw new CustomException(ErrorCode.PAYMENT_INVALID);
+        return ok("Payment confirmed",
+                service.confirm(actor(jwt), orderCode, ((Number) body.get("amount")).longValue(), reference.strip()));
+    }
+
+    @PostMapping("/admin/orders/{orderCode}/reconcile")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin: body {paymentCount} = confirmed payments reviewed; closes the duplicate-payment flag (idempotent)")
+    public ApiResponse<AdminOrderResponse> reconcile(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable String orderCode, @RequestBody(required = false) Map<String, Object> body) {
+        if (body == null || body.size() != 1 || !(body.get("paymentCount") instanceof Integer count) || count < 1)
+            throw new CustomException(ErrorCode.PAYMENT_INVALID);
+        return ok("Order reconciled", service.reconcile(actor(jwt), orderCode, count));
+    }
+
+    @GetMapping("/author/revenue")
+    @PreAuthorize("hasRole('AUTHOR')")
+    @Operation(summary = "Author: totals and PAID items of own courses (order-time snapshot, no buyer data), newest first")
+    public ApiResponse<AuthorRevenueResponse> revenue(
+            @AuthenticationPrincipal Jwt jwt, @Valid @ParameterObject @ModelAttribute ArticleFilter filter) {
+        return ok("Revenue retrieved", service.revenue(actor(jwt), filter.getPage(), filter.getSize()));
     }
 
     /** Exactly one field: price and total always come from the server. */

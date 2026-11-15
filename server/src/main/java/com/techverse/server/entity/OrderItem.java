@@ -6,7 +6,7 @@ import lombok.*;
 
 import java.util.UUID;
 
-/** One course per order; commission columns are filled by trigger and mapped when revenue needs them. */
+/** One course per order; commission columns are filled by trigger (snapshot of the policy at order time). */
 @Entity
 @Table(name = "order_items")
 @Getter
@@ -24,4 +24,13 @@ public class OrderItem extends BaseEntity {
 
     @Column(name = "unit_price_amount", nullable = false, insertable = false, updatable = false)
     private long unitPriceAmount;
+
+    @Column(name = "commission_rate_bps", nullable = false, insertable = false, updatable = false)
+    private int commissionRateBps;
+
+    @Column(name = "commission_amount", nullable = false, insertable = false, updatable = false)
+    private long commissionAmount;
+
+    @Column(name = "author_net_amount", nullable = false, insertable = false, updatable = false)
+    private long authorNetAmount;
 }

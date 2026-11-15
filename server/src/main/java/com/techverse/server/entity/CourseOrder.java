@@ -39,4 +39,10 @@ public class CourseOrder extends BaseEntity {
 
     @Column(name = "transfer_reported_at", insertable = false, updatable = false)
     private Instant transferReportedAt;
+
+    @Column(name = "needs_reconciliation", nullable = false, insertable = false, updatable = false)
+    private boolean needsReconciliation;
+
+    @Column(name = "reconciled_at", insertable = false, updatable = false)
+    private Instant reconciledAt;
 }
