@@ -13,6 +13,20 @@ import java.util.*;
 class ModeratorCourseIntegrationTest extends CourseIntegrationTestBase {
 
     @Test
+    void priceChangeAfterOpeningTheReviewDoesNotStaleTheToken() throws Exception {
+        var tree = new LinkedHashMap<String, List<String>>();
+        tree.put("A", List.of("A1"));
+        String id = course("Priced", tree);
+        submit(id);
+        String token = reviewToken(id);
+        send(patch(AUTHOR + "/" + id), authorToken, Map.of("action", "SAVE", "priceAmount", 25_000)).andExpect(status().isOk());
+        send(patch(MOD + "/" + id + "/review"), modToken, Map.of("decision", "APPROVE", "reviewToken", token))
+                .andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT price_amount FROM techverse.courses WHERE id=?::uuid", Long.class, id))
+                .isEqualTo(25_000);
+    }
+
+    @Test
     void reviewQueueSelfReviewNotesStaleTokenAndApprove() throws Exception {
         var tree = new LinkedHashMap<String, List<String>>();
         tree.put("A", List.of("A1"));
@@ -23,7 +37,9 @@ class ModeratorCourseIntegrationTest extends CourseIntegrationTestBase {
         get(MOD, modToken).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content[0].course.id").value(id))
-                .andExpect(jsonPath("$.data.content[0].authorEligible").value(true));
+                .andExpect(jsonPath("$.data.content[0].authorEligible").value(true))
+                .andExpect(jsonPath("$.data.content[0].course.priceAmount").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].course.currency").doesNotExist());
         get(MOD + "/" + draft, modToken).andExpect(status().isNotFound());
         get(MOD, learnerToken).andExpect(status().isForbidden());
         get(MOD, adminToken).andExpect(status().isForbidden());
@@ -31,6 +47,8 @@ class ModeratorCourseIntegrationTest extends CourseIntegrationTestBase {
                 .andExpect(jsonPath("$.data.course.chapters[0].lessons[0].title").value("A1"))
                 .andExpect(jsonPath("$.data.course.chapters[0].lessons[0].content").doesNotExist())
                 .andExpect(jsonPath("$.data.course.priceAmount").doesNotExist())
+                .andExpect(jsonPath("$.data.course.currency").doesNotExist())
+                .andExpect(jsonPath("$.data.course.commissionRateBps").doesNotExist())
                 .andExpect(jsonPath("$.data.changes[0].changeStatus").value("NEW"))
                 .andExpect(jsonPath("$.data.changes[0].lessons[0].changeStatus").value("NEW")));
         String lesson = detail.at("/course/chapters/0/lessons/0/id").asText();

@@ -10,7 +10,7 @@ import java.util.UUID;
  * a diff tree: working active nodes in order, then nodes only the latest version has (ARCHIVED).
  */
 public record ModeratorCourseDetailResponse(
-        CourseResponse course,
+        ModeratorCourseResponse course,
         ArticleAuthorResponse author,
         String reviewToken,
         boolean authorEligible,

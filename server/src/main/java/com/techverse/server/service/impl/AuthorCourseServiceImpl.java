@@ -43,6 +43,7 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
     private final TopicRepository topics;
     private final TagRepository tags;
     private final CourseAccessService access;
+    private final CoursePriceService prices;
     private final LessonContentService content;
     private final ArticleImageService images;
     private final CourseImageReferences imageRefs;
@@ -57,6 +58,7 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
 
     @Override
     public CourseResponse create(UUID actor, UUID key, CourseWriteRequest request) {
+        long price = request.has("priceAmount") ? prices.validate(request) : 0;
         String fingerprint = digest(courseFingerprintFields(request));
         CourseResponse result =
                 transaction()
@@ -85,6 +87,7 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
                                                     .summary(Objects.requireNonNullElse(request.getSummary(), ""))
                                                     .description(Objects.requireNonNullElse(request.getDescription(), ""))
                                                     .level(level(request.getLevel(), CourseLevel.BEGINNER))
+                                                    .priceAmount(price)
                                                     .build();
                                     content.validateDescription(course.getDescription(), null);
                                     course.replaceTags(selected);
@@ -103,8 +106,10 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
 
     @Override
     public CourseResponse update(UUID actor, UUID id, CourseWriteRequest request) {
+        if (request.has("priceAmount")) prices.validate(request);
         if (request.getAction() == ArticleAction.SAVE) {
             if (request.getProvided().isEmpty()) invalid();
+            if (request.getProvided().equals(Set.of("priceAmount"))) return changePrice(actor, id, request);
             return transaction()
                     .execute(
                             s -> {
@@ -119,6 +124,20 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
                             });
         }
         return submit(actor, id, request);
+    }
+
+    /** Price-only save: no content edit, so it works in every non-terminal state, PENDING included. */
+    private CourseResponse changePrice(UUID actor, UUID id, CourseWriteRequest request) {
+        return transaction()
+                .execute(
+                        s -> {
+                            access.lockWriter(actor);
+                            Course course = access.lockOwned(actor, id);
+                            long amount = prices.validate(request);
+                            course.checkPriceChange(amount);
+                            courses.updatePrice(id, amount);
+                            return flushed(course);
+                        });
     }
 
     /**
@@ -451,6 +470,7 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
                 request.has("level") ? level(request.getLevel(), null) : course.getLevel(),
                 request.has("coverImageUrl") ? request.getCoverImageUrl() : course.getCoverImageUrl());
         course.replaceTags(selected);
+        if (request.has("priceAmount")) course.changePrice(prices.validate(request));
         content.validateDescription(course.getDescription(), course.getCoverImageUrl());
     }
 
@@ -523,7 +543,9 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
 
     private CourseResponse toResponse(Course course) {
         return CourseResponse.from(
-                course, issues(course.getDescription(), Target.course(course.getAuthor().getId(), course.getId())));
+                course,
+                issues(course.getDescription(), Target.course(course.getAuthor().getId(), course.getId())),
+                courses.activeCommissionRateBps().orElse(0));
     }
 
     private List<ArticleImageIssueResponse> issues(String text, Target target) {
@@ -556,7 +578,8 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
         var fields = new ArrayList<String>();
         fields.addAll(Arrays.asList(
                 String.valueOf(r.getAction()), r.getTitle(), r.getSummary(), r.getDescription(), r.getLevel(),
-                r.getTopicId() == null ? null : r.getTopicId().toString(), r.getCoverImageUrl()));
+                r.getTopicId() == null ? null : r.getTopicId().toString(), r.getCoverImageUrl(),
+                String.valueOf(r.getPriceAmount())));
         (r.getTagIds() == null ? List.<UUID>of() : r.getTagIds()).stream().map(UUID::toString).sorted().forEach(fields::add);
         return fields;
     }

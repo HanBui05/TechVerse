@@ -73,6 +73,36 @@ class CourseLearningIntegrationTest extends CourseIntegrationTestBase {
     }
 
     @Test
+    void paidCourseKeepsOverviewAndPreviewButBlocksEverythingElseUntilPurchased() throws Exception {
+        String id = publishedPaidCourse("Paid", 99_000);
+        String a1 = lessonId(id, 0, 0);
+        String a2 = lessonId(id, 0, 1);
+        get(PUBLIC + "/" + id, null).andExpect(status().isOk());
+        get(PUBLIC + "/" + id + "/lessons/" + a1, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.lesson.content").value("Body of A1"));
+        get(PUBLIC + "/" + id + "/lessons/" + a1, learnerToken).andExpect(status().isOk());
+
+        for (String token : new String[] {null, learnerToken})
+            get(PUBLIC + "/" + id + "/lessons/" + a2, token).andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("COURSE_PURCHASE_REQUIRED"))
+                    .andExpect(jsonPath("$.data.lesson").doesNotExist());
+        start(id, learnerToken).andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("COURSE_PURCHASE_REQUIRED"));
+        start(id, null).andExpect(status().isUnauthorized());
+        // Owner and managers keep the existing rules.
+        start(id, authorToken).andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        start(id, modToken).andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        get(PUBLIC + "/" + id + "/lessons/" + a2, authorToken).andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        // No enrollment was created, so progress cannot be recorded either.
+        completion(put(PUBLIC + "/" + id + "/lessons/" + a1 + "/completion"), learnerToken).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("COURSE_ENROLLMENT_REQUIRED"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.course_enrollments", Integer.class)).isZero();
+        get("/api/v1/me/courses", learnerToken).andExpect(jsonPath("$.data.totalElements").value(0));
+        // Free courses are unchanged.
+        start(publishedCourse("Free"), learnerToken).andExpect(status().isOk());
+    }
+
+    @Test
     void completionIsIdempotentAndProgressFollowsTheCurrentSnapshot() throws Exception {
         String id = publishedCourse("Progress");
         String a1 = lessonId(id, 0, 0), a2 = lessonId(id, 0, 1), b1 = lessonId(id, 1, 0);

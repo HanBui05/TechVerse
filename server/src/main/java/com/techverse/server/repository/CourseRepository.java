@@ -15,6 +15,18 @@ public interface CourseRepository extends JpaRepository<Course, UUID>, JpaSpecif
     @Query("select c from Course c where c.id=:id")
     Optional<Course> findByIdForUpdate(@Param("id") UUID id);
 
+    /**
+     * Price-only write: bypasses entity auditing and (by trigger) leaves updated_at alone, so it does not
+     * stale a moderator review token. Callers hold the row lock and refresh the entity afterwards.
+     */
+    @Modifying
+    @Query("update Course c set c.priceAmount = :amount where c.id = :id")
+    int updatePrice(@Param("id") UUID id, @Param("amount") long amount);
+
+    /** The single active policy (unique partial index); Authors see it to estimate their share. */
+    @Query(value = "select rate_bps from commission_policies where is_active", nativeQuery = true)
+    Optional<Integer> activeCommissionRateBps();
+
     /** Waits for a running review/publication change so progress is written against the new snapshot. */
     @Lock(LockModeType.PESSIMISTIC_READ)
     @Query("select c from Course c where c.id=:id")

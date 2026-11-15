@@ -16,8 +16,9 @@ import java.util.*;
 
 /**
  * Author's working copy of a free course (metadata, tags, chapters, lessons) plus a pointer to the
- * immutable snapshot learners see. Same two state axes as {@link Article}; price is fixed at 0 by the
- * database, so it is not mapped.
+ * immutable snapshot learners see. Same two state axes as {@link Article}. The price lives here, outside
+ * the snapshot and the fingerprint, so changing it never needs a review; currency is always VND (database
+ * CHECK), so it is not mapped.
  */
 @Entity
 @Table(name = "courses")
@@ -68,6 +69,9 @@ public class Course extends BaseEntity {
     @Column(name = "content_fingerprint", nullable = false, length = 64)
     private String contentFingerprint;
 
+    @Column(name = "price_amount", nullable = false)
+    private long priceAmount;
+
     @Column(name = "moderation_note", columnDefinition = "text")
     private String moderationNote;
 
@@ -96,13 +100,15 @@ public class Course extends BaseEntity {
             String title,
             String summary,
             String description,
-            CourseLevel level) {
+            CourseLevel level,
+            long priceAmount) {
         this.author = author;
         this.topic = topic;
         this.title = title;
         this.summary = summary;
         this.description = description;
         this.level = level;
+        this.priceAmount = priceAmount;
         this.workflowStatus = ArticleWorkflowStatus.DRAFT;
         this.publicationStatus = UNPUBLISHED;
         this.contentFingerprint = computeFingerprint();
@@ -124,6 +130,23 @@ public class Course extends BaseEntity {
         this.description = description;
         this.level = level;
         this.coverImageUrl = coverImageUrl;
+    }
+
+    /**
+     * Free and paid never swap once the course has had a snapshot (hide/remove included); callers hold
+     * the course row lock, which also serializes this with approval. Allowed while PENDING: price is not
+     * part of the reviewed content.
+     */
+    public void changePrice(long amount) {
+        checkPriceChange(amount);
+        priceAmount = amount;
+    }
+
+    /** The rules of {@link #changePrice} without touching the entity (price-only updates go through SQL). */
+    public void checkPriceChange(long amount) {
+        if (publicationStatus.isTerminal()) throw new CustomException(ErrorCode.COURSE_NOT_EDITABLE);
+        if (publishedVersion != null && (priceAmount == 0) != (amount == 0))
+            throw new CustomException(ErrorCode.COURSE_PRICE_TYPE_LOCKED);
     }
 
     public void replaceTags(List<Tag> selected) {

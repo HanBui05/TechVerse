@@ -56,6 +56,8 @@ class AuthorCourseIntegrationTest extends ArticleIntegrationTestBase {
         other = user("other@example.com", true);
         user("learner@example.com", false);
         moderator = user("moderator@example.com", false);
+        // TRUNCATE users CASCADE also empties commission_policies, so seed the 20% policy again.
+        jdbc.update("INSERT INTO techverse.commission_policies(rate_bps) VALUES (2000)");
         token = login("author@example.com");
         otherToken = login("other@example.com");
         learnerToken = login("learner@example.com");
@@ -89,14 +91,16 @@ class AuthorCourseIntegrationTest extends ArticleIntegrationTestBase {
     }
 
     @Test
-    void createIsIdempotentPerKeyAndRejectsPriceAndBadInput() throws Exception {
+    void createIsIdempotentPerKeyAndRejectsBadInput() throws Exception {
         UUID key = UUID.randomUUID();
         var body = Map.of("action", "SAVE", "title", "Spring", "topicId", topic);
         String id = data(createCourse(key, body).andExpect(status().isCreated())
                         .andExpect(jsonPath("$.data.level").value("BEGINNER"))
                         .andExpect(jsonPath("$.data.workflowStatus").value("DRAFT"))
                         .andExpect(jsonPath("$.data.fingerprint").isString())
-                        .andExpect(jsonPath("$.data.priceAmount").doesNotExist()))
+                        .andExpect(jsonPath("$.data.priceAmount").value(0))
+                        .andExpect(jsonPath("$.data.currency").value("VND"))
+                        .andExpect(jsonPath("$.data.commissionRateBps").value(2000)))
                 .path("id").asText();
         assertThat(data(createCourse(key, body).andExpect(status().isCreated())).path("id").asText()).isEqualTo(id);
         createCourse(key, Map.of("action", "SAVE", "title", "Other", "topicId", topic))
@@ -106,11 +110,107 @@ class AuthorCourseIntegrationTest extends ArticleIntegrationTestBase {
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
         createCourse(UUID.randomUUID(), Map.of("action", "SAVE", "title", "T", "topicId", topic, "level", "EXPERT"))
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
-        createCourse(UUID.randomUUID(), Map.of("action", "SAVE", "title", "T", "topicId", topic, "priceAmount", 0))
+        createCourse(UUID.randomUUID(), Map.of("action", "SAVE", "title", "T", "topicId", topic, "currency", "VND"))
                 .andExpect(status().isBadRequest());
         createCourse(UUID.randomUUID(), Map.of("action", "SAVE", "title", "T", "topicId", topic, "description", "<b>x</b>"))
                 .andExpect(jsonPath("$.code").value("COURSE_CONTENT_INVALID"));
         assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.courses", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void priceMustBeFreeOrInRangeOnCreateAndPatch() throws Exception {
+        for (Object bad : List.of(-1, 1, 9_999, 50_000_001, 10_000.5, "10000", 1_000_000_000_000_000_000L * 10))
+            createCourse(UUID.randomUUID(), Map.of("action", "SAVE", "title", "T", "topicId", topic, "priceAmount", bad))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("COURSE_PRICE_INVALID"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.courses", Integer.class)).isZero();
+
+        String id = data(createCourse(UUID.randomUUID(), Map.of(
+                        "action", "SAVE", "title", "T", "topicId", topic, "priceAmount", 10_000))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.priceAmount").value(10_000)))
+                .path("id").asText();
+        for (long ok : new long[] {50_000_000, 0, 10_000})
+            patchCourse(id, Map.of("action", "SAVE", "priceAmount", ok)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.priceAmount").value(ok));
+        for (Object bad : List.of(9_999, 50_000_001, "x"))
+            patchCourse(id, Map.of("action", "SAVE", "priceAmount", bad)).andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("COURSE_PRICE_INVALID"));
+        // Rejected together with other fields: nothing is saved.
+        patchCourse(id, Map.of("action", "SAVE", "title", "Renamed", "priceAmount", 5)).andExpect(status().isBadRequest());
+        mvc.perform(get(ROOT).header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.content[0].title").value("T"))
+                .andExpect(jsonPath("$.data.content[0].priceAmount").value(10_000))
+                .andExpect(jsonPath("$.data.content[0].currency").value("VND"));
+        patchCourse(id, Map.of("action", "SAVE", "title", "Both", "priceAmount", 20_000)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.title").value("Both"))
+                .andExpect(jsonPath("$.data.priceAmount").value(20_000));
+    }
+
+    @Test
+    void priceAccessFollowsOwnershipAndAuthor() throws Exception {
+        String id = newCourse();
+        var body = mapper.writeValueAsString(Map.of("action", "SAVE", "priceAmount", 10_000));
+        for (var denied : List.of(Map.entry(otherToken, 404), Map.entry(learnerToken, 403)))
+            mvc.perform(patch(ROOT + "/" + id).header("Authorization", "Bearer " + denied.getKey())
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().is(denied.getValue()));
+        mvc.perform(patch(ROOT + "/" + id).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isUnauthorized());
+        assertThat(jdbc.queryForObject("SELECT price_amount FROM techverse.courses WHERE id=?::uuid", Long.class, id)).isZero();
+    }
+
+    @Test
+    void priceTypeIsLockedOnceTheCourseWasPublishedButAmountStaysEditable() throws Exception {
+        // Never published: free <-> paid is fine, even while PENDING (price is outside the review).
+        String id = readyCourse();
+        patchCourse(id, Map.of("action", "SUBMIT")).andExpect(status().isOk());
+        patchCourse(id, Map.of("action", "SAVE", "priceAmount", 30_000)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.workflowStatus").value("PENDING"));
+        patchCourse(id, Map.of("action", "SAVE", "title", "Nope")).andExpect(jsonPath("$.code").value("COURSE_NOT_EDITABLE"));
+        approve(id);
+
+        // Paid -> free is locked; a new amount applies at once and is not an unpublished change.
+        patchCourse(id, Map.of("action", "SAVE", "priceAmount", 0)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("COURSE_PRICE_TYPE_LOCKED"));
+        patchCourse(id, Map.of("action", "SAVE", "priceAmount", 45_000)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.priceAmount").value(45_000))
+                .andExpect(jsonPath("$.data.hasUnpublishedChanges").value(false))
+                .andExpect(jsonPath("$.data.workflowStatus").value("PUBLISHED"));
+        // The lock also covers a SUBMIT carrying a price, and survives hiding.
+        patchCourse(id, Map.of("action", "SAVE", "title", "Retitled")).andExpect(status().isOk());
+        patchCourse(id, Map.of("action", "SUBMIT", "priceAmount", 0)).andExpect(jsonPath("$.code").value("COURSE_PRICE_TYPE_LOCKED"));
+        send(patch(ROOT + "/" + id + "/publication"), Map.of("action", "HIDE")).andExpect(status().isOk());
+        patchCourse(id, Map.of("action", "SAVE", "priceAmount", 0)).andExpect(jsonPath("$.code").value("COURSE_PRICE_TYPE_LOCKED"));
+
+        // Published free stays free.
+        String free = readyCourse();
+        patchCourse(free, Map.of("action", "SUBMIT")).andExpect(status().isOk());
+        approve(free);
+        patchCourse(free, Map.of("action", "SAVE", "priceAmount", 10_000)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("COURSE_PRICE_TYPE_LOCKED"));
+        assertThat(jdbc.queryForObject("SELECT price_amount FROM techverse.courses WHERE id=?::uuid", Long.class, free)).isZero();
+    }
+
+    @Test
+    void priceChangeAndApprovalRaceStaysConsistent() throws Exception {
+        for (int round = 0; round < 3; round++) {
+            String id = readyCourse();
+            patchCourse(id, Map.of("action", "SUBMIT")).andExpect(status().isOk());
+            var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+            try {
+                var priced = pool.submit(() -> patchCourse(id, Map.of("action", "SAVE", "priceAmount", 10_000))
+                        .andReturn().getResponse().getStatus());
+                var approved = pool.submit(() -> approve(id));
+                approved.get();
+                int result = priced.get();
+                long price = jdbc.queryForObject("SELECT price_amount FROM techverse.courses WHERE id=?::uuid", Long.class, id);
+                // Priced first: published as paid. Approved first: free stays free and the change is refused.
+                assertThat(result == 200 ? price == 10_000 : result == 409 && price == 0).isTrue();
+            } finally {
+                pool.shutdownNow();
+            }
+        }
     }
 
     @Test

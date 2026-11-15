@@ -108,6 +108,17 @@ abstract class CourseIntegrationTestBase extends ArticleIntegrationTestBase {
         return id;
     }
 
+    /** Same tree as {@link #publishedCourse} with a price set through the Author API before approval. */
+    String publishedPaidCourse(String title, long price) throws Exception {
+        var tree = new LinkedHashMap<String, List<String>>();
+        tree.put("A", List.of("A1", "A2"));
+        tree.put("B", List.of("B1"));
+        String id = course(title, tree);
+        send(patch(AUTHOR + "/" + id), authorToken, Map.of("action", "SAVE", "priceAmount", price)).andExpect(status().isOk());
+        publish(id);
+        return id;
+    }
+
     // ------------------------------------------------------------------ moderator side
 
     String reviewToken(String course) throws Exception {
