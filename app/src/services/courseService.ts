@@ -1,6 +1,7 @@
 import { request } from './api/client'
 import type { ArticleOption, AuthorArticleFilter, HistoryEntry, ImageIssue, ModeratorArticleFilter, Page } from '../types/articles'
-import type { AuthorCourse, CourseFilter, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
+import type { Language } from '../types/preferences'
+import type { AuthorCourse, CourseFilter, CourseOrder, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
 
 const base = '/api/v1/author/courses'
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
@@ -109,6 +110,7 @@ export function courseChangedFields(form: CourseFields, saved: AuthorCourse | nu
   if (form.topicId !== saved.topic.id) diff.topicId = form.topicId
   if (form.tagIds.length !== savedTags.length || form.tagIds.some(id => !savedTags.includes(id))) diff.tagIds = form.tagIds
   if (form.coverImageUrl !== saved.coverImageUrl) diff.coverImageUrl = form.coverImageUrl
+  if (form.priceAmount !== saved.priceAmount) diff.priceAmount = form.priceAmount
   return diff
 }
 
@@ -171,12 +173,28 @@ export function courseSearch({ keyword, topicId, tagId, level, sort, page }: Cou
   return params
 }
 
-export type LessonAccess = 'open' | 'login' | 'start' | 'locked'
-/** Wireframe 2c-2 table: enrolled or preview opens; otherwise Guest logs in, a Learner starts, the owner stays locked. */
-export function lessonAccess(lesson: { preview: boolean }, viewer: Viewer, authenticated: boolean): LessonAccess {
+export type LessonAccess = 'open' | 'login' | 'start' | 'buy' | 'locked'
+/** Wireframe 2c-2 table: enrolled or preview opens; otherwise Guest logs in, a Learner starts (buys, on a paid course), the owner stays locked. */
+export function lessonAccess(lesson: { preview: boolean }, viewer: Viewer, authenticated: boolean, paid = false): LessonAccess {
   if (viewer.enrolled || lesson.preview) return 'open'
   if (!authenticated) return 'login'
-  return viewer.canStart ? 'start' : 'locked'
+  return viewer.canStart ? (paid ? 'buy' : 'start') : 'locked'
+}
+
+// Price rules of Task 1a; the server (`COURSE_PRICE_INVALID`) stays the judge.
+export const PRICE_MIN = 10_000
+export const PRICE_MAX = 50_000_000
+export const priceValid = (amount: number) => Number.isInteger(amount) && (amount === 0 || (amount >= PRICE_MIN && amount <= PRICE_MAX))
+/** Platform share is floored, the Author keeps the rest (same split as the order snapshot trigger). */
+export function authorShare(price: number, rateBps: number) {
+  const platform = Math.floor(price * rateBps / 10_000)
+  return { platform, author: price - platform }
+}
+export const vnd = (amount: number, language: Language) => new Intl.NumberFormat(language === 'vi' ? 'vi-VN' : 'en-US', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(amount)
+
+export const orders = {
+  /** Always POSTs, even when a pending order exists: the server returns that order and the client opens it. */
+  create: (courseId: string) => request<CourseOrder>('/api/v1/orders', json('POST', { courseId })),
 }
 
 export const flatLessons = (chapters: PublicChapter[]) => chapters.flatMap(chapter => chapter.lessons)

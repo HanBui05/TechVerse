@@ -18,7 +18,7 @@ import { CourseActionMenu, CourseStatusBadges, useCourseActions } from './course
 import { courseErrorText, courseText } from '../../../data/courseI18n'
 import { publicationLabel, workflowLabel } from '../../../data/articleI18n'
 import { authorActions } from '../../../services/articleService'
-import { authorCourses } from '../../../services/courseService'
+import { authorCourses, vnd } from '../../../services/courseService'
 import type { ArticleOption, AuthorArticleFilter, Page, PublicationStatus, WorkflowStatus } from '../../../types/articles'
 import type { AuthorCourseSummary } from '../../../types/courses'
 import type { Language } from '../../../types/preferences'
@@ -171,6 +171,7 @@ export function AuthorCoursesPage({ language = 'vi' }: { language?: Language } =
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                       <Badge tone={toneFor(item.topic.name)} className="max-w-full whitespace-normal">{item.topic.name}</Badge>
                       <Badge tone="slate">{t(item.level)}</Badge>
+                      <Badge tone={item.priceAmount === 0 ? 'green' : 'blue'} className="tabular-nums">{item.priceAmount === 0 ? t('priceFree') : vnd(item.priceAmount, language)}</Badge>
                       <span>{t('updated', { date: formatDate(item.updatedAt, language) })}</span>
                       {item.publishedAt && <span>· {t('publishedOn', { date: formatDate(item.publishedAt, language) })}</span>}
                     </span>

@@ -9,7 +9,7 @@ const topic = { id: 'java', name: 'Java', active: true }
 const lessonItem = (id: string, title: string, over: object = {}) => ({ id, title, summary: null, position: 0, preview: false, hasVideo: false, hasContent: true, aiAssisted: false, ...over })
 const baseCourse = () => ({
   id: 'c1', authorId: 'a1', title: 'Java căn bản', summary: 'Tóm tắt', description: '# Mô tả', level: 'BEGINNER', coverImageUrl: null, topic, tags: [], workflowStatus: 'DRAFT', publicationStatus: 'UNPUBLISHED',
-  fingerprint: 'f', hasUnpublishedChanges: false, publishedVersion: null as null | object, imageIssues: [], moderationNote: null, reviewedAt: null, publishedAt: null, createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-02T10:42:00Z',
+  fingerprint: 'f', hasUnpublishedChanges: false, publishedVersion: null as null | object, priceAmount: 0, commissionRateBps: 2000, imageIssues: [], moderationNote: null, reviewedAt: null, publishedAt: null, createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-02T10:42:00Z',
   chapters: [{ id: 'ch1', title: 'Mở đầu', position: 0, lessons: [lessonItem('l1', 'Giới thiệu', { hasVideo: true, hasContent: false }), lessonItem('l2', 'Cài đặt')] }],
 })
 const lessonOf = (id: string) => ({ id, chapterId: 'ch1', versionId: null, title: id === 'l1' ? 'Giới thiệu' : 'Cài đặt', summary: null, content: id === 'l1' ? null : '# Cài JDK', video: id === 'l1' ? { provider: 'YOUTUBE', videoId: 'dQw4w9WgXcQ' } : null, preview: false, position: 0, aiAssisted: false, fingerprint: '', imageIssues: [] })
@@ -331,4 +331,85 @@ it('keeps text typed while an image uploads', async () => {
   await pending
   await waitFor(() => expect(area.value).toContain('![](https://res.cloudinary.com'))
   expect(area.value).toContain('Gõ thêm')
+})
+
+// Task 2a: price on the course form.
+const priceField = () => screen.getByLabelText(/^Giá \(VND\)/) as HTMLInputElement
+const freeBox = () => screen.getByRole('checkbox', { name: 'Miễn phí' }) as HTMLButtonElement
+const isFree = () => freeBox().getAttribute('aria-checked') === 'true'
+
+it('shows the price, the live share from the server rate, and saves only the price when it changes', async () => {
+  const user = userEvent.setup()
+  Object.assign(course, { priceAmount: 0, commissionRateBps: 2000 })
+  renderEditor('/author/courses/c1/edit')
+  await screen.findByRole('heading', { name: 'Java căn bản', level: 1 })
+  expect(isFree()).toBe(true)
+  expect(screen.queryByText(/Nền tảng giữ/)).toBeNull()
+  await user.click(freeBox())
+  fireEvent.change(priceField(), { target: { value: '350000' } })
+  expect(screen.getByText(/Nền tảng giữ 20%, bạn nhận 280\.000\s₫/)).toBeTruthy()
+  await user.click(screen.getByRole('button', { name: 'Lưu' }))
+  await waitFor(() => expect(find('PATCH', '/c1')).toHaveLength(1))
+  expect(find('PATCH', '/c1')[0].body).toEqual({ action: 'SAVE', priceAmount: 350000 })
+})
+
+it('validates the price before saving: 0 only through Free, 9.999 and 50.000.001 are refused, an empty paid field too', async () => {
+  const user = userEvent.setup()
+  Object.assign(course, { priceAmount: 350000, commissionRateBps: 2000 })
+  renderEditor('/author/courses/c1/edit')
+  await screen.findByRole('heading', { name: 'Java căn bản', level: 1 })
+  for (const bad of ['9999', '50000001', '10000.5', '1e5', '']) {
+    fireEvent.change(priceField(), { target: { value: bad } })
+    await user.click(screen.getByRole('button', { name: 'Lưu' }))
+    expect(screen.getByText('Giá khóa học không hợp lệ.'), bad).toBeTruthy()
+  }
+  expect(find('PATCH', '/c1')).toHaveLength(0)
+  fireEvent.change(priceField(), { target: { value: '10000' } })
+  await user.click(screen.getByRole('button', { name: 'Lưu' }))
+  await waitFor(() => expect(find('PATCH', '/c1')).toHaveLength(1))
+  expect(find('PATCH', '/c1')[0].body).toEqual({ action: 'SAVE', priceAmount: 10000 })
+})
+
+it('locks the Free switch on a course that was ever published and keeps the price editable only for paid ones', async () => {
+  Object.assign(course, { priceAmount: 350000, commissionRateBps: 2000, publishedVersion: { id: 'v1', versionNumber: 1, approvedAt: '2026-11-03T00:00:00Z', fingerprint: 'x', chapters: [] } })
+  const view = renderEditor('/author/courses/c1/edit')
+  await screen.findByRole('heading', { name: 'Java căn bản', level: 1 })
+  expect(freeBox().disabled).toBe(true)
+  expect(screen.getByText('Khóa đã công khai không đổi giữa miễn phí và trả phí.')).toBeTruthy()
+  expect(priceField().disabled).toBe(false)
+  view.unmount()
+  Object.assign(course, { priceAmount: 0 })
+  renderEditor('/author/courses/c1/edit')
+  await screen.findByRole('heading', { name: 'Java căn bản', level: 1 })
+  expect(freeBox().disabled).toBe(true)
+  expect(priceField().disabled).toBe(true)
+})
+
+it.each([
+  ['COURSE_PRICE_INVALID', 400, 'Giá khóa học không hợp lệ.'],
+  ['COURSE_PRICE_TYPE_LOCKED', 409, 'Không thể đổi loại giá của khóa đã công khai.'],
+  ['ACCESS_DENIED', 403, 'Bạn không có quyền thực hiện thao tác này.'],
+])('shows the server %s refusal and keeps the typed price', async (code, status, text) => {
+  const user = userEvent.setup()
+  Object.assign(course, { priceAmount: 350000, commissionRateBps: 2000 })
+  renderEditor('/author/courses/c1/edit')
+  await screen.findByRole('heading', { name: 'Java căn bản', level: 1 })
+  fireEvent.change(priceField(), { target: { value: '400000' } })
+  failNext = { code, status }
+  await user.click(screen.getByRole('button', { name: 'Lưu' }))
+  expect((await screen.findAllByText(text)).length).toBeGreaterThan(0)
+  expect(priceField().value).toBe('400000')
+})
+
+it('creates a new course with a price of 0 unless the Author sets one', async () => {
+  const user = userEvent.setup()
+  renderEditor('/author/courses/new')
+  expect(isFree()).toBe(true)
+  expect(screen.queryByText(/Nền tảng giữ/)).toBeNull()
+  fireEvent.change(screen.getByLabelText(/Tiêu đề/), { target: { value: 'Spring Boot' } })
+  await screen.findByRole('option', { name: 'Java' })
+  await user.selectOptions(screen.getByLabelText(/Chủ đề/), 'java')
+  await user.click(screen.getByRole('button', { name: 'Tạo khóa học' }))
+  await waitFor(() => expect(find('POST', '')).toHaveLength(1))
+  expect(find('POST', '')[0].body).toMatchObject({ priceAmount: 0 })
 })

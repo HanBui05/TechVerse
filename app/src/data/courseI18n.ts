@@ -16,6 +16,8 @@ export const COURSE_ERROR_CODES = [
   'COURSE_IMAGE_INVALID', 'COURSE_IMAGE_TOO_LARGE', 'COURSE_IMAGE_UNSUPPORTED', 'COURSE_IMAGE_UPLOAD_FAILED', 'COURSE_RATE_LIMITED', 'COURSE_STORAGE_UNAVAILABLE',
   'LESSON_CONTENT_REQUIRED', 'LESSON_VIDEO_INVALID', 'COURSE_REVIEW_STALE', 'COURSE_SELF_REVIEW_NOT_ALLOWED', 'COURSE_AUTHOR_INELIGIBLE', 'COURSE_REVIEW_NOTE_REQUIRED',
   'COURSE_PUBLICATION_NOTE_REQUIRED', 'LESSON_PREVIEW_ONLY', 'COURSE_ENROLLMENT_REQUIRED', 'ACCESS_DENIED', 'VALIDATION_ERROR', 'MALFORMED_REQUEST',
+  'COURSE_PRICE_INVALID', 'COURSE_PRICE_TYPE_LOCKED', 'COURSE_PURCHASE_REQUIRED', 'ORDER_INVALID', 'ORDER_COURSE_UNAVAILABLE', 'ORDER_ALREADY_ENROLLED', 'PAYMENT_UNAVAILABLE',
+  'ORDER_RATE_LIMITED', 'ORDER_NOT_FOUND', 'ORDER_TRANSFER_REPORT_NOT_ALLOWED', 'AUTH_ACCESS_TOKEN_REQUIRED', 'AUTH_INVALID_ACCESS_TOKEN',
 ] as const
 
 const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
@@ -56,6 +58,18 @@ const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
   COURSE_PUBLICATION_NOTE_REQUIRED: { vi: 'Hãy nhập lý do khi ẩn hoặc gỡ khóa học.', en: 'A reason is required to hide or remove a course.' },
   LESSON_PREVIEW_ONLY: { vi: 'Đăng nhập và bắt đầu khóa học để đọc bài này.', en: 'Sign in and start the course to read this lesson.' },
   COURSE_ENROLLMENT_REQUIRED: { vi: 'Hãy bắt đầu khóa học trước.', en: 'Start the course first.' },
+  COURSE_PRICE_INVALID: { vi: 'Giá khóa học không hợp lệ.', en: 'The course price is invalid.' },
+  COURSE_PRICE_TYPE_LOCKED: { vi: 'Không thể đổi loại giá của khóa đã công khai.', en: 'A published course cannot switch between free and paid.' },
+  COURSE_PURCHASE_REQUIRED: { vi: 'Hãy mua khóa học để tiếp tục.', en: 'Buy this course to continue.' },
+  ORDER_INVALID: { vi: 'Thông tin đơn hàng không hợp lệ.', en: 'The order details are invalid.' },
+  ORDER_COURSE_UNAVAILABLE: { vi: 'Không thể mua khóa học này.', en: 'This course cannot be purchased.' },
+  ORDER_ALREADY_ENROLLED: { vi: 'Bạn đã có quyền học khóa này. Hãy tải lại trang.', en: 'You already have access to this course. Reload the page.' },
+  PAYMENT_UNAVAILABLE: { vi: 'Thanh toán tạm thời không khả dụng.', en: 'Payment is temporarily unavailable.' },
+  ORDER_RATE_LIMITED: { vi: 'Bạn thao tác quá nhanh, hãy thử lại sau.', en: 'You are going too fast; try again later.' },
+  ORDER_NOT_FOUND: { vi: 'Không tìm thấy đơn.', en: 'Order not found.' },
+  ORDER_TRANSFER_REPORT_NOT_ALLOWED: { vi: 'Đơn này không cần báo chuyển khoản.', en: 'This order does not need a transfer report.' },
+  AUTH_ACCESS_TOKEN_REQUIRED: { vi: 'Hãy đăng nhập để tiếp tục.', en: 'Sign in to continue.' },
+  AUTH_INVALID_ACCESS_TOKEN: { vi: 'Hãy đăng nhập để tiếp tục.', en: 'Sign in to continue.' },
 }
 
 /** `code × language`; AI_* codes reuse the AI table, unknown 5xx get the generic message, anything else the fallback. */
@@ -68,7 +82,7 @@ export function courseErrorText(error: unknown, language: Language, fallback: st
 }
 
 const vi = {
-  kicker: 'Không gian tác giả', title: 'Khóa học của tôi', subtitle: 'Soạn khóa học miễn phí, gửi duyệt và quản lý bản đã công khai.', newCourse: 'Tạo khóa học',
+  kicker: 'Không gian tác giả', title: 'Khóa học của tôi', subtitle: 'Soạn khóa học, đặt giá, gửi duyệt và quản lý bản đã công khai.', newCourse: 'Tạo khóa học',
   total: 'Tổng', stats: 'Số liệu khóa học', filters: 'Bộ lọc', search: 'Tìm theo tên khóa học', searchPlaceholder: 'Tìm theo tên khóa học...', topic: 'Chủ đề', tag: 'Thẻ', sort: 'Sắp xếp',
   all: 'Tất cả', allTopics: 'Mọi chủ đề', allTags: 'Mọi thẻ', newest: 'Mới tạo nhất', oldest: 'Cũ nhất', recentlyEdited: 'Sửa gần đây', titleAz: 'Tên A–Z',
   workflowFilter: 'Soạn thảo', publicationFilter: 'Công khai', list: 'Danh sách khóa học', count: '{n} khóa học', edit: 'Sửa', view: 'Xem', more: 'Thao tác khác cho {title}', moreShort: 'Thao tác khóa học',
@@ -102,11 +116,13 @@ const vi = {
   leaveTitle: 'Thay đổi chưa lưu sẽ mất', leaveText: 'Mục đang sửa chưa lưu được. Rời đi sẽ bỏ các thay đổi này.', stay: 'Ở lại', leave: 'Rời đi', structureSheet: 'Cấu trúc: {name}', compose: 'Soạn thảo', mobileView: 'Soạn thảo hoặc xem trước',
   aiSheetTitle: 'Soạn bài học bằng AI', aiNote: 'Dùng chủ đề và thẻ của khóa học.', useDraft: 'Dùng bản nháp này cho bài học', aiInvalid: 'Bản nháp AI không còn hợp lệ. Hãy tạo lại.',
   replaceContent: 'Thay nội dung đang có?', replaceContentText: 'Bản nháp AI sẽ thay tiêu đề, tóm tắt và nội dung đang soạn của bài này.', replace: 'Thay nội dung',
+  price: 'Giá (VND)', priceFree: 'Miễn phí', priceHelp: 'Miễn phí hoặc từ 10.000 đến 50.000.000 ₫. Giá được áp dụng ngay cho đơn mới, không cần gửi duyệt; đơn cũ giữ giá lúc tạo.',
+  priceLocked: 'Khóa đã công khai không đổi giữa miễn phí và trả phí.', priceInvalid: 'Giá khóa học không hợp lệ.', share: 'Nền tảng giữ {rate}%, bạn nhận {amount}',
 }
 export type CourseCopy = typeof vi
 
 const en: CourseCopy = {
-  kicker: 'Author workspace', title: 'My courses', subtitle: 'Write free courses, submit them for review and manage the published version.', newCourse: 'Create course',
+  kicker: 'Author workspace', title: 'My courses', subtitle: 'Write courses, set a price, submit them for review and manage the published version.', newCourse: 'Create course',
   total: 'Total', stats: 'Course counts', filters: 'Filters', search: 'Search by course title', searchPlaceholder: 'Search by course title...', topic: 'Topic', tag: 'Tag', sort: 'Sort',
   all: 'All', allTopics: 'All topics', allTags: 'All tags', newest: 'Newest', oldest: 'Oldest', recentlyEdited: 'Recently edited', titleAz: 'Title A–Z',
   workflowFilter: 'Editing', publicationFilter: 'Publication', list: 'Courses', count: '{n} courses', edit: 'Edit', view: 'View', more: 'More actions for {title}', moreShort: 'Course actions',
@@ -139,6 +155,8 @@ const en: CourseCopy = {
   leaveTitle: 'Unsaved changes will be lost', leaveText: 'The item you are editing could not be saved. Leaving drops these changes.', stay: 'Stay', leave: 'Leave', structureSheet: 'Structure: {name}', compose: 'Write', mobileView: 'Write or preview',
   aiSheetTitle: 'Write the lesson with AI', aiNote: 'Uses the course topic and tags.', useDraft: 'Use this draft for the lesson', aiInvalid: 'The AI draft is no longer valid. Generate it again.',
   replaceContent: 'Replace the current content?', replaceContentText: 'The AI draft replaces this lesson’s title, summary and content.', replace: 'Replace content',
+  price: 'Price (VND)', priceFree: 'Free', priceHelp: 'Free or between 10,000 and 50,000,000 ₫. A new price applies to new orders right away, with no review; existing orders keep the price they were created with.',
+  priceLocked: 'A published course cannot switch between free and paid.', priceInvalid: 'The course price is invalid.', share: 'Platform keeps {rate}%; you receive {amount}',
 }
 
 export function courseText(language: Language) {
@@ -206,7 +224,7 @@ export type ModeratorCourseText = ReturnType<typeof moderatorCourseText>
 
 // Reader (catalog, overview, lesson frame, my courses): wireframe section 5.
 const readerVi = {
-  kicker: 'Học miễn phí', title: 'Khóa học', subtitle: 'Lộ trình có chương và bài học, học thử trước khi bắt đầu.', myCourses: 'Khóa học của tôi', allCourses: 'Tất cả khóa học',
+  kicker: 'Học trực tuyến', title: 'Khóa học', subtitle: 'Lộ trình có chương và bài học, học thử trước khi bắt đầu.', myCourses: 'Khóa học của tôi', allCourses: 'Tất cả khóa học',
   filters: 'Bộ lọc', search: 'Tìm khóa học', searchPlaceholder: 'Tìm khóa học…', clearSearch: 'Xóa từ khóa', tag: 'Thẻ', allTags: 'Mọi thẻ', level: 'Trình độ', allLevels: 'Mọi trình độ', sort: 'Sắp xếp',
   newest: 'Mới nhất', oldest: 'Cũ nhất', topics: 'Chủ đề', allTopics: 'Tất cả', count: '{n} khóa học', list: 'Danh sách khóa học', loading: 'Đang tải khóa học...', loadError: 'Không thể tải khóa học.',
   retry: 'Thử lại', optionsError: 'Không tải được bộ lọc.', empty: 'Chưa có khóa học nào', emptyText: 'Khóa học mới sẽ xuất hiện ở đây.', emptyFiltered: 'Không tìm thấy khóa học phù hợp', emptyFilteredText: 'Thử đổi hoặc xóa bộ lọc.', clearFilters: 'Xóa bộ lọc',
@@ -222,10 +240,12 @@ const readerVi = {
   lockedText: 'Hãy đăng nhập và bắt đầu khóa học để xem bài này.', breadcrumb: 'Đường dẫn',
   mineKicker: 'Góc của tôi', mineCount: '{n} khóa', mineEmpty: 'Bạn chưa bắt đầu khóa học nào', mineEmptyText: 'Bắt đầu một khóa miễn phí để theo dõi tiến độ tại đây.', explore: 'Khám phá khóa học',
   nextLesson: 'Tiếp theo: {title}', activeAgo: 'Hoạt động {when}', startedOn: 'Bắt đầu {when}', complete100: 'Hoàn thành',
+  free: 'Miễn phí', buy: 'Mua khóa học', purchaseRequired: 'Hãy mua khóa học để tiếp tục.', noRefund: 'Khóa học đã mua không được hoàn tiền.', buyHint: 'Mua khóa học để học tiếp và lưu tiến độ.',
+  buyLoginTitle: 'Đăng nhập để mua khóa học.', buyLoginText: 'Bạn cần đăng nhập để mua khóa học và lưu tiến độ.', buyFailed: 'Không thể tạo đơn hàng.',
 }
 type ReaderCourseCopy = typeof readerVi
 const readerEn: ReaderCourseCopy = {
-  kicker: 'Free learning', title: 'Courses', subtitle: 'Paths with chapters and lessons; preview before you start.', myCourses: 'My courses', allCourses: 'All courses',
+  kicker: 'Online learning', title: 'Courses', subtitle: 'Paths with chapters and lessons; preview before you start.', myCourses: 'My courses', allCourses: 'All courses',
   filters: 'Filters', search: 'Search courses', searchPlaceholder: 'Search courses…', clearSearch: 'Clear search', tag: 'Tag', allTags: 'All tags', level: 'Level', allLevels: 'All levels', sort: 'Sort',
   newest: 'Newest', oldest: 'Oldest', topics: 'Topics', allTopics: 'All', count: '{n} courses', list: 'Courses', loading: 'Loading courses...', loadError: 'Unable to load courses.',
   retry: 'Retry', optionsError: 'Unable to load the filters.', empty: 'No courses yet', emptyText: 'New courses will appear here.', emptyFiltered: 'No matching courses', emptyFilteredText: 'Try changing or clearing the filters.', clearFilters: 'Clear filters',
@@ -241,6 +261,8 @@ const readerEn: ReaderCourseCopy = {
   lockedText: 'Sign in and start the course to see this lesson.', breadcrumb: 'Breadcrumb',
   mineKicker: 'My corner', mineCount: '{n} courses', mineEmpty: 'You have not started any course', mineEmptyText: 'Start a free course to track your progress here.', explore: 'Explore courses',
   nextLesson: 'Next: {title}', activeAgo: 'Active {when}', startedOn: 'Started {when}', complete100: 'Completed',
+  free: 'Free', buy: 'Buy course', purchaseRequired: 'Buy this course to continue.', noRefund: 'Purchased courses are non-refundable.', buyHint: 'Buy the course to keep learning and save progress.',
+  buyLoginTitle: 'Sign in to buy this course.', buyLoginText: 'Sign in to buy the course and save your progress.', buyFailed: 'Unable to create the order.',
 }
 export function readerCourseText(language: Language) {
   const copy = language === 'vi' ? readerVi : readerEn

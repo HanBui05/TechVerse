@@ -2,9 +2,9 @@
 
 ## Bắt đầu từ đây (cập nhật 2026-11-15)
 
-- **Task tiếp:** Task 2a — Giá và quyền học (wireframe đã duyệt 2026-11-15; câu 3: ô số tiền xác nhận điền sẵn theo đơn, áp dụng ở 2c) · Giao diện: Có
+- **Task tiếp:** Task 2b — Thanh toán và đơn của tôi (trang `/me/orders/:orderCode` chưa có: nút Mua của 2a đang điều hướng tới đó) · Giao diện: Có
 - Spec chốt 2026-11-14: Task 1a → 1b → 1c → 1d → cổng wireframe → 2a → 2b → 2c; **Task 1e (PayOS) hoãn**. Rủi ro cao: code bằng Opus, review vòng 1 `adversarial-review`.
-- Task 1a, 1b, 1c, 1d đã nhận (2026-11-15), đã commit cục bộ trên `feature/course-payment` (1a: V13, giá, quyền xem; 1b: V14, đơn hàng, VietQR, báo chuyển khoản; 1c: V15, Admin xác nhận/đối chiếu, doanh thu tác giả; 1d: V16, chính sách hoa hồng).
+- Task 1a, 1b, 1c, 1d, 2a đã nhận (2026-11-15), đã commit cục bộ trên `feature/course-payment` (1a: V13, giá, quyền xem; 1b: V14, đơn hàng, VietQR, báo chuyển khoản; 1c: V15, Admin xác nhận/đối chiếu, doanh thu tác giả; 1d: V16, chính sách hoa hồng).
 - Bẫy cho 1b–1d: `TRUNCATE users CASCADE` trong test xóa luôn `commission_policies`; test cần policy phải tự `INSERT ... (rate_bps) VALUES (2000)`.
 - Module đi kèm: [`course-ai-tutor.md`](course-ai-tutor.md) — Task 1 làm sau Task 1a. Người dùng cần chuẩn bị tài khoản nhận tiền cho `.env` trước khi thử thật.
 
@@ -18,6 +18,13 @@
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-15 — Task 2a (giá và quyền học, giao diện) — đã nhận (2026-11-15)
+- File: `types/courses.ts` (tách `ModeratorCourse` không tiền / `AuthorCourse` có `priceAmount`,`commissionRateBps`; `CourseOrder`), `courseService.ts` (`priceValid`, `authorShare`, `vnd`, `orders.create`, `lessonAccess` thêm `buy`), `courseI18n.ts` (12 mã lỗi 1a–1b + copy), `CourseInfoPanel` (ô giá + Miễn phí + dòng tỷ lệ), `AuthorCoursesPage` (chip giá), `courseParts` (`PriceChip`, thẻ), `CourseFrame` (`buy/askBuy`, Dialog mua), `CourseOverviewPage`, `CourseLessonPage` (thẻ COURSE_PURCHASE_REQUIRED, gợi ý Mua ở bài học thử).
+- Test: `vitest --maxWorkers=3 --testTimeout=20000` trên `pages/{Courses,Author/Courses,Moderator/Courses}`, `courseService`, `courseI18n`, `App.{author-courses,courses,moderator-courses}`: 195/196 đạt; lỗi có sẵn `App.author-courses` “multiple links Khóa học” (hỏng cả trước khi sửa, không điều tra). `npm run build` đạt (gồm kiểm `@ts-expect-error` Moderator không có tiền). Chạy mặc định 14 file song song bị timeout 5 giây do tải máy.
+- Lệch khác spec: (1) `viewer.canStart` = true cho khóa trả phí chưa mua nên client dùng `priceAmount>0` để chọn Mua thay Bắt đầu. (2) Lỗi `ORDER_ALREADY_ENROLLED` ghi “Hãy tải lại trang” thay vì nút Tải lại; `PAYMENT_UNAVAILABLE` thử lại bằng chính nút Mua. (3) Lỗi giá phía server hiện ở thông báo đầu form, không dưới ô. (4) Ô giá không nhóm nghìn khi blur. (5) Kicker trang khóa học đổi “Học miễn phí” → “Học trực tuyến”. (6) Thêm mã ORDER_NOT_FOUND/ORDER_TRANSFER_REPORT_NOT_ALLOWED/AUTH_* vào bảng cho 2b dùng. (7) Trang lesson tải thêm `detail` để lấy giá khi người học chưa mua.
+- Review vòng 1 (adversarial): [high] bài học thử không hiện cảnh báo không hoàn tiền cạnh nút Mua → thêm dòng; [medium] lỗi tải giá bị coi là 0 (hiện Bắt đầu) → lỗi tải detail thành thẻ lỗi có Thử lại; [medium] ô giá xóa ký tự lạ (`10000.5` → 100005) → giữ nguyên chuỗi, không phải số nguyên thì từ chối. `pages/Courses` + `CourseEditorPage`: 58 test đạt, build đạt.
+- Kiểm mắt (Playwright MCP, backend dev thật + DB/Redis tạm cổng 5433/6380, đã dọn; seed 1 khóa 350.000 ₫ + 1 khóa miễn phí qua API): `/courses` (dark desktop), tổng quan khóa trả phí (dark/light desktop, light mobile 390: không cuộn ngang, nút Mua full width), hộp thoại mua từ bài khóa (POST thật tạo đơn `TV000000000001`, mở `/me/orders/...`), danh sách Author (chip giá), editor Author (dark desktop + mobile: công tắc Miễn phí khóa với khóa đã công khai, dòng 20%/280.000 ₫, `10000.5` bị từ chối, lưu 400000 có hiệu lực ngay trên API công khai), thẻ `COURSE_PURCHASE_REQUIRED` của Guest (dark mobile). Sửa thêm: phụ đề trang Author còn ghi “miễn phí”.
+- Chưa kiểm: vùng chạm 44px (Playwright MCP không giả lập cảm ứng, `pointer: coarse` = false; class `pointer-coarse:` có sẵn); light cho editor/thẻ khóa; route `/me/orders/:orderCode` thuộc 2b.
 ### 2026-11-15 — Cổng wireframe (đã duyệt)
 - Tạo `plans/course-payment.wireframe.md` từ DTO thật 1a–1d: giá/CTA Mua/bài khóa, trang đơn + VietQR + “Tôi đã chuyển khoản”, danh sách đơn, giá trong editor Author, doanh thu, Admin đơn/xác nhận/đối chiếu/hoa hồng; desktop + mobile + mọi trạng thái; không PayOS.
 - Chỉ kiểm tĩnh (tài liệu). Chưa kiểm: `viewer.canStart` với khóa trả phí chưa mua (xác minh ở đầu 2a); API không có lịch sử policy nên wireframe không vẽ.

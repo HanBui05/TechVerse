@@ -20,14 +20,14 @@ function mockApi(list: (url: URL) => Response = () => json(page([summary]))) {
 const listCalls = (fetch: ReturnType<typeof mockApi>) => fetch.mock.calls.map(([input]) => new URL(String(input))).filter(url => url.pathname === '/api/v1/courses')
 const renderPage = (path = '/courses', authenticated = false) => render(<MemoryRouter initialEntries={[path]}><CoursesPage language="vi" authenticated={authenticated} /><Where /></MemoryRouter>)
 
-it('lists cards for Guests without “My courses”, linking to the overview, and shows no lesson counts or money', async () => {
+it('lists cards for Guests without “My courses”, linking to the overview, and shows no lesson counts', async () => {
   const fetch = mockApi()
   renderPage()
   const link = await screen.findByRole('link', { name: 'Java cơ bản' })
   expect(link.getAttribute('href')).toBe('/courses/c1')
   expect(screen.getAllByText('Cơ bản').length).toBeGreaterThan(1)
   expect(screen.queryByRole('link', { name: 'Khóa học của tôi' })).toBeNull()
-  expect(screen.queryByText(/VND|₫|\d+ bài/)).toBeNull()
+  expect(screen.queryByText(/\d+ bài/)).toBeNull()
   expect(listCalls(fetch)[0].searchParams.get('size')).toBe('9')
   // Guests get the course taxonomy from the public endpoint, not the article one.
   expect(await screen.findByRole('group', { name: 'Chủ đề' })).toBeTruthy()
@@ -73,4 +73,12 @@ it('shows the API error and retries on demand', async () => {
   await user.click(screen.getByRole('button', { name: 'Thử lại' }))
   expect(await screen.findByRole('link', { name: 'Java cơ bản' })).toBeTruthy()
   expect(listCalls(fetch).length).toBe(before + 1)
+})
+
+it('marks each card Free or with its price (Task 2a)', async () => {
+  mockApi(() => json(page([summary, { ...summary, id: 'c2', title: 'Spring Boot', priceAmount: 350000 }])))
+  renderPage()
+  await screen.findByRole('link', { name: 'Spring Boot' })
+  expect(screen.getAllByText('Miễn phí')).toHaveLength(1)
+  expect(screen.getByText(/^350\.000\s₫$/)).toBeTruthy()
 })

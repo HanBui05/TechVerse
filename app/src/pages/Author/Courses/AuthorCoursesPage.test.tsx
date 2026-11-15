@@ -7,7 +7,7 @@ import { setAccessToken } from '../../../services/api/client'
 
 const summary = (id: string, title: string, workflowStatus: string, publicationStatus: string, hasUnpublishedChanges = false) => ({
   id, title, summary: 'S', coverImageUrl: null, level: 'BEGINNER', topic: { id: 'java', name: 'Java', active: true }, workflowStatus, publicationStatus, hasUnpublishedChanges,
-  publishedAt: publicationStatus === 'UNPUBLISHED' ? null : '2026-11-03T00:00:00Z', createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-02T00:00:00Z',
+  priceAmount: id === 'c1' ? 350000 : 0, publishedAt: publicationStatus === 'UNPUBLISHED' ? null : '2026-11-03T00:00:00Z', createdAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-02T00:00:00Z',
 })
 const fetchMock = vi.fn<typeof fetch>()
 let rows: ReturnType<typeof summary>[]
@@ -107,4 +107,11 @@ it('shows the empty state with the three steps, then an error with retry, and En
   rows = [summary('c1', 'Java căn bản', 'PUBLISHED', 'PUBLISHED')]
   await user.click(screen.getByRole('button', { name: 'Thử lại' }))
   expect(await screen.findByText('Java căn bản')).toBeTruthy()
+})
+
+it('shows the price of each course: its amount when paid, Free otherwise (Task 2a)', async () => {
+  renderPage()
+  await screen.findByText('Java căn bản')
+  expect(screen.getAllByText(/^350\.000\s₫$/)).toHaveLength(1)
+  expect(screen.getAllByText('Miễn phí').length).toBeGreaterThan(0)
 })

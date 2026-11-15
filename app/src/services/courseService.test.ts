@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setAccessToken } from './api/client'
-import { authorCourses, changedLessonFields, courseFilter, courseSearch, embedUrl, flatLessons, lessonAccess, publicCourses, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, videoLink, visibleChanges, youtubeId } from './courseService'
-import type { AuthorCourse, ChangeChapter, Lesson } from '../types/courses'
+import { authorCourses, authorShare, changedLessonFields, courseFilter, courseSearch, embedUrl, flatLessons, lessonAccess, publicCourses, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, orders, priceValid, videoLink, visibleChanges, vnd, youtubeId } from './courseService'
+import type { AuthorCourse, ChangeChapter, Lesson, ModeratorCourseDetail } from '../types/courses'
 
 const fetchMock = vi.fn<typeof fetch>()
 const ok = (data: unknown, status = 200) => new Response(JSON.stringify({ status, message: 'OK', data }), { status })
@@ -13,7 +13,7 @@ afterEach(() => { setAccessToken(null); vi.unstubAllGlobals() })
 
 const course = {
   id: 'c1', authorId: 'a1', title: 'Java', summary: 'Sum', description: 'Desc', level: 'BEGINNER', coverImageUrl: null, topic: { id: 't1', name: 'Java' }, tags: [{ id: 'g1', name: 'oop' }],
-  workflowStatus: 'DRAFT', publicationStatus: 'UNPUBLISHED', fingerprint: 'f', hasUnpublishedChanges: false, publishedVersion: null, imageIssues: [], moderationNote: null, reviewedAt: null, publishedAt: null, createdAt: '', updatedAt: '',
+  workflowStatus: 'DRAFT', publicationStatus: 'UNPUBLISHED', fingerprint: 'f', hasUnpublishedChanges: false, publishedVersion: null, imageIssues: [], moderationNote: null, reviewedAt: null, publishedAt: null, createdAt: '', updatedAt: '', priceAmount: 0, commissionRateBps: 2000,
   chapters: [{ id: 'ch1', title: 'One', position: 0, lessons: [{ id: 'l1', title: 'A', summary: null, position: 0, preview: false, hasVideo: true, hasContent: false, aiAssisted: false }] }],
 } as AuthorCourse
 const lesson = { id: 'l1', chapterId: 'ch1', versionId: null, title: 'A', summary: null, content: '# hi', video: { provider: 'YOUTUBE', videoId: 'dQw4w9WgXcQ' }, preview: false, position: 0, aiAssisted: false, fingerprint: '', imageIssues: [] } as Lesson
@@ -88,8 +88,9 @@ describe('YouTube helpers', () => {
 
 describe('course helpers', () => {
   it('sends only changed course fields and compares tags as a set', () => {
-    const form = { title: 'Java', summary: 'New', description: 'Desc', level: 'BEGINNER' as const, topicId: 't1', tagIds: ['g1'], coverImageUrl: null }
+    const form = { title: 'Java', summary: 'New', description: 'Desc', level: 'BEGINNER' as const, topicId: 't1', tagIds: ['g1'], coverImageUrl: null, priceAmount: 0 }
     expect(courseChangedFields(form, course)).toEqual({ summary: 'New' })
+    expect(courseChangedFields({ ...form, priceAmount: 350000 }, course)).toEqual({ summary: 'New', priceAmount: 350000 })
     expect(courseChangedFields({ ...form, tagIds: ['g1', 'g2'] }, course)).toEqual({ summary: 'New', tagIds: ['g1', 'g2'] })
     expect(courseChangedFields(form, null)).toBe(form)
   })
@@ -178,10 +179,60 @@ describe('reader course API and helpers', () => {
     expect(lessonAccess(l(false), { enrolled: false, canStart: false }, true)).toBe('locked')
   })
 
+  it('sends a signed-in Learner of a paid course to buy, never to start; Guest, owner, preview and enrolled keep their mode', () => {
+    const l = (preview: boolean) => ({ preview })
+    expect(lessonAccess(l(false), { enrolled: false, canStart: true }, true, true)).toBe('buy')
+    expect(lessonAccess(l(false), { enrolled: false, canStart: true }, false, true)).toBe('login')
+    expect(lessonAccess(l(false), { enrolled: false, canStart: false }, true, true)).toBe('locked')
+    expect(lessonAccess(l(true), { enrolled: false, canStart: true }, true, true)).toBe('open')
+    expect(lessonAccess(l(false), { enrolled: true, canStart: true }, true, true)).toBe('open')
+  })
+
   it('embeds only a valid YouTube id on youtube-nocookie and flattens lessons in order', () => {
     expect(embedUrl({ provider: 'YOUTUBE', videoId: 'dQw4w9WgXcQ' })).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
     expect(embedUrl({ provider: 'VIMEO', videoId: 'dQw4w9WgXcQ' })).toBeNull()
     expect(embedUrl({ provider: 'YOUTUBE', videoId: '"><script' })).toBeNull()
     expect(flatLessons([{ id: 'c', title: '', position: 0, lessons: [{ id: 'a' }, { id: 'b' }] }, { id: 'd', title: '', position: 1, lessons: [{ id: 'e' }] }] as never).map(x => x.id)).toEqual(['a', 'b', 'e'])
+  })
+})
+
+describe('price helpers (Task 1a rules: 0 or 10.000–50.000.000 whole VND)', () => {
+  it('accepts the free price and the paid range with its edges, nothing else', () => {
+    for (const ok of [0, 10_000, 350_000, 50_000_000]) expect(priceValid(ok), String(ok)).toBe(true)
+    for (const bad of [9_999, 50_000_001, -1, 1.5, Number.NaN, 1 / 0]) expect(priceValid(bad), String(bad)).toBe(false)
+  })
+
+  it('splits a price by basis points with floor, like the server snapshot', () => {
+    expect(authorShare(350_000, 2000)).toEqual({ platform: 70_000, author: 280_000 })
+    expect(authorShare(10_001, 3333)).toEqual({ platform: 3333, author: 6668 })
+    expect(authorShare(350_000, 0)).toEqual({ platform: 0, author: 350_000 })
+  })
+
+  it('formats whole VND by language', () => {
+    expect(vnd(350_000, 'vi')).toMatch(/^350\.000\s₫$/)
+    expect(vnd(1_250_000, 'en')).toMatch(/1,250,000/)
+    expect(vnd(0, 'vi')).toMatch(/^0\s₫$/)
+  })
+})
+
+describe('orders API', () => {
+  it('creates an order with only the course id and returns the order to open', async () => {
+    fetchMock.mockResolvedValue(ok({ orderCode: 'TV000000000123' }, 201))
+    const order = await orders.create('c1')
+    expect(order.orderCode).toBe('TV000000000123')
+    expect(call().url.pathname).toBe('/api/v1/orders')
+    expect(call().init.method).toBe('POST')
+    expect(JSON.parse(String(call().init.body))).toEqual({ courseId: 'c1' })
+  })
+})
+
+describe('moderator shapes carry no money', () => {
+  it('has no price or commission on the moderator course type (checked by the compiler)', () => {
+    const detail = { course: {} } as ModeratorCourseDetail
+    // @ts-expect-error Moderators never receive the price
+    void detail.course.priceAmount
+    // @ts-expect-error nor the commission rate
+    void detail.course.commissionRateBps
+    expect(true).toBe(true)
   })
 })
