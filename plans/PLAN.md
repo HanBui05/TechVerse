@@ -25,6 +25,8 @@ Module đang làm: [course-payment](course-payment.md)
 | Exercise practice | [spec](exercise-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `course-payment` + `course-ai-tutor`, bắt đầu Task 1a. | — |
 | Interview practice | [spec](interview-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định, Admin/Moderator không vào trang; Codex phản biện một vòng); làm sau `exercise-practice`, bắt đầu Task 1a. | — |
 | Forum & reports | [spec](forum-reports.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (7 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `interview-practice`, bắt đầu Task 1a. | — |
+| Dashboard stats | [spec](dashboard-stats.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau cùng, khi các module nguồn đã code. | — |
+| Messaging | [spec](messaging.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (rủi ro cao; 7 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `forum-reports`, cắt đầu tiên nếu thiếu thời gian. | — |
 | AI docs optimization | — (làn nhẹ, [brief](ai-docs-optimization.brief.md), 2026-11-13) | Đang thực hiện | Claude | Đang làm; chờ người dùng trả lời câu hỏi mục 5 của brief. | — |
 
 Đã xong: Author profile (Backend) — [spec](author-profile.md), [log](author-profile.log.md) · UI foundation v2 (shadcn) — [spec](ui-foundation-v2.md), [log](ui-foundation-v2.log.md) · Article flow (2026-11-04, PR #2) — [spec](article-flow.md), [log](article-flow.log.md) · AI assist (2026-11-06, PR #3) — [spec](ai-assist.md), [log](ai-assist.log.md).
