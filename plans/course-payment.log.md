@@ -2,9 +2,9 @@
 
 ## Bắt đầu từ đây (cập nhật 2026-11-15)
 
-- **Task tiếp:** Task 1d — Chính sách hoa hồng · Giao diện: Không
+- **Task tiếp:** Cổng wireframe — tạo `plans/course-payment.wireframe.md`, người dùng duyệt trước Task 2a · Giao diện: Có
 - Spec chốt 2026-11-14: Task 1a → 1b → 1c → 1d → cổng wireframe → 2a → 2b → 2c; **Task 1e (PayOS) hoãn**. Rủi ro cao: code bằng Opus, review vòng 1 `adversarial-review`.
-- Task 1a, 1b, 1c đã nhận (2026-11-15), đã commit cục bộ trên `feature/course-payment` (1a: V13, giá, quyền xem; 1b: V14, đơn hàng, VietQR, báo chuyển khoản; 1c: V15, Admin xác nhận/đối chiếu, doanh thu tác giả).
+- Task 1a, 1b, 1c, 1d đã nhận (2026-11-15), đã commit cục bộ trên `feature/course-payment` (1a: V13, giá, quyền xem; 1b: V14, đơn hàng, VietQR, báo chuyển khoản; 1c: V15, Admin xác nhận/đối chiếu, doanh thu tác giả; 1d: V16, chính sách hoa hồng).
 - Bẫy cho 1b–1d: `TRUNCATE users CASCADE` trong test xóa luôn `commission_policies`; test cần policy phải tự `INSERT ... (rate_bps) VALUES (2000)`.
 - Module đi kèm: [`course-ai-tutor.md`](course-ai-tutor.md) — Task 1 làm sau Task 1a. Người dùng cần chuẩn bị tài khoản nhận tiền cho `.env` trước khi thử thật.
 
@@ -18,6 +18,11 @@
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-15 — Task 1d (chính sách hoa hồng) — đã nhận (2026-11-15)
+- File: V16 (trigger chặn sửa `rate_bps`/`effective_from`, chỉ cho đóng policy một lần; tính hoa hồng item chỉ khi INSERT; chặn sửa giá/policy/tỷ lệ/số tiền/`order_id`/`course_id` của item); `OrderRepository` (`COMMISSION_LOCK`, `lockCommission`, đọc/đóng/tạo policy; `activeCommissionPolicyId` dùng `clock_timestamp()`); `OrderService.commissionPolicy/changeCommission` + khóa trong `create`; `GET/PUT /api/v1/admin/commission-policy` trong `OrderController`; `CommissionPolicyResponse`; mã `COMMISSION_RATE_INVALID`.
+- Test: `PaymentConfirmationIntegrationTest` (23, +8 ca hoa hồng), `OrderIntegrationTest` (13), `OrderServiceTest` (3), `CoursePaymentMigrationTest`, `FreeCourseMigrationTest`, `ArticlePublicationMigrationTest`, `AuthorCourseIntegrationTest` (15), `CourseLearningIntegrationTest` (6): 78 test, 0 lỗi. Lần đỏ: 9 ca (chưa có endpoint/trigger).
+- Lệch khác spec: (1) V16 thay vì sửa V13. (2) Không tạo `CommissionPolicy*` controller/service/repository/entity và lớp unit/`@WebMvcTest`/`CommissionPolicyIntegrationTest` (luật ít class): code vào `Order*`, mọi dòng bảng trong `PaymentConfirmationIntegrationTest`. (3) Chưa có policy: GET trả `data: null`, PUT tạo policy đầu tiên. (4) Body PUT đúng một trường `rateBps` số nguyên JSON; chuỗi/số thực/thừa trường (vd. `effectiveFrom`) → 400. (5) Thử UPDATE trực tiếp snapshot → DB báo lỗi (không âm thầm giữ nguyên). (6) Hai test cũ đổi tỷ lệ bằng `UPDATE rate_bps` sửa sang đóng + tạo policy mới.
+- Review vòng 1 (adversarial): [medium] đơn chờ khóa nhận policy mới nhưng `created_at` (= `now()` đầu transaction) sớm hơn `effective_from` → `insertOrder`/`insertItem` ghi `created_at` (và `expires_at`) bằng `clock_timestamp()`; ca `anOrderCreatedDuringAPolicyChangeWaitsAndTakesTheNewRate` đổi thứ tự (request bắt đầu trước khi ghi policy) và kiểm `created_at >= effective_from`, đỏ với code cũ. `PaymentConfirmationIntegrationTest` (23), `OrderIntegrationTest` (13), `OrderServiceTest` (3), `CourseLearningIntegrationTest` (6): 45 test, 0 lỗi. Vòng 2: approve, không phát hiện.
 ### 2026-11-15 — Task 1c (Admin xác nhận, thanh toán trùng, doanh thu) — đã nhận (2026-11-15)
 - File: V15 (audit `payment_transactions.confirmed_by/confirmation_source/confirmed_at`, `orders.needs_reconciliation/reconciled_by/reconciled_at`, trigger cấp quyền mới: khóa user, `NOT EXISTS` enrollment active, đơn đã PAID hoặc đã có quyền → bật cờ, giữ `paid_at` đầu); entity `PaymentTransaction` (chỉ đọc); `OrderService.confirm/reconcile/adminOrders/revenue`; endpoint trong `OrderController`; DTO `AdminOrderResponse`, `AuthorRevenueResponse`; 5 mã lỗi `PAYMENT_*`; security `GET /api/v1/author/revenue`.
 - Test: `PaymentConfirmationIntegrationTest` (14, mới), `OrderIntegrationTest` (13), `OrderServiceTest` (3), `CourseLearningIntegrationTest` (6), `CoursePaymentMigrationTest`, `FreeCourseMigrationTest`, `ArticlePublicationMigrationTest`: 54 test, 0 lỗi. Lần đỏ: 500 do chưa có endpoint.
