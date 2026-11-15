@@ -6,14 +6,14 @@ import App from './App'
 import { LoginPage } from './pages/Login/LoginPage'
 import { copy } from './data/i18n'
 import { setAccessToken } from './services/api/client'
-import { detail, json, options, page, summary } from './pages/Courses/fixtures'
+import { detail, json, options, order, page, summary } from './pages/Courses/fixtures'
 
 const fetchMock = vi.fn<typeof fetch>()
 let roles: string[] = []
 const profile = () => ({ id: 'u1', fullName: 'An', email: 'an@example.com', roles, phoneNumber: null, dateOfBirth: null, avatarUrl: null, createdAt: '', updatedAt: '' })
 function Where() { const l = useLocation(); return <output data-testid="where">{l.pathname}</output> }
 const renderAt = (path: string) => render(<MemoryRouter initialEntries={[path]}><App /><Where /></MemoryRouter>)
-const courseCalls = () => fetchMock.mock.calls.filter(([url]) => /\/api\/v1\/(courses|me\/courses)/.test(String(url)))
+const courseCalls = () => fetchMock.mock.calls.filter(([url]) => /\/api\/v1\/(courses|orders|me\/(courses|orders))/.test(String(url)))
 
 beforeEach(() => {
   localStorage.clear(); sessionStorage.clear(); setAccessToken(null)
@@ -24,6 +24,7 @@ beforeEach(() => {
     if (path.endsWith('/options')) return json(options)
     if (path === '/api/v1/courses/c1') return json(detail())
     if (path === '/api/v1/me/courses') return json(page([]))
+    if (path.startsWith('/api/v1/orders/')) return json(order)
     return json(page([summary]))
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -50,11 +51,22 @@ it('sends a Guest from My courses to login, and shows the Courses and My courses
   renderAt('/courses')
   expect(await screen.findByRole('link', { name: 'Java cơ bản' })).toBeTruthy()
   expect(screen.getAllByRole('link', { name: 'Khóa học của tôi' }).length).toBeGreaterThan(0)
+  expect(screen.getAllByRole('link', { name: 'Đơn hàng của tôi' }).some(link => link.getAttribute('href') === '/me/orders')).toBe(true)
   expect(screen.getAllByRole('link', { name: 'Khóa học' }).some(link => link.getAttribute('href') === '/courses')).toBe(true)
 })
 
+it('sends a Guest from an order page to login and opens the order for a Learner', async () => {
+  renderAt('/me/orders/TV000000000123')
+  await vi.waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/login'))
+  cleanup()
+  roles = ['LEARNER']
+  localStorage.setItem('techverse-authenticated', 'true'); setAccessToken('tok')
+  renderAt('/me/orders/TV000000000123')
+  expect((await screen.findAllByText(/TV000000000123/)).length).toBeGreaterThan(0)
+})
+
 it('keeps management accounts out of the Reader course routes without calling the learning API', async () => {
-  for (const [r, home] of [[['MODERATOR'], '/moderator'], [['ADMIN'], '/admin']] as const) for (const path of ['/courses', '/courses/c1', '/courses/c1/lessons/l1', '/me/courses']) {
+  for (const [r, home] of [[['MODERATOR'], '/moderator'], [['ADMIN'], '/admin']] as const) for (const path of ['/courses', '/courses/c1', '/courses/c1/lessons/l1', '/me/courses', '/me/orders', '/me/orders/TV000000000123']) {
     roles = [...r]
     localStorage.setItem('techverse-authenticated', 'true'); setAccessToken('tok')
     fetchMock.mockClear()

@@ -1,10 +1,10 @@
-# Course payment — nhật ký
+﻿# Course payment — nhật ký
 
 ## Bắt đầu từ đây (cập nhật 2026-11-15)
 
-- **Task tiếp:** Task 2b — Thanh toán và đơn của tôi (trang `/me/orders/:orderCode` chưa có: nút Mua của 2a đang điều hướng tới đó) · Giao diện: Có
+- **Task tiếp:** Task 2c — Admin và doanh thu tác giả (Admin lọc/xác nhận đơn, đổi tỷ lệ hoa hồng; Author xem doanh thu) · Giao diện: Có
 - Spec chốt 2026-11-14: Task 1a → 1b → 1c → 1d → cổng wireframe → 2a → 2b → 2c; **Task 1e (PayOS) hoãn**. Rủi ro cao: code bằng Opus, review vòng 1 `adversarial-review`.
-- Task 1a, 1b, 1c, 1d, 2a đã nhận (2026-11-15), đã commit cục bộ trên `feature/course-payment` (1a: V13, giá, quyền xem; 1b: V14, đơn hàng, VietQR, báo chuyển khoản; 1c: V15, Admin xác nhận/đối chiếu, doanh thu tác giả; 1d: V16, chính sách hoa hồng).
+- Task 1a, 1b, 1c, 1d, 2a đã nhận (2026-11-15), Task 2b đã nhận (2026-11-16), đã commit cục bộ trên `feature/course-payment` (1a: V13, giá, quyền xem; 1b: V14, đơn hàng, VietQR, báo chuyển khoản; 1c: V15, Admin xác nhận/đối chiếu, doanh thu tác giả; 1d: V16, chính sách hoa hồng).
 - Bẫy cho 1b–1d: `TRUNCATE users CASCADE` trong test xóa luôn `commission_policies`; test cần policy phải tự `INSERT ... (rate_bps) VALUES (2000)`.
 - Module đi kèm: [`course-ai-tutor.md`](course-ai-tutor.md) — Task 1 làm sau Task 1a. Người dùng cần chuẩn bị tài khoản nhận tiền cho `.env` trước khi thử thật.
 
@@ -18,6 +18,12 @@
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-15 — Task 2b (đơn của tôi + thanh toán VietQR, giao diện) — đã nhận (2026-11-16)
+- File: `pages/Payments/{OrdersPage,OrderDetailPage,Payments.test}.tsx` (mới), `courseService.ts` (`orders.mine/get/reportTransfer`, `qrSrc` chỉ nhận https), `courseI18n.ts` (`orderText`; mã lỗi đã có từ 2a), `App.tsx` (`/me/orders`, `/me/orders/:orderCode`, AuthRoute + ReaderRoute), `Sidebar.tsx` (“Đơn hàng của tôi”), `App.courses.test.tsx`.
+- Test: `vitest --maxWorkers=3 --testTimeout=20000` trên `pages/Payments`, `courseService`, `courseI18n`, `App.courses`, `Sidebar`, `StaffPreferences`, `components/ui/{sidebar,labels,focus}`: đạt hết; `npm run build` đạt.
+- Lệch khác spec: (1) QR `<img>` dùng `bg-white` (nền trắng để máy quét đọc được, không có token). (2) Màu trạng thái đơn khai ở `OrdersPage` (`ORDER_TONE`), không sửa `lib/utils`. (3) “Còn lại” tính ở client từ `expiresAt` (giờ, dưới 1 giờ thì phút).
+- Review vòng 1 (adversarial): [high] Mua lại giữ QR đơn cũ trong lúc tải đơn mới → `OrderView` keyed theo mã đơn; [high] phản hồi báo chuyển khoản trễ ghi đè trạng thái mới → `run` chặn khi đang tải, nút Làm mới khóa khi đang báo; thêm 2 test. `Payments` + `App.courses` 20/20, build đạt. Vòng 2: approve, không còn phát hiện.
+- Kiểm mắt (Playwright MCP, Vite thật cổng 3000; API đơn/đăng nhập giả bằng `route`, ảnh VietQR thật): trang đơn dark desktop (ảnh), light desktop + mobile (ảnh), dark mobile; danh sách dark/light desktop + mobile cảm ứng 390 (`pointer: coarse` đạt, không cuộn ngang, nút ≥ 44px, không tràn chữ). Sửa sau khi xem: tiêu đề “Mở đơn” → “Đơn”, bố cục info trái/QR phải (desktop) và QR trên info (mobile) theo wireframe, link tiêu đề hàng danh sách `inline-flex` để đạt 44px. Bổ sung mobile cảm ứng dark cho hết hạn, hết hạn đã báo, đã trả, hủy, QR lỗi, thiếu QR: không cuộn ngang, nút ≥ 44px, không tràn chữ, đúng thông báo/nút từng trạng thái. Test liên quan 158/158 + build đạt sau sửa; Vite/DB tạm đã dọn.
 ### 2026-11-15 — Task 2a (giá và quyền học, giao diện) — đã nhận (2026-11-15)
 - File: `types/courses.ts` (tách `ModeratorCourse` không tiền / `AuthorCourse` có `priceAmount`,`commissionRateBps`; `CourseOrder`), `courseService.ts` (`priceValid`, `authorShare`, `vnd`, `orders.create`, `lessonAccess` thêm `buy`), `courseI18n.ts` (12 mã lỗi 1a–1b + copy), `CourseInfoPanel` (ô giá + Miễn phí + dòng tỷ lệ), `AuthorCoursesPage` (chip giá), `courseParts` (`PriceChip`, thẻ), `CourseFrame` (`buy/askBuy`, Dialog mua), `CourseOverviewPage`, `CourseLessonPage` (thẻ COURSE_PURCHASE_REQUIRED, gợi ý Mua ở bài học thử).
 - Test: `vitest --maxWorkers=3 --testTimeout=20000` trên `pages/{Courses,Author/Courses,Moderator/Courses}`, `courseService`, `courseI18n`, `App.{author-courses,courses,moderator-courses}`: 195/196 đạt; lỗi có sẵn `App.author-courses` “multiple links Khóa học” (hỏng cả trước khi sửa, không điều tra). `npm run build` đạt (gồm kiểm `@ts-expect-error` Moderator không có tiền). Chạy mặc định 14 file song song bị timeout 5 giây do tải máy.

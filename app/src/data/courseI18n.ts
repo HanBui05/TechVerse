@@ -269,3 +269,36 @@ export function readerCourseText(language: Language) {
   return (key: keyof ReaderCourseCopy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
 }
 export type ReaderCourseText = ReturnType<typeof readerCourseText>
+
+// Orders (wireframe 2b): payment copy from the spec table plus the wireframe section 5 rows.
+const orderVi = {
+  myOrders: 'Đơn hàng của tôi', kicker: 'Góc của tôi', count: '{n} đơn', loading: 'Đang tải đơn hàng...', loadError: 'Không thể tải đơn hàng.', retry: 'Thử lại', allCourses: 'Khóa học',
+  empty: 'Bạn chưa có đơn hàng nào', emptyText: 'Đơn bạn tạo khi mua khóa học sẽ xuất hiện ở đây.', explore: 'Khám phá khóa học', notFoundBack: 'Đơn hàng của tôi',
+  PENDING: 'Chờ Admin xác nhận chuyển khoản', PAID: 'Đã nhận tiền', EXPIRED: 'Hết hạn', FAILED: 'Không còn hiệu lực', CANCELLED: 'Không còn hiệu lực',
+  reportedBadge: 'Đã báo chuyển khoản', created: 'Tạo {when}', expires: 'Hết hạn {when}', paidOn: 'Thanh toán {when}', remaining: 'Còn lại ~{n} giờ', remainingMin: 'Còn lại ~{n} phút',
+  viewOrder: 'Xem đơn', learn: 'Vào học', course: 'Khóa học', total: 'Tổng', openOrder: 'Đơn {code}',
+  transferTitle: 'Chuyển khoản ngân hàng', qrTitle: 'Quét mã VietQR', bank: 'Ngân hàng', accountNo: 'Số tài khoản', accountName: 'Chủ tài khoản', amount: 'Số tiền', content: 'Nội dung',
+  copy: 'Sao chép {what}', matchNote: 'Nhập đúng nội dung để Admin đối chiếu.', qrAlt: 'Mã VietQR đơn {code}', qrHint: 'Mở app ngân hàng, quét mã; kiểm tra số tiền.',
+  qrFailed: 'Không tải được QR; dùng thông tin chuyển khoản bên dưới.', qrReload: 'Tải lại ảnh',
+  afterTitle: 'Sau khi chuyển khoản', afterText: 'Quyền học chỉ mở khi Admin đối chiếu sao kê. Khóa học đã mua không được hoàn tiền.',
+  report: 'Tôi đã chuyển khoản', reported: 'Đã báo cho Admin lúc {time}; quyền học được mở sau khi Admin đối chiếu.', refresh: 'Làm mới trạng thái', buyAgain: 'Mua lại khóa học',
+  expiredAlert: 'Đơn đã hết hạn; liên hệ Admin nếu đã chuyển khoản.', paidAlert: 'Đã nhận tiền', invalidAlert: 'Đơn này không còn hiệu lực.', buyFailed: 'Không thể tạo đơn hàng.', reportFailed: 'Không thể báo chuyển khoản.',
+}
+type OrderCopy = typeof orderVi
+const orderEn: OrderCopy = {
+  myOrders: 'My orders', kicker: 'My corner', count: '{n} orders', loading: 'Loading orders...', loadError: 'Unable to load orders.', retry: 'Retry', allCourses: 'Courses',
+  empty: 'You have no orders yet', emptyText: 'Orders you create when buying a course will appear here.', explore: 'Explore courses', notFoundBack: 'My orders',
+  PENDING: 'Awaiting transfer confirmation', PAID: 'Payment received', EXPIRED: 'Expired', FAILED: 'No longer valid', CANCELLED: 'No longer valid',
+  reportedBadge: 'Transfer reported', created: 'Created {when}', expires: 'Expires {when}', paidOn: 'Paid {when}', remaining: '~{n} hours left', remainingMin: '~{n} minutes left',
+  viewOrder: 'View order', learn: 'Start learning', course: 'Course', total: 'Total', openOrder: 'Order {code}',
+  transferTitle: 'Bank transfer', qrTitle: 'Scan VietQR', bank: 'Bank', accountNo: 'Account number', accountName: 'Account name', amount: 'Amount', content: 'Transfer note',
+  copy: 'Copy {what}', matchNote: 'Use the exact transfer note so an admin can match it.', qrAlt: 'VietQR code for order {code}', qrHint: 'Open your banking app and scan; check the amount.',
+  qrFailed: 'QR unavailable; use the transfer details below.', qrReload: 'Reload image',
+  afterTitle: 'After you transfer', afterText: 'Access opens only after an admin verifies the bank statement. Purchased courses are non-refundable.',
+  report: 'I have transferred', reported: 'Reported to admin at {time}; access opens after the admin verifies the transfer.', refresh: 'Refresh status', buyAgain: 'Buy again',
+  expiredAlert: 'This order has expired; contact an admin if you already transferred.', paidAlert: 'Payment received', invalidAlert: 'This order is no longer valid.', buyFailed: 'Unable to create the order.', reportFailed: 'Unable to report the transfer.',
+}
+export function orderText(language: Language) {
+  const copy = language === 'vi' ? orderVi : orderEn
+  return (key: keyof OrderCopy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
+}

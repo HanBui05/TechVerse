@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setAccessToken } from './api/client'
-import { authorCourses, authorShare, changedLessonFields, courseFilter, courseSearch, embedUrl, flatLessons, lessonAccess, publicCourses, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, orders, priceValid, videoLink, visibleChanges, vnd, youtubeId } from './courseService'
+import { authorCourses, authorShare, changedLessonFields, courseFilter, courseSearch, embedUrl, flatLessons, lessonAccess, publicCourses, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, orders, priceValid, qrSrc, videoLink, visibleChanges, vnd, youtubeId } from './courseService'
 import type { AuthorCourse, ChangeChapter, Lesson, ModeratorCourseDetail } from '../types/courses'
 
 const fetchMock = vi.fn<typeof fetch>()
@@ -223,6 +223,22 @@ describe('orders API', () => {
     expect(call().url.pathname).toBe('/api/v1/orders')
     expect(call().init.method).toBe('POST')
     expect(JSON.parse(String(call().init.body))).toEqual({ courseId: 'c1' })
+  })
+
+  it('lists my orders by page, reads one by code and reports a transfer without a body', async () => {
+    fetchMock.mockResolvedValue(ok({ content: [], page: 0, size: 9, totalElements: 0, totalPages: 0, hasNext: false }))
+    await orders.mine(2)
+    expect(call().url.pathname).toBe('/api/v1/me/orders'); expect(Object.fromEntries(call().url.searchParams)).toEqual({ page: '2', size: '9' })
+    fetchMock.mockResolvedValue(ok({ orderCode: 'TV000000000123' }))
+    await orders.get('TV/1')
+    expect(call(1).url.pathname).toBe('/api/v1/orders/TV%2F1')
+    await orders.reportTransfer('TV000000000123')
+    expect(call(2).url.pathname).toBe('/api/v1/orders/TV000000000123/transfer-report'); expect(call(2).init.method).toBe('POST'); expect(call(2).init.body).toBeUndefined()
+  })
+
+  it('accepts only an https QR image from the API; anything else counts as a failed QR', () => {
+    expect(qrSrc('https://img.vietqr.io/image/970415-0123-compact2.png?amount=350000&addInfo=TV1')).toBe('https://img.vietqr.io/image/970415-0123-compact2.png?amount=350000&addInfo=TV1')
+    for (const bad of ['', 'javascript:alert(1)', 'http://img.vietqr.io/x.png', 'data:image/png;base64,AAAA', '//img.vietqr.io/x.png', 'not a url']) expect(qrSrc(bad)).toBeNull()
   })
 })
 

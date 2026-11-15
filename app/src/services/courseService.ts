@@ -195,7 +195,13 @@ export const vnd = (amount: number, language: Language) => new Intl.NumberFormat
 export const orders = {
   /** Always POSTs, even when a pending order exists: the server returns that order and the client opens it. */
   create: (courseId: string) => request<CourseOrder>('/api/v1/orders', json('POST', { courseId })),
+  mine: (page: number) => request<Page<CourseOrder>>(`/api/v1/me/orders?${query({ page, size: COURSE_PAGE_SIZE })}`),
+  get: (orderCode: string) => request<CourseOrder>(`/api/v1/orders/${encodeURIComponent(orderCode)}`),
+  /** Idempotent on the server (the first time is kept); never grants access. */
+  reportTransfer: (orderCode: string) => request<CourseOrder>(`/api/v1/orders/${encodeURIComponent(orderCode)}/transfer-report`, { method: 'POST' }),
 }
+/** The QR image comes from the API; only an https URL is rendered, anything else counts as a failed QR. */
+export const qrSrc = (url: string) => /^https:\/\/[^\s/]/i.test(url) ? url : null
 
 export const flatLessons = (chapters: PublicChapter[]) => chapters.flatMap(chapter => chapter.lessons)
 
