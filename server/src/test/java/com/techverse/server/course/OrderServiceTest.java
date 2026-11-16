@@ -107,6 +107,76 @@ class OrderServiceTest {
         assertThat(mask("AB1234")).isEqualTo("****1234");
     }
 
+    @Test
+    void payoutBodyIsNormalisedAndEveryBoundaryIsChecked() {
+        UUID author = UUID.randomUUID();
+        assertThat(payout(payoutBody(author.toString(), 5, " FT1 ", " 970436 ", " 0123456789 ", " Văn a ")))
+                .extracting("authorId", "amount", "bankReference")
+                .containsExactly(author, 5L, "FT1");
+        assertThat(payout(payoutBody(author.toString(), 5, "FT1", "970436", "0123456789", " Văn a ")))
+                .extracting("account").extracting("bankId", "accountNo", "accountName")
+                .containsExactly("970436", "0123456789", "VĂN A");
+        assertThat(payout(payoutBody(author.toString(), Long.MAX_VALUE, "r".repeat(255), "970436", "0123456789", "A")))
+                .isNotNull();
+
+        String id = author.toString();
+        var tooMany = payoutBody(id, 5, "FT1", "970436", "0123456789", "A");
+        tooMany.put("extra", "x");
+        var missing = payoutBody(id, 5, "FT1", "970436", "0123456789", "A");
+        missing.remove("bankReference");
+        var wrongKey = new HashMap<>(missing);
+        wrongKey.put("reference", "FT1");
+        for (Map<String, Object> bad : Arrays.<Map<String, Object>>asList(
+                null, Map.of(), tooMany, missing, wrongKey,
+                payoutBody("not-a-uuid", 5, "FT1", "970436", "0123456789", "A"),
+                payoutBody("1-1-1-1-1", 5, "FT1", "970436", "0123456789", "A"),
+                payoutBody(null, 5, "FT1", "970436", "0123456789", "A"),
+                payoutBody(id, 0, "FT1", "970436", "0123456789", "A"),
+                payoutBody(id, -1, "FT1", "970436", "0123456789", "A"),
+                payoutBody(id, 1.5, "FT1", "970436", "0123456789", "A"),
+                payoutBody(id, "5", "FT1", "970436", "0123456789", "A"),
+                payoutBody(id, new java.math.BigInteger("9223372036854775808"), "FT1", "970436", "0123456789", "A"),
+                payoutBody(id, null, "FT1", "970436", "0123456789", "A"),
+                payoutBody(id, 5, "  ", "970436", "0123456789", "A"),
+                payoutBody(id, 5, "r".repeat(256), "970436", "0123456789", "A"),
+                payoutBody(id, 5, 7, "970436", "0123456789", "A"),
+                payoutBody(id, 5, "FT1", "000000", "0123456789", "A"),
+                payoutBody(id, 5, "FT1", "970436", "12345", "A"),
+                payoutBody(id, 5, "FT1", "970436", "0123-4567", "A"),
+                payoutBody(id, 5, "FT1", "970436", "0123456789", " "),
+                payoutBody(id, 5, "FT1", "970436", "0123456789", "n".repeat(101))))
+            assertThatThrownBy(() -> payout(bad)).as("%s", bad)
+                    .extracting("errorCode").isEqualTo(ErrorCode.PAYOUT_INVALID);
+    }
+
+    @Test
+    void payoutQrPaysTheAuthorsAccountNotThePlatformsAndEncodesTheContent() {
+        UUID author = UUID.fromString("0a1b2c3d-0000-0000-0000-000000000000");
+        var qr = (com.techverse.server.dto.response.OrderResponse.VietQr) ReflectionTestUtils.invokeMethod(
+                service, "payoutQr", author, "970436", "AB123456", "NGUYỄN VĂN A", 159_200L);
+        assertThat(qr.bankId()).isEqualTo("970436");
+        assertThat(qr.accountNo()).isEqualTo("AB123456");
+        assertThat(qr.content()).isEqualTo("TVPAY0A1B2C3D");
+        assertThat(qr.imageUrl()).isEqualTo("https://img.vietqr.io/image/970436-AB123456-compact2.png"
+                + "?amount=159200&addInfo=TVPAY0A1B2C3D&accountName=NGUY%E1%BB%84N%20V%C4%82N%20A");
+        assertThat((Object) ReflectionTestUtils.invokeMethod(service, "payoutQr", author, "970436", "AB123456", "A", 0L)).isNull();
+    }
+
+    static Map<String, Object> payoutBody(Object authorId, Object amount, Object ref, String bankId, String accountNo, String name) {
+        var body = new HashMap<String, Object>();
+        body.put("authorId", authorId);
+        body.put("amount", amount);
+        body.put("bankReference", ref);
+        body.put("bankId", bankId);
+        body.put("accountNo", accountNo);
+        body.put("accountName", name);
+        return body;
+    }
+
+    Object payout(Map<String, Object> body) {
+        return ReflectionTestUtils.invokeMethod(OrderService.class, "payoutInput", body);
+    }
+
     static Map<String, Object> body(String bankId, String accountNo, String accountName) {
         return Map.of("bankId", bankId, "accountNo", accountNo, "accountName", accountName);
     }

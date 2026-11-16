@@ -142,17 +142,38 @@ public class OrderController {
         return ok("Payouts retrieved", service.payouts(actor(jwt), filter.getPage(), filter.getSize()));
     }
 
+    @GetMapping("/admin/payouts/authors")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin: authors with revenue, largest balance first, with a VietQR to the author's account for the balance; owedOnly defaults to true")
+    public ApiResponse<PageResponse<AdminPayoutResponse.AuthorBalance>> authorBalances(
+            @RequestParam(required = false) String owedOnly, @Valid @ParameterObject @ModelAttribute ArticleFilter filter) {
+        if (owedOnly != null && !owedOnly.equals("true") && !owedOnly.equals("false"))
+            throw new CustomException(ErrorCode.PAYOUT_INVALID);
+        return ok("Author balances retrieved", service.authorBalances(!"false".equals(owedOnly), filter.getPage(), filter.getSize()));
+    }
+
+    @GetMapping("/admin/payouts")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin: recorded payouts newest first with the full account snapshot; optional authorId")
+    public ApiResponse<PageResponse<AdminPayoutResponse>> adminPayouts(
+            @RequestParam(required = false) String authorId, @Valid @ParameterObject @ModelAttribute ArticleFilter filter) {
+        UUID author = authorId == null ? null : OrderService.uuid(authorId, ErrorCode.PAYOUT_INVALID);
+        return ok("Payouts retrieved", service.adminPayouts(author, filter.getPage(), filter.getSize()));
+    }
+
+    @PostMapping("/admin/payouts")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin: body {authorId, amount, bankReference, bankId, accountNo, accountName} of a transfer already made; retry-safe")
+    public ApiResponse<AdminPayoutResponse> recordPayout(
+            @AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) Map<String, Object> body) {
+        return ok("Payout recorded", service.recordPayout(actor(jwt), body));
+    }
+
     /** Exactly one field: price and total always come from the server. */
     private static UUID courseId(Map<String, Object> body) {
         if (body == null || body.size() != 1 || !(body.get("courseId") instanceof String id))
             throw new CustomException(ErrorCode.ORDER_INVALID);
-        try {
-            UUID parsed = UUID.fromString(id);
-            // UUID.fromString also accepts short forms such as "1-1-1-1-1".
-            if (parsed.toString().equalsIgnoreCase(id)) return parsed;
-        } catch (IllegalArgumentException e) {
-        }
-        throw new CustomException(ErrorCode.ORDER_INVALID);
+        return OrderService.uuid(id, ErrorCode.ORDER_INVALID);
     }
 
     private static UUID actor(Jwt jwt) {

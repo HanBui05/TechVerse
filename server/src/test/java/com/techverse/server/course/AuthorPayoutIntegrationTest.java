@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.util.*;
 import java.util.concurrent.*;
 
-/** Author's receiving account, balance and payout history (payouts are inserted directly until the Admin flow exists). */
+/** Author's receiving account, balance and payout history; Admin balances and payout recording, including races. */
 class AuthorPayoutIntegrationTest extends CourseIntegrationTestBase {
     static final String ACCOUNT = "/api/v1/author/payout-account";
     static final String PAYOUTS = "/api/v1/author/payouts";
@@ -119,6 +119,176 @@ class AuthorPayoutIntegrationTest extends CourseIntegrationTestBase {
         assertThat(newest.path("createdAt").asText()).isNotBlank();
         assertThat(data(get(PAYOUTS + "?page=1&size=1", authorToken)).at("/content/0/accountNo").asText()).isEqualTo("****6789");
         assertThat(page.toString()).doesNotContain("0123456789", "CHI-OTHER");
+    }
+
+    // ------------------------------------------------------------------ Admin: balances and recording payouts
+
+    static final String ADMIN_AUTHORS = "/api/v1/admin/payouts/authors";
+    static final String ADMIN_PAYOUTS = "/api/v1/admin/payouts";
+
+    @Test
+    void adminSeesTheBalanceWithAQrToTheAuthorAndRecordingAPayoutSettlesIt() throws Exception {
+        sell("Paid course", 199_000, "FT1");
+        var noAccount = data(get(ADMIN_AUTHORS, adminToken).andExpect(status().isOk())).at("/content/0");
+        assertThat(noAccount.path("authorId").asText()).isEqualTo(author.toString());
+        assertThat(noAccount.path("email").asText()).isEqualTo("author@example.com");
+        assertThat(noAccount.path("earnedAmount").asLong()).isEqualTo(159_200);
+        assertThat(noAccount.path("balanceAmount").asLong()).isEqualTo(159_200);
+        assertThat(noAccount.path("account").isNull()).isTrue();
+        assertThat(noAccount.path("vietQr").isNull()).isTrue();
+
+        saveAccount("970436", "0123456789", "Nguyễn Văn A");
+        String hex = author.toString().substring(0, 8).toUpperCase(Locale.ROOT);
+        var owed = data(get(ADMIN_AUTHORS + "?owedOnly=true", adminToken)).at("/content/0");
+        assertThat(owed.at("/account/accountNo").asText()).isEqualTo("0123456789");
+        assertThat(owed.at("/vietQr/amount").asLong()).isEqualTo(159_200);
+        assertThat(owed.at("/vietQr/content").asText()).isEqualTo("TVPAY" + hex);
+        assertThat(owed.at("/vietQr/imageUrl").asText())
+                .startsWith("https://img.vietqr.io/image/970436-0123456789-")
+                .contains("amount=159200", "addInfo=TVPAY" + hex, "accountName=NGUY%E1%BB%84N%20V%C4%82N%20A");
+
+        var body = payoutBody(author, 159_200, " CHI-1 ", "970436", "0123456789", "Nguyễn Văn A");
+        var recorded = data(send(post(ADMIN_PAYOUTS), adminToken, body).andExpect(status().isOk()));
+        assertThat(recorded.path("accountChanged").asBoolean()).isFalse();
+        assertThat(recorded.path("bankReference").asText()).isEqualTo("CHI-1");
+        assertThat(data(get(REVENUE, authorToken)).at("/totals/balanceAmount").asLong()).isZero();
+        assertThat(data(get(PAYOUTS, authorToken)).at("/content/0/accountNo").asText()).isEqualTo("****6789");
+
+        var history = data(get(ADMIN_PAYOUTS + "?authorId=" + author, adminToken).andExpect(status().isOk()));
+        assertThat(history.path("totalElements").asLong()).isEqualTo(1);
+        assertThat(history.at("/content/0/accountNo").asText()).isEqualTo("0123456789");
+        assertThat(history.at("/content/0/accountName").asText()).isEqualTo("NGUYỄN VĂN A");
+        assertThat(history.at("/content/0/recordedById").asText()).isEqualTo(admin.toString());
+        assertThat(data(get(ADMIN_PAYOUTS, adminToken)).path("totalElements").asLong()).isEqualTo(1);
+        assertThat(data(get(ADMIN_PAYOUTS + "?authorId=" + learner, adminToken)).path("totalElements").asLong()).isZero();
+
+        assertThat(data(get(ADMIN_AUTHORS, adminToken)).path("totalElements").asLong()).isZero();
+        var all = data(get(ADMIN_AUTHORS + "?owedOnly=false", adminToken)).at("/content/0");
+        assertThat(all.path("paidOutAmount").asLong()).isEqualTo(159_200);
+        assertThat(all.path("balanceAmount").asLong()).isZero();
+        assertThat(all.path("vietQr").isNull()).isTrue();
+
+        // A retry after the balance reached zero returns the recorded payout.
+        var again = data(send(post(ADMIN_PAYOUTS), adminToken, body).andExpect(status().isOk()));
+        assertThat(again.path("id").asText()).isEqualTo(recorded.path("id").asText());
+        assertThat(payoutCount()).isEqualTo(1);
+        send(post(ADMIN_PAYOUTS), adminToken, payoutBody(author, 1, "CHI-1", "970436", "0123456789", "A"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PAYOUT_REFERENCE_CONFLICT"));
+        send(post(ADMIN_PAYOUTS), adminToken, payoutBody(author, 1, "CHI-2", "970436", "0123456789", "A"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PAYOUT_EXCEEDS_BALANCE"));
+    }
+
+    @Test
+    void aPayoutToAnAccountTheAuthorChangedSinceIsRecordedAsSentAndBadInputIsRejected() throws Exception {
+        sell("Paid course", 199_000, "FT1");
+        saveAccount("970436", "0123456789", "A");
+        saveAccount("970422", "9988776655", "B");
+
+        var recorded = data(send(post(ADMIN_PAYOUTS), adminToken,
+                payoutBody(author, 100_000, "CHI-1", "970436", "0123456789", "A")).andExpect(status().isOk()));
+        assertThat(recorded.path("accountChanged").asBoolean()).isTrue();
+        assertThat(recorded.path("bankId").asText()).isEqualTo("970436");
+        assertThat(recorded.path("accountNo").asText()).isEqualTo("0123456789");
+
+        send(post(ADMIN_PAYOUTS), adminToken, payoutBody(UUID.randomUUID(), 1, "CHI-9", "970436", "0123456789", "A"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+        send(post(ADMIN_PAYOUTS), adminToken, payoutBody(author, 0, "CHI-9", "970436", "0123456789", "A"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PAYOUT_INVALID"));
+        get(ADMIN_AUTHORS + "?owedOnly=maybe", adminToken)
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PAYOUT_INVALID"));
+        get(ADMIN_PAYOUTS + "?authorId=1-1-1-1-1", adminToken)
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PAYOUT_INVALID"));
+    }
+
+    @Test
+    void adminPayoutRoutesAreAdminOnly() throws Exception {
+        var body = payoutBody(author, 1, "CHI-1", "970436", "0123456789", "A");
+        for (String token : new String[] {authorToken, modToken, learnerToken}) {
+            get(ADMIN_AUTHORS, token).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+            get(ADMIN_PAYOUTS, token).andExpect(status().isForbidden());
+            send(post(ADMIN_PAYOUTS), token, body).andExpect(status().isForbidden());
+        }
+        get(ADMIN_AUTHORS, null).andExpect(status().isUnauthorized());
+        get(ADMIN_PAYOUTS, null).andExpect(status().isUnauthorized());
+        send(post(ADMIN_PAYOUTS), null, body).andExpect(status().isUnauthorized());
+        assertThat(payoutCount()).isZero();
+    }
+
+    @Test
+    void concurrentPayoutsNeverExceedTheBalanceAndIdenticalOnesRecordOnce() throws Exception {
+        sell("Paid course", 199_000, "FT1"); // earned 159 200
+        var split = parallel(
+                payoutBody(author, 100_000, "CHI-A", "970436", "0123456789", "A"),
+                payoutBody(author, 100_000, "CHI-B", "970436", "0123456789", "A"));
+        assertThat(split).extracting(r -> r[0]).containsExactlyInAnyOrder("200", "409");
+        assertThat(split).extracting(r -> r[1]).contains("PAYOUT_EXCEEDS_BALANCE");
+        assertThat(payoutCount()).isEqualTo(1);
+
+        var same = payoutBody(author, 50_000, "CHI-C", "970436", "0123456789", "A");
+        assertThat(parallel(same, same)).extracting(r -> r[0]).containsExactly("200", "200");
+        assertThat(payoutCount()).isEqualTo(2);
+    }
+
+    @Test
+    void twoAuthorsRacingForOneReferenceGetOneSuccessAndOneConflict() throws Exception {
+        sell("Paid course", 199_000, "FT1");
+        UUID author2 = user("author2@example.com", "AUTHOR");
+        String original = authorToken;
+        authorToken = login("author2@example.com");
+        sell("Second course", 99_000, "FT2");
+        authorToken = original;
+
+        var race = parallel(
+                payoutBody(author, 10_000, "CHI-X", "970436", "0123456789", "A"),
+                payoutBody(author2, 10_000, "CHI-X", "970436", "5555555555", "B"));
+        assertThat(race).extracting(r -> r[0]).containsExactlyInAnyOrder("200", "409");
+        assertThat(race).extracting(r -> r[1]).contains("PAYOUT_REFERENCE_CONFLICT");
+        assertThat(payoutCount()).isEqualTo(1);
+    }
+
+    /** Publishes a paid course as {@code authorToken}, sells it to the learner and confirms the transfer. */
+    void sell(String title, long price, String reference) throws Exception {
+        String course = publishedPaidCourse(title, price);
+        String code = data(send(post("/api/v1/orders"), learnerToken, Map.of("courseId", course)).andExpect(status().isOk()))
+                .path("orderCode").asText();
+        send(post("/api/v1/admin/orders/" + code + "/confirm"), adminToken, Map.of("amount", price, "bankReference", reference))
+                .andExpect(status().isOk());
+    }
+
+    void saveAccount(String bankId, String accountNo, String accountName) throws Exception {
+        send(put(ACCOUNT), authorToken, Map.of("bankId", bankId, "accountNo", accountNo, "accountName", accountName))
+                .andExpect(status().isOk());
+    }
+
+    static Map<String, Object> payoutBody(UUID to, long amount, String ref, String bankId, String accountNo, String name) {
+        return Map.of("authorId", to.toString(), "amount", amount, "bankReference", ref,
+                "bankId", bankId, "accountNo", accountNo, "accountName", name);
+    }
+
+    long payoutCount() {
+        return jdbc.queryForObject("SELECT count(*) FROM techverse.author_payouts", Long.class);
+    }
+
+    /** Sends both bodies at once; each result is {status, error code}. */
+    List<String[]> parallel(Map<String, Object> first, Map<String, Object> second) throws Exception {
+        var pool = Executors.newFixedThreadPool(2);
+        var start = new CountDownLatch(1);
+        try {
+            var calls = new ArrayList<Future<String[]>>();
+            for (var body : List.of(first, second))
+                calls.add(pool.submit(() -> {
+                    start.await();
+                    var response = send(post(ADMIN_PAYOUTS), adminToken, body).andReturn().getResponse();
+                    return new String[] {String.valueOf(response.getStatus()),
+                            mapper.readTree(response.getContentAsString()).path("code").asText()};
+                }));
+            start.countDown();
+            var results = new ArrayList<String[]>();
+            for (var call : calls) results.add(call.get(30, TimeUnit.SECONDS));
+            return results;
+        } finally {
+            pool.shutdown();
+        }
     }
 
     void payout(UUID to, long amount, String ref, String accountNo) {

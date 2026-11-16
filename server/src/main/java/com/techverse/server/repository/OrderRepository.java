@@ -268,4 +268,84 @@ public interface OrderRepository extends JpaRepository<CourseOrder, UUID> {
             countQuery = "SELECT count(*) FROM author_payouts WHERE author_id = :authorId",
             nativeQuery = true)
     Page<PayoutRow> findPayouts(@Param("authorId") UUID authorId, Pageable pageable);
+
+    // ------------------------------------------------------------------ Admin payouts
+
+    interface AuthorBalanceRow {
+        UUID getAuthorId();
+        String getFullName();
+        String getEmail();
+        Long getEarnedAmount();
+        Long getPaidOutAmount();
+        Long getBalanceAmount();
+        String getBankId();
+        String getAccountNo();
+        String getAccountName();
+        java.time.Instant getUpdatedAt();
+    }
+
+    /** Every author with PAID revenue; same earned formula as {@link #revenueTotals}, largest balance first. */
+    String AUTHOR_BALANCES = " FROM (SELECT e.author_id, e.earned,"
+            + " (SELECT coalesce(sum(p.amount), 0) FROM author_payouts p WHERE p.author_id = e.author_id)::bigint AS paid"
+            + " FROM (SELECT c.author_id, sum(i.author_net_amount)::bigint AS earned FROM order_items i"
+            + " JOIN orders o ON o.id = i.order_id JOIN courses c ON c.id = i.course_id"
+            + " WHERE o.status = 'PAID' GROUP BY c.author_id) e) b"
+            + " JOIN users u ON u.id = b.author_id LEFT JOIN author_payout_accounts a ON a.user_id = b.author_id"
+            + " WHERE (:owedOnly = false OR b.earned > b.paid)";
+
+    @Query(
+            value = "SELECT b.author_id AS authorId, u.full_name AS fullName, u.email::text AS email, b.earned AS earnedAmount,"
+                    + " b.paid AS paidOutAmount, b.earned - b.paid AS balanceAmount, a.bank_id AS bankId,"
+                    + " a.account_no AS accountNo, a.account_name AS accountName, a.updated_at AS updatedAt"
+                    + AUTHOR_BALANCES + " ORDER BY b.earned - b.paid DESC, b.author_id",
+            countQuery = "SELECT count(*)" + AUTHOR_BALANCES,
+            nativeQuery = true)
+    Page<AuthorBalanceRow> findAuthorBalances(@Param("owedOnly") boolean owedOnly, Pageable pageable);
+
+    interface AdminPayoutRow {
+        UUID getId();
+        UUID getAuthorId();
+        String getAuthorName();
+        Long getAmount();
+        String getBankReference();
+        String getBankId();
+        String getAccountNo();
+        String getAccountName();
+        UUID getRecordedById();
+        String getRecordedByName();
+        java.time.Instant getCreatedAt();
+    }
+
+    String ADMIN_PAYOUT = "SELECT p.id, p.author_id AS authorId, au.full_name AS authorName, p.amount,"
+            + " p.bank_reference AS bankReference, p.bank_id AS bankId, p.account_no AS accountNo,"
+            + " p.account_name AS accountName, p.created_by AS recordedById, ad.full_name AS recordedByName,"
+            + " p.created_at AS createdAt"
+            + " FROM author_payouts p JOIN users au ON au.id = p.author_id JOIN users ad ON ad.id = p.created_by";
+
+    @Query(value = ADMIN_PAYOUT + " WHERE p.bank_reference = :reference", nativeQuery = true)
+    Optional<AdminPayoutRow> findPayoutByReference(@Param("reference") String reference);
+
+    @Query(
+            value = ADMIN_PAYOUT + " WHERE (CAST(:authorId AS uuid) IS NULL OR p.author_id = CAST(:authorId AS uuid))"
+                    + " ORDER BY p.created_at DESC, p.id DESC",
+            countQuery = "SELECT count(*) FROM author_payouts p"
+                    + " WHERE (CAST(:authorId AS uuid) IS NULL OR p.author_id = CAST(:authorId AS uuid))",
+            nativeQuery = true)
+    Page<AdminPayoutRow> findAdminPayouts(@Param("authorId") UUID authorId, Pageable pageable);
+
+    /** 0 rows: the reference was taken meanwhile; never a unique violation that would poison the transaction. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value = "INSERT INTO author_payouts (author_id, amount, bank_reference, bank_id, account_no, account_name, created_by)"
+                    + " VALUES (:authorId, :amount, :reference, :bankId, :accountNo, :accountName, :admin)"
+                    + " ON CONFLICT (bank_reference) DO NOTHING",
+            nativeQuery = true)
+    int insertPayout(
+            @Param("authorId") UUID authorId,
+            @Param("amount") long amount,
+            @Param("reference") String reference,
+            @Param("bankId") String bankId,
+            @Param("accountNo") String accountNo,
+            @Param("accountName") String accountName,
+            @Param("admin") UUID admin);
 }
