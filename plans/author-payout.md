@@ -46,29 +46,28 @@ Chỉ được sửa các đường dẫn sau. Ngoài danh sách là ngoài ph�
 - Danh sách ngân hàng hỗ trợ là một hằng số ở backend (mã BIN + tên, khoảng 20 ngân hàng phổ biến; lấy từ danh sách ngân hàng của VietQR lúc làm task, ghi nguồn vào log) và là nguồn duy nhất: `GET /api/v1/author/payout-account` trả `{account, banks}`; `PUT` chỉ nhận `bankId` có trong danh sách.
 - `GET /api/v1/author/payout-account` (`account` là `null` khi chưa khai) và `PUT` cùng đường dẫn (tạo hoặc thay), quyền AUTHOR. Chuẩn hóa: `strip`, `accountName` viết hoa. `PUT` khóa dòng `users` của tác giả (`FOR UPDATE`) trước khi upsert, cùng khóa với việc ghi chi ở Task 1b.
 - `GET /api/v1/author/revenue`: `Totals` thêm `paidOutAmount`, `balanceAmount`.
+- V17 có trigger `set_updated_at` cho `author_payout_accounts`; truy cập hai bảng payout bằng native query và projection trong `OrderRepository`, không tạo entity riêng. `revenueTotals` dùng native query đọc cùng lúc tổng đã hưởng và đã chi. Matcher bảo mật gồm `GET /author/revenue/**`.
 - `GET /api/v1/author/payouts` (phân trang, mới nhất trước): `amount`, `bankReference`, `accountNo` che chỉ còn 4 ký tự cuối, `createdAt`.
 
 ### Quy tắc nghiệp vụ và mã lỗi
 
 | Trường / tình huống | Ràng buộc | HTTP / mã lỗi | Copy hiển thị |
 |---|---|---|---|
-| Body `PUT` | Đúng 3 trường chuỗi; `bankId` phải có trong danh sách ngân hàng hỗ trợ; `accountNo` `^[A-Za-z0-9]{6,30}$`; `accountName` 1–100 ký tự sau `strip` | 400 `PAYOUT_ACCOUNT_INVALID` | Thông tin tài khoản không hợp lệ. |
+| Body `PUT` | Đúng 3 trường chuỗi; `bankId` phải có trong danh sách ngân hàng hỗ trợ; `accountNo` `^[A-Za-z0-9]{6,30}$`; `accountName` 1–100 ký tự sau `strip`, không chứa ký tự điều khiển | 400 `PAYOUT_ACCOUNT_INVALID` | Thông tin tài khoản không hợp lệ. |
 | Chưa đăng nhập / không phải AUTHOR | Theo luật hiện hành | 401 / 403 `ACCESS_DENIED` | Đăng nhập / không có quyền. |
 | Hai `PUT` đồng thời | Upsert theo `user_id`, bản sau thắng, không tạo hai dòng | 200 | — |
 | Đổi tài khoản khi còn số dư | Được phép; khoản chi cũ giữ snapshot cũ | 200 | — |
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** V17; entity `AuthorPayout`, `AuthorPayoutAccount`; `OrderRepository` (query tổng đã chi, danh sách khoản chi), `OrderService`, `OrderController`, `AuthorRevenueResponse`, DTO `PayoutResponse`; `ErrorCode`; `SecurityConfiguration`: `/api/v1/admin/**` đã `authenticated()`, nhưng route Author mới (`/author/payout-account` GET+PUT, `/author/payouts`, `/author/revenue/**`) chưa có matcher — dòng hiện tại chỉ có `GET /author/revenue`; phải thêm và có ca test gọi không token → 401.
-- **Phần dùng lại:** `revenueTotals` cho `earned`; kiểu đọc body `Map<String,Object>` + kiểm đúng số trường như `confirm`; `ArticleFilter` cho phân trang; `CourseIntegrationTestBase`.
-- **Bẫy đã biết:** Hibernate `validate` cần `varchar`, không `char`; V1 tạo trigger audit/`updated_at` từ danh sách bảng động, bảng mới phải tự khai trigger cần thiết; test nào khẳng định phiên bản Flyway mới nhất phải nâng lên 17; `TRUNCATE users CASCADE` trong test xóa luôn hai bảng mới.
+Task đã nhận ngày 2026-11-16; kết quả thực hiện và kiểm chứng: xem [log](author-payout.log.md).
 
 ### Xong khi
 
-- [ ] `CoursePaymentMigrationTest`: V1→V17 và DB rỗng đạt; UPDATE/DELETE `author_payouts` bị trigger chặn; `amount <= 0` và `bank_reference` trùng bị từ chối.
-- [ ] `OrderServiceTest` (unit): bảng kiểm body `PUT` từng dòng biên (độ dài, ký tự, thiếu/thừa trường, sai kiểu) và che số tài khoản.
-- [ ] `AuthorPayoutIntegrationTest` (mới, DB/security thật): khai rồi sửa tài khoản; `revenue` trả `balance = earned − paidOut` sau khi chèn khoản chi; tác giả khác và MODERATOR không đọc được tài khoản; `GET payouts` chỉ trả khoản của mình; route Author mới gọi không token → 401.
-- [ ] Các lớp trên + `PaymentConfirmationIntegrationTest`, `OrderIntegrationTest` (regression) đạt; full backend do CI.
+- [x] `CoursePaymentMigrationTest`: V1→V17 và DB rỗng đạt; UPDATE/DELETE `author_payouts` bị trigger chặn; `amount <= 0` và `bank_reference` trùng bị từ chối.
+- [x] `OrderServiceTest` (unit): bảng kiểm body `PUT` từng dòng biên (độ dài, ký tự, thiếu/thừa trường, sai kiểu) và che số tài khoản.
+- [x] `AuthorPayoutIntegrationTest` (mới, DB/security thật): khai rồi sửa tài khoản; `revenue` trả `balance = earned − paidOut` sau khi chèn khoản chi; tác giả khác và MODERATOR không đọc được tài khoản; `GET payouts` chỉ trả khoản của mình; route Author mới gọi không token → 401.
+- [x] Các lớp trên + `PaymentConfirmationIntegrationTest`, `OrderIntegrationTest` (regression) đạt; full backend do CI.
 
 ## Task 1b — Admin xem công nợ và ghi nhận khoản chi
 
@@ -76,10 +75,11 @@ Chỉ được sửa các đường dẫn sau. Ngoài danh sách là ngoài ph�
 
 ### Phạm vi
 
-- `GET /api/v1/admin/payouts/authors?owedOnly=true` (phân trang, nợ nhiều trước): `authorId`, họ tên, email, `earnedAmount`, `paidOutAmount`, `balanceAmount`, `account` (đủ số, hoặc `null`), `vietQr` (tới tài khoản tác giả, số tiền = `balance`, nội dung `TVPAY` + 8 ký tự hex đầu của `authorId` viết hoa; `null` khi chưa có tài khoản hoặc `balance = 0`). `owedOnly=false` trả mọi tác giả từng có doanh thu.
+- `GET /api/v1/admin/payouts/authors?owedOnly=true` (phân trang, nợ nhiều trước): `authorId`, họ tên, email, `earnedAmount`, `paidOutAmount`, `balanceAmount`, `account` (đủ số, hoặc `null`), `vietQr` (tới tài khoản tác giả, số tiền = `balance`, nội dung `TVPAY` + 8 ký tự hex đầu của `authorId` viết hoa; `null` khi chưa có tài khoản hoặc `balance = 0`). `owedOnly=false` trả mọi tác giả từng có doanh thu; bỏ trống mặc định là `true`, chỉ nhận đúng `true` hoặc `false`.
 - `GET /api/v1/admin/payouts?authorId=` (phân trang, mới nhất trước; bỏ `authorId` thì mọi tác giả): khoản chi kèm snapshot tài khoản đủ số và Admin ghi nhận.
-- `POST /api/v1/admin/payouts` body `{authorId, amount, bankReference, bankId, accountNo, accountName}`. Ba trường tài khoản là nơi Admin **đã chuyển tới** (lấy từ Sheet) và được lưu nguyên làm snapshot: khoản chi ghi lại việc đã xảy ra, nên tài khoản tác giả đổi sau đó không chặn việc ghi. Response có `accountChanged = true` khi tài khoản đã ghi khác tài khoản hiện tại của tác giả.
+- `POST /api/v1/admin/payouts` body `{authorId, amount, bankReference, bankId, accountNo, accountName}`. Ba trường tài khoản là nơi Admin **đã chuyển tới** (lấy từ Sheet) và được lưu nguyên làm snapshot: khoản chi ghi lại việc đã xảy ra, nên tài khoản tác giả đổi sau đó không chặn việc ghi. Response có `accountChanged = true` khi tài khoản đã ghi khác tài khoản hiện tại hoặc tác giả chưa khai tài khoản; tài khoản trong danh sách là `null` nếu chưa khai.
 - Thứ tự xử lý trong một transaction: (1) kiểm body; (2) khóa dòng `users` của tác giả `FOR UPDATE`; (3) tìm khoản chi theo `bankReference`: có và cùng `authorId` + `amount` → trả khoản cũ, có nhưng khác → 409; (4) đọc lại `earned` và `paidOut` bằng **một** câu SQL, `amount > balance` → 409; (5) `INSERT ... ON CONFLICT (bank_reference) DO NOTHING`; chèn 0 dòng (tác giả khác vừa dùng reference đó) → đọc lại và áp bước 3.
+- Parse UUID dùng hàm chung `OrderService.uuid(...)` cho payout và `courseId`; `/admin/**` dùng matcher `authenticated()` hiện có.
 - Mỗi transaction chi trả chỉ khóa đúng một dòng `users` (tác giả), không khóa order hay người mua, nên không tạo vòng chờ với `confirm` (khóa người mua rồi order).
 
 ### Quy tắc nghiệp vụ và mã lỗi
@@ -101,17 +101,15 @@ Thứ tự ưu tiên khi nhiều điều kiện cùng sai: 401/403 → 400 → 4
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** `OrderRepository` (query công nợ gộp theo tác giả, khóa dòng user, insert `ON CONFLICT`), `OrderService.recordPayout`, `OrderController`, DTO `AdminPayoutResponse`; `ErrorCode`; tách `vietQr(bankId, accountNo, accountName, amount, content)` từ hàm hiện có để dùng chung.
-- **Phần dùng lại:** cách trả kết quả cũ khi gửi lại và `PAYMENT_REFERENCE_CONFLICT` của `OrderService.confirm` làm mẫu (chỉ mẫu: `confirm` khóa người mua, ở đây khóa tác giả).
-- **Bẫy đã biết:** không để vỡ UNIQUE thành exception (transaction thành rollback-only), dùng `ON CONFLICT DO NOTHING` rồi đọc lại; `earned` và `paidOut` phải nằm trong một câu SQL (hai subquery, không join nhân dòng) để cùng một snapshot ở READ COMMITTED; `vietqr.*` cấu hình là tài khoản **nền tảng**, QR chi trả phải lấy tài khoản tác giả.
+Task đã nhận ngày 2026-11-16; kết quả thực hiện và kiểm chứng: xem [log](author-payout.log.md).
 
 ### Xong khi
 
-- [ ] `OrderServiceTest` (unit): bảng kiểm body `POST` từng dòng biên (thiếu/thừa trường, `amount` 0/âm/số thực/chuỗi/vượt Long, reference rỗng và 256 ký tự, tài khoản sai regex); QR chi trả dùng tài khoản tác giả và encode nội dung.
-- [ ] `AuthorPayoutIntegrationTest`: ghi chi → `balance` giảm đúng, tác giả thấy trong `GET /author/payouts`; vượt số dư; trùng reference khác số tiền; gửi lại sau khi số dư đã về 0 vẫn trả khoản cũ; tài khoản đổi trước khi ghi → vẫn ghi, `accountChanged = true`, snapshot là tài khoản gửi lên.
-- [ ] Ba ca đồng thời: (a) hai `POST` khác reference, mỗi khoản ≤ `balance` nhưng tổng vượt → đúng một thành công, cái kia `PAYOUT_EXCEEDS_BALANCE`; (b) hai `POST` giống hệt → một bản ghi, cả hai 200; (c) hai tác giả cùng reference → một 200, một 409, không 500.
-- [ ] `owedOnly` lọc đúng; MODERATOR/AUTHOR gọi ba endpoint Admin nhận 403, không token nhận 401.
-- [ ] Lớp trên + `PaymentConfirmationIntegrationTest` đạt; full backend do CI.
+- [x] `OrderServiceTest` (unit): bảng kiểm body `POST` từng dòng biên (thiếu/thừa trường, `amount` 0/âm/số thực/chuỗi/vượt Long, reference rỗng và 256 ký tự, tài khoản sai regex); QR chi trả dùng tài khoản tác giả và encode nội dung.
+- [x] `AuthorPayoutIntegrationTest`: ghi chi → `balance` giảm đúng, tác giả thấy trong `GET /author/payouts`; vượt số dư; trùng reference khác số tiền; gửi lại sau khi số dư đã về 0 vẫn trả khoản cũ; tài khoản đổi trước khi ghi → vẫn ghi, `accountChanged = true`, snapshot là tài khoản gửi lên.
+- [x] Ba ca đồng thời: (a) hai `POST` khác reference, mỗi khoản ≤ `balance` nhưng tổng vượt → đúng một thành công, cái kia `PAYOUT_EXCEEDS_BALANCE`; (b) hai `POST` giống hệt → một bản ghi, cả hai 200; (c) hai tác giả cùng reference → một 200, một 409, không 500.
+- [x] `owedOnly` lọc đúng; MODERATOR/AUTHOR gọi ba endpoint Admin nhận 403, không token nhận 401.
+- [x] Lớp trên + `PaymentConfirmationIntegrationTest` đạt; full backend do CI.
 
 ## Task 1c — Doanh thu chi tiết cho tác giả và Admin
 
@@ -119,8 +117,8 @@ Thứ tự ưu tiên khi nhiều điều kiện cùng sai: 401/403 → 400 → 4
 
 ### Phạm vi
 
-- `GET /api/v1/author/revenue` nhận thêm `courseId`, `from`, `to`: `totals` (trừ `paidOutAmount`, `balanceAmount`) và `items` theo bộ lọc. Không tham số thì kết quả như hiện tại.
-- `GET /api/v1/author/revenue/courses?from=&to=` (phân trang, doanh thu cao trước): mỗi khóa của tác giả có ít nhất một lượt bán trong khoảng lọc: `courseId`, `courseTitle` (tên hiện tại), `itemCount`, `grossAmount`, `platformAmount`, `authorAmount`.
+- `GET /api/v1/author/revenue` nhận thêm `courseId`, `from`, `to`: `totals` (trừ `paidOutAmount`, `balanceAmount`) và `items` theo bộ lọc. Không tham số thì kết quả như hiện tại; `courseId` rỗng coi như không lọc, UUID sai trả 400. Endpoint `/revenue/courses` không nhận `courseId`.
+- `GET /api/v1/author/revenue/courses?from=&to=` (phân trang, doanh thu cao trước): mỗi khóa của tác giả có ít nhất một lượt bán trong khoảng lọc, sắp theo tổng `grossAmount` giảm dần: `courseId`, `courseTitle` (tên hiện tại), `itemCount`, `grossAmount`, `platformAmount`, `authorAmount`.
 - `GET /api/v1/admin/revenue?from=&to=` (ADMIN): `totals` (`itemCount`, `grossAmount`, `platformAmount`, `authorAmount` theo bộ lọc), `ledger` toàn thời gian (`earnedAmount`, `paidOutAmount`, `owedAmount` cộng mọi tác giả), và `courses` phân trang như endpoint trên kèm `authorId`, `authorName`.
 
 ### Quy tắc nghiệp vụ và mã lỗi
@@ -134,15 +132,13 @@ Thứ tự ưu tiên khi nhiều điều kiện cùng sai: 401/403 → 400 → 4
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** `OrderRepository` (thêm điều kiện lọc tùy chọn vào `findRevenue`/`revenueTotals`, query gộp theo khóa, tổng của sàn), `OrderService`, `OrderController`, `AuthorRevenueResponse`, DTO `AdminRevenueResponse`; `ErrorCode`; `SecurityConfiguration`.
-- **Phần dùng lại:** điều kiện `o.status = 'PAID'` và snapshot của query doanh thu hiện có; `ledger` dùng đúng hai tổng của Task 1b.
-- **Bẫy đã biết:** đổi ngày sang mốc thời gian phải dùng đầu ngày `from` và đầu ngày kế tiếp của `to` theo giờ Việt Nam, không so chuỗi; tổng theo bộ lọc và danh sách phải dùng cùng một điều kiện để không lệch nhau; khóa đã xóa mềm vẫn phải tính doanh thu.
+Task đã nhận ngày 2026-11-16; kết quả thực hiện và kiểm chứng: xem [log](author-payout.log.md).
 
 ### Xong khi
 
-- [ ] `OrderServiceTest` (unit): phân tích `from`/`to` (sai định dạng, ngược, một đầu trống) và mốc đầu/cuối ngày theo giờ Việt Nam.
-- [ ] `OrderIntegrationTest` (thêm ca): lọc theo khóa và theo ngày cho tổng khớp danh sách; đơn trả lúc 23:59 và 00:00 giờ Việt Nam rơi đúng ngày; khóa của tác giả khác trả 404; gộp theo khóa đúng tổng; `admin/revenue` có `ledger.owed = earned − paidOut` và chặn AUTHOR/MODERATOR.
-- [ ] Lớp trên + `PaymentConfirmationIntegrationTest`, `AuthorPayoutIntegrationTest` đạt; full backend do CI.
+- [x] `OrderServiceTest` (unit): phân tích `from`/`to` (sai định dạng, ngược, một đầu trống) và mốc đầu/cuối ngày theo giờ Việt Nam.
+- [x] `AuthorPayoutIntegrationTest` (thêm ca): lọc theo khóa và theo ngày cho tổng khớp danh sách; đơn trả lúc 23:59 và 00:00 giờ Việt Nam rơi đúng ngày; khóa của tác giả khác trả 404; gộp theo khóa đúng tổng; `admin/revenue` có `ledger.owed = earned − paidOut` và chặn AUTHOR/MODERATOR.
+- [x] Lớp trên + `PaymentConfirmationIntegrationTest`, `AuthorPayoutIntegrationTest` đạt; full backend do CI.
 
 ## Task 1d — Học viên của khóa
 
@@ -150,8 +146,9 @@ Thứ tự ưu tiên khi nhiều điều kiện cùng sai: 401/403 → 400 → 4
 
 ### Phạm vi
 
-- `GET /api/v1/author/courses/{id}/students?q=&progress=&page=&size=` (AUTHOR, chủ khóa): học viên có enrollment còn hiệu lực (`revoked_at IS NULL`), mới vào học trước. Mỗi dòng: `fullName`, `avatarUrl`, `enrolledAt` (`granted_at`), `lastAccessedAt`, `completedLessons`, `totalLessons`. Kèm `summary`: `total`, `notStarted`, `completed` (không theo bộ lọc).
+- `GET /api/v1/author/courses/{id}/students?q=&progress=&page=&size=` (AUTHOR, chủ khóa): học viên có enrollment còn hiệu lực (`revoked_at IS NULL`), mới vào học trước. Mỗi dòng: `fullName`, `avatarUrl`, `enrolledAt` (`granted_at`), `lastAccessedAt`, `completedLessons`, `totalLessons`. Kèm `summary`: `total`, `notStarted`, `completed` (không theo bộ lọc); khóa chưa từng công khai trả danh sách rỗng và summary bằng 0.
 - Bộ lọc: `q` khớp không phân biệt hoa thường một phần họ tên; `q` được `strip`, rỗng coi như không lọc; `progress` = `NOT_STARTED` (`completedLessons = 0`, gồm cả khóa 0 bài) / `IN_PROGRESS` (`0 < completedLessons < totalLessons`) / `COMPLETED` (`totalLessons > 0` và `completedLessons = totalLessons`). `lastAccessedAt` có thể `null`.
+- Tìm tên dùng `strpos` và `lower(... collate "und-x-icu")`; `%` và `_` là ký tự thường, tìm chữ hoa tiếng Việt có dấu không phụ thuộc locale C.
 - Không có lọc theo nguồn vào học: khóa đã công khai không đổi được miễn phí ↔ trả phí và sản phẩm không tạo `ADMIN_GRANT`, nên mọi học viên của một khóa cùng một nguồn.
 - `totalLessons` và `completedLessons` đếm trên các bài của phiên bản đang công khai, cùng cách tính tiến độ người học đang thấy ở `course-free`. Khóa chưa từng công khai: danh sách rỗng. Khóa đang ẩn/gỡ vẫn dùng `published_version_id` còn giữ, học viên vẫn hiện.
 - `GET /api/v1/author/courses` và `/{id}`: thêm `studentCount` (enrollment còn hiệu lực).
@@ -162,22 +159,20 @@ Thứ tự ưu tiên khi nhiều điều kiện cùng sai: 401/403 → 400 → 4
 |---|---|---|---|
 | Khóa không tồn tại hoặc của tác giả khác | Không lộ sự tồn tại | 404 `COURSE_NOT_FOUND` | Không tìm thấy khóa học. |
 | Không phải AUTHOR (kể cả ADMIN/MODERATOR) | — | 403 `ACCESS_DENIED` | Bạn không có quyền. |
-| `progress` lạ, `q` dài hơn 100 ký tự | — | 400 `COURSE_STUDENT_FILTER_INVALID` | Bộ lọc không hợp lệ. |
+| `progress` lạ, `q` dài hơn 100 ký tự, `size` ngoài 1–100 hoặc `page` âm | — | 400 `COURSE_STUDENT_FILTER_INVALID` | Bộ lọc không hợp lệ. |
 | Enrollment đã thu hồi | Không hiện, không đếm | 200 | — |
 | Học viên bị khóa tài khoản | Vẫn hiện (đã vào học) | 200 | — |
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** repository enrollment/course (query danh sách + đếm tiến độ theo lô, không N+1), `AuthorCourseServiceImpl`, `AuthorCourseController`, DTO `CourseStudentResponse`; `CourseResponse`/DTO danh sách của Author thêm `studentCount`; `ErrorCode`.
-- **Phần dùng lại:** kiểm chủ khóa của các endpoint `/author/courses/{id}` hiện có; cách xác định tập bài của phiên bản công khai và `LessonProgressRepository` của `course-free`; `ArticleFilter` cho phân trang.
-- **Bẫy đã biết:** `CourseContractTest` khóa danh sách trường của DTO, phải cho phép `studentCount` ở DTO Author và **không** có ở DTO Moderator/công khai; `q` phải escape `%`/`_`; tiến độ đếm theo bài của phiên bản công khai, bài đã gỡ khỏi phiên bản không được tính làm `completedLessons > totalLessons`.
+Task đã nhận ngày 2026-11-16; kết quả thực hiện và kiểm chứng: xem [log](author-payout.log.md).
 
 ### Xong khi
 
-- [ ] `CourseStudentsIntegrationTest` (mới): danh sách đúng học viên (một khóa miễn phí, một khóa trả phí) với tiến độ; `q` và ba giá trị `progress`; `summary` không đổi theo bộ lọc; enrollment thu hồi không hiện; khóa của tác giả khác 404; ADMIN/MODERATOR 403; response không có email.
-- [ ] Cùng lớp đó: `progress` lạ và `q` 101 ký tự → 400; `q` chứa `%` không khớp mọi tên; sau khi công khai phiên bản mới bỏ một bài đã hoàn thành và thêm một bài, tiến độ ở đây khớp tiến độ người học thấy ở `/me/courses`.
-- [ ] `CourseContractTest` cập nhật; `studentCount` đúng ở danh sách và chi tiết khóa của Author.
-- [ ] Lớp trên + lớp tích hợp Author course hiện có (regression) đạt; full backend do CI.
+- [x] `CourseStudentsIntegrationTest` (mới): danh sách đúng học viên (một khóa miễn phí, một khóa trả phí) với tiến độ; `q` và ba giá trị `progress`; `summary` không đổi theo bộ lọc; enrollment thu hồi không hiện; khóa của tác giả khác 404; ADMIN/MODERATOR 403; response không có email.
+- [x] Cùng lớp đó: `progress` lạ và `q` 101 ký tự → 400; `q` chứa `%` không khớp mọi tên; sau khi công khai phiên bản mới bỏ một bài đã hoàn thành và thêm một bài, tiến độ ở đây khớp tiến độ người học thấy ở `/me/courses`.
+- [x] `CourseContractTest` cập nhật; `studentCount` đúng ở danh sách và chi tiết khóa của Author.
+- [x] Lớp trên + lớp tích hợp Author course hiện có (regression) đạt; full backend do CI.
 
 ## Task 2a — Tác giả: doanh thu chi tiết, tài khoản nhận tiền, lịch sử chi (giao diện)
 
@@ -187,7 +182,7 @@ Thứ tự ưu tiên khi nhiều điều kiện cùng sai: 401/403 → 400 → 4
 
 - `/author/revenue`: thêm hai ô tổng “Đã nhận”, “Chờ chi”; khối “Tài khoản nhận tiền” (xem, nút Sửa mở form: chọn ngân hàng từ danh sách `banks` backend trả, số tài khoản, tên chủ tài khoản); bảng “Lịch sử chi trả” phân trang.
 - Chưa khai tài khoản: Alert nhắc khai, có nút mở form.
-- Bộ lọc doanh thu: từ ngày, đến ngày, nút Xóa bộ lọc; lọc theo khóa bằng cách bấm một dòng ở tab “Theo khóa”, hiện thành nhãn gỡ được; bộ lọc nằm trên URL. Ba tab: “Lượt bán” (danh sách hiện có), “Theo khóa” (bảng gộp, bấm một khóa thì lọc theo khóa đó), “Chi trả” (tài khoản + lịch sử). Bốn ô tổng cũ đổi theo bộ lọc; hai ô “Đã nhận”, “Chờ chi” ghi rõ là toàn thời gian.
+- Bộ lọc doanh thu: từ ngày, đến ngày, nút Xóa bộ lọc; lọc theo khóa bằng cách bấm một dòng ở tab “Theo khóa”, hiện thành nhãn gỡ được; bộ lọc nằm trên URL. Tên khóa trong nhãn lấy từ tham số URL `course` (API chỉ nhận `courseId`); chuyển sang tab Theo khóa hoặc Chi trả xóa lọc khóa, tab Chi trả còn xóa lọc ngày. Ba tab: “Lượt bán” (danh sách hiện có), “Theo khóa” (bảng gộp, bấm một khóa thì lọc theo khóa đó), “Chi trả” (tài khoản + lịch sử). Bốn ô tổng cũ đổi theo bộ lọc; hai ô “Đã nhận”, “Chờ chi” ghi rõ là toàn thời gian.
 
 ### Quy tắc nghiệp vụ và mã lỗi
 
@@ -215,9 +210,10 @@ Theo bảng Task 1a và 1c. Kiểm client trùng regex backend; `from > to` ch�
 
 ### Xong khi
 
-- [ ] `AuthorRevenue.test.tsx`: hiện đúng hai ô mới; chưa khai → Alert + mở form; lưu thành công cập nhật khối; lỗi 400 hiện Alert; lịch sử rỗng và có dữ liệu; đổi bộ lọc gọi API đúng tham số và giữ trên URL; tab Theo khóa bấm khóa thì lọc; `from > to` bị chặn.
-- [ ] `courseService.test.ts`, `courseI18n.test.ts`: hàm gọi API mới và mã lỗi mới.
-- [ ] Các file test trên + `npm run build` trong `app/` đạt. Kiểm mắt `/author/revenue` dark/light × desktop + mobile một lượt.
+- [x] `AuthorRevenue.test.tsx`: hiện đúng hai ô mới; chưa khai → Alert + mở form; lưu thành công cập nhật khối; lỗi 400 hiện Alert; lịch sử rỗng và có dữ liệu; đổi bộ lọc gọi API đúng tham số và giữ trên URL; tab Theo khóa bấm khóa thì lọc; `from > to` bị chặn.
+- [x] `courseService.test.ts`, `courseI18n.test.ts`: hàm gọi API mới và mã lỗi mới.
+- [x] Các file test trên + `npm run build` trong `app/` đạt; kiểm mắt `/author/revenue` dark/light desktop và mobile.
+- [ ] Kiểm cảm ứng `pointer: coarse` và vùng chạm 44px, mở Calendar thật, dữ liệu có đơn PAID (chưa kiểm — xem log).
 
 ## Task 2b — Admin: tổng quan doanh thu và chi trả tác giả (giao diện)
 
@@ -227,14 +223,14 @@ Theo bảng Task 1a và 1c. Kiểm client trùng regex backend; `from > to` ch�
 
 - `/admin/revenue` (AdminRoute), mục “Doanh thu” trong nhóm Thanh toán: bộ lọc từ ngày/đến ngày trên URL; bốn ô theo bộ lọc (đơn đã trả, tổng thu, hoa hồng sàn, phần tác giả); ba ô toàn thời gian (tác giả được hưởng, đã chi, còn nợ) có link sang `/admin/payouts`; bảng theo khóa (khóa, tác giả, lượt bán, tổng thu, hoa hồng, phần tác giả) phân trang.
 
-- `/admin/payouts` (AdminRoute), thêm “Chi trả tác giả” vào nhóm Thanh toán của `AdminSidebar`. Danh sách tác giả còn nợ (checkbox “Hiện cả tác giả đã chi đủ”), mỗi dòng: tên, email, đã kiếm, đã chi, còn nợ, nút “Chi trả”.
-- Sheet “Chi trả”: thông tin tài khoản + ảnh VietQR + nút sao chép; số tiền cố định bằng số còn nợ lúc mở Sheet (đúng số trên QR, không sửa được) và ô mã sao kê; gửi kèm đúng tài khoản đang hiện trong Sheet; dòng nhắc “Đối chiếu tên chủ tài khoản app ngân hàng hiện ra với tên bên dưới trước khi chuyển” (en: “Check that the account holder shown by your banking app matches the name below before transferring”); bước xác nhận lại trước khi ghi (AlertDialog như xác nhận đơn); dưới cùng là lịch sử chi của tác giả đó. Chưa có tài khoản: không hiện form, hiện thông báo.
+- `/admin/payouts` (AdminRoute), thêm “Chi trả tác giả” vào nhóm Thanh toán của `AdminSidebar`. Danh sách tác giả còn nợ (checkbox “Hiện cả tác giả đã chi đủ”), mỗi dòng: tên, email, đã kiếm, đã chi, còn nợ; nút “Chi trả” ẩn khi còn nợ bằng 0.
+- Sheet “Chi trả”: thông tin tài khoản + ảnh VietQR + nút sao chép; số tiền cố định bằng số còn nợ lúc mở Sheet (đúng số trên QR, không sửa được) và ô mã sao kê; gửi kèm đúng tài khoản đang hiện trong Sheet; dòng nhắc “Đối chiếu tên chủ tài khoản app ngân hàng hiện ra với tên bên dưới trước khi chuyển” (en: “Check that the account holder shown by your banking app matches the name below before transferring”); bước xác nhận lại trước khi ghi (AlertDialog như xác nhận đơn); dưới cùng là trang đầu lịch sử chi của tác giả đó. Chưa có tài khoản: không hiện form, hiện thông báo.
 - Tab “Lịch sử chi” trên `/admin/payouts`: mọi khoản chi của mọi tác giả, mới nhất trước, phân trang (tác giả, số tiền, mã sao kê, tài khoản nhận, Admin ghi, thời điểm).
 - Trang `/admin` của `dashboard-stats` (làm sau) đã có ô doanh thu toàn thời gian và 30 ngày; `/admin/revenue` là trang chi tiết, không thay ô đó.
 
 ### Quy tắc nghiệp vụ và mã lỗi
 
-Theo bảng Task 1b. `PAYOUT_EXCEEDS_BALANCE`: hiện Alert và tải lại dữ liệu tác giả trong Sheet. `accountChanged = true`: ghi thành công kèm cảnh báo.
+Theo bảng Task 1b. `PAYOUT_EXCEEDS_BALANCE`: giữ snapshot lúc mở Sheet, khóa nút ghi và hiện số còn nợ hiện tại khi dữ liệu tải xong và tìm thấy tác giả; nếu chưa tải xong, lỗi hoặc không tìm thấy thì hiện “Số còn nợ đã thay đổi…”. `accountChanged = true`: ghi thành công, đóng Sheet rồi hiện cảnh báo trên trang.
 
 ### Copy vi/en
 
@@ -256,10 +252,11 @@ Theo bảng Task 1b. `PAYOUT_EXCEEDS_BALANCE`: hiện Alert và tải lại dữ
 
 ### Xong khi
 
-- [ ] `AdminPayouts.test.tsx`: danh sách + lọc; mở Sheet thấy QR và tài khoản; ghi thành công cập nhật dòng; từng mã lỗi 409 hiện đúng copy; tác giả chưa có tài khoản không có form.
-- [ ] `AdminRevenue.test.tsx`: ô tổng và bảng theo khóa; đổi khoảng ngày gọi API đúng tham số; rỗng; lỗi tải có nút thử lại.
-- [ ] `App.courses.test.tsx`: route `/admin/payouts`, `/admin/revenue` chỉ ADMIN; link sidebar; chạy thêm test sidebar theo bảng chọn nhanh của `frontend.md`.
-- [ ] Các file test trên + `npm run build` trong `app/` đạt. Kiểm mắt `/admin/revenue`, `/admin/payouts` + Sheet dark/light × desktop + mobile một lượt.
+- [x] `AdminPayouts.test.tsx`: danh sách + lọc; mở Sheet thấy QR và tài khoản; ghi thành công cập nhật dòng; từng mã lỗi 409 hiện đúng copy; tác giả chưa có tài khoản không có form.
+- [x] `AdminRevenue.test.tsx`: ô tổng và bảng theo khóa; đổi khoảng ngày gọi API đúng tham số; rỗng; lỗi tải có nút thử lại.
+- [x] `App.courses.test.tsx`: route `/admin/payouts`, `/admin/revenue` chỉ ADMIN; link sidebar; chạy thêm test sidebar theo bảng chọn nhanh của `frontend.md`.
+- [x] Các file test trên + `npm run build` trong `app/` đạt; kiểm mắt hai trang và Sheet desktop, hai trang mobile.
+- [ ] Kiểm Sheet mobile toàn màn hình, cảm ứng `pointer: coarse` và vùng chạm 44px, mở Calendar thật, nhánh lỗi 409 và QR lỗi bằng mắt (chưa kiểm — xem log; 409 và QR lỗi đã có unit test).
 
 ## Task 2c — Tác giả: học viên của khóa (giao diện)
 
@@ -295,9 +292,10 @@ Theo bảng Task 1d. 404 hiện trạng thái “không tìm thấy khóa học�
 
 ### Xong khi
 
-- [ ] `CourseStudents.test.tsx` (mới, trong `pages/Author/Courses`): danh sách + ba ô; từng bộ lọc gọi API đúng tham số và giữ trên URL; rỗng và lọc rỗng khác copy; 404; không hiện email.
-- [ ] `AuthorCoursesPage.test.tsx`: số học viên và link; `CourseEditorPage.test.tsx`: link “Học viên”; `App.courses.test.tsx`: route chỉ AUTHOR.
-- [ ] Các file test trên + `npm run build` trong `app/` đạt. Kiểm mắt trang học viên dark/light × desktop + mobile một lượt.
+- [x] `CourseStudents.test.tsx` (mới, trong `pages/Author/Courses`): danh sách + ba ô; từng bộ lọc gọi API đúng tham số và giữ trên URL; rỗng và lọc rỗng khác copy; 404; không hiện email.
+- [x] `AuthorCoursesPage.test.tsx`: số học viên và link; `CourseEditorPage.test.tsx`: link “Học viên”; `App.courses.test.tsx`: route chỉ AUTHOR.
+- [x] Các file test trên + `npm run build` trong `app/` đạt; kiểm mắt trang học viên dark/light desktop và mobile.
+- [ ] Kiểm cảm ứng `pointer: coarse` và vùng chạm 44px (chưa kiểm — xem log).
 
 ## Quyết định của người dùng
 
