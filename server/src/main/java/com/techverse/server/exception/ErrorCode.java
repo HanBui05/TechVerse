@@ -91,6 +91,8 @@ public enum ErrorCode {
 	PAYOUT_REFERENCE_CONFLICT(HttpStatus.CONFLICT, "PAYOUT_REFERENCE_CONFLICT", "This bank reference is already used"),
 	PAYOUT_EXCEEDS_BALANCE(HttpStatus.CONFLICT, "PAYOUT_EXCEEDS_BALANCE", "The amount exceeds what is owed to the author"),
 	PAYMENT_RECONCILIATION_STALE(HttpStatus.CONFLICT, "PAYMENT_RECONCILIATION_STALE", "A new payment arrived; reload the order and reconcile again"),
+	PAYMENT_WEBHOOK_INVALID(HttpStatus.BAD_REQUEST, "PAYMENT_WEBHOOK_INVALID", "Webhook is invalid"),
+	PAYMENT_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "PAYMENT_PROVIDER_UNAVAILABLE", "The payment gateway is not responding; please try again"),
 	EMAIL_ALREADY_REGISTERED(HttpStatus.CONFLICT, "AUTH_EMAIL_ALREADY_REGISTERED", "Email is already registered"),
 	INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_INVALID_CREDENTIALS", "Email or password is invalid"),
 	SOCIAL_PROFILE_INVALID(HttpStatus.BAD_REQUEST, "AUTH_SOCIAL_PROFILE_INVALID", "Google profile is invalid or email is not verified"),

@@ -202,6 +202,100 @@ public class OrderService {
         return response(owned(actor, code));
     }
 
+    // ------------------------------------------------------------------ payOS confirmation
+
+    static final int SYNC_PER_MINUTE = 10;
+    static final long MAX_ORDER_NO = 999_999_999_999L;
+
+    enum SyncAction { NOTHING, IGNORE, RECORD, CONFIRM }
+
+    /** The buyer's "check with payOS": its own rate budget, separate from creating orders. */
+    public OrderResponse sync(UUID actor, String code) {
+        checkRate("order:sync:" + actor, SYNC_PER_MINUTE);
+        var row = orders.findPayosOrder(code).filter(r -> r.getUserId().equals(actor))
+                .orElseThrow(() -> new CustomException(ErrorCode.ORDER_NOT_FOUND));
+        syncPayos(code, row);
+        return tx().execute(s -> response(owned(actor, code)));
+    }
+
+    public AdminOrderResponse adminSync(String code) {
+        var row = orders.findPayosOrder(code).orElseThrow(() -> new CustomException(ErrorCode.ORDER_NOT_FOUND));
+        syncPayos(code, row);
+        return tx().execute(s -> adminView(row.getId()));
+    }
+
+    /**
+     * A correctly signed webhook is only a signal to look the order up. Unknown orders (payOS's sample
+     * payload) and PAID orders end here without calling payOS; an unpaid order triggers at most one lookup
+     * every 3 seconds, and a throttled signal is answered 503 so it is not taken as handled.
+     */
+    public void webhook(long orderNo) {
+        if (orderNo <= 0 || orderNo > MAX_ORDER_NO) return;
+        String code = "TV" + String.format("%012d", orderNo);
+        var row = orders.findPayosOrder(code).filter(r -> Boolean.TRUE.equals(r.getPayos())).orElse(null);
+        if (row == null || CourseOrder.Status.PAID.name().equals(row.getStatus())) return;
+        try {
+            if (!Boolean.TRUE.equals(redis.opsForValue().setIfAbsent("payos:webhook:" + code, "1", java.time.Duration.ofSeconds(3))))
+                throw new CustomException(ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE);
+        } catch (DataAccessException e) {
+            throw new CustomException(ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE);
+        }
+        syncPayos(code, row);
+    }
+
+    /** Looks the order up with no transaction open, then applies the answer under the buyer and order locks. */
+    private void syncPayos(String code, OrderRepository.PayosOrderRow row) {
+        if (!Boolean.TRUE.equals(row.getPayos())) throw new CustomException(ErrorCode.PAYMENT_STATE_INVALID);
+        if (!payos.enabled()) throw new CustomException(ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE);
+        Optional<PayosClient.Payment> found;
+        try {
+            found = payos.lookup(PayosClient.orderNo(code));
+        } catch (PayosClient.PayosException e) {
+            log.warn("payOS lookup for order {} failed: {}", code, e.getMessage());
+            throw new CustomException(ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE);
+        }
+        // An error code (auth, service, unknown order) is a failed lookup: 503, so a webhook is not taken as handled.
+        if (found.isEmpty()) {
+            log.warn("payOS lookup for order {} answered with an error code", code);
+            throw new CustomException(ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE);
+        }
+        tx().executeWithoutResult(s -> applyPayos(code, found.get()));
+    }
+
+    /** Same lock order as {@link #confirm}; the order is read after the lock, so a second request sees PAID and stops. */
+    private void applyPayos(String code, PayosClient.Payment p) {
+        CourseOrder order = lockOrder(code);
+        var status = order.getStatus();
+        String stored = order.getPayosPaymentLinkId();
+        var action = decide(status, stored, PayosClient.orderNo(code), order.getTotalAmount(), p);
+        if (action == SyncAction.IGNORE) log.warn("payOS lookup for order {} does not match the order; nothing changed", code);
+        if (action == SyncAction.IGNORE || action == SyncAction.NOTHING) return;
+        UUID id = order.getId();
+        if (stored == null && orders.savePayosLink(id, p.id()) == 0) {
+            log.warn("payOS link of order {} is held by another order; nothing changed", code);
+            return;
+        }
+        orders.recordPayosAmountPaid(id, p.amountPaid());
+        if (status == CourseOrder.Status.CANCELLED || status == CourseOrder.Status.FAILED)
+            log.warn("payOS reports a payment for order {} in state {}; no access granted", code, status);
+        if (action == SyncAction.CONFIRM && orders.confirmPayosPayment(id, p.id()) == 0)
+            log.warn("payOS order {} has no open payment row; nothing confirmed", code);
+    }
+
+    /**
+     * The rule table: access only when payOS says PAID with at least the order total, for this order, amount
+     * and link; anything missing or different is ignored. A PAID, cancelled or failed order only records the amount.
+     */
+    static SyncAction decide(CourseOrder.Status status, String storedLink, long orderNo, long total, PayosClient.Payment p) {
+        if (p.id() == null || p.orderCode() == null || p.status() == null || p.amount() == null || p.amountPaid() == null
+                || p.orderCode() != orderNo || p.amount() != total || storedLink != null && !storedLink.equals(p.id()))
+            return SyncAction.IGNORE;
+        if (p.amountPaid() <= 0) return SyncAction.NOTHING;
+        boolean full = "PAID".equals(p.status()) && p.amountPaid() >= total;
+        return full && (status == CourseOrder.Status.PENDING || status == CourseOrder.Status.EXPIRED)
+                ? SyncAction.CONFIRM : SyncAction.RECORD;
+    }
+
     // ------------------------------------------------------------------ Admin confirmation
 
     /**
@@ -548,10 +642,14 @@ public class OrderService {
 
     /** Create and transfer-report share one budget per user, retries included. */
     void checkRate(UUID actor) {
+        checkRate("order:rate:" + actor, requestsPerMinute);
+    }
+
+    private void checkRate(String key, int perMinute) {
         try {
-            Long count = redis.execute(COUNTER, List.of("order:rate:" + actor));
+            Long count = redis.execute(COUNTER, List.of(key));
             if (count == null) throw new CustomException(ErrorCode.PAYMENT_UNAVAILABLE);
-            if (count > requestsPerMinute) throw new CustomException(ErrorCode.ORDER_RATE_LIMITED);
+            if (count > perMinute) throw new CustomException(ErrorCode.ORDER_RATE_LIMITED);
         } catch (DataAccessException e) {
             throw new CustomException(ErrorCode.PAYMENT_UNAVAILABLE);
         }

@@ -54,6 +54,19 @@ public class OrderController {
         return ok("Transfer reported", service.reportTransfer(actor(jwt), orderCode));
     }
 
+    @PostMapping("/orders/{orderCode}/sync")
+    @Operation(summary = "Own payOS order: ask payOS now (10 per minute); paid in full grants access, a short payment shows amountPaid")
+    public ApiResponse<OrderResponse> sync(@AuthenticationPrincipal Jwt jwt, @PathVariable String orderCode) {
+        return ok("Order synced", service.sync(actor(jwt), orderCode));
+    }
+
+    @PostMapping("/admin/orders/{orderCode}/sync")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin: ask payOS about a payOS order now; manual orders are refused")
+    public ApiResponse<AdminOrderResponse> adminSync(@PathVariable String orderCode) {
+        return ok("Order synced", service.adminSync(orderCode));
+    }
+
     @GetMapping("/admin/orders")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Admin: orders newest first, filtered by status, exact order code, transfer report and reconciliation flag")

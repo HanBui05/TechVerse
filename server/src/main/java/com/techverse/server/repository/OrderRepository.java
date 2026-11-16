@@ -127,6 +127,38 @@ public interface OrderRepository extends JpaRepository<CourseOrder, UUID> {
             nativeQuery = true)
     int savePayosLink(@Param("orderId") UUID orderId, @Param("link") String link);
 
+    interface PayosOrderRow {
+        UUID getId();
+        UUID getUserId();
+        Boolean getPayos();
+        String getStatus();
+    }
+
+    /** Scalar on purpose (like {@link #findBuyer}): no entity left in the context before the order is locked. */
+    @Query(
+            value = "SELECT o.id AS id, o.user_id AS userId, o.status AS status, EXISTS (SELECT 1 FROM payment_transactions t"
+                    + " WHERE t.order_id = o.id AND t.provider = 'PAYOS') AS payos FROM orders o WHERE o.order_code = :code",
+            nativeQuery = true)
+    Optional<PayosOrderRow> findPayosOrder(@Param("code") String code);
+
+    /** Only ever grows: a late, older lookup cannot lower what payOS reported. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value = "UPDATE orders SET payos_amount_paid = :paid WHERE id = :orderId"
+                    + " AND (payos_amount_paid IS NULL OR payos_amount_paid < :paid)",
+            nativeQuery = true)
+    int recordPayosAmountPaid(@Param("orderId") UUID orderId, @Param("paid") long paid);
+
+    /** The order's open payOS row turns SUCCEEDED, confirmed by the lookup (no user); the grant trigger pays the order. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value = "UPDATE payment_transactions SET status = 'SUCCEEDED', provider_transaction_id = :link, paid_at = now(),"
+                    + " confirmed_by = NULL, confirmation_source = 'PAYOS', confirmed_at = now()"
+                    + " WHERE id = (SELECT id FROM payment_transactions WHERE order_id = :orderId AND provider = 'PAYOS'"
+                    + " AND status IN ('PENDING', 'EXPIRED') ORDER BY created_at LIMIT 1)",
+            nativeQuery = true)
+    int confirmPayosPayment(@Param("orderId") UUID orderId, @Param("link") String link);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(
             value = "UPDATE orders SET transfer_reported_at = COALESCE(transfer_reported_at, now()) WHERE id = :id",

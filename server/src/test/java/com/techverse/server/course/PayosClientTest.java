@@ -138,6 +138,67 @@ class PayosClientTest {
         }
     }
 
+    @Test
+    void lookupReturnsStatusAndAmountsAndNothingWhenPayosDoesNotKnowTheOrder() {
+        reply(200, "{\"code\":\"00\",\"data\":{\"id\":\"link_1\",\"orderCode\":42,\"amount\":199000,\"amountPaid\":50000,\"status\":\"PENDING\"}}");
+        assertThat(client.lookup(42)).contains(new PayosClient.Payment("link_1", 42L, "PENDING", 199_000L, 50_000L));
+        assertThat(requests(1).getFirst().uri().toString()).isEqualTo("https://api-merchant.payos.vn/v2/payment-requests/42");
+
+        reset(http);
+        reply(200, "{\"code\":\"101\",\"desc\":\"not found\"}");
+        assertThat(client.lookup(42)).isEmpty();
+
+        // Unsafe link id and non-numeric amounts count as missing; the caller refuses to act on them.
+        reset(http);
+        reply(200, "{\"code\":\"00\",\"data\":{\"id\":\"../x\",\"orderCode\":42,\"amount\":\"199000\",\"status\":\"PAID\"}}");
+        assertThat(client.lookup(42)).contains(new PayosClient.Payment(null, 42L, "PAID", null, null));
+
+        reset(http);
+        reply(502, "Bad gateway");
+        assertThatThrownBy(() -> client.lookup(42)).isInstanceOf(PayosClient.PayosException.class);
+    }
+
+    @Test
+    void webhookSignatureSortsKeysTurnsNullIntoEmptyAndNestedValuesIntoSortedJson() {
+        String data = "{\"orderCode\":42,\"amount\":199000,\"description\":\"TV0000042\",\"reference\":null,"
+                + "\"paymentLinkId\":\"link_1\",\"extra\":{\"b\":1,\"a\":[{\"y\":2,\"x\":null}]},\"success\":true,\"code\":\"00\"}";
+        String canonical = "amount=199000&code=00&description=TV0000042&extra={\"a\":[{\"x\":null,\"y\":2}],\"b\":1}"
+                + "&orderCode=42&paymentLinkId=link_1&reference=&success=true";
+        String signature = hmac("checksum-key-test", canonical);
+        assertThat(client.webhookOrderNo(webhook(data, signature))).hasValue(42);
+
+        char last = signature.charAt(signature.length() - 1);
+        String oneOff = signature.substring(0, signature.length() - 1) + (last == '0' ? '1' : '0');
+        assertThat(client.webhookOrderNo(webhook(data, oneOff))).isEmpty();
+        assertThat(client.webhookOrderNo(webhook(data, hmac("another-key", canonical)))).isEmpty();
+        assertThat(client.webhookOrderNo(webhook(data.replace("199000", "1"), signature))).isEmpty();
+
+        for (String bad : List.of("not json", "[]", "{\"signature\":\"" + signature + "\"}", "{\"data\":" + data + "}",
+                "{\"data\":\"x\",\"signature\":\"" + signature + "\"}")) {
+            assertThat(client.webhookOrderNo(bad.getBytes(java.nio.charset.StandardCharsets.UTF_8))).as(bad).isEmpty();
+        }
+        String noOrder = "{\"amount\":1}";
+        assertThat(client.webhookOrderNo(webhook(noOrder, hmac("checksum-key-test", "amount=1")))).isEmpty();
+
+        set("apiKey", "");
+        assertThat(client.webhookOrderNo(webhook(data, signature))).as("payOS off").isEmpty();
+    }
+
+    static byte[] webhook(String data, String signature) {
+        return ("{\"code\":\"00\",\"desc\":\"success\",\"success\":true,\"data\":" + data + ",\"signature\":\"" + signature + "\"}")
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    static String hmac(String key, String text) {
+        try {
+            var mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            mac.init(new javax.crypto.spec.SecretKeySpec(key.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
+            return HexFormat.of().formatHex(mac.doFinal(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.GeneralSecurityException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     // ------------------------------------------------------------------ fakes
 
     final List<CompletableFuture<HttpResponse<String>>> replies = new ArrayList<>();

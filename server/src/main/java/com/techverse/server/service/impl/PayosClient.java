@@ -110,12 +110,72 @@ public class PayosClient {
      * for another amount is never handed out: the buyer would pay a sum that does not pay the order.
      */
     public Optional<String> find(long orderNo, long amount) {
+        var found = lookup(orderNo);
+        if (found.isEmpty()) return Optional.empty();
+        var p = found.get();
+        if (!Long.valueOf(orderNo).equals(p.orderCode()) || !Long.valueOf(amount).equals(p.amount()))
+            throw new PayosException("payOS lookup returned another order or amount");
+        if (p.id() == null) throw new PayosException("payOS link id missing or malformed");
+        return Optional.of(p.id());
+    }
+
+    /** What payOS says about one order; a field payOS left out, or sent malformed, is null. */
+    public record Payment(String id, Long orderCode, String status, Long amount, Long amountPaid) {}
+
+    /** {@code GET /v2/payment-requests/{orderNo}}; empty when payOS answers with an error code (unknown order). */
+    public Optional<Payment> lookup(long orderNo) {
         JsonNode reply = call(request("/" + orderNo).GET().build());
         if (!"00".equals(reply.path("code").asText())) return Optional.empty();
-        JsonNode data = reply.path("data");
-        if (data.path("orderCode").asLong(-1) != orderNo || data.path("amount").asLong(-1) != amount)
-            throw new PayosException("payOS lookup returned another order or amount");
-        return Optional.of(linkId(data.path("id")));
+        JsonNode d = reply.path("data");
+        String id = d.path("id").isTextual() && LINK_ID.matcher(d.path("id").asText()).matches() ? d.path("id").asText() : null;
+        return Optional.of(new Payment(id, number(d.path("orderCode")),
+                d.path("status").isTextual() ? d.path("status").asText() : null, number(d.path("amount")), number(d.path("amountPaid"))));
+    }
+
+    private static Long number(JsonNode node) {
+        return node.isIntegralNumber() && node.canConvertToLong() ? node.asLong() : null;
+    }
+
+    /**
+     * The order number of a correctly signed webhook, empty for anything else (payOS off included). The
+     * signature covers {@code data}: keys sorted, {@code key=value} joined by {@code &}, null as "", nested
+     * values as JSON with sorted keys; HMAC-SHA256 hex with the checksum key, compared in constant time.
+     */
+    public OptionalLong webhookOrderNo(byte[] body) {
+        if (!enabled()) return OptionalLong.empty();
+        JsonNode root;
+        try {
+            root = mapper.readTree(body);
+        } catch (RuntimeException e) {
+            return OptionalLong.empty();
+        }
+        if (root == null || !root.path("data").isObject() || !root.path("signature").isTextual()) return OptionalLong.empty();
+        JsonNode data = root.path("data");
+        var fields = new StringJoiner("&");
+        new TreeSet<>(data.propertyNames()).forEach(k -> fields.add(k + "=" + canonical(data.get(k))));
+        byte[] expected = sign(fields.toString()).getBytes(StandardCharsets.UTF_8);
+        byte[] given = root.path("signature").asText().getBytes(StandardCharsets.UTF_8);
+        if (!java.security.MessageDigest.isEqual(expected, given)) return OptionalLong.empty();
+        Long no = number(data.path("orderCode"));
+        return no == null ? OptionalLong.empty() : OptionalLong.of(no);
+    }
+
+    private String canonical(JsonNode value) {
+        if (value == null || value.isNull()) return "";
+        if (value.isArray() || value.isObject()) return mapper.writeValueAsString(sorted(value));
+        return value.asText();
+    }
+
+    private JsonNode sorted(JsonNode node) {
+        if (node.isArray()) {
+            var array = mapper.createArrayNode();
+            node.forEach(v -> array.add(sorted(v)));
+            return array;
+        }
+        if (!node.isObject()) return node;
+        var object = mapper.createObjectNode();
+        new TreeSet<>(node.propertyNames()).forEach(k -> object.set(k, sorted(node.get(k))));
+        return object;
     }
 
     public String create(String code, long amount, Instant expiresAt) {
@@ -126,7 +186,9 @@ public class PayosClient {
         JsonNode data = reply.path("data");
         if (data.path("orderCode").asLong(-1) != orderNo(code) || data.path("amount").asLong(-1) != amount)
             throw new PayosException("payOS created a link for another order or amount");
-        return linkId(data.path("paymentLinkId"));
+        JsonNode id = data.path("paymentLinkId");
+        if (!id.isTextual() || !LINK_ID.matcher(id.asText()).matches()) throw new PayosException("payOS link id missing or malformed");
+        return id.asText();
     }
 
     public String createBody(String code, long amount, Instant expiresAt) {
@@ -188,12 +250,6 @@ public class PayosClient {
         }
         if (body == null || !body.path("code").isTextual()) throw new PayosException("payOS reply has no code");
         return body;
-    }
-
-    private static String linkId(JsonNode node) {
-        String id = node.isTextual() ? node.asText() : "";
-        if (!LINK_ID.matcher(id).matches()) throw new PayosException("payOS link id missing or malformed");
-        return id;
     }
 
     private static boolean blank(String value) {

@@ -180,6 +180,45 @@ class OrderServiceTest {
         assertThat((Object) ReflectionTestUtils.invokeMethod(service, "payoutQr", author, "970436", "AB123456", "A", 0L)).isNull();
     }
 
+    @Test
+    void payosSyncDecisionFollowsTheRuleTable() {
+        var pending = com.techverse.server.entity.CourseOrder.Status.PENDING;
+        var expired = com.techverse.server.entity.CourseOrder.Status.EXPIRED;
+        var paid = com.techverse.server.entity.CourseOrder.Status.PAID;
+        var cancelled = com.techverse.server.entity.CourseOrder.Status.CANCELLED;
+        // Paid in full, overpaid: confirm an open order, link stored or not yet stored.
+        assertThat(decide(pending, "link_1", payment("link_1", 42L, "PAID", 199_000L, 199_000L))).isEqualTo("CONFIRM");
+        assertThat(decide(expired, null, payment("link_1", 42L, "PAID", 199_000L, 199_000L))).isEqualTo("CONFIRM");
+        assertThat(decide(pending, "link_1", payment("link_1", 42L, "PAID", 199_000L, 250_000L))).isEqualTo("CONFIRM");
+        // Already PAID or a state that never grants: only the amount payOS reports is recorded.
+        assertThat(decide(paid, "link_1", payment("link_1", 42L, "PAID", 199_000L, 199_000L))).isEqualTo("RECORD");
+        assertThat(decide(cancelled, "link_1", payment("link_1", 42L, "PAID", 199_000L, 199_000L))).isEqualTo("RECORD");
+        // Short payment: recorded, no access.
+        assertThat(decide(pending, "link_1", payment("link_1", 42L, "PENDING", 199_000L, 50_000L))).isEqualTo("RECORD");
+        assertThat(decide(pending, "link_1", payment("link_1", 42L, "PAID", 199_000L, 50_000L))).isEqualTo("RECORD");
+        // Not paid, cancelled, expired on payOS: nothing changes.
+        for (String status : List.of("PENDING", "CANCELLED", "EXPIRED"))
+            assertThat(decide(pending, "link_1", payment("link_1", 42L, status, 199_000L, 0L))).as(status).isEqualTo("NOTHING");
+        // Another link, order or amount, or a missing field: ignored and logged.
+        assertThat(decide(pending, "link_1", payment("link_2", 42L, "PAID", 199_000L, 199_000L))).isEqualTo("IGNORE");
+        assertThat(decide(pending, "link_1", payment("link_1", 43L, "PAID", 199_000L, 199_000L))).isEqualTo("IGNORE");
+        assertThat(decide(pending, "link_1", payment("link_1", 42L, "PAID", 99_000L, 199_000L))).isEqualTo("IGNORE");
+        assertThat(decide(pending, null, payment(null, 42L, "PAID", 199_000L, 199_000L))).isEqualTo("IGNORE");
+        assertThat(decide(pending, "link_1", payment("link_1", null, "PAID", 199_000L, 199_000L))).isEqualTo("IGNORE");
+        assertThat(decide(pending, "link_1", payment("link_1", 42L, null, 199_000L, 199_000L))).isEqualTo("IGNORE");
+        assertThat(decide(pending, "link_1", payment("link_1", 42L, "PAID", null, 199_000L))).isEqualTo("IGNORE");
+        assertThat(decide(pending, "link_1", payment("link_1", 42L, "PAID", 199_000L, null))).isEqualTo("IGNORE");
+    }
+
+    static com.techverse.server.service.impl.PayosClient.Payment payment(String id, Long no, String status, Long amount, Long paid) {
+        return new com.techverse.server.service.impl.PayosClient.Payment(id, no, status, amount, paid);
+    }
+
+    String decide(com.techverse.server.entity.CourseOrder.Status status, String link,
+            com.techverse.server.service.impl.PayosClient.Payment p) {
+        return String.valueOf((Object) ReflectionTestUtils.invokeMethod(OrderService.class, "decide", status, link, 42L, 199_000L, p));
+    }
+
     static Map<String, Object> payoutBody(Object authorId, Object amount, Object ref, String bankId, String accountNo, String name) {
         var body = new HashMap<String, Object>();
         body.put("authorId", authorId);
