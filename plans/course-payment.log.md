@@ -10,7 +10,6 @@
 
 ## Quyết định người dùng chưa có trong spec
 
-- (2026-11-15) Cho phép Claude push nhánh PR đang mở để gỡ CI; vẫn không push `main`, việc merge do người dùng làm.
 - 7 quyết định ngày 2026-11-14 đã nằm trong thân spec, mục “Quyết định của người dùng”.
 
 ## Câu hỏi mở cho người dùng
@@ -18,6 +17,7 @@
 - (không có)
 
 ## Nhật ký phiên
+- 2026-11-16 — Codex: đã đưa quyết định cho phép push nhánh PR để gỡ CI vào spec.
 ### 2026-11-16 — Task 2c (Admin đơn/hoa hồng, doanh thu Author, giao diện) — đã nhận (2026-11-16)
 - File: `pages/Admin/Orders/{AdminOrdersPage,AdminOrders.test}.tsx`, `pages/Admin/Commission/{AdminCommissionPage,AdminCommission.test}.tsx`, `pages/Author/Revenue/{AuthorRevenuePage,AuthorRevenue.test}.tsx` (mới); `types/courses.ts` (`AdminOrder`, `CommissionPolicy`, `AuthorRevenue`), `courseService.ts` (`adminOrders`, `commission`, `revenue`, `rateBps`, `amountText`), `courseI18n.ts` (7 mã `PAYMENT_*`/`COMMISSION_*`, `payAdminText`), `App.tsx` (`/admin/orders`, `/admin/commission`, `/author/revenue`), `AdminSidebar` (nhóm Thanh toán), `Sidebar` (Doanh thu), `Sidebar.test`, `App.courses.test`.
 - Test: `vitest --maxWorkers=3 --testTimeout=20000` trên `Admin/{Orders,Commission}`, `Author/Revenue`, `courseService`, `courseI18n`, `Sidebar`, `StaffPreferences`, `ui/{sidebar,labels,focus}`, `App.courses`: 219/219 đạt; `npm run build` đạt. Lỗi có sẵn (không điều tra): `App.author-courses` “multiple links Khóa học” (hỏng cả khi stash), `StaffPreferences` báo unhandled `ModeratorArticlesPage` `content` (có cả khi stash).
