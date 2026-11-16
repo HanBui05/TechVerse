@@ -8,6 +8,7 @@ paths:
 ## Giao diện
 
 - Task có “Đổi giao diện: Có”: bám [`docs/design/UI_GUIDE.md`](../../docs/design/UI_GUIDE.md). Chỉ nạp `ui-ux-pro-max` khi spec còn quyết định thiết kế bỏ ngỏ; spec đã chốt bố cục/màu/chữ thì bám spec.
+- Trước khi code giao diện: phải có `plans/<module>.wireframe.md` đã được người dùng duyệt (luật “Wireframe” trong `CLAUDE.md`, 2026-11-16); chưa có thì viết wireframe rồi dừng.
 - Không dùng `ui-styling`, `banner-design`, `brand`, `slides`, `design`. Không thêm thư viện UI/form thứ hai ngoài shadcn/ui + Tailwind (D-024).
 - Ghép trang theo skill `ui-components` (danh mục primitive, mẫu bố cục, Badge tone, điều cấm).
 

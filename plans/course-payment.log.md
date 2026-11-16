@@ -13,6 +13,8 @@
 - (2026-11-16) Luồng demo: học viên trả qua PayOS, tiền về tài khoản sàn và đơn tự xác nhận (mở lại Task 1e, hết hoãn); Admin xem công nợ rồi chuyển khoản tay cho tác giả, không tự động chi (module [`author-payout`](author-payout.md)). Không có hoàn tiền. Thứ tự làm (đề xuất của Claude, chưa chốt): `author-payout` trước, 1e sau.
 - (2026-11-16) Thứ tự chốt: `author-payout` trước, Task 1e (PayOS) sau.
 - (2026-11-16) Task 1e dùng **PayOS embedded**: khung thanh toán PayOS nhúng trong trang đơn `/me/orders/:orderCode` bằng `@payos/payos-checkout` (`usePayOS`, `embedded: true`, `CHECKOUT_URL` = `checkoutUrl` backend trả); không tự dựng QR, không chuyển hướng (thay quyết định “tự dựng QR” cùng ngày). Backend vẫn trả `checkoutUrl` đúng spec 1e. `onSuccess` ở trình duyệt chỉ để tải lại đơn, **không cấp quyền**; quyền chỉ cấp qua webhook đã kiểm chữ ký. Dự phòng khi khung lỗi: link mở `checkoutUrl` ở tab mới. Chưa kiểm: thư viện chạy với phiên bản React của `app/`, hiển thị dark/mobile.
+- (2026-11-16) Phần giao diện PayOS (trang đơn với khung nhúng) có cổng wireframe: sau backend 1e, bổ sung vào `plans/course-payment.wireframe.md`, người dùng duyệt rồi mới code giao diện.
+- (2026-11-16) Webhook lỡ (payOS không công bố gửi lại): Claude đề xuất thêm tra cứu `GET /v2/payment-requests/{orderCode}` khi trang đơn PENDING tải lại; **chưa được người dùng xác nhận**, hỏi lại khi viết spec PayOS.
 - (2026-11-16) Task 1e trên local: chỉ dùng webhook qua ngrok, đúng spec 1e hiện có; không thêm đường tra cứu trạng thái khi tải lại trang đơn. Trước khi code phải tra tài liệu PayOS: cách khai URL webhook, mã phản hồi, gửi lại, giới hạn số tiền.
 
 - 7 quyết định ngày 2026-11-14 đã nằm trong thân spec, mục “Quyết định của người dùng”.

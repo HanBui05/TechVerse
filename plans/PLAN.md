@@ -38,6 +38,7 @@ Trạng thái hợp lệ: `Đề xuất` → `Đang lập kế hoạch` → `Ch�
 
 - **Làn đầy đủ (đổi vai 2026-11-14, D-030):** Claude viết spec theo [`_template.md`](_template.md) → Codex phản biện tối đa 2 vòng → người dùng chốt (`course-payment` do Codex viết trước đó, giữ nguyên). **Làn nhẹ:** việc cơ học, rủi ro thấp (đổi tên, di chuyển file, sửa tài liệu) — một dòng ở bảng, không spec, Claude làm, Codex review một lần. Người dùng quyết task vào làn nào.
 - **Backend trước, giao diện sau** cho chức năng mới: chỉ mở task giao diện khi toàn bộ backend của module xong (API + test đạt); thiếu endpoint thì mở task backend bổ sung trong spec, không sửa backend trong task giao diện. Chức năng đã đầy đủ: sửa giao diện trước.
+- **Cổng wireframe cho mọi giao diện (người dùng chốt 2026-11-16):** module nào có task “Đổi giao diện: Có” thì sau backend phải có `plans/<module>.wireframe.md` được người dùng duyệt rồi mới code giao diện; áp cả cho spec đã chốt trước đó ghi “không làm wireframe” (`exercise-practice`, `interview-practice`, `forum-reports`, `dashboard-stats`, `messaging`, `course-ai-tutor` nếu có giao diện).
 - Người dùng quyết định tại bốn cổng: chốt plan; bất đồng giữa các AI; chạm giới hạn vòng; nhận kết quả cuối.
 
 ## Câu hỏi mở

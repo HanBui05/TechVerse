@@ -4,7 +4,7 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết; Codex chỉ ghi 
 
 **Mục tiêu:** (1) Tác giả khai tài khoản ngân hàng nhận tiền, thấy số đã nhận và còn chờ; Admin thấy còn nợ từng tác giả bao nhiêu, quét VietQR dựng sẵn để chuyển khoản rồi ghi nhận khoản chi vào sổ (hệ thống không tự chuyển tiền). (2) Doanh thu xem được chi tiết: tác giả lọc theo khóa/khoảng ngày và xem theo từng khóa; Admin có trang tổng quan doanh thu sàn. (3) Tác giả xem danh sách học viên từng khóa, có lọc.
 **Làn:** Đầy đủ · **Rủi ro cao** (Task 1a, 1b): tiền, đồng thời (hai lần ghi chi cùng lúc); code bằng Opus, review vòng 1 dùng `adversarial-review`. Task 1c, 1d và giao diện: rủi ro thường.
-**Thứ tự:** 1a → 1b → 1c → 1d → 2a → 2b → 2c. Không có cổng wireframe: các trang dùng lại bố cục `AuthorRevenuePage` và `AdminOrdersPage` (bộ lọc + danh sách + Sheet).
+**Thứ tự:** 1a → 1b → 1c → 1d → cổng wireframe → 2a → 2b → 2c. Cổng wireframe (người dùng chốt 2026-11-16): sau Task 1d, viết `plans/author-payout.wireframe.md` cho `/author/revenue` (ba tab, form tài khoản), `/admin/revenue`, `/admin/payouts` (danh sách, Sheet chi trả, tab lịch sử), `/author/courses/:id/students`; mỗi trang desktop + mobile và các trạng thái rỗng/lỗi/chờ/lọc rỗng; dùng lại bố cục `AuthorRevenuePage` và `AdminOrdersPage` làm điểm xuất phát. Người dùng duyệt rồi mới làm 2a–2c; wireframe thắng mục “UI” của task khi lệch.
 
 ## Đường dẫn thuộc module
 
@@ -14,6 +14,7 @@ Chỉ được sửa các đường dẫn sau. Ngoài danh sách là ngoài ph�
 - `server/src/main/java/com/techverse/server/{controller,entity,dto,repository,service}/**/*{Payout,Order,Revenue,Course,Enrollment,LessonProgress}*.java`; `server/src/main/java/com/techverse/server/exception/ErrorCode.java`; `server/src/main/java/com/techverse/server/configuration/SecurityConfiguration.java`.
 - `server/src/test/java/com/techverse/server/course/**` (lớp mới `AuthorPayoutIntegrationTest`, `CourseStudentsIntegrationTest`; sửa `OrderServiceTest`, `CoursePaymentMigrationTest`, `CourseIntegrationTestBase`, `CourseContractTest`); `ArticlePublicationMigrationTest`, `FreeCourseMigrationTest` nếu assertion phiên bản Flyway cần sửa.
 - `app/src/types/courses.ts`, `app/src/services/courseService{,.test}.ts`, `app/src/data/{courseI18n,courseI18n.test}.ts`, `app/src/App.tsx`, `app/src/App.courses.test.tsx`.
+- `plans/author-payout.wireframe.md` (tạo ở cổng wireframe).
 - `app/src/pages/Author/Revenue/**`, `app/src/pages/Author/Courses/**`, `app/src/pages/Admin/{Payouts,Revenue}/**` (mới), `app/src/components/layout/AdminSidebar.tsx` và test trực tiếp; `app/src/StaffPreferences.test.tsx`, `app/src/components/ui/{sidebar,labels,focus}*.test.*` khi sửa shell.
 
 ## Ngoài phạm vi
@@ -306,4 +307,4 @@ Theo bảng Task 1d. 404 hiện trạng thái “không tìm thấy khóa học�
 2. Mỗi lần chi toàn bộ số đang nợ (không chi một phần, không ngưỡng tối thiểu); không khấu trừ thuế; khoản chi vượt số nợ do hai Admin cùng chuyển bị từ chối ghi, xử lý ngoài hệ thống.
 3. Ngân hàng: khoảng 20 ngân hàng khai ở backend, mã ngoài danh sách bị từ chối; số tài khoản sai do Admin đối chiếu tên chủ tài khoản trước khi chuyển.
 4. Thêm vào module: doanh thu chi tiết (Task 1c) và danh sách học viên của khóa có lọc theo tên và tiến độ (Task 1d, 2c); tác giả không thấy email học viên.
-5. Không làm wireframe riêng; dùng lại bố cục trang Doanh thu và trang Đơn hàng Admin.
+5. Có cổng wireframe sau Task 1d (đổi 2026-11-16, theo luật “Wireframe” trong `CLAUDE.md`): người dùng duyệt `author-payout.wireframe.md` rồi mới code giao diện.
