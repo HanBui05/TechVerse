@@ -1,7 +1,7 @@
 import { request } from './api/client'
 import type { ArticleOption, AuthorArticleFilter, HistoryEntry, ImageIssue, ModeratorArticleFilter, Page } from '../types/articles'
 import type { Language } from '../types/preferences'
-import type { AdminOrder, AdminOrderFilter, AdminPayout, AdminRevenue, AuthorBalance, PayoutRecord, AuthorCourse, AuthorPayout, AuthorRevenue, PayoutAccountForm, PayoutAccountView, RevenueCourseRow, RevenueFilter, CommissionPolicy, CourseFilter, CourseOrder, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
+import type { CourseStudents, StudentProgress, AdminOrder, AdminOrderFilter, AdminPayout, AdminRevenue, AuthorBalance, PayoutRecord, AuthorCourse, AuthorPayout, AuthorRevenue, PayoutAccountForm, PayoutAccountView, RevenueCourseRow, RevenueFilter, CommissionPolicy, CourseFilter, CourseOrder, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
 
 const base = '/api/v1/author/courses'
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
@@ -17,6 +17,7 @@ export const authorCourses = {
   list: (filter: AuthorArticleFilter) => request<Page<AuthorCourseSummary>>(`${base}?${query(filter)}`),
   options: () => request<{ topics: Page<ArticleOption>; tags: Page<ArticleOption> }>(`${base}/options?topicSize=100&tagSize=100`),
   detail: (id: string) => request<AuthorCourse>(`${base}/${id}`),
+  students: (id: string, filter: { q: string; progress: StudentProgress; page: number; size: number }) => request<CourseStudents>(`${base}/${id}/students?${query(filter)}`),
   create: (body: CourseWrite, idempotencyKey: string) => request<AuthorCourse>(base, withKey('POST', body, 'Idempotency-Key', idempotencyKey)),
   update: (id: string, body: CourseWrite) => request<AuthorCourse>(`${base}/${id}`, json('PATCH', body)),
   withdraw: (id: string) => request<AuthorCourse>(`${base}/${id}/withdraw`, { method: 'POST' }),

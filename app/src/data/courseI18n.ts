@@ -19,7 +19,7 @@ export const COURSE_ERROR_CODES = [
   'COURSE_PRICE_INVALID', 'COURSE_PRICE_TYPE_LOCKED', 'COURSE_PURCHASE_REQUIRED', 'ORDER_INVALID', 'ORDER_COURSE_UNAVAILABLE', 'ORDER_ALREADY_ENROLLED', 'PAYMENT_UNAVAILABLE',
   'ORDER_RATE_LIMITED', 'ORDER_NOT_FOUND', 'ORDER_TRANSFER_REPORT_NOT_ALLOWED', 'AUTH_ACCESS_TOKEN_REQUIRED', 'AUTH_INVALID_ACCESS_TOKEN',
   'PAYMENT_INVALID', 'PAYMENT_AMOUNT_MISMATCH', 'PAYMENT_STATE_INVALID', 'PAYMENT_REFERENCE_CONFLICT', 'PAYMENT_RECONCILIATION_NOT_REQUIRED', 'PAYMENT_RECONCILIATION_STALE', 'COMMISSION_RATE_INVALID',
-  'PAYOUT_ACCOUNT_INVALID', 'REVENUE_FILTER_INVALID', 'PAYOUT_INVALID', 'PAYOUT_REFERENCE_CONFLICT', 'PAYOUT_EXCEEDS_BALANCE', 'USER_NOT_FOUND',
+  'COURSE_STUDENT_FILTER_INVALID', 'PAYOUT_ACCOUNT_INVALID', 'REVENUE_FILTER_INVALID', 'PAYOUT_INVALID', 'PAYOUT_REFERENCE_CONFLICT', 'PAYOUT_EXCEEDS_BALANCE', 'USER_NOT_FOUND',
 ] as const
 
 const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
@@ -77,6 +77,7 @@ const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
   PAYMENT_RECONCILIATION_NOT_REQUIRED: { vi: 'Không có khoản cần đối chiếu.', en: 'Nothing needs reconciling.' },
   PAYMENT_RECONCILIATION_STALE: { vi: 'Có khoản thanh toán mới; hãy xem lại danh sách.', en: 'A new payment arrived; review the list again.' },
   COMMISSION_RATE_INVALID: { vi: 'Tỷ lệ không hợp lệ.', en: 'The rate is invalid.' },
+  COURSE_STUDENT_FILTER_INVALID: { vi: 'Bộ lọc không hợp lệ.', en: 'The filters are invalid.' },
   PAYOUT_ACCOUNT_INVALID: { vi: 'Thông tin tài khoản không hợp lệ.', en: 'Bank account details are invalid.' },
   REVENUE_FILTER_INVALID: { vi: 'Khoảng ngày không hợp lệ.', en: 'The date range is invalid.' },
   PAYOUT_INVALID: { vi: 'Thông tin khoản chi không hợp lệ.', en: 'Payout details are invalid.' },
@@ -133,6 +134,9 @@ const vi = {
   replaceContent: 'Thay nội dung đang có?', replaceContentText: 'Bản nháp AI sẽ thay tiêu đề, tóm tắt và nội dung đang soạn của bài này.', replace: 'Thay nội dung',
   price: 'Giá (VND)', priceFree: 'Miễn phí', priceHelp: 'Miễn phí hoặc từ 10.000 đến 50.000.000 ₫. Giá được áp dụng ngay cho đơn mới, không cần gửi duyệt; đơn cũ giữ giá lúc tạo.',
   priceLocked: 'Khóa đã công khai không đổi giữa miễn phí và trả phí.', priceInvalid: 'Giá khóa học không hợp lệ.', share: 'Nền tảng giữ {rate}%, bạn nhận {amount}',
+  studentsTitle: 'Học viên', studentsTotal: 'Tổng học viên', studentsNotStarted: 'Chưa học', studentsCompleted: 'Đã hoàn thành', studentsInProgress: 'Đang học', studentProgress: 'Tiến độ',
+  studentSearch: 'Tìm theo tên học viên', studentLessons: '{done}/{total} bài', studentNone: 'Chưa học bài nào', studentsEmpty: 'Khóa học chưa có học viên.', studentsNoMatch: 'Không có học viên khớp bộ lọc.',
+  studentCount: '{count} học viên', enrolledOn: 'Vào học {date}', lastSeen: 'Học gần nhất {date}', studentsError: 'Không thể tải danh sách học viên.',
 }
 export type CourseCopy = typeof vi
 
@@ -172,6 +176,9 @@ const en: CourseCopy = {
   replaceContent: 'Replace the current content?', replaceContentText: 'The AI draft replaces this lesson’s title, summary and content.', replace: 'Replace content',
   price: 'Price (VND)', priceFree: 'Free', priceHelp: 'Free or between 10,000 and 50,000,000 ₫. A new price applies to new orders right away, with no review; existing orders keep the price they were created with.',
   priceLocked: 'A published course cannot switch between free and paid.', priceInvalid: 'The course price is invalid.', share: 'Platform keeps {rate}%; you receive {amount}',
+  studentsTitle: 'Students', studentsTotal: 'Total students', studentsNotStarted: 'Not started', studentsCompleted: 'Completed', studentsInProgress: 'In progress', studentProgress: 'Progress',
+  studentSearch: 'Search by student name', studentLessons: '{done}/{total} lessons', studentNone: 'Not started', studentsEmpty: 'This course has no students yet.', studentsNoMatch: 'No students match the filters.',
+  studentCount: '{count} students', enrolledOn: 'Joined {date}', lastSeen: 'Last active {date}', studentsError: 'Unable to load the students.',
 }
 
 export function courseText(language: Language) {

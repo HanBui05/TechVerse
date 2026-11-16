@@ -53,6 +53,14 @@ it('shows real counts, two status badges per row and filters by clicking a stat'
   expect(calls().some(c => c.url.pathname === '/api/v1/author/courses' && c.url.searchParams.get('workflowStatus') === 'DRAFT' && c.url.searchParams.get('size') === '20')).toBe(true)
 })
 
+it('shows each course’s student count as a link to its students page', async () => {
+  rows[0] = { ...rows[0], studentCount: 48 } as typeof rows[0]
+  renderPage('en')
+  const row = (await screen.findByText('Java căn bản')).closest('li')!
+  expect(within(row).getByRole('link', { name: '48 students' }).getAttribute('href')).toBe('/author/courses/c1/students')
+  expect(within(screen.getByText('Khóa nháp').closest('li')!).queryByRole('link', { name: /students/ })).toBeNull()
+})
+
 it('offers only the actions the backend accepts for each state and links to the editor and create page', async () => {
   const user = userEvent.setup()
   renderPage()

@@ -106,7 +106,7 @@ it('returns a Reader to the course page they came from, but never to an unlisted
 
 it('serves the payment pages only to their role: Admin orders/commission, Author revenue; others go to their profile without calling the payment API', async () => {
   const paymentCalls = () => fetchMock.mock.calls.filter(([url]) => /\/api\/v1\/(admin\/(orders|commission-policy|revenue|payouts)|author\/revenue)/.test(String(url)))
-  const cases = [['ADMIN', '/admin/orders', 'Đơn hàng'], ['ADMIN', '/admin/commission', 'Tỷ lệ hoa hồng nền tảng'], ['ADMIN', '/admin/revenue', 'Doanh thu'], ['ADMIN', '/admin/payouts', 'Chi trả tác giả'], ['AUTHOR', '/author/revenue', 'Doanh thu tác giả']] as const
+  const cases = [['ADMIN', '/admin/orders', 'Đơn hàng'], ['ADMIN', '/admin/commission', 'Tỷ lệ hoa hồng nền tảng'], ['ADMIN', '/admin/revenue', 'Doanh thu'], ['ADMIN', '/admin/payouts', 'Chi trả tác giả'], ['AUTHOR', '/author/revenue', 'Doanh thu tác giả'], ['AUTHOR', '/author/courses/c1/students', 'Học viên']] as const
   for (const [role, path, title] of cases) {
     roles = [role]
     localStorage.setItem('techverse-authenticated', 'true'); setAccessToken('tok')
@@ -114,7 +114,7 @@ it('serves the payment pages only to their role: Admin orders/commission, Author
     expect(await screen.findByRole('heading', { level: 1, name: new RegExp(title) })).toBeTruthy()
     cleanup()
   }
-  for (const [role, path] of [['MODERATOR', '/admin/orders'], ['MODERATOR', '/admin/commission'], ['MODERATOR', '/admin/revenue'], ['LEARNER', '/admin/payouts'], ['AUTHOR', '/admin/payouts'], ['LEARNER', '/admin/orders'], ['LEARNER', '/author/revenue'], ['MODERATOR', '/author/revenue']] as const) {
+  for (const [role, path] of [['MODERATOR', '/admin/orders'], ['MODERATOR', '/admin/commission'], ['MODERATOR', '/admin/revenue'], ['LEARNER', '/admin/payouts'], ['AUTHOR', '/admin/payouts'], ['LEARNER', '/admin/orders'], ['LEARNER', '/author/revenue'], ['MODERATOR', '/author/revenue'], ['LEARNER', '/author/courses/c1/students'], ['ADMIN', '/author/courses/c1/students']] as const) {
     roles = [role]
     fetchMock.mockClear()
     renderAt(path)

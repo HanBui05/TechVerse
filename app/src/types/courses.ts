@@ -21,7 +21,10 @@ export type ModeratorCourseSummaryItem = ArticleStatus & {
   id: string; title: string; summary: string | null; coverImageUrl: string | null; level: CourseLevel; topic: ArticleOption
   hasUnpublishedChanges: boolean; publishedAt: string | null; createdAt: string; updatedAt: string
 }
-export type AuthorCourseSummary = ModeratorCourseSummaryItem & { priceAmount: number }
+export type AuthorCourseSummary = ModeratorCourseSummaryItem & { priceAmount: number; studentCount?: number }
+export type CourseStudent = { fullName: string; avatarUrl: string | null; enrolledAt: string; lastAccessedAt: string | null; completedLessons: number; totalLessons: number }
+export type CourseStudents = { students: import('./articles').Page<CourseStudent>; summary: { total: number; notStarted: number; completed: number } }
+export type StudentProgress = '' | 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
 
 export type CourseFields = { title: string; summary: string; description: string; level: CourseLevel; topicId: string; tagIds: string[]; coverImageUrl: string | null; priceAmount: number }
 export type CourseWrite = Partial<CourseFields> & { action: 'SAVE' | 'SUBMIT' }
