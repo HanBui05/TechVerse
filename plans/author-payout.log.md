@@ -2,9 +2,9 @@
 
 ## Bắt đầu từ đây (cập nhật 2026-11-16)
 
-- **Task tiếp:** Task 1c — Doanh thu chi tiết cho tác giả và Admin (Backend) · Giao diện: Không
-- Task 1a, 1b đã nhận (2026-11-16); 1b chưa có Codex review (lệnh shell bị chặn tạm thời, người dùng cho commit).
-- Sau 1c: 1d → cổng wireframe (người dùng duyệt) → 2a → 2b → 2c.
+- **Task tiếp:** Cổng wireframe (viết `plans/author-payout.wireframe.md`, chờ duyệt) · Giao diện: Có (1c, 1d đã nhận 2026-11-16, Codex review 2 vòng đạt)
+- Task 1a, 1b, 1c, 1d đã nhận (2026-11-16); 1b chưa có Codex review (lệnh shell bị chặn tạm thời, người dùng cho commit).
+- Sau 1d: cổng wireframe (người dùng duyệt) → 2a → 2b → 2c.
 - Sau module này: module [`payos-checkout`](payos-checkout.md) (spec chốt 2026-11-16, thay Task 1e của `course-payment`). Repo chưa có cấu hình payOS/ngrok (kiểm 2026-11-16).
 - Bẫy kế thừa: `TRUNCATE users CASCADE` trong test xóa luôn `commission_policies` và hai bảng mới; test cần policy phải tự `INSERT ... (rate_bps) VALUES (2000)`.
 
@@ -34,6 +34,20 @@
 - Chưa kiểm: frontend chưa dùng trường mới (Task 2a).
 
 ## Nhật ký phiên
+### 2026-11-16 — Codex review vòng 1 (1c + 1d)
+- P1 đúng: `GET /author/revenue` có lọc làm `balanceAmount` = earned đã lọc − paidOut toàn thời gian (sai, có thể âm). Sửa `OrderService.revenue`: khi có lọc, `paidOut`/`balance` lấy từ một câu `revenueTotals` không lọc. P2 đúng (postgres:16-alpine locale C, `lower()` không hạ chữ hoa có dấu): đổi sang `lower(... collate "und-x-icu")`, test `q=đặng` khớp `ĐẶNG Văn`.
+- Test lại: `CourseStudentsIntegrationTest`, `AuthorPayoutIntegrationTest`, `OrderServiceTest`, `OrderIntegrationTest` đạt (BUILD SUCCESSFUL); ca balance có lọc đỏ trước khi sửa.
+
+### 2026-11-16 — Task 1d code
+- `GET /author/courses/{id}/students?q&progress&page&size` trả `{students: PageResponse, summary{total,notStarted,completed}}`; `studentCount` thêm vào `CourseResponse` và `CourseSummaryResponse` (Author); mã lỗi `COURSE_STUDENT_FILTER_INVALID`. SQL native trong `CourseEnrollmentRepository` (tiến độ đếm bằng subquery theo `course_publication_version_lessons` của phiên bản công khai, không N+1; `q` dùng `strpos(lower())` nên không cần escape `%`/`_`).
+- **Lệch khác spec:** test nằm ở `CourseStudentsIntegrationTest` mới như spec; hạn `size` 1–100 và `page` ≥ 0 cũng trả `COURSE_STUDENT_FILTER_INVALID`; khóa chưa công khai trả danh sách rỗng, summary 0; `lower()` không hạ chữ hoa tiếng Việt nếu DB locale C (chưa kiểm).
+- Test: `CourseStudentsIntegrationTest` (5), `CourseContractTest`, `AuthorCourseIntegrationTest`, `ModeratorCourseIntegrationTest`, `CourseLearningIntegrationTest` đạt (36 ca ở lượt chạy gộp, sau đó chạy lại lớp mới sau khi sửa test: xanh). TDD đỏ 7/7 đúng lý do. Chưa có Codex review.
+
+### 2026-11-16 — Task 1c code
+- `GET /author/revenue` thêm `courseId/from/to`; mới `GET /author/revenue/courses`, `GET /admin/revenue`; mã lỗi `REVENUE_FILTER_INVALID`; `OrderService.range` (ngày VN, [from, to+1)); `findRevenue`/`revenueTotals` nhận bộ lọc, đầu mở dùng mốc 1970/9999 thay vì null.
+- **Lệch khác spec:** test tích hợp đặt trong `AuthorPayoutIntegrationTest` (có sẵn `sell`/policy), không phải `OrderIntegrationTest`; `courseId` rỗng coi như không lọc; `courseId` sai UUID → 400 cho `/author/revenue` (`/revenue/courses` không nhận `courseId`); sắp xếp theo gộp `grossAmount` giảm dần.
+- Test: `OrderServiceTest`, `AuthorPayoutIntegrationTest`, `PaymentConfirmationIntegrationTest`, `OrderIntegrationTest`: 57/57 đạt (13+13+8+23). Viết code trước khi chạy đỏ (bỏ bước đỏ). Chưa có Codex review.
+
 
 ### 2026-11-16 — Task 1b code
 - Admin công nợ + ghi chi (khóa tác giả, idempotent theo reference, chặn vượt số dư); TDD đỏ đúng lý do → xanh; 52 test đạt. Chưa có Codex review (lệnh shell bị chặn). Task 1b đã nhận (2026-11-16).

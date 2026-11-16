@@ -86,6 +86,8 @@ public enum ErrorCode {
 	COMMISSION_RATE_INVALID(HttpStatus.BAD_REQUEST, "COMMISSION_RATE_INVALID", "Commission rate must be a whole number from 0 to 10000 basis points"),
 	PAYOUT_ACCOUNT_INVALID(HttpStatus.BAD_REQUEST, "PAYOUT_ACCOUNT_INVALID", "Receiving account details are invalid"),
 	PAYOUT_INVALID(HttpStatus.BAD_REQUEST, "PAYOUT_INVALID", "Payout details are invalid"),
+	COURSE_STUDENT_FILTER_INVALID(HttpStatus.BAD_REQUEST, "COURSE_STUDENT_FILTER_INVALID", "Student filter is invalid"),
+	REVENUE_FILTER_INVALID(HttpStatus.BAD_REQUEST, "REVENUE_FILTER_INVALID", "Revenue filter is invalid"),
 	PAYOUT_REFERENCE_CONFLICT(HttpStatus.CONFLICT, "PAYOUT_REFERENCE_CONFLICT", "This bank reference is already used"),
 	PAYOUT_EXCEEDS_BALANCE(HttpStatus.CONFLICT, "PAYOUT_EXCEEDS_BALANCE", "The amount exceeds what is owed to the author"),
 	PAYMENT_RECONCILIATION_STALE(HttpStatus.CONFLICT, "PAYMENT_RECONCILIATION_STALE", "A new payment arrived; reload the order and reconcile again"),

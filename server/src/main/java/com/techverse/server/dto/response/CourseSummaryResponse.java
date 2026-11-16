@@ -18,10 +18,11 @@ public record CourseSummaryResponse(
         ArticleWorkflowStatus workflowStatus,
         ArticlePublicationStatus publicationStatus,
         boolean hasUnpublishedChanges,
+        long studentCount,
         Instant publishedAt,
         Instant createdAt,
         Instant updatedAt) {
-    public static CourseSummaryResponse from(Course c) {
+    public static CourseSummaryResponse from(Course c, long studentCount) {
         return new CourseSummaryResponse(
                 c.getId(),
                 c.getTitle(),
@@ -34,6 +35,7 @@ public record CourseSummaryResponse(
                 c.getWorkflowStatus(),
                 c.getPublicationStatus(),
                 c.hasUnpublishedChanges(),
+                studentCount,
                 c.getPublishedAt(),
                 c.getCreatedAt(),
                 c.getUpdatedAt());

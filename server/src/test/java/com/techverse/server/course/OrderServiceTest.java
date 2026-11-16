@@ -102,6 +102,23 @@ class OrderServiceTest {
     }
 
     @Test
+    void revenueRangeIsVietnamDaysInclusiveAndEitherEndMayBeOpen() {
+        var both = OrderService.range("2026-03-01", "2026-03-02");
+        assertThat(both[0]).isEqualTo(java.time.Instant.parse("2026-02-28T17:00:00Z"));
+        assertThat(both[1]).isEqualTo(java.time.Instant.parse("2026-03-02T17:00:00Z"));
+        assertThat(OrderService.range("2026-03-01", "2026-03-01")[1]).isEqualTo(java.time.Instant.parse("2026-03-01T17:00:00Z"));
+        var open = OrderService.range(null, null);
+        assertThat(open[0]).isBefore(java.time.Instant.parse("2000-01-01T00:00:00Z"));
+        assertThat(open[1]).isAfter(java.time.Instant.parse("3000-01-01T00:00:00Z"));
+        assertThat(OrderService.range("", "")[0]).isEqualTo(open[0]);
+        assertThat(OrderService.range("2026-03-01", null)[1]).isEqualTo(open[1]);
+        for (var bad : new String[][] {{"2026/03/01", null}, {null, "x"}, {"2026-3-1", null}, {"2026-02-30", null},
+                {"2026-03-02", "2026-03-01"}, {" 2026-03-01", null}})
+            assertThatThrownBy(() -> OrderService.range(bad[0], bad[1])).as("%s..%s", bad[0], bad[1])
+                    .extracting("errorCode").isEqualTo(ErrorCode.REVENUE_FILTER_INVALID);
+    }
+
+    @Test
     void accountNumbersAreMaskedToTheLastFourCharacters() {
         assertThat(mask("0123456789")).isEqualTo("****6789");
         assertThat(mask("AB1234")).isEqualTo("****1234");

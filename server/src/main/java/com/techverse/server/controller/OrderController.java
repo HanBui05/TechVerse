@@ -115,8 +115,33 @@ public class OrderController {
     @PreAuthorize("hasRole('AUTHOR')")
     @Operation(summary = "Author: totals and PAID items of own courses (order-time snapshot, no buyer data), newest first")
     public ApiResponse<AuthorRevenueResponse> revenue(
-            @AuthenticationPrincipal Jwt jwt, @Valid @ParameterObject @ModelAttribute ArticleFilter filter) {
-        return ok("Revenue retrieved", service.revenue(actor(jwt), filter.getPage(), filter.getSize()));
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(required = false) String courseId,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @Valid @ParameterObject @ModelAttribute ArticleFilter filter) {
+        return ok("Revenue retrieved", service.revenue(actor(jwt), courseId, from, to, filter.getPage(), filter.getSize()));
+    }
+
+    @GetMapping("/author/revenue/courses")
+    @PreAuthorize("hasRole('AUTHOR')")
+    @Operation(summary = "Author: own courses with sales in the optional from/to (yyyy-MM-dd, Vietnam time) range, highest revenue first")
+    public ApiResponse<PageResponse<AuthorRevenueResponse.CourseRow>> revenueByCourse(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @Valid @ParameterObject @ModelAttribute ArticleFilter filter) {
+        return ok("Revenue retrieved", service.revenueByCourse(actor(jwt), from, to, filter.getPage(), filter.getSize()));
+    }
+
+    @GetMapping("/admin/revenue")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin: marketplace totals and per-course revenue for the optional date range, plus the all-time author ledger")
+    public ApiResponse<AdminRevenueResponse> adminRevenue(
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @Valid @ParameterObject @ModelAttribute ArticleFilter filter) {
+        return ok("Revenue retrieved", service.adminRevenue(from, to, filter.getPage(), filter.getSize()));
     }
 
     @GetMapping("/author/payout-account")

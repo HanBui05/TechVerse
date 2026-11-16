@@ -12,6 +12,10 @@ public record AuthorRevenueResponse(Totals totals, PageResponse<Item> items) {
     public record Totals(
             long itemCount, long grossAmount, long platformAmount, long authorAmount, long paidOutAmount, long balanceAmount) {}
 
+    /** One course with sales in the filter range; the title is the current one. */
+    public record CourseRow(
+            UUID courseId, String courseTitle, long itemCount, long grossAmount, long platformAmount, long authorAmount) {}
+
     public record Item(
             UUID courseId,
             String courseTitle,

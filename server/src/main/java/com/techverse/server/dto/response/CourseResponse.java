@@ -12,7 +12,7 @@ import java.util.*;
  * Author view: working metadata/tree plus the published tree; lesson content is not embedded.
  * {@code commissionRateBps} is the active policy, so the Author can estimate the share after fees.
  */
-@Builder
+@Builder(toBuilder = true)
 public record CourseResponse(
         UUID id,
         UUID authorId,
@@ -28,6 +28,7 @@ public record CourseResponse(
         long priceAmount,
         String currency,
         int commissionRateBps,
+        long studentCount,
         String fingerprint,
         boolean hasUnpublishedChanges,
         List<Chapter> chapters,

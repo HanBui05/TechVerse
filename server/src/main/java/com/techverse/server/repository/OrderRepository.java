@@ -200,13 +200,25 @@ public interface OrderRepository extends JpaRepository<CourseOrder, UUID> {
 
     // ------------------------------------------------------------------ Author revenue (snapshots of PAID items)
 
+    /** Open ends of the revenue date filter; avoids null parameters in the filtered queries. */
+    java.time.Instant ALWAYS_FROM = java.time.Instant.parse("1970-01-01T00:00:00Z");
+    java.time.Instant ALWAYS_TO = java.time.Instant.parse("9999-01-01T00:00:00Z");
+
+    @Query("select count(c) > 0 from Course c where c.id = :id and c.author.id = :authorId")
+    boolean ownsCourse(@Param("id") UUID id, @Param("authorId") UUID authorId);
+
+    /** {@code courseId} null = every course; paid in [from, to). */
     @Query(
             value = "select i from OrderItem i join fetch i.order o where o.status = 'PAID'"
                     + " and i.courseId in (select c.id from Course c where c.author.id = :authorId)"
+                    + " and (:courseId is null or i.courseId = :courseId) and o.paidAt >= :from and o.paidAt < :to"
                     + " order by o.paidAt desc, o.id desc",
             countQuery = "select count(i) from OrderItem i join i.order o where o.status = 'PAID'"
-                    + " and i.courseId in (select c.id from Course c where c.author.id = :authorId)")
-    Page<OrderItem> findRevenue(@Param("authorId") UUID authorId, Pageable pageable);
+                    + " and i.courseId in (select c.id from Course c where c.author.id = :authorId)"
+                    + " and (:courseId is null or i.courseId = :courseId) and o.paidAt >= :from and o.paidAt < :to")
+    Page<OrderItem> findRevenue(
+            @Param("authorId") UUID authorId, @Param("courseId") UUID courseId,
+            @Param("from") java.time.Instant from, @Param("to") java.time.Instant to, Pageable pageable);
 
     interface RevenueTotals {
         Long getItemCount();
@@ -216,16 +228,69 @@ public interface OrderRepository extends JpaRepository<CourseOrder, UUID> {
         Long getPaidOutAmount();
     }
 
-    /** Earned and paid out in one statement, so the balance never mixes two snapshots. */
+    /**
+     * Earned and paid out in one statement, so the balance never mixes two snapshots. {@code authorId} null =
+     * every author (paidOut is then 0; use {@link #ledger}); paidOut ignores the course and date filter.
+     */
     @Query(
             value = "SELECT count(i.id) AS itemCount, coalesce(sum(i.unit_price_amount), 0)::bigint AS grossAmount,"
                     + " coalesce(sum(i.commission_amount), 0)::bigint AS platformAmount,"
                     + " coalesce(sum(i.author_net_amount), 0)::bigint AS authorAmount,"
-                    + " (SELECT coalesce(sum(p.amount), 0) FROM author_payouts p WHERE p.author_id = :authorId)::bigint AS paidOutAmount"
+                    + " (SELECT coalesce(sum(p.amount), 0) FROM author_payouts p WHERE p.author_id = CAST(:authorId AS uuid))::bigint AS paidOutAmount"
                     + " FROM order_items i JOIN orders o ON o.id = i.order_id JOIN courses c ON c.id = i.course_id"
-                    + " WHERE o.status = 'PAID' AND c.author_id = :authorId",
+                    + " WHERE o.status = 'PAID' AND (CAST(:authorId AS uuid) IS NULL OR c.author_id = CAST(:authorId AS uuid))"
+                    + " AND (CAST(:courseId AS uuid) IS NULL OR c.id = CAST(:courseId AS uuid))"
+                    + " AND o.paid_at >= :from AND o.paid_at < :to",
             nativeQuery = true)
-    RevenueTotals revenueTotals(@Param("authorId") UUID authorId);
+    RevenueTotals revenueTotals(
+            @Param("authorId") UUID authorId, @Param("courseId") UUID courseId,
+            @Param("from") java.time.Instant from, @Param("to") java.time.Instant to);
+
+    default RevenueTotals revenueTotals(UUID authorId) {
+        return revenueTotals(authorId, null, ALWAYS_FROM, ALWAYS_TO);
+    }
+
+    interface LedgerRow {
+        Long getEarnedAmount();
+        Long getPaidOutAmount();
+    }
+
+    /** All authors, all time, one statement. */
+    @Query(
+            value = "SELECT (SELECT coalesce(sum(i.author_net_amount), 0) FROM order_items i JOIN orders o ON o.id = i.order_id"
+                    + " WHERE o.status = 'PAID')::bigint AS earnedAmount,"
+                    + " (SELECT coalesce(sum(amount), 0) FROM author_payouts)::bigint AS paidOutAmount",
+            nativeQuery = true)
+    LedgerRow ledger();
+
+    interface CourseRevenueRow {
+        UUID getCourseId();
+        String getCourseTitle();
+        UUID getAuthorId();
+        String getAuthorName();
+        Long getItemCount();
+        Long getGrossAmount();
+        Long getPlatformAmount();
+        Long getAuthorAmount();
+    }
+
+    String COURSE_REVENUE = " FROM order_items i JOIN orders o ON o.id = i.order_id JOIN courses c ON c.id = i.course_id"
+            + " JOIN users u ON u.id = c.author_id WHERE o.status = 'PAID'"
+            + " AND (CAST(:authorId AS uuid) IS NULL OR c.author_id = CAST(:authorId AS uuid))"
+            + " AND o.paid_at >= :from AND o.paid_at < :to";
+
+    /** One row per course with a sale in the range, highest gross first; {@code authorId} null = every author. */
+    @Query(
+            value = "SELECT c.id AS courseId, c.title AS courseTitle, c.author_id AS authorId, u.full_name AS authorName,"
+                    + " count(i.id) AS itemCount, sum(i.unit_price_amount)::bigint AS grossAmount,"
+                    + " sum(i.commission_amount)::bigint AS platformAmount, sum(i.author_net_amount)::bigint AS authorAmount"
+                    + COURSE_REVENUE + " GROUP BY c.id, c.title, c.author_id, u.full_name"
+                    + " ORDER BY sum(i.unit_price_amount) DESC, c.id",
+            countQuery = "SELECT count(DISTINCT c.id)" + COURSE_REVENUE,
+            nativeQuery = true)
+    Page<CourseRevenueRow> findCourseRevenue(
+            @Param("authorId") UUID authorId, @Param("from") java.time.Instant from, @Param("to") java.time.Instant to,
+            Pageable pageable);
 
     // ------------------------------------------------------------------ author payouts
 

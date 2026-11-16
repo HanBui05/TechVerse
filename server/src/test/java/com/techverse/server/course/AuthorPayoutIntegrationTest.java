@@ -247,12 +247,143 @@ class AuthorPayoutIntegrationTest extends CourseIntegrationTestBase {
     }
 
     /** Publishes a paid course as {@code authorToken}, sells it to the learner and confirms the transfer. */
-    void sell(String title, long price, String reference) throws Exception {
+    String sell(String title, long price, String reference) throws Exception {
         String course = publishedPaidCourse(title, price);
         String code = data(send(post("/api/v1/orders"), learnerToken, Map.of("courseId", course)).andExpect(status().isOk()))
                 .path("orderCode").asText();
         send(post("/api/v1/admin/orders/" + code + "/confirm"), adminToken, Map.of("amount", price, "bankReference", reference))
                 .andExpect(status().isOk());
+        return course;
+    }
+
+    void paidAt(String course, String timestamp) {
+        jdbc.update("UPDATE techverse.orders SET paid_at = ?::timestamptz WHERE id IN"
+                + " (SELECT order_id FROM techverse.order_items WHERE course_id = ?::uuid)", timestamp, course);
+    }
+
+    // ------------------------------------------------------------------ Revenue detail (Task 1c)
+
+    static final String BY_COURSE = REVENUE + "/courses";
+    static final String ADMIN_REVENUE = "/api/v1/admin/revenue";
+
+    @Test
+    void revenueFiltersByCourseAndByDayInVietnamTime() throws Exception {
+        String a = sell("Course A", 100_000, "FT-A");
+        String b = sell("Course B", 200_000, "FT-B");
+        paidAt(a, "2026-03-01 23:59:59+07");
+        paidAt(b, "2026-03-02 00:00:00+07");
+
+        assertThat(data(get(REVENUE, authorToken)).at("/totals/itemCount").asLong()).isEqualTo(2);
+        var day1 = data(get(REVENUE + "?from=2026-03-01&to=2026-03-01", authorToken).andExpect(status().isOk()));
+        assertThat(day1.at("/totals/grossAmount").asLong()).isEqualTo(100_000);
+        assertThat(day1.at("/items/totalElements").asLong()).isEqualTo(1);
+        var day2 = data(get(REVENUE + "?from=2026-03-02", authorToken));
+        assertThat(day2.at("/totals/grossAmount").asLong()).isEqualTo(200_000);
+        assertThat(day2.at("/items/content/0/courseId").asText()).isEqualTo(b);
+        assertThat(data(get(REVENUE + "?to=2026-03-01", authorToken)).at("/totals/itemCount").asLong()).isEqualTo(1);
+        assertThat(data(get(REVENUE + "?from=2026-03-01&to=2026-03-02", authorToken)).at("/totals/itemCount").asLong()).isEqualTo(2);
+        var byCourse = data(get(REVENUE + "?courseId=" + a, authorToken));
+        assertThat(byCourse.at("/totals/authorAmount").asLong()).isEqualTo(80_000);
+        assertThat(byCourse.at("/items/totalElements").asLong()).isEqualTo(1);
+
+        var none = data(get(REVENUE + "?from=2027-01-01", authorToken).andExpect(status().isOk()));
+        assertThat(none.at("/totals/itemCount").asLong()).isZero();
+        assertThat(none.at("/items/totalElements").asLong()).isZero();
+
+        // The ledger part of the totals ignores the filter.
+        payout(author, 30_000, "CHI-F", "0123456789");
+        var filtered = data(get(REVENUE + "?from=2027-01-01", authorToken)).path("totals");
+        assertThat(filtered.path("paidOutAmount").asLong()).isEqualTo(30_000);
+        // So does the balance: earned over all time (80 000 + 160 000) minus paid out, never the filtered earnings.
+        assertThat(filtered.path("balanceAmount").asLong()).isEqualTo(210_000);
+        assertThat(data(get(REVENUE + "?courseId=" + a, authorToken)).at("/totals/balanceAmount").asLong()).isEqualTo(210_000);
+        assertThat(data(get(REVENUE, authorToken)).at("/totals/balanceAmount").asLong()).isEqualTo(210_000);
+    }
+
+    @Test
+    void invalidRevenueFiltersAreRejectedAndOtherAuthorsCoursesAreNotFound() throws Exception {
+        for (String bad : new String[] {"from=2026/03/01", "from=2026-3-1", "to=abc", "from=2026-03-02&to=2026-03-01",
+                "from=2026-02-30", "courseId=not-a-uuid", "from=&to=x"})
+            for (String path : new String[] {REVENUE, BY_COURSE})
+                if (!(path.equals(BY_COURSE) && bad.startsWith("courseId")))
+                    get(path + "?" + bad, authorToken).andExpect(status().isBadRequest())
+                            .andExpect(jsonPath("$.code").value("REVENUE_FILTER_INVALID"));
+        get(ADMIN_REVENUE + "?from=2026-03-02&to=2026-03-01", adminToken).andExpect(status().isBadRequest());
+
+        user("author2@example.com", "AUTHOR");
+        String mine = authorToken;
+        authorToken = login("author2@example.com");
+        String theirs = publishedPaidCourse("Their course", 50_000);
+        authorToken = mine;
+        get(REVENUE + "?courseId=" + theirs, authorToken).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
+        get(REVENUE + "?courseId=" + UUID.randomUUID(), authorToken).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void revenueGroupsByCourseWithTheHighestFirstAndOnlyCoursesSoldInTheRange() throws Exception {
+        String a = sell("Course A", 100_000, "FT-A");
+        String b = sell("Course B", 300_000, "FT-B");
+        publishedPaidCourse("Unsold", 10_000);
+        paidAt(a, "2026-03-01 10:00:00+07");
+        paidAt(b, "2026-03-05 10:00:00+07");
+
+        var all = data(get(BY_COURSE, authorToken).andExpect(status().isOk()));
+        assertThat(all.path("totalElements").asLong()).isEqualTo(2);
+        assertThat(all.at("/content/0/courseId").asText()).isEqualTo(b);
+        assertThat(all.at("/content/0/courseTitle").asText()).isEqualTo("Course B");
+        assertThat(all.at("/content/0/itemCount").asLong()).isEqualTo(1);
+        assertThat(all.at("/content/0/grossAmount").asLong()).isEqualTo(300_000);
+        assertThat(all.at("/content/0/platformAmount").asLong()).isEqualTo(60_000);
+        assertThat(all.at("/content/0/authorAmount").asLong()).isEqualTo(240_000);
+        assertThat(all.at("/content/1/courseId").asText()).isEqualTo(a);
+
+        var range = data(get(BY_COURSE + "?from=2026-03-01&to=2026-03-02", authorToken));
+        assertThat(range.path("totalElements").asLong()).isEqualTo(1);
+        assertThat(range.at("/content/0/courseId").asText()).isEqualTo(a);
+        assertThat(data(get(BY_COURSE + "?from=2027-01-01", authorToken)).path("totalElements").asLong()).isZero();
+        assertThat(all.toString()).doesNotContain("authorName");
+
+        // Another author's sales never show up.
+        user("author2@example.com", "AUTHOR");
+        assertThat(data(get(BY_COURSE, login("author2@example.com"))).path("totalElements").asLong()).isZero();
+        for (String token : new String[] {learnerToken, modToken, adminToken})
+            get(BY_COURSE, token).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        get(BY_COURSE, null).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void adminRevenueHasFilteredTotalsAnAllTimeLedgerAndPerCourseRows() throws Exception {
+        String a = sell("Course A", 100_000, "FT-A");
+        sell("Course B", 300_000, "FT-B");
+        paidAt(a, "2026-03-01 10:00:00+07");
+        payout(author, 50_000, "CHI-1", "0123456789");
+
+        var all = data(get(ADMIN_REVENUE, adminToken).andExpect(status().isOk()));
+        assertThat(all.at("/totals/itemCount").asLong()).isEqualTo(2);
+        assertThat(all.at("/totals/grossAmount").asLong()).isEqualTo(400_000);
+        assertThat(all.at("/totals/platformAmount").asLong()).isEqualTo(80_000);
+        assertThat(all.at("/totals/authorAmount").asLong()).isEqualTo(320_000);
+        assertThat(all.at("/ledger/earnedAmount").asLong()).isEqualTo(320_000);
+        assertThat(all.at("/ledger/paidOutAmount").asLong()).isEqualTo(50_000);
+        assertThat(all.at("/ledger/owedAmount").asLong()).isEqualTo(270_000);
+        assertThat(all.at("/courses/totalElements").asLong()).isEqualTo(2);
+        assertThat(all.at("/courses/content/0/courseTitle").asText()).isEqualTo("Course B");
+        assertThat(all.at("/courses/content/0/authorId").asText()).isEqualTo(author.toString());
+        assertThat(all.at("/courses/content/0/authorName").asText()).isNotBlank();
+
+        var range = data(get(ADMIN_REVENUE + "?from=2026-03-01&to=2026-03-01", adminToken));
+        assertThat(range.at("/totals/grossAmount").asLong()).isEqualTo(100_000);
+        assertThat(range.at("/courses/totalElements").asLong()).isEqualTo(1);
+        assertThat(range.at("/ledger/owedAmount").asLong()).isEqualTo(270_000);
+
+        var empty = data(get(ADMIN_REVENUE + "?from=2027-01-01", adminToken).andExpect(status().isOk()));
+        assertThat(empty.at("/totals/itemCount").asLong()).isZero();
+        assertThat(empty.at("/courses/totalElements").asLong()).isZero();
+
+        for (String token : new String[] {authorToken, modToken, learnerToken})
+            get(ADMIN_REVENUE, token).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        get(ADMIN_REVENUE, null).andExpect(status().isUnauthorized());
     }
 
     void saveAccount(String bankId, String accountNo, String accountName) throws Exception {

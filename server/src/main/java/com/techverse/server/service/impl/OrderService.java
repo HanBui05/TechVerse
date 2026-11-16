@@ -2,6 +2,7 @@ package com.techverse.server.service.impl;
 
 import com.techverse.server.dto.response.AdminOrderResponse;
 import com.techverse.server.dto.response.AdminPayoutResponse;
+import com.techverse.server.dto.response.AdminRevenueResponse;
 import com.techverse.server.dto.response.AuthorRevenueResponse;
 import com.techverse.server.dto.response.CommissionPolicyResponse;
 import com.techverse.server.dto.response.OrderResponse;
@@ -223,13 +224,58 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public AuthorRevenueResponse revenue(UUID author, int page, int size) {
-        var t = orders.revenueTotals(author);
-        var items = orders.findRevenue(author, PageRequest.of(page, size));
+    public AuthorRevenueResponse revenue(UUID author, String courseId, String from, String to, int page, int size) {
+        var range = range(from, to);
+        UUID course = courseId == null || courseId.isEmpty() ? null : uuid(courseId, ErrorCode.REVENUE_FILTER_INVALID);
+        if (course != null && !orders.ownsCourse(course, author)) throw new CustomException(ErrorCode.COURSE_NOT_FOUND);
+        var t = orders.revenueTotals(author, course, range[0], range[1]);
+        var items = orders.findRevenue(author, course, range[0], range[1], PageRequest.of(page, size));
+        // Balance is always all-time: with a filter, earned and paid out come from one unfiltered statement.
+        var all = course == null && from == null && to == null ? t
+                : orders.revenueTotals(author, null, OrderRepository.ALWAYS_FROM, OrderRepository.ALWAYS_TO);
         return new AuthorRevenueResponse(
                 new AuthorRevenueResponse.Totals(t.getItemCount(), t.getGrossAmount(), t.getPlatformAmount(), t.getAuthorAmount(),
-                        t.getPaidOutAmount(), t.getAuthorAmount() - t.getPaidOutAmount()),
+                        all.getPaidOutAmount(), all.getAuthorAmount() - all.getPaidOutAmount()),
                 PageResponse.from(items, items.stream().map(AuthorRevenueResponse.Item::of).toList()));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<AuthorRevenueResponse.CourseRow> revenueByCourse(UUID author, String from, String to, int page, int size) {
+        var range = range(from, to);
+        var rows = orders.findCourseRevenue(author, range[0], range[1], PageRequest.of(page, size));
+        return PageResponse.from(rows, rows.stream().map(r -> new AuthorRevenueResponse.CourseRow(
+                r.getCourseId(), r.getCourseTitle(), r.getItemCount(), r.getGrossAmount(), r.getPlatformAmount(),
+                r.getAuthorAmount())).toList());
+    }
+
+    @Transactional(readOnly = true)
+    public AdminRevenueResponse adminRevenue(String from, String to, int page, int size) {
+        var range = range(from, to);
+        var t = orders.revenueTotals(null, null, range[0], range[1]);
+        var l = orders.ledger();
+        var rows = orders.findCourseRevenue(null, range[0], range[1], PageRequest.of(page, size));
+        return new AdminRevenueResponse(
+                new AdminRevenueResponse.Totals(t.getItemCount(), t.getGrossAmount(), t.getPlatformAmount(), t.getAuthorAmount()),
+                new AdminRevenueResponse.Ledger(l.getEarnedAmount(), l.getPaidOutAmount(), l.getEarnedAmount() - l.getPaidOutAmount()),
+                PageResponse.from(rows, rows.stream().map(r -> new AdminRevenueResponse.CourseRow(
+                        r.getCourseId(), r.getCourseTitle(), r.getAuthorId(), r.getAuthorName(), r.getItemCount(),
+                        r.getGrossAmount(), r.getPlatformAmount(), r.getAuthorAmount())).toList()));
+    }
+
+    private static final java.time.ZoneId VIETNAM = java.time.ZoneId.of("Asia/Ho_Chi_Minh");
+
+    /** {@code yyyy-MM-dd} days, both ends inclusive in Vietnam time, as [from, to); null or empty = open end. */
+    public static java.time.Instant[] range(String from, String to) {
+        try {
+            var start = from == null || from.isEmpty() ? null : java.time.LocalDate.parse(from);
+            var end = to == null || to.isEmpty() ? null : java.time.LocalDate.parse(to);
+            if (start != null && end != null && start.isAfter(end)) throw new CustomException(ErrorCode.REVENUE_FILTER_INVALID);
+            return new java.time.Instant[] {
+                    start == null ? OrderRepository.ALWAYS_FROM : start.atStartOfDay(VIETNAM).toInstant(),
+                    end == null ? OrderRepository.ALWAYS_TO : end.plusDays(1).atStartOfDay(VIETNAM).toInstant()};
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new CustomException(ErrorCode.REVENUE_FILTER_INVALID);
+        }
     }
 
     // ------------------------------------------------------------------ author payouts
