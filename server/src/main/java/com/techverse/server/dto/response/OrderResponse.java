@@ -7,8 +7,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * The buyer's view of an order: snapshots, state, deadline and the VietQR transfer details
- * ({@code vietQr} only while PENDING/EXPIRED and when the receiving account is configured).
+ * The buyer's view of an order: snapshots, state, deadline and how to pay. MANUAL orders carry the
+ * VietQR transfer details ({@code vietQr} only while PENDING/EXPIRED and when the receiving account is
+ * configured); PAYOS orders carry {@code checkoutUrl} while PENDING with a link, and {@code amountPaid}
+ * once payOS reported money received.
  */
 public record OrderResponse(
         String orderCode,
@@ -21,13 +23,18 @@ public record OrderResponse(
         Instant expiresAt,
         Instant paidAt,
         Instant transferReportedAt,
-        VietQr vietQr) {
+        String provider,
+        VietQr vietQr,
+        String checkoutUrl,
+        Long amountPaid) {
 
     /** Transfer parameters; {@code content} is the order code the Admin matches on the bank statement. */
     public record VietQr(String bankId, String accountNo, String accountName, long amount, String content, String imageUrl) {}
 
     public static OrderResponse of(OrderItem item, VietQr vietQr) {
         CourseOrder o = item.getOrder();
+        boolean payos = o.isPayos();
+        String link = o.getPayosPaymentLinkId();
         return new OrderResponse(
                 o.getOrderCode(),
                 item.getCourseId(),
@@ -39,6 +46,10 @@ public record OrderResponse(
                 o.getExpiresAt(),
                 o.getPaidAt(),
                 o.getTransferReportedAt(),
-                vietQr);
+                payos ? "PAYOS" : "MANUAL",
+                payos ? null : vietQr,
+                // The form the embedded payOS checkout library requires.
+                payos && link != null && o.getStatus() == CourseOrder.Status.PENDING ? "https://pay.payos.vn/web/" + link : null,
+                payos ? o.getPayosAmountPaid() : null);
     }
 }

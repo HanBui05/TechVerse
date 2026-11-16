@@ -15,6 +15,7 @@ import com.techverse.server.repository.*;
 import com.techverse.server.repository.specification.CourseSpecification;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
@@ -23,7 +24,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -35,10 +38,12 @@ import java.util.regex.Pattern;
  * buyer's {@code users} row (serialises that buyer's requests), then the course row (shared, so a
  * concurrent price change finishes first), then the order.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderService {
     static final int MANUAL_HOURS = 24;
+    static final int PAYOS_MINUTES = 15;
     private static final Pattern BANK_ID = Pattern.compile("[A-Za-z0-9]{2,20}");
     private static final Pattern ACCOUNT_NO = Pattern.compile("[0-9]{6,19}");
     private static final Pattern TEMPLATE = Pattern.compile("[A-Za-z0-9_]{1,30}");
@@ -50,6 +55,8 @@ public class OrderService {
     private final CourseEnrollmentRepository enrollments;
     private final UserRepository users;
     private final StringRedisTemplate redis;
+    private final PayosClient payos;
+    private final PlatformTransactionManager transactionManager;
 
     @Value("${vietqr.bank-id:}")
     private String bankId;
@@ -66,10 +73,16 @@ public class OrderService {
     @Value("${order.requests-per-minute:5}")
     private int requestsPerMinute;
 
-    /** Returns the buyer's open order for the course, or creates one with today's price and policy. */
-    @Transactional
+    /**
+     * Returns the buyer's open order for the course, or creates one with today's price and policy. The
+     * order commits first; a payOS link is asked for afterwards, outside every transaction and lock.
+     */
     public OrderResponse create(UUID actor, UUID courseId) {
         checkRate(actor);
+        return withPayosLink(tx().execute(s -> openOrder(actor, courseId)));
+    }
+
+    private OrderItem openOrder(UUID actor, UUID courseId) {
         User buyer = users.findByIdForAuthentication(actor)
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_ACCESS_TOKEN));
         if (!buyer.isActive()) throw new CustomException(ErrorCode.USER_INACTIVE);
@@ -87,17 +100,48 @@ public class OrderService {
 
         orders.expireOverdue(actor);
         var open = orders.findByStatus(actor, courseId, CourseOrder.Status.PENDING);
-        if (!open.isEmpty()) return response(open.getFirst());
+        if (!open.isEmpty()) return open.getFirst();
 
-        // Never create an order nobody can pay.
-        if (!qrConfigured()) throw new CustomException(ErrorCode.PAYMENT_UNAVAILABLE);
+        // Never create an order nobody can pay. payOS on: every new order is PAYOS; off: manual VietQR.
+        boolean payosOn = payos.enabled();
+        if (!payosOn && !qrConfigured()) throw new CustomException(ErrorCode.PAYMENT_UNAVAILABLE);
         orders.lockCommission();
         UUID policy =orders.activeCommissionPolicyId().orElseThrow(() -> new CustomException(ErrorCode.PAYMENT_UNAVAILABLE));
         UUID id = UUID.randomUUID();
-        orders.insertOrder(id, actor, MANUAL_HOURS);
+        orders.insertOrder(id, actor, payosOn ? PAYOS_MINUTES : MANUAL_HOURS * 60);
         orders.insertItem(id, courseId, title, price, policy, actor);
-        orders.insertManualTransaction(id, actor);
-        return response(orders.findItem(id).orElseThrow());
+        orders.insertTransaction(id, payosOn ? "PAYOS" : "MANUAL", actor);
+        return orders.findItem(id).orElseThrow();
+    }
+
+    /**
+     * "Ensure link" for a PENDING payOS order without one: (1) claim in a short transaction, (2) ask payOS
+     * with no transaction open, (3) store the link only if none is stored and no other order holds it.
+     * payOS failing leaves the order without a link; a read after 60 seconds tries again. The response is
+     * always rebuilt from the order as it is now (a webhook may have paid it meanwhile).
+     */
+    private OrderResponse withPayosLink(OrderItem item) {
+        var o = item.getOrder();
+        if (!o.isPayos() || o.getStatus() != CourseOrder.Status.PENDING || o.getPayosPaymentLinkId() != null) return response(item);
+        UUID orderId = o.getId();
+        if (tx().execute(s -> orders.claimPayosLink(orderId)) == 0) return response(item);
+        try {
+            String link = payos.link(o.getOrderCode(), o.getTotalAmount(), o.getExpiresAt());
+            Integer saved;
+            try {
+                saved = tx().execute(s -> orders.savePayosLink(orderId, link));
+            } catch (DataIntegrityViolationException e) {
+                saved = 0; // another order stored the same link id at the same moment
+            }
+            if (saved == 0) log.warn("payOS link for order {} not stored: the order or another order already holds a link", o.getOrderCode());
+        } catch (PayosClient.PayosException e) {
+            log.warn("payOS link for order {} not created: {}", o.getOrderCode(), e.getMessage());
+        }
+        return response(tx().execute(s -> orders.findItem(orderId).orElseThrow()));
+    }
+
+    private TransactionTemplate tx() {
+        return new TransactionTemplate(transactionManager);
     }
 
     /** The active commission policy, or null when none is set (orders are then unavailable). */
@@ -129,10 +173,11 @@ public class OrderService {
         return new CommissionPolicyResponse(p.getId(), p.getRateBps(), p.getEffectiveFrom());
     }
 
-    @Transactional
     public OrderResponse detail(UUID actor, String code) {
-        orders.expireOverdue(actor);
-        return response(owned(actor, code));
+        return withPayosLink(tx().execute(s -> {
+            orders.expireOverdue(actor);
+            return owned(actor, code);
+        }));
     }
 
     @Transactional
@@ -149,8 +194,9 @@ public class OrderService {
         orders.expireOverdue(actor);
         CourseOrder order = orders.findOwnedForUpdate(code, actor)
                 .orElseThrow(() -> new CustomException(ErrorCode.ORDER_NOT_FOUND));
-        // shortcut: every order is MANUAL while PayOS (1e) is deferred; check the provider when it lands.
-        if (order.getStatus() != CourseOrder.Status.PENDING && order.getStatus() != CourseOrder.Status.EXPIRED)
+        // payOS orders are confirmed by looking them up on payOS, never by the buyer's report.
+        if (!orders.isManual(order.getId())
+                || order.getStatus() != CourseOrder.Status.PENDING && order.getStatus() != CourseOrder.Status.EXPIRED)
             throw new CustomException(ErrorCode.ORDER_TRANSFER_REPORT_NOT_ALLOWED);
         orders.reportTransfer(order.getId());
         return response(owned(actor, code));
@@ -167,7 +213,7 @@ public class OrderService {
     @Transactional
     public AdminOrderResponse confirm(UUID admin, String code, long amount, String reference) {
         CourseOrder order = lockOrder(code);
-        // shortcut: every order is MANUAL while PayOS (1e) is deferred; a webhook path would skip this check.
+        // Admin confirms manual transfers only; payOS orders are confirmed by the payOS lookup.
         if (!orders.isManual(order.getId())) throw new CustomException(ErrorCode.PAYMENT_STATE_INVALID);
         var existing = orders.findManualPayment(reference);
         if (existing.isPresent()) {

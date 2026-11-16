@@ -93,6 +93,30 @@ class CoursePaymentMigrationTest {
                 .hasMessageContaining("author_payout_accounts_pkey");
     }
 
+    @Test
+    void payosLinkIsUniqueSourceAcceptsPayosAndOrderCodesStopAtTwelveDigits() {
+        UUID buyer = jdbc.queryForObject("INSERT INTO users(full_name, email) VALUES ('B', ?) RETURNING id",
+                UUID.class, UUID.randomUUID() + "@example.com");
+        UUID first = order(buyer, "link_a");
+        assertThatThrownBy(() -> order(buyer, "link_a")).hasMessageContaining("payos_payment_link_id");
+        assertThat(jdbc.queryForMap("SELECT payos_link_requested_at, payos_amount_paid FROM orders WHERE id=?", first))
+                .containsEntry("payos_link_requested_at", null).containsEntry("payos_amount_paid", null);
+        jdbc.update("INSERT INTO payment_transactions(order_id, provider, amount, status, paid_at, confirmation_source)"
+                + " VALUES (?, 'PAYOS', 0, 'FAILED', null, 'PAYOS')", first);
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO payment_transactions(order_id, provider, amount, confirmation_source)"
+                + " VALUES (?, 'PAYOS', 0, 'BOT')", first)).hasMessageContaining("ck_payment_transactions_confirmation_source");
+
+        // A 13-digit code would not fit the payOS order number: the sequence errors instead.
+        jdbc.queryForObject("SELECT setval('order_code_seq', 999999999999)", Long.class);
+        assertThatThrownBy(() -> jdbc.queryForObject("SELECT nextval('order_code_seq')", Long.class))
+                .hasMessageContaining("maximum value");
+    }
+
+    private static UUID order(UUID buyer, String link) {
+        return jdbc.queryForObject("INSERT INTO orders(user_id, order_code, payos_payment_link_id) VALUES (?,?,?) RETURNING id",
+                UUID.class, buyer, "T" + UUID.randomUUID(), link);
+    }
+
     private static UUID payout(UUID author, long amount, String ref) {
         return jdbc.queryForObject("INSERT INTO author_payouts(author_id, amount, bank_reference, bank_id, account_no, account_name, created_by)"
                 + " VALUES (?,?,?,'970436','0123456789','NGUYEN VAN A',?) RETURNING id", UUID.class, author, amount, ref, author);

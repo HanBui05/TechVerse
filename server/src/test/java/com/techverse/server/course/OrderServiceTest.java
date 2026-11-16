@@ -22,7 +22,8 @@ class OrderServiceTest {
     StringRedisTemplate redis = mock(StringRedisTemplate.class);
     OrderService service = new OrderService(
             mock(OrderRepository.class), mock(CourseRepository.class), mock(CourseEnrollmentRepository.class),
-            mock(UserRepository.class), redis);
+            mock(UserRepository.class), redis, mock(com.techverse.server.service.impl.PayosClient.class),
+            mock(org.springframework.transaction.PlatformTransactionManager.class));
 
     @BeforeEach
     void configure() {

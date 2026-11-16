@@ -78,9 +78,9 @@ public interface OrderRepository extends JpaRepository<CourseOrder, UUID> {
     @Query(
             value = "INSERT INTO orders (id, user_id, order_code, expires_at, created_at, created_by, updated_by)"
                     + " VALUES (:id, :userId, 'TV' || lpad(nextval('order_code_seq')::text, 12, '0'),"
-                    + " clock_timestamp() + make_interval(hours => :hours), clock_timestamp(), :userId, :userId)",
+                    + " clock_timestamp() + make_interval(mins => :minutes), clock_timestamp(), :userId, :userId)",
             nativeQuery = true)
-    void insertOrder(@Param("id") UUID id, @Param("userId") UUID userId, @Param("hours") int hours);
+    void insertOrder(@Param("id") UUID id, @Param("userId") UUID userId, @Param("minutes") int minutes);
 
     /** Commission columns are left to {@code calculate_order_item_revenue}, the total to {@code refresh_order_total}. */
     @Modifying
@@ -101,9 +101,31 @@ public interface OrderRepository extends JpaRepository<CourseOrder, UUID> {
     @Modifying
     @Query(
             value = "INSERT INTO payment_transactions (order_id, provider, amount, created_by, updated_by)"
-                    + " SELECT id, 'MANUAL', total_amount, :userId, :userId FROM orders WHERE id = :orderId",
+                    + " SELECT id, :provider, total_amount, :userId, :userId FROM orders WHERE id = :orderId",
             nativeQuery = true)
-    void insertManualTransaction(@Param("orderId") UUID orderId, @Param("userId") UUID userId);
+    void insertTransaction(@Param("orderId") UUID orderId, @Param("provider") String provider, @Param("userId") UUID userId);
+
+    /**
+     * Takes the right to ask payOS for this order's link: one atomic conditional update, so one request
+     * wins. A mark older than 60 seconds (twice the longest request) belongs to a request that stopped.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value = "UPDATE orders o SET payos_link_requested_at = clock_timestamp()"
+                    + " WHERE o.id = :orderId AND o.status = 'PENDING' AND o.expires_at > clock_timestamp()"
+                    + " AND o.payos_payment_link_id IS NULL"
+                    + " AND (o.payos_link_requested_at IS NULL OR o.payos_link_requested_at <= clock_timestamp() - interval '60 seconds')"
+                    + " AND EXISTS (SELECT 1 FROM payment_transactions t WHERE t.order_id = o.id AND t.provider = 'PAYOS')",
+            nativeQuery = true)
+    int claimPayosLink(@Param("orderId") UUID orderId);
+
+    /** Stores the link only if the order has none and no other order holds it; never overwrites. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value = "UPDATE orders o SET payos_payment_link_id = :link WHERE o.id = :orderId AND o.payos_payment_link_id IS NULL"
+                    + " AND NOT EXISTS (SELECT 1 FROM orders x WHERE x.payos_payment_link_id = :link)",
+            nativeQuery = true)
+    int savePayosLink(@Param("orderId") UUID orderId, @Param("link") String link);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(
