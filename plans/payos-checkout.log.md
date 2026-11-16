@@ -2,14 +2,14 @@
 
 ## Bắt đầu từ đây (cập nhật 2026-11-16)
 
-- **Task tiếp:** Cổng wireframe — bổ sung trang đơn có khung payOS + đơn payOS trong Sheet Admin vào `plans/course-payment.wireframe.md` (desktop + mobile, đủ trạng thái theo spec), dừng chờ duyệt · Giao diện: Có
+- **Task tiếp:** Task 2 — trang đơn khung payOS + Admin, theo `plans/course-payment.wireframe.md` mục 8 (đã duyệt 2026-11-16); dùng Opus · Giao diện: Có
 - Task 1a, 1b đã nhận (2026-11-16); commit cục bộ trên nhánh `feature/payos-checkout` (tách từ `feature/author-payout`).
 - payOS thật đã thử (2026-11-16): webhook + thanh toán 10.000 ₫ → PAID tự động. Còn chưa kiểm: payOS có từ chối tạo trùng số đơn không (quyết định 5 của spec; backend đã giành quyền xin link nên rủi ro thấp). Khóa dev `a1cdd5a1…` đã trả giá 350.000.
 - Sau 1b: cổng wireframe → 2.
 
 ## Quyết định người dùng chưa có trong spec
 
-- (không có)
+- 2026-11-16: duyệt wireframe payOS (mục 8); hạn 15 phút hiện **đồng hồ đếm ngược theo giây**, về 0 thì ẩn khung và sync một lần (8-1). Nhãn chờ đơn PAYOS “Chờ thanh toán”; ẩn khung sau `onSuccess`; mobile link payOS là nút full width; Admin không lọc nguồn.
 
 ## Câu hỏi mở cho người dùng
 
@@ -29,6 +29,8 @@
 - **Lệch khác spec:** (1) Chặn dồn webhook 3 giây bằng Redis `SET NX`; Redis lỗi → 503. (2) Đồng bộ khi payOS đã tắt cấu hình, hoặc tra cứu trả `code` ≠ `"00"` (gồm cả “không biết đơn”, vì mã not-found chưa xác minh) → 503 `PAYMENT_PROVIDER_UNAVAILABLE`, không đổi DB. (3) Cấp quyền cần cả `status = PAID` lẫn `amountPaid ≥ amount` (trả thừa cũng vậy). (4) `amountPaid` thiếu trong kết quả tra cứu → coi là thiếu trường (bỏ qua, log). (5) Mã link trong tra cứu đang thuộc đơn khác → không đổi DB, log. (6) Ca “hai kết quả về ngược thứ tự” kiểm tuần tự (đủ rồi thiếu); ca hai webhook song song: webhook thứ hai bị chặn 503 trừ khi tới sau khi đơn PAID.
 
 ## Nhật ký phiên
+### 2026-11-16 — Cổng wireframe payOS
+- Thêm mục 8 vào `plans/course-payment.wireframe.md`: trang đơn PAYOS desktop/mobile, bảng 13 trạng thái (gồm 429/503/khung lỗi), `/me/orders`, hàng + Sheet Admin, copy bổ sung, 5 câu chốt. Chỉ tài liệu, kiểm tĩnh. Người dùng duyệt cùng ngày, câu 2 đổi sang đếm ngược.
 ### 2026-11-16 — Task 1b đã nhận
 - Người dùng nhận Task 1b (2026-11-16) sau khi thử thanh toán thật đạt; commit cục bộ. Khóa dev đã trả giá 350.000.
 
