@@ -2,7 +2,7 @@
 
 ## Bắt đầu từ đây (cập nhật 2026-11-16)
 
-- **Task tiếp:** Cuối module: nhờ Codex đồng bộ spec một lần (skill `codex-workflow` mục 3) · Giao diện: Không
+- **Task tiếp:** Không còn; module hoàn tất (người dùng chốt 2026-11-16), spec đã đồng bộ và qua review 2 vòng. Chưa kiểm với backend thật · Giao diện: Không
 - Spec chốt 2026-11-14: Task 1a → 1b → 1c → 1d → cổng wireframe → 2a → 2b → 2c; **Task 1e (PayOS) hoãn**. Rủi ro cao: code bằng Opus, review vòng 1 `adversarial-review`.
 - Task 1a, 1b, 1c, 1d, 2a đã nhận (2026-11-15), Task 2b, 2c đã nhận (2026-11-16), đã commit cục bộ trên `feature/course-payment` (1a: V13, giá, quyền xem; 1b: V14, đơn hàng, VietQR, báo chuyển khoản; 1c: V15, Admin xác nhận/đối chiếu, doanh thu tác giả; 1d: V16, chính sách hoa hồng).
 - Bẫy cho 1b–1d: `TRUNCATE users CASCADE` trong test xóa luôn `commission_policies`; test cần policy phải tự `INSERT ... (rate_bps) VALUES (2000)`.
