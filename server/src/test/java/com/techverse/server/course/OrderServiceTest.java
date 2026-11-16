@@ -15,7 +15,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.UUID;
+import java.util.*;
 
 /** VietQR link, receiving-account validation and the order rate limit, without Spring. */
 class OrderServiceTest {
@@ -65,6 +65,58 @@ class OrderServiceTest {
 
         when(redis.execute(any(RedisScript.class), anyList())).thenThrow(new RedisConnectionFailureException("down"));
         assertThatThrownBy(() -> rate(user)).extracting("errorCode").isEqualTo(ErrorCode.PAYMENT_UNAVAILABLE);
+    }
+
+    @Test
+    void payoutAccountBodyIsNormalisedAndEveryBoundaryIsChecked() {
+        assertThat(account(body(" 970436 ", " 0123456789 ", "  Nguyễn Văn A ")))
+                .extracting("bankId", "accountNo", "accountName")
+                .containsExactly("970436", "0123456789", "NGUYỄN VĂN A");
+        assertThat(account(body("970422", "ABC123", "x"))).extracting("accountName").isEqualTo("X");
+        assertThat(account(body("970422", "a".repeat(30), "n".repeat(100)))).isNotNull();
+
+        var tooMany = new HashMap<String, Object>(body("970436", "0123456789", "A"));
+        tooMany.put("extra", "x");
+        var missing = new HashMap<String, Object>(body("970436", "0123456789", "A"));
+        missing.remove("accountName");
+        var wrongKey = new HashMap<String, Object>(missing);
+        wrongKey.put("name", "A");
+        var nullValue = new HashMap<String, Object>(missing);
+        nullValue.put("accountName", null);
+        var number = new HashMap<String, Object>(body("970436", "0123456789", "A"));
+        number.put("accountNo", 123456789);
+        for (Map<String, Object> bad : Arrays.<Map<String, Object>>asList(
+                null, Map.of(), tooMany, missing, wrongKey, nullValue, number,
+                body("000000", "0123456789", "A"),          // bank not supported
+                body("", "0123456789", "A"),
+                body("970436", "12345", "A"),               // 5 chars
+                body("970436", "a".repeat(31), "A"),
+                body("970436", "0123-4567", "A"),
+                body("970436", "0123 4567", "A"),
+                body("970436", "012345678ố", "A"),
+                body("970436", "0123456789", "   "),
+                body("970436", "0123456789", "n".repeat(101)),
+                body("970436", "0123456789", "A\nB")))
+            assertThatThrownBy(() -> account(bad)).as("%s", bad)
+                    .extracting("errorCode").isEqualTo(ErrorCode.PAYOUT_ACCOUNT_INVALID);
+    }
+
+    @Test
+    void accountNumbersAreMaskedToTheLastFourCharacters() {
+        assertThat(mask("0123456789")).isEqualTo("****6789");
+        assertThat(mask("AB1234")).isEqualTo("****1234");
+    }
+
+    static Map<String, Object> body(String bankId, String accountNo, String accountName) {
+        return Map.of("bankId", bankId, "accountNo", accountNo, "accountName", accountName);
+    }
+
+    Object account(Map<String, Object> body) {
+        return ReflectionTestUtils.invokeMethod(OrderService.class, "payoutAccountInput", body);
+    }
+
+    String mask(String accountNo) {
+        return ReflectionTestUtils.invokeMethod(OrderService.class, "maskAccountNo", accountNo);
     }
 
     // Package-private helpers of OrderService are reached reflectively from this package.

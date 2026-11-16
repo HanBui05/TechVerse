@@ -119,6 +119,29 @@ public class OrderController {
         return ok("Revenue retrieved", service.revenue(actor(jwt), filter.getPage(), filter.getSize()));
     }
 
+    @GetMapping("/author/payout-account")
+    @PreAuthorize("hasRole('AUTHOR')")
+    @Operation(summary = "Author: own receiving bank account (null until declared) and the supported banks")
+    public ApiResponse<PayoutResponse.AccountView> payoutAccount(@AuthenticationPrincipal Jwt jwt) {
+        return ok("Payout account retrieved", service.payoutAccount(actor(jwt)));
+    }
+
+    @PutMapping("/author/payout-account")
+    @PreAuthorize("hasRole('AUTHOR')")
+    @Operation(summary = "Author: body {bankId, accountNo, accountName}; creates or replaces the receiving account")
+    public ApiResponse<PayoutResponse.AccountView> savePayoutAccount(
+            @AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) Map<String, Object> body) {
+        return ok("Payout account saved", service.savePayoutAccount(actor(jwt), body));
+    }
+
+    @GetMapping("/author/payouts")
+    @PreAuthorize("hasRole('AUTHOR')")
+    @Operation(summary = "Author: payouts recorded by an Admin, newest first; account number masked")
+    public ApiResponse<PageResponse<PayoutResponse>> payouts(
+            @AuthenticationPrincipal Jwt jwt, @Valid @ParameterObject @ModelAttribute ArticleFilter filter) {
+        return ok("Payouts retrieved", service.payouts(actor(jwt), filter.getPage(), filter.getSize()));
+    }
+
     /** Exactly one field: price and total always come from the server. */
     private static UUID courseId(Map<String, Object> body) {
         if (body == null || body.size() != 1 || !(body.get("courseId") instanceof String id))

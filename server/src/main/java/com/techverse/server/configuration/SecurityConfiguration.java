@@ -93,6 +93,9 @@ public class SecurityConfiguration {
 						.requestMatchers(HttpMethod.GET, "/api/v1/me/courses").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/v1/orders", "/api/v1/orders/*/transfer-report").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/orders/*", "/api/v1/me/orders", "/api/v1/author/revenue").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/v1/author/revenue/**", "/api/v1/author/payouts").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/v1/author/payout-account").authenticated()
+						.requestMatchers(HttpMethod.PUT, "/api/v1/author/payout-account").authenticated()
 						.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 						.anyRequest().denyAll())
 				.build();

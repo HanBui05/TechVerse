@@ -213,11 +213,59 @@ public interface OrderRepository extends JpaRepository<CourseOrder, UUID> {
         Long getGrossAmount();
         Long getPlatformAmount();
         Long getAuthorAmount();
+        Long getPaidOutAmount();
     }
 
-    @Query("select count(i) as itemCount, coalesce(sum(i.unitPriceAmount), 0) as grossAmount,"
-            + " coalesce(sum(i.commissionAmount), 0) as platformAmount, coalesce(sum(i.authorNetAmount), 0) as authorAmount"
-            + " from OrderItem i join i.order o where o.status = 'PAID'"
-            + " and i.courseId in (select c.id from Course c where c.author.id = :authorId)")
+    /** Earned and paid out in one statement, so the balance never mixes two snapshots. */
+    @Query(
+            value = "SELECT count(i.id) AS itemCount, coalesce(sum(i.unit_price_amount), 0)::bigint AS grossAmount,"
+                    + " coalesce(sum(i.commission_amount), 0)::bigint AS platformAmount,"
+                    + " coalesce(sum(i.author_net_amount), 0)::bigint AS authorAmount,"
+                    + " (SELECT coalesce(sum(p.amount), 0) FROM author_payouts p WHERE p.author_id = :authorId)::bigint AS paidOutAmount"
+                    + " FROM order_items i JOIN orders o ON o.id = i.order_id JOIN courses c ON c.id = i.course_id"
+                    + " WHERE o.status = 'PAID' AND c.author_id = :authorId",
+            nativeQuery = true)
     RevenueTotals revenueTotals(@Param("authorId") UUID authorId);
+
+    // ------------------------------------------------------------------ author payouts
+
+    interface PayoutAccountRow {
+        String getBankId();
+        String getAccountNo();
+        String getAccountName();
+        java.time.Instant getUpdatedAt();
+    }
+
+    @Query(
+            value = "SELECT bank_id AS bankId, account_no AS accountNo, account_name AS accountName, updated_at AS updatedAt"
+                    + " FROM author_payout_accounts WHERE user_id = :userId",
+            nativeQuery = true)
+    Optional<PayoutAccountRow> findPayoutAccount(@Param("userId") UUID userId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value = "INSERT INTO author_payout_accounts (user_id, bank_id, account_no, account_name)"
+                    + " VALUES (:userId, :bankId, :accountNo, :accountName)"
+                    + " ON CONFLICT (user_id) DO UPDATE SET bank_id = EXCLUDED.bank_id,"
+                    + " account_no = EXCLUDED.account_no, account_name = EXCLUDED.account_name",
+            nativeQuery = true)
+    void upsertPayoutAccount(
+            @Param("userId") UUID userId,
+            @Param("bankId") String bankId,
+            @Param("accountNo") String accountNo,
+            @Param("accountName") String accountName);
+
+    interface PayoutRow {
+        Long getAmount();
+        String getBankReference();
+        String getAccountNo();
+        java.time.Instant getCreatedAt();
+    }
+
+    @Query(
+            value = "SELECT amount, bank_reference AS bankReference, account_no AS accountNo, created_at AS createdAt"
+                    + " FROM author_payouts WHERE author_id = :authorId ORDER BY created_at DESC, id DESC",
+            countQuery = "SELECT count(*) FROM author_payouts WHERE author_id = :authorId",
+            nativeQuery = true)
+    Page<PayoutRow> findPayouts(@Param("authorId") UUID authorId, Pageable pageable);
 }

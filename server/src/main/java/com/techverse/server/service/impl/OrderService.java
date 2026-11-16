@@ -5,6 +5,7 @@ import com.techverse.server.dto.response.AuthorRevenueResponse;
 import com.techverse.server.dto.response.CommissionPolicyResponse;
 import com.techverse.server.dto.response.OrderResponse;
 import com.techverse.server.dto.response.PageResponse;
+import com.techverse.server.dto.response.PayoutResponse;
 import com.techverse.server.entity.*;
 import com.techverse.server.enums.RoleName;
 import com.techverse.server.exception.*;
@@ -225,8 +226,89 @@ public class OrderService {
         var t = orders.revenueTotals(author);
         var items = orders.findRevenue(author, PageRequest.of(page, size));
         return new AuthorRevenueResponse(
-                new AuthorRevenueResponse.Totals(t.getItemCount(), t.getGrossAmount(), t.getPlatformAmount(), t.getAuthorAmount()),
+                new AuthorRevenueResponse.Totals(t.getItemCount(), t.getGrossAmount(), t.getPlatformAmount(), t.getAuthorAmount(),
+                        t.getPaidOutAmount(), t.getAuthorAmount() - t.getPaidOutAmount()),
                 PageResponse.from(items, items.stream().map(AuthorRevenueResponse.Item::of).toList()));
+    }
+
+    // ------------------------------------------------------------------ author payouts
+
+    /** VietQR BINs (api.vietqr.io/v2/banks, 2026-11-16); the only banks a payout account may use. */
+    static final List<PayoutResponse.Bank> BANKS = List.of(
+            new PayoutResponse.Bank("970436", "Vietcombank"),
+            new PayoutResponse.Bank("970415", "VietinBank"),
+            new PayoutResponse.Bank("970418", "BIDV"),
+            new PayoutResponse.Bank("970405", "Agribank"),
+            new PayoutResponse.Bank("970422", "MBBank"),
+            new PayoutResponse.Bank("970407", "Techcombank"),
+            new PayoutResponse.Bank("970416", "ACB"),
+            new PayoutResponse.Bank("970432", "VPBank"),
+            new PayoutResponse.Bank("970423", "TPBank"),
+            new PayoutResponse.Bank("970403", "Sacombank"),
+            new PayoutResponse.Bank("970437", "HDBank"),
+            new PayoutResponse.Bank("970441", "VIB"),
+            new PayoutResponse.Bank("970443", "SHB"),
+            new PayoutResponse.Bank("970431", "Eximbank"),
+            new PayoutResponse.Bank("970426", "MSB"),
+            new PayoutResponse.Bank("970448", "OCB"),
+            new PayoutResponse.Bank("970440", "SeABank"),
+            new PayoutResponse.Bank("970449", "LPBank"),
+            new PayoutResponse.Bank("970454", "VietCapitalBank"),
+            new PayoutResponse.Bank("970428", "NamABank"));
+    private static final Pattern PAYOUT_ACCOUNT_NO = Pattern.compile("[A-Za-z0-9]{6,30}");
+
+    record PayoutAccountInput(String bankId, String accountNo, String accountName) {}
+
+    @Transactional(readOnly = true)
+    public PayoutResponse.AccountView payoutAccount(UUID author) {
+        return accountView(author);
+    }
+
+    /** Creates or replaces the account under the author's users row lock, the lock payout recording takes too. */
+    @Transactional
+    public PayoutResponse.AccountView savePayoutAccount(UUID author, Map<String, Object> body) {
+        var input = payoutAccountInput(body);
+        users.findByIdForAuthentication(author).orElseThrow(() -> new CustomException(ErrorCode.INVALID_ACCESS_TOKEN));
+        orders.upsertPayoutAccount(author, input.bankId(), input.accountNo(), input.accountName());
+        return accountView(author);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PayoutResponse> payouts(UUID author, int page, int size) {
+        var result = orders.findPayouts(author, PageRequest.of(page, size));
+        return PageResponse.from(result, result.stream()
+                .map(p -> new PayoutResponse(p.getAmount(), p.getBankReference(), maskAccountNo(p.getAccountNo()), p.getCreatedAt()))
+                .toList());
+    }
+
+    private PayoutResponse.AccountView accountView(UUID author) {
+        var account = orders.findPayoutAccount(author).map(a -> new PayoutResponse.Account(
+                a.getBankId(), bankName(a.getBankId()), a.getAccountNo(), a.getAccountName(), a.getUpdatedAt()));
+        return new PayoutResponse.AccountView(account.orElse(null), BANKS);
+    }
+
+    private static String bankName(String bankId) {
+        return BANKS.stream().filter(b -> b.id().equals(bankId)).map(PayoutResponse.Bank::name).findFirst().orElse(null);
+    }
+
+    /** Exactly bankId, accountNo, accountName as strings; stripped, name upper-cased as banks print it. */
+    static PayoutAccountInput payoutAccountInput(Map<String, Object> body) {
+        if (body == null || body.size() != 3
+                || !(body.get("bankId") instanceof String bank)
+                || !(body.get("accountNo") instanceof String no)
+                || !(body.get("accountName") instanceof String name))
+            throw new CustomException(ErrorCode.PAYOUT_ACCOUNT_INVALID);
+        String bankId = bank.strip();
+        String accountNo = no.strip();
+        String accountName = name.strip().toUpperCase(Locale.ROOT);
+        if (bankName(bankId) == null || !PAYOUT_ACCOUNT_NO.matcher(accountNo).matches()
+                || accountName.isEmpty() || accountName.length() > 100 || accountName.chars().anyMatch(Character::isISOControl))
+            throw new CustomException(ErrorCode.PAYOUT_ACCOUNT_INVALID);
+        return new PayoutAccountInput(bankId, accountNo, accountName);
+    }
+
+    static String maskAccountNo(String accountNo) {
+        return "****" + accountNo.substring(accountNo.length() - 4);
     }
 
     // ------------------------------------------------------------------ helpers
