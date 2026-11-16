@@ -1,7 +1,7 @@
 import { request } from './api/client'
 import type { ArticleOption, AuthorArticleFilter, HistoryEntry, ImageIssue, ModeratorArticleFilter, Page } from '../types/articles'
 import type { Language } from '../types/preferences'
-import type { AdminOrder, AdminOrderFilter, AuthorCourse, AuthorPayout, AuthorRevenue, PayoutAccountForm, PayoutAccountView, RevenueCourseRow, RevenueFilter, CommissionPolicy, CourseFilter, CourseOrder, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
+import type { AdminOrder, AdminOrderFilter, AdminPayout, AdminRevenue, AuthorBalance, PayoutRecord, AuthorCourse, AuthorPayout, AuthorRevenue, PayoutAccountForm, PayoutAccountView, RevenueCourseRow, RevenueFilter, CommissionPolicy, CourseFilter, CourseOrder, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
 
 const base = '/api/v1/author/courses'
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
@@ -229,6 +229,13 @@ export const revenueByCourse = (page: number, filter: RevenueFilter = {}) => req
 export const payoutAccount = {
   get: () => request<PayoutAccountView>('/api/v1/author/payout-account'),
   save: (form: PayoutAccountForm) => request<PayoutAccountView>('/api/v1/author/payout-account', json('PUT', form)),
+}
+export const adminRevenue = (page: number, filter: { from?: string; to?: string } = {}) => request<AdminRevenue>(`/api/v1/admin/revenue?${query({ ...filter, page, size: REVENUE_PAGE_SIZE })}`)
+export const adminPayouts = {
+  authors: (page: number, owedOnly: boolean) => request<Page<AuthorBalance>>(`/api/v1/admin/payouts/authors?${query({ owedOnly, page, size: REVENUE_PAGE_SIZE })}`),
+  list: (page: number, authorId?: string) => request<Page<AdminPayout>>(`/api/v1/admin/payouts?${query({ authorId, page, size: REVENUE_PAGE_SIZE })}`),
+  /** Account fields are where the admin actually transferred (the Sheet's account); the server keeps them as the snapshot. */
+  record: (body: PayoutRecord) => request<AdminPayout>('/api/v1/admin/payouts', json('POST', body)),
 }
 export const payouts = (page: number) => request<Page<AuthorPayout>>(`/api/v1/author/payouts?${query({ page, size: REVENUE_PAGE_SIZE })}`)
 

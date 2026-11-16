@@ -2,8 +2,8 @@
 
 ## Bắt đầu từ đây (cập nhật 2026-11-16)
 
-- **Task tiếp:** Task 2b (admin doanh thu + chi trả tác giả; wireframe mục 3–4 đã duyệt) · Giao diện: Có
-- Task 1a, 1b, 1c, 1d, 2a đã nhận (2026-11-16; 2a: Codex review vòng 1 sửa xong, kiểm mắt với backend thật đạt); 1b chưa có Codex review (lệnh shell bị chặn tạm thời, người dùng cho commit).
+- **Task tiếp:** Task 2c (tác giả xem học viên của khóa) · Giao diện: Có; wireframe mục 5 coi là đã duyệt khi người dùng bảo “làm task 2c” · Giao diện: Có
+- Task 1a, 1b, 1c, 1d, 2a, 2b đã nhận (2026-11-16; 2a: Codex review vòng 1 sửa xong, kiểm mắt với backend thật đạt); 1b chưa có Codex review (lệnh shell bị chặn tạm thời, người dùng cho commit).
 - Wireframe coi là đã duyệt khi người dùng bảo “làm task 2a” (2026-11-16). Sau 2a: 2b → 2c.
 - Sau module này: module [`payos-checkout`](payos-checkout.md) (spec chốt 2026-11-16, thay Task 1e của `course-payment`). Repo chưa có cấu hình payOS/ngrok (kiểm 2026-11-16).
 - Bẫy kế thừa: `TRUNCATE users CASCADE` trong test xóa luôn `commission_policies` và hai bảng mới; test cần policy phải tự `INSERT ... (rate_bps) VALUES (2000)`.
@@ -34,6 +34,25 @@
 - Chưa kiểm: frontend chưa dùng trường mới (Task 2a).
 
 ## Nhật ký phiên
+### 2026-11-16 — Task 2b đã nhận
+- Người dùng nhận Task 2b (2026-11-16); commit cục bộ trên `feature/author-payout`.
+
+### 2026-11-16 — Task 2b kiểm mắt với backend thật
+- Playwright MCP + Vite 3000 + backend IntelliJ (đã đặt `VIETQR_*`). Dữ liệu dev tạo thêm: khóa trả phí 350.000 `a1cdd5a1…` của `bao.author` (đã công khai), learner `learner.kiemmat@techverse.test` (mật khẩu `Kiemmat@12345`), đơn `TV000000000001` đã xác nhận qua UI, khoản chi 280.000 mã `FT-CHI-001` (đã ghi qua Sheet).
+- Đạt: `/admin/revenue` số khớp (1 đơn, 350.000/70.000/280.000, ledger 280.000 còn nợ); `/admin/payouts` + Sheet 480px dark: QR thật tới tài khoản tác giả, số tiền cố định, ghi chi xong dòng biến mất, lịch sử hiện “Ghi bởi: TechVerse Admin”; light desktop và mobile 390 không cuộn ngang, không chữ tràn.
+- **Chưa kiểm:** cảm ứng `pointer: coarse` (trình duyệt báo coarse=false, vùng chạm 44px chưa đo), Calendar mở thật, nhánh lỗi 409/QR lỗi (chỉ có unit test), Sheet mobile toàn màn hình.
+
+### 2026-11-16 — Task 2b Codex vòng 2
+- Vòng 2: 1 phát hiện cao — “Số còn nợ hiện tại” có thể sai khi đang tải/lỗi/tác giả sang trang khác. Sửa: chỉ in số khi đã tải xong và tìm thấy tác giả, ngược lại hiện “Số còn nợ đã thay đổi…”; thêm ca test. Revenue + Payouts + courseI18n = 103 đạt, build đạt. Sau vòng 2 không chạy thêm. **Chưa kiểm:** kiểm mắt dark/light × desktop/mobile.
+
+### 2026-11-16 — Task 2b Codex vòng 1 + sửa
+- Vòng 1: 1 P1 + 3 P2, đều đúng. Sửa: Sheet giữ snapshot lúc mở, sau `PAYOUT_EXCEEDS_BALANCE` khóa nút ghi và hiện “Số còn nợ hiện tại” (lệch spec “tải lại số trong Sheet”: tránh ghi sổ sai số/tài khoản đã chuyển); doanh thu Admin thay skeleton khi đang tải bộ lọc mới; trang công nợ rỗng ở trang >0 tự về trang 1. Chạy lại Revenue + Payouts + courseI18n + App.courses = 108 đạt, build đạt.
+
+### 2026-11-16 — Task 2b code xong (chưa review, chưa kiểm mắt)
+- Mới: `Admin/Revenue/AdminRevenuePage`, `Admin/Payouts/AdminPayoutsPage` (+ test), route `/admin/revenue`, `/admin/payouts`, 2 mục sidebar Thanh toán; service `adminRevenue`/`adminPayouts`, types, 4 mã lỗi (`PAYOUT_INVALID`, `PAYOUT_REFERENCE_CONFLICT`, `PAYOUT_EXCEEDS_BALANCE`, `USER_NOT_FOUND`) + copy vi/en. Dùng lại `useLoad`/`DateField`/`RetryAlert` bằng cách `export` từ `AuthorRevenuePage`.
+- Chạy: Revenue + Payouts + App.courses + Sidebar + StaffPreferences + courseI18n + courseService + Author/Revenue = 8 file, 190 đạt; `npm run build` đạt. Lỗi có sẵn: StaffPreferences có Unhandled Rejection `reading 'content'` (có cả trước khi sửa).
+- Lệch khác spec: nút “Chi trả” ẩn khi còn nợ = 0; Sheet chỉ hiện trang 1 lịch sử chi của tác giả; `accountChanged` hiện Alert vàng ở trang sau khi Sheet đóng. Chưa kiểm: kiểm mắt dark/light × desktop/mobile, Codex review.
+
 ### 2026-11-16 — Task 2a đã nhận
 - Người dùng nhận Task 2a (2026-11-16); commit cục bộ trên `feature/author-payout`.
 

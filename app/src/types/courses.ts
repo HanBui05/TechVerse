@@ -91,4 +91,8 @@ export type PayoutAccountForm = { bankId: string; accountNo: string; accountName
 export type PayoutAccount = PayoutAccountForm & { bankName: string; updatedAt: string }
 export type PayoutAccountView = { account: PayoutAccount | null; banks: { id: string; name: string }[] }
 /** `accountNo` arrives masked to its last 4 characters. */
+export type AdminRevenue = { totals: { itemCount: number; grossAmount: number; platformAmount: number; authorAmount: number }; ledger: { earnedAmount: number; paidOutAmount: number; owedAmount: number }; courses: import('./articles').Page<RevenueCourseRow & { authorId: string; authorName: string }> }
+export type AuthorBalance = { authorId: string; fullName: string; email: string; earnedAmount: number; paidOutAmount: number; balanceAmount: number; account: PayoutAccount | null; vietQr: VietQr | null }
+export type AdminPayout = { id: string; authorId: string; authorName: string; amount: number; bankReference: string; bankId: string; bankName: string; accountNo: string; accountName: string; recordedById: string; recordedByName: string; createdAt: string; accountChanged: boolean | null }
+export type PayoutRecord = { authorId: string; amount: number; bankReference: string; bankId: string; accountNo: string; accountName: string }
 export type AuthorPayout = { amount: number; bankReference: string; accountNo: string; createdAt: string }

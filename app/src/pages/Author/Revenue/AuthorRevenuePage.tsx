@@ -23,18 +23,18 @@ import type { PayoutAccountView } from '../../../types/courses'
 import type { Language } from '../../../types/preferences'
 
 type Tab = 'sales' | 'courses' | 'payouts'
-type T = ReturnType<typeof payAdminText>
+export type T = ReturnType<typeof payAdminText>
 const TABS: Tab[] = ['sales', 'courses', 'payouts']
 const TAB_KEY = { sales: 'tabSales', courses: 'tabCourses', payouts: 'tabPayouts' } as const
-const fieldLabel = 'text-[11px] font-semibold uppercase tracking-[.05em] text-muted-foreground'
-const alertBox = 'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-tone-rose-bg px-4 py-3 text-sm text-danger'
-const card = 'flex flex-col gap-1 rounded-2xl border border-border bg-card p-4 shadow-sm'
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
+export const fieldLabel = 'text-[11px] font-semibold uppercase tracking-[.05em] text-muted-foreground'
+export const alertBox = 'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-tone-rose-bg px-4 py-3 text-sm text-danger'
+export const card = 'flex flex-col gap-1 rounded-2xl border border-border bg-card p-4 shadow-sm'
+export const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
 const isoDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 const shown = (iso: string) => iso.split('-').reverse().join('/')
 
 /** One request per key; a newer key or a retry wins, a stale answer is dropped. `run = null` means nothing to load. */
-function useLoad<T>(run: (() => Promise<T>) | null, key: string, language: Language, fallback: string) {
+export function useLoad<T>(run: (() => Promise<T>) | null, key: string, language: Language, fallback: string) {
   const [state, setState] = useState<{ data: T | null; loading: boolean; error: string }>({ data: null, loading: run !== null, error: '' })
   const latest = useRef(0)
   const load = useCallback(async () => {
@@ -52,12 +52,12 @@ function useLoad<T>(run: (() => Promise<T>) | null, key: string, language: Langu
   return { ...state, reload: load }
 }
 
-function RetryAlert({ message, t, onRetry }: { message: string; t: T; onRetry: () => void }) {
+export function RetryAlert({ message, t, onRetry }: { message: string; t: T; onRetry: () => void }) {
   return <div role="alert" className={alertBox}><span>{message}</span>
     <Button type="button" variant="outline" size="sm" className={touch} onClick={onRetry}><RefreshCw aria-hidden />{t('retry')}</Button></div>
 }
 
-function DateField({ label, value, onChange, language, t, invalid }: { label: string; value: string; onChange: (iso: string) => void; language: Language; t: T; invalid?: boolean }) {
+export function DateField({ label, value, onChange, language, t, invalid }: { label: string; value: string; onChange: (iso: string) => void; language: Language; t: T; invalid?: boolean }) {
   const [open, setOpen] = useState(false)
   const [year, month, day] = value ? value.split('-').map(Number) : []
   const selected = value ? new Date(year, month - 1, day) : undefined
