@@ -84,4 +84,11 @@ export type AdminOrder = {
 export type AdminOrderFilter = { status?: OrderStatus; code?: string; transferReported?: boolean; needsReconciliation?: boolean; page?: number }
 export type CommissionPolicy = { id: string; rateBps: number; effectiveFrom: string }
 export type RevenueItem = { courseId: string; courseTitle: string; paidAt: string; unitPriceAmount: number; commissionRateBps: number; commissionAmount: number; authorNetAmount: number }
-export type AuthorRevenue = { totals: { itemCount: number; grossAmount: number; platformAmount: number; authorAmount: number }; items: import('./articles').Page<RevenueItem> }
+export type AuthorRevenue = { totals: { itemCount: number; grossAmount: number; platformAmount: number; authorAmount: number; paidOutAmount: number; balanceAmount: number }; items: import('./articles').Page<RevenueItem> }
+export type RevenueFilter = { from?: string; to?: string; courseId?: string }
+export type RevenueCourseRow = { courseId: string; courseTitle: string; itemCount: number; grossAmount: number; platformAmount: number; authorAmount: number }
+export type PayoutAccountForm = { bankId: string; accountNo: string; accountName: string }
+export type PayoutAccount = PayoutAccountForm & { bankName: string; updatedAt: string }
+export type PayoutAccountView = { account: PayoutAccount | null; banks: { id: string; name: string }[] }
+/** `accountNo` arrives masked to its last 4 characters. */
+export type AuthorPayout = { amount: number; bankReference: string; accountNo: string; createdAt: string }

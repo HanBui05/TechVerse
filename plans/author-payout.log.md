@@ -2,9 +2,9 @@
 
 ## Bắt đầu từ đây (cập nhật 2026-11-16)
 
-- **Task tiếp:** Cổng wireframe (viết `plans/author-payout.wireframe.md`, chờ duyệt) · Giao diện: Có (1c, 1d đã nhận 2026-11-16, Codex review 2 vòng đạt)
-- Task 1a, 1b, 1c, 1d đã nhận (2026-11-16); 1b chưa có Codex review (lệnh shell bị chặn tạm thời, người dùng cho commit).
-- Sau 1d: cổng wireframe (người dùng duyệt) → 2a → 2b → 2c.
+- **Task tiếp:** Task 2b (admin doanh thu + chi trả tác giả; wireframe mục 3–4 đã duyệt) · Giao diện: Có
+- Task 1a, 1b, 1c, 1d, 2a đã nhận (2026-11-16; 2a: Codex review vòng 1 sửa xong, kiểm mắt với backend thật đạt); 1b chưa có Codex review (lệnh shell bị chặn tạm thời, người dùng cho commit).
+- Wireframe coi là đã duyệt khi người dùng bảo “làm task 2a” (2026-11-16). Sau 2a: 2b → 2c.
 - Sau module này: module [`payos-checkout`](payos-checkout.md) (spec chốt 2026-11-16, thay Task 1e của `course-payment`). Repo chưa có cấu hình payOS/ngrok (kiểm 2026-11-16).
 - Bẫy kế thừa: `TRUNCATE users CASCADE` trong test xóa luôn `commission_policies` và hai bảng mới; test cần policy phải tự `INSERT ... (rate_bps) VALUES (2000)`.
 
@@ -34,6 +34,18 @@
 - Chưa kiểm: frontend chưa dùng trường mới (Task 2a).
 
 ## Nhật ký phiên
+### 2026-11-16 — Task 2a đã nhận
+- Người dùng nhận Task 2a (2026-11-16); commit cục bộ trên `feature/author-payout`.
+
+### 2026-11-16 — Task 2a review + kiểm mắt
+- Codex vòng 1: một P2 đúng — tổng/hàng cũ còn hiện khi đang tải bộ lọc mới. Sửa: `rev.loading`/`byCourse.loading` thay skeleton cho ô tổng và danh sách; thêm ca test. Chạy lại 4 file test = 138 đạt, build đạt. Không chạy vòng 2 (chỉ 1 sửa nhỏ).
+- Kiểm mắt Playwright MCP trên Vite 3000 với **API giả** (backend 8080 không chạy, không tự khởi động): dark desktop 1440 (3 tab, Sheet 480px, lưu xong thấy thông báo), light desktop, mobile 390 (không cuộn ngang, thẻ theo khóa). Sau đó kiểm lại với **backend thật** (IntelliJ, khởi động 17:10; đăng nhập `bao.author@techverse.test` bằng mật khẩu mặc định dev của `application-dev.yaml`, `.env` không đặt): 21 ngân hàng trong form, lưu tài khoản thành công (server viết hoa tên), tab Chi trả hiện tài khoản + “Chưa có khoản chi nào.”, tab Theo khóa/Lượt bán rỗng, lọc ngày rỗng và `from > to` đúng copy, không có response ≥ 400, không lỗi console. Để lại một tài khoản nhận tiền của `bao.author` trong DB dev. **Chưa kiểm:** cảm ứng `pointer: coarse` (vùng chạm 44px), Calendar mở thật, dữ liệu có đơn PAID (DB dev chưa có doanh thu).
+
+### 2026-11-16 — Task 2a code
+- `/author/revenue`: ba tab (URL `tab=`), bộ lọc `from/to/courseId/course` trên URL (`Calendar`+`Popover`), 6 ô tổng, khối tài khoản + Sheet form, lịch sử chi. Thêm `revenueByCourse`, `payoutAccount`, `payouts` ở `courseService`; types, copy vi/en, mã lỗi `PAYOUT_ACCOUNT_INVALID`, `REVENUE_FILTER_INVALID`.
+- **Lệch khác spec:** tên khóa ở nhãn “Đang lọc” lấy từ tham số URL `course` (backend chỉ nhận `courseId`); đổi sang tab Theo khóa/Chi trả thì xóa lọc khóa (và ngày ở tab Chi trả); `AuthorRevenue.test.tsx` thay ca cũ “không có chữ chi trả” vì giờ có tab Chi trả.
+- Test: `AuthorRevenue.test.tsx` (8 ca), `courseService.test.ts`, `courseI18n.test.ts`, `App.courses.test.tsx` = 137 đạt; `npm run build` đạt. TDD đỏ 9 ca đúng lý do (thiếu tính năng). Chưa kiểm mắt, chưa có Codex review.
+
 ### 2026-11-16 — Codex review vòng 1 (1c + 1d)
 - P1 đúng: `GET /author/revenue` có lọc làm `balanceAmount` = earned đã lọc − paidOut toàn thời gian (sai, có thể âm). Sửa `OrderService.revenue`: khi có lọc, `paidOut`/`balance` lấy từ một câu `revenueTotals` không lọc. P2 đúng (postgres:16-alpine locale C, `lower()` không hạ chữ hoa có dấu): đổi sang `lower(... collate "und-x-icu")`, test `q=đặng` khớp `ĐẶNG Văn`.
 - Test lại: `CourseStudentsIntegrationTest`, `AuthorPayoutIntegrationTest`, `OrderServiceTest`, `OrderIntegrationTest` đạt (BUILD SUCCESSFUL); ca balance có lọc đỏ trước khi sửa.

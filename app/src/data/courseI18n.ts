@@ -19,6 +19,7 @@ export const COURSE_ERROR_CODES = [
   'COURSE_PRICE_INVALID', 'COURSE_PRICE_TYPE_LOCKED', 'COURSE_PURCHASE_REQUIRED', 'ORDER_INVALID', 'ORDER_COURSE_UNAVAILABLE', 'ORDER_ALREADY_ENROLLED', 'PAYMENT_UNAVAILABLE',
   'ORDER_RATE_LIMITED', 'ORDER_NOT_FOUND', 'ORDER_TRANSFER_REPORT_NOT_ALLOWED', 'AUTH_ACCESS_TOKEN_REQUIRED', 'AUTH_INVALID_ACCESS_TOKEN',
   'PAYMENT_INVALID', 'PAYMENT_AMOUNT_MISMATCH', 'PAYMENT_STATE_INVALID', 'PAYMENT_REFERENCE_CONFLICT', 'PAYMENT_RECONCILIATION_NOT_REQUIRED', 'PAYMENT_RECONCILIATION_STALE', 'COMMISSION_RATE_INVALID',
+  'PAYOUT_ACCOUNT_INVALID', 'REVENUE_FILTER_INVALID',
 ] as const
 
 const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
@@ -76,6 +77,8 @@ const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
   PAYMENT_RECONCILIATION_NOT_REQUIRED: { vi: 'Không có khoản cần đối chiếu.', en: 'Nothing needs reconciling.' },
   PAYMENT_RECONCILIATION_STALE: { vi: 'Có khoản thanh toán mới; hãy xem lại danh sách.', en: 'A new payment arrived; review the list again.' },
   COMMISSION_RATE_INVALID: { vi: 'Tỷ lệ không hợp lệ.', en: 'The rate is invalid.' },
+  PAYOUT_ACCOUNT_INVALID: { vi: 'Thông tin tài khoản không hợp lệ.', en: 'Bank account details are invalid.' },
+  REVENUE_FILTER_INVALID: { vi: 'Khoảng ngày không hợp lệ.', en: 'The date range is invalid.' },
   AUTH_ACCESS_TOKEN_REQUIRED: { vi: 'Hãy đăng nhập để tiếp tục.', en: 'Sign in to continue.' },
   AUTH_INVALID_ACCESS_TOKEN: { vi: 'Hãy đăng nhập để tiếp tục.', en: 'Sign in to continue.' },
 }
@@ -333,6 +336,12 @@ const payVi = {
   revenueTitle: 'Doanh thu tác giả', authorSpace: 'Không gian tác giả', orders: 'Số đơn', gross: 'Tổng bán', platformShare: 'Nền tảng giữ', yourShare: 'Bạn nhận',
   snapshotNote: 'Số liệu theo tỷ lệ tại thời điểm mỗi đơn được tạo.', itemLine: 'Giá {price} · Nền tảng giữ {rate}% ({platform}) · Bạn nhận {author}',
   revenueEmpty: 'Chưa có doanh thu', revenueEmptyText: 'Doanh thu hiện khi có người học thanh toán khóa của bạn.', revenueLoading: 'Đang tải doanh thu...', revenueLoadError: 'Không tải được doanh thu.',
+  paidOutTile: 'Đã nhận', pendingTile: 'Chờ chi', filteredHeading: 'Theo bộ lọc', allTimeHeading: 'Toàn thời gian', allTimeNote: 'Tính trên toàn bộ thời gian, không theo bộ lọc.',
+  tabSales: 'Lượt bán', tabCourses: 'Theo khóa', tabPayouts: 'Chi trả', tabs: 'Nhóm doanh thu', fromDate: 'Từ ngày', toDate: 'Đến ngày', pickDate: 'Chọn ngày', filtering: 'Đang lọc: {course}', removeCourse: 'Gỡ bộ lọc khóa',
+  filterEmpty: 'Không có lượt bán nào trong khoảng đã chọn.', rangeInvalid: 'Khoảng ngày không hợp lệ.', courseLine: '{n} lượt bán · Tổng thu {gross} · Hoa hồng {platform} · Bạn nhận {author}',
+  noAccount: 'Hãy khai tài khoản ngân hàng để nhận doanh thu.', addAccount: 'Khai tài khoản', editAccount: 'Sửa', accountTitle: 'Tài khoản nhận tiền', bank: 'Ngân hàng', pickBank: 'Chọn ngân hàng', accountNo: 'Số tài khoản', accountName: 'Chủ tài khoản',
+  payoutNote: 'Nền tảng chuyển khoản thủ công; thời gian nhận tùy đợt chi.', payoutHistory: 'Lịch sử chi trả', payoutEmpty: 'Chưa có khoản chi nào.', accountSaved: 'Đã lưu tài khoản nhận tiền.', saveAccount: 'Lưu', saving: 'Đang lưu...',
+  accountLoadError: 'Không tải được tài khoản nhận tiền.', payoutsLoadError: 'Không tải được lịch sử chi trả.', payoutLine: 'Mã sao kê {ref} · TK {account}',
 }
 type PayCopy = typeof payVi
 const payEn: PayCopy = {
@@ -356,6 +365,12 @@ const payEn: PayCopy = {
   revenueTitle: 'Author revenue', authorSpace: 'Author space', orders: 'Orders', gross: 'Gross sales', platformShare: 'Platform share', yourShare: 'Your share',
   snapshotNote: 'Figures use the rate at the time each order was created.', itemLine: 'Price {price} · Platform share {rate}% ({platform}) · Your share {author}',
   revenueEmpty: 'No revenue yet', revenueEmptyText: 'Revenue appears when learners pay for your courses.', revenueLoading: 'Loading revenue...', revenueLoadError: 'Unable to load revenue.',
+  paidOutTile: 'Paid out', pendingTile: 'Pending payout', filteredHeading: 'Filtered', allTimeHeading: 'All time', allTimeNote: 'All time, not affected by filters.',
+  tabSales: 'Sales', tabCourses: 'By course', tabPayouts: 'Payouts', tabs: 'Revenue sections', fromDate: 'From', toDate: 'To', pickDate: 'Pick a date', filtering: 'Filtering: {course}', removeCourse: 'Remove course filter',
+  filterEmpty: 'No sales in the selected range.', rangeInvalid: 'The date range is invalid.', courseLine: '{n} sales · Gross {gross} · Platform {platform} · Your share {author}',
+  noAccount: 'Add a bank account to receive your revenue.', addAccount: 'Add account', editAccount: 'Edit', accountTitle: 'Payout account', bank: 'Bank', pickBank: 'Choose a bank', accountNo: 'Account number', accountName: 'Account holder',
+  payoutNote: 'Payouts are transferred manually; timing depends on the payout run.', payoutHistory: 'Payout history', payoutEmpty: 'No payouts yet.', accountSaved: 'Payout account saved.', saveAccount: 'Save', saving: 'Saving...',
+  accountLoadError: 'Unable to load the payout account.', payoutsLoadError: 'Unable to load payout history.', payoutLine: 'Reference {ref} · Account {account}',
 }
 export function payAdminText(language: Language) {
   const copy = language === 'vi' ? payVi : payEn

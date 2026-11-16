@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setAccessToken } from './api/client'
-import { authorCourses, authorShare, changedLessonFields, courseFilter, courseSearch, embedUrl, flatLessons, lessonAccess, publicCourses, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, orders, adminOrders, commission, revenue, rateBps, amountText, priceValid, qrSrc, videoLink, visibleChanges, vnd, youtubeId } from './courseService'
+import { authorCourses, authorShare, changedLessonFields, courseFilter, courseSearch, embedUrl, flatLessons, lessonAccess, publicCourses, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, orders, adminOrders, commission, revenue, revenueByCourse, payoutAccount, payouts, rateBps, amountText, priceValid, qrSrc, videoLink, visibleChanges, vnd, youtubeId } from './courseService'
 import type { AuthorCourse, ChangeChapter, Lesson, ModeratorCourseDetail } from '../types/courses'
 
 const fetchMock = vi.fn<typeof fetch>()
@@ -265,6 +265,17 @@ describe('admin payment services (Task 2c)', () => {
     expect(call(1).url.pathname).toBe('/api/v1/admin/orders/TV000000000123/confirm'); expect(call(1).init.method).toBe('POST'); expect(JSON.parse(String(call(1).init.body))).toEqual({ amount: 350000, bankReference: 'FT123' })
     await adminOrders.reconcile('TV000000000123', 2)
     expect(call(2).url.pathname).toBe('/api/v1/admin/orders/TV000000000123/reconcile'); expect(JSON.parse(String(call(2).init.body))).toEqual({ paymentCount: 2 })
+  })
+
+  it('sends revenue filters, the by-course list, payout account and payout history on the author paths', async () => {
+    fetchMock.mockResolvedValue(ok({}))
+    await revenue(2, { from: '2026-11-01', to: '', courseId: 'c1' }); await revenueByCourse(0, { from: '', to: '2026-11-16' })
+    await payoutAccount.get(); await payoutAccount.save({ bankId: '970436', accountNo: '0123456789', accountName: 'NGUYEN VAN A' }); await payouts(1)
+    expect(Object.fromEntries(call(0).url.searchParams)).toEqual({ page: '2', size: '10', from: '2026-11-01', courseId: 'c1' })
+    expect(call(1).url.pathname).toBe('/api/v1/author/revenue/courses'); expect(Object.fromEntries(call(1).url.searchParams)).toEqual({ page: '0', size: '10', to: '2026-11-16' })
+    expect(call(2).url.pathname).toBe('/api/v1/author/payout-account')
+    expect(call(3).init.method).toBe('PUT'); expect(JSON.parse(String(call(3).init.body))).toEqual({ bankId: '970436', accountNo: '0123456789', accountName: 'NGUYEN VAN A' })
+    expect(call(4).url.pathname).toBe('/api/v1/author/payouts'); expect(call(4).url.searchParams.get('page')).toBe('1')
   })
 
   it('reads and changes the commission policy with an integer rateBps only; revenue is paged', async () => {

@@ -1,7 +1,7 @@
 import { request } from './api/client'
 import type { ArticleOption, AuthorArticleFilter, HistoryEntry, ImageIssue, ModeratorArticleFilter, Page } from '../types/articles'
 import type { Language } from '../types/preferences'
-import type { AdminOrder, AdminOrderFilter, AuthorCourse, AuthorRevenue, CommissionPolicy, CourseFilter, CourseOrder, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
+import type { AdminOrder, AdminOrderFilter, AuthorCourse, AuthorPayout, AuthorRevenue, PayoutAccountForm, PayoutAccountView, RevenueCourseRow, RevenueFilter, CommissionPolicy, CourseFilter, CourseOrder, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
 
 const base = '/api/v1/author/courses'
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
@@ -224,7 +224,13 @@ export const commission = {
   change: (rateBps: number) => request<CommissionPolicy>('/api/v1/admin/commission-policy', json('PUT', { rateBps })),
 }
 export const REVENUE_PAGE_SIZE = 10
-export const revenue = (page: number) => request<AuthorRevenue>(`/api/v1/author/revenue?${query({ page, size: REVENUE_PAGE_SIZE })}`)
+export const revenue = (page: number, filter: RevenueFilter = {}) => request<AuthorRevenue>(`/api/v1/author/revenue?${query({ ...filter, page, size: REVENUE_PAGE_SIZE })}`)
+export const revenueByCourse = (page: number, filter: RevenueFilter = {}) => request<Page<RevenueCourseRow>>(`/api/v1/author/revenue/courses?${query({ from: filter.from, to: filter.to, page, size: REVENUE_PAGE_SIZE })}`)
+export const payoutAccount = {
+  get: () => request<PayoutAccountView>('/api/v1/author/payout-account'),
+  save: (form: PayoutAccountForm) => request<PayoutAccountView>('/api/v1/author/payout-account', json('PUT', form)),
+}
+export const payouts = (page: number) => request<Page<AuthorPayout>>(`/api/v1/author/payouts?${query({ page, size: REVENUE_PAGE_SIZE })}`)
 
 /** Percent text → whole basis points: 0–100 with at most 2 decimals (comma allowed), else null; the server stays the judge. */
 export function rateBps(text: string) {
