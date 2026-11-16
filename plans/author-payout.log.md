@@ -2,8 +2,8 @@
 
 ## Bắt đầu từ đây (cập nhật 2026-11-16)
 
-- **Task tiếp:** Task 2c (tác giả xem học viên của khóa) · Giao diện: Có; wireframe mục 5 coi là đã duyệt khi người dùng bảo “làm task 2c” · Giao diện: Có
-- Task 1a, 1b, 1c, 1d, 2a, 2b đã nhận (2026-11-16; 2a: Codex review vòng 1 sửa xong, kiểm mắt với backend thật đạt); 1b chưa có Codex review (lệnh shell bị chặn tạm thời, người dùng cho commit).
+- **Task tiếp:** Cuối module: nhờ Codex đồng bộ spec `author-payout.md` theo log (skill `codex-workflow` mục 3), rồi bắt đầu module `payos-checkout` · Giao diện: Không
+- Task 1a, 1b, 1c, 1d, 2a, 2b, 2c đã nhận (2026-11-16; 2a: Codex review vòng 1 sửa xong, kiểm mắt với backend thật đạt); 1b chưa có Codex review (lệnh shell bị chặn tạm thời, người dùng cho commit).
 - Wireframe coi là đã duyệt khi người dùng bảo “làm task 2a” (2026-11-16). Sau 2a: 2b → 2c.
 - Sau module này: module [`payos-checkout`](payos-checkout.md) (spec chốt 2026-11-16, thay Task 1e của `course-payment`). Repo chưa có cấu hình payOS/ngrok (kiểm 2026-11-16).
 - Bẫy kế thừa: `TRUNCATE users CASCADE` trong test xóa luôn `commission_policies` và hai bảng mới; test cần policy phải tự `INSERT ... (rate_bps) VALUES (2000)`.
@@ -34,6 +34,18 @@
 - Chưa kiểm: frontend chưa dùng trường mới (Task 2a).
 
 ## Nhật ký phiên
+### 2026-11-16 — Task 2c đã nhận
+- Người dùng nhận Task 2c (2026-11-16); commit cục bộ trên `feature/author-payout`. Mọi task của module đã nhận.
+
+### 2026-11-16 — Task 2c code xong
+- Mới: `CourseStudentsPage.tsx` (route `/author/courses/:id/students`, AuthorRoute), `CourseStudents.test.tsx` (4 ca); sửa `AuthorCoursesPage` (link “{n} học viên”), `CourseEditorPage` (link “Học viên”), `courseService.authorCourses.students`, types, i18n (+ `COURSE_STUDENT_FILTER_INVALID`), `App.tsx`.
+- Lọc `q`/`progress`/`page` nằm trên URL; `q` debounce rồi mới ghi URL và về page 0. Tiêu đề khóa lấy từ `authorCourses.detail`.
+- Kiểm: vitest 6 file (CourseStudents, AuthorCoursesPage, CourseEditorPage, App.courses, courseI18n, courseService) 170/170; `npm run build` đạt.
+- Codex vòng 1 (3 góp ý P2, đều đúng, đã sửa): tìm “0” bị bỏ khỏi URL (chỉ `page=0` mới xóa); tải lỗi vẫn hiện danh sách cũ (`setData(null)`); ô tìm không theo URL khi back/forward (đồng bộ `keyword` theo `urlQ`). Thêm 2 ca test; `CourseStudents.test.tsx` 6/6, 3 file còn lại + `App.courses` đạt, build đạt.
+- Codex vòng 2: approve, không phát hiện.
+- Kiểm mắt (Playwright MCP, Vite 3000 tự bật rồi tắt, backend IntelliJ 8080 chạy code mới, `bao.author`, khóa “Java cơ bản cho người mới (kiểm mắt)” 2 học viên): light + dark desktop đạt (màu token, thanh tiến độ rõ ở dark, không cuộn ngang); mobile 390 không cuộn ngang, chữ không tràn, ba ô xếp dọc; sửa select tiến độ về full-width trên mobile (`max-md` ở container, không sửa primitive); `q=lan` lọc đúng và ba ô tổng giữ nguyên; lọc rỗng và 404 (link “Về danh sách”) đúng; `studentCount` thật khớp (1 và 2).
+- **Chưa kiểm:** cảm ứng `pointer: coarse` (Playwright báo coarse=false, vùng chạm 44px chưa đo).
+
 ### 2026-11-16 — Task 2b đã nhận
 - Người dùng nhận Task 2b (2026-11-16); commit cục bộ trên `feature/author-payout`.
 
