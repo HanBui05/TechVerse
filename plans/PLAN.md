@@ -2,7 +2,7 @@
 
 Mỗi module có đúng một spec `plans/<module>.md` và một nhật ký `plans/<module>.log.md`. [`PROJECT_CONTEXT.md`](../docs/PROJECT_CONTEXT.md): Codex đọc mục 1–3, 5 trước mọi task; Claude chỉ đọc khi task đụng tới. Lý do các quyết định cũ: [`DECISIONS.md`](DECISIONS.md).
 
-Module đang làm: [course-payment](course-payment.md)
+Module đang làm: [author-payout](author-payout.md)
 
 <!-- Hook SessionStart của Claude đọc đúng dòng trên (dạng `[slug](slug.md)`, “—” nếu không có) để tự nạp mục “Bắt đầu từ đây” của log. Đổi module thì sửa dòng này. -->
 
@@ -21,6 +21,7 @@ Module đang làm: [course-payment](course-payment.md)
 | Sidebar + login redirect | — (làn nhẹ, 2026-11-02) | Chờ người dùng nhận kết quả | Claude | Xong; chờ người dùng nhận. | — |
 | Course free | [spec](course-free.md) | Đang thực hiện | Claude | Mọi task đã nhận (2026-11-10), spec đã đồng bộ (2026-11-14); PR #4 đang mở, CI backend fail (kiểm 2026-11-14), chưa merge; xem log. | [log](course-free.log.md) |
 | Course payment | [spec](course-payment.md) | Hoàn tất | Claude | Task 1a–1d, 2a–2c đã nhận; spec đồng bộ 2026-11-16. Các mục chưa kiểm và lỗi test có sẵn: xem spec và log. | [log](course-payment.log.md) |
+| Author payout | [spec](author-payout.md) | Đã chốt | Claude | Spec chốt 2026-11-16 (chi trả tác giả, doanh thu chi tiết, học viên của khóa; 1a–1b rủi ro cao; Codex phản biện một vòng); bắt đầu Task 1a; sau module này làm Task 1e (PayOS) của `course-payment`, đã mở lại 2026-11-16. | [log](author-payout.log.md) |
 | Course AI tutor | [spec](course-ai-tutor.md) | Đã chốt | Claude | Spec chốt 2026-11-14 (chưa qua Codex phản biện); Task 1 làm sau Task 1a của `course-payment`. | — |
 | Exercise practice | [spec](exercise-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `course-payment` + `course-ai-tutor`, bắt đầu Task 1a. | — |
 | Interview practice | [spec](interview-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định, Admin/Moderator không vào trang; Codex phản biện một vòng); làm sau `exercise-practice`, bắt đầu Task 1a. | — |
