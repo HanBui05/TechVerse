@@ -23,7 +23,7 @@ Module đang làm: [course-ai-tutor](course-ai-tutor.md)
 | Course payment | [spec](course-payment.md) | Hoàn tất | Claude | Task 1a–1d, 2a–2c đã nhận; spec đồng bộ 2026-11-16. Các mục chưa kiểm và lỗi test có sẵn: xem spec và log. | [log](course-payment.log.md) |
 | Author payout | [spec](author-payout.md) | Hoàn tất | Claude | Task 1a–1d, 2a–2c đã nhận; spec đồng bộ 2026-11-16. Các mục chưa kiểm và review Task 1b: xem spec và log. | [log](author-payout.log.md) |
 | PayOS checkout | [spec](payos-checkout.md) | Hoàn tất | Claude | Task 1a, 1b và 2 đã nhận; spec đã đồng bộ 2026-11-17. Các mục chưa kiểm: xem spec và log. | [log](payos-checkout.log.md) |
-| Course AI tutor | [spec](course-ai-tutor.md) | Đã chốt | Claude | Task 1 (Backend) đã nhận 2026-11-17; tiếp: wireframe Task 2; xem log. | [log](course-ai-tutor.log.md) |
+| Course AI tutor | [spec](course-ai-tutor.md) | Đã chốt | Claude | Task 1 (Backend) và Task 2 (Giao diện) đã nhận 2026-11-17; tiếp: đồng bộ spec cuối module; xem log. | [log](course-ai-tutor.log.md) |
 | Exercise practice | [spec](exercise-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `course-payment` + `course-ai-tutor`, bắt đầu Task 1a. | — |
 | Interview practice | [spec](interview-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định, Admin/Moderator không vào trang; Codex phản biện một vòng); làm sau `exercise-practice`, bắt đầu Task 1a. | — |
 | Forum & reports | [spec](forum-reports.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (7 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `interview-practice`, bắt đầu Task 1a. | — |

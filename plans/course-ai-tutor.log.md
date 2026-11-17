@@ -4,9 +4,9 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-ai-tutor.m
 
 ## Bắt đầu từ đây (cập nhật 2026-11-17)
 
-- **Task tiếp:** Task 1 đã nhận (2026-11-17). Viết `course-ai-tutor.wireframe.md` cho Task 2 rồi dừng chờ duyệt · Giao diện: Có
+- **Task tiếp:** Task 1 và Task 2 đã nhận (2026-11-17); module xong code, còn đồng bộ spec một lần cuối (skill `codex-workflow` mục 3) · Giao diện: Không
 - Spec chốt lại 2026-11-17 sau phản biện vòng 1 (không chạy vòng 2); lịch sử ở `course-ai-tutor.review.md`.
-- Nhánh: `feature/course-ai-tutor` (tách từ `docs/plan-status` vì spec/log chốt nằm ở đó, chưa vào `main`); Task 1 đã commit cục bộ.
+- Nhánh: `feature/course-ai-tutor` (tách từ `docs/plan-status` vì spec/log chốt nằm ở đó, chưa vào `main`); Task 1, 2 đã commit cục bộ.
 
 ## Quyết định người dùng chưa có trong spec
 
@@ -17,6 +17,17 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-ai-tutor.m
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-17 — Nhận Task 2
+- Người dùng nhận Task 2; commit cục bộ trên `feature/course-ai-tutor`.
+### 2026-11-17 — Task 2 giao diện
+- Người dùng bảo “triển khai task” sau khi có wireframe: coi là duyệt wireframe với 4 mặc định mục 8 (diễn giải của Claude).
+- Code: `LessonTutorSheet.tsx` (`LessonTutor`: nút + sheet), `CourseLessonPage` (gắn, `key={lesson.id}` xóa hội thoại khi đổi bài), `courseService.lessonTutor`, `aiAssistService.streamPost` (tách từ `streamDraft`), `courseI18n` (`tutorText`, `tutorError`), `metadata.contextTruncated`.
+- Test: `vitest run` LessonTutorSheet, CourseLessonPage, courseI18n, courseService, aiAssistService → 188 đạt; `npm run build` đạt. Test service/i18n viết sau code (không thấy đỏ trước).
+- Lệch khác spec: lịch sử gửi cắt mỗi tin AI còn 2.000 ký tự (giới hạn server); lượt lỗi không có phần trả lời không đưa vào lịch sử.
+- Kiểm bằng mắt (Playwright, backend thật, `bao.author` ở bài học thử `Java cơ bản…`): dark desktop (sheet 420px, focus vào ô nhập, stream thật, quota 19/20), light desktop (đo màu token), light mobile 390 (toàn màn hình, không cuộn ngang, quota 18/20). Chưa kiểm: cảm ứng thật (`pointer: coarse` = false, vùng chạm 44px chỉ kiểm bằng class), trạng thái lỗi/hết quota/Dừng trên giao diện thật (đã có test). Chưa chạy review Codex.
+- Review vòng 1 (`review`; lần đầu lỗi 503 hạ tầng, chạy lại được): 3 góp ý P2, đều đúng, đã sửa: lịch sử giữ lượt Dừng/lỗi có phần trả lời; đọc lại quota thêm lần sau 2,5 giây khi ngắt/đứt stream; đổi ngôn ngữ tải ngầm nên không xóa hội thoại. Test lại: 5 file 189 đạt + build đạt. Vòng 2 (`adversarial-review`): 1 phát hiện medium — tải ngầm lỗi vẫn đưa trang sang màn lỗi (mất hội thoại) và `setData` không xóa `failure` cũ. Đúng; đã sửa (tải ngầm lỗi tạm thời thì giữ bài, trừ 403/404; thành công xóa `failure`) + thêm ca test. 2 file Courses 22 đạt + build đạt. Không chạy vòng 3.
+### 2026-11-17 — Wireframe Task 2
+- Viết `plans/course-ai-tutor.wireframe.md` (desktop + mobile; trống, đang trả lời, xong, Dừng, lỗi theo mã có/không có phần đã nhận, hết quota, bài chỉ video, guest). Chỉ tài liệu, chưa code. Chờ duyệt.
 ### 2026-11-17 — Nhận Task 1
 - Người dùng nhận Task 1; commit cục bộ trên `feature/course-ai-tutor`.
 ### 2026-11-17 — Task 1 backend
