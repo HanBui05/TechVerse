@@ -5,7 +5,7 @@
 - **Task tiếp:** cuối module — nhờ Codex đồng bộ spec (skill `codex-workflow` mục 3) · Giao diện: Không
 - Task 1a, 1b đã nhận (2026-11-16), Task 2 đã nhận (2026-11-17); commit cục bộ trên nhánh `feature/payos-checkout` (tách từ `feature/author-payout`).
 - payOS thật đã thử (2026-11-16): webhook + thanh toán 10.000 ₫ → PAID tự động. payOS **từ chối** tạo trùng số đơn: mã `231` “Đơn thanh toán đã tồn tại” (kiểm 2026-11-17, quyết định 5 của spec đạt). Khóa dev `a1cdd5a1…` đã trả giá 350.000.
-- Task 2: kiểm thêm 2026-11-17 đạt (Sheet Admin mobile sáng/tối, khung payOS link thật chưa trả, giao dịch 2 không ngrok → PAID qua đồng bộ). Webhook payOS chưa đăng ký lại (lệnh bị chặn quyền); ngrok đã tắt.
+- Task 2: kiểm thêm 2026-11-17 đạt (Sheet Admin mobile sáng/tối, khung payOS link thật chưa trả, giao dịch 2 không ngrok → PAID qua đồng bộ). Webhook payOS: người dùng xác nhận trên `my.payos.vn` vẫn trỏ `https://mule-outpost-calibrate.ngrok-free.dev/api/v1/payments/payos/webhook` (2026-11-17); ngrok đã tắt.
 
 ## Quyết định người dùng chưa có trong spec
 
