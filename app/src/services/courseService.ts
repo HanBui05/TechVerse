@@ -200,9 +200,13 @@ export const orders = {
   get: (orderCode: string) => request<CourseOrder>(`/api/v1/orders/${encodeURIComponent(orderCode)}`),
   /** Idempotent on the server (the first time is kept); never grants access. */
   reportTransfer: (orderCode: string) => request<CourseOrder>(`/api/v1/orders/${encodeURIComponent(orderCode)}/transfer-report`, { method: 'POST' }),
+  /** Asks the server to look the order up at payOS; the reply is the order as the server now has it. */
+  sync: (orderCode: string) => request<CourseOrder>(`/api/v1/orders/${encodeURIComponent(orderCode)}/sync`, { method: 'POST' }),
 }
 /** The QR image comes from the API; only an https URL is rendered, anything else counts as a failed QR. */
 export const qrSrc = (url: string) => /^https:\/\/[^\s/]/i.test(url) ? url : null
+/** Only the checkout URL shape the payOS embed library accepts; anything else counts as "no link yet". */
+export const payosSrc = (url: string | null | undefined) => url && /^https:\/\/pay\.payos\.vn\/web\/[a-f0-9]{32}\/?$/i.test(url) ? url : null
 
 export const flatLessons = (chapters: PublicChapter[]) => chapters.flatMap(chapter => chapter.lessons)
 
@@ -218,6 +222,7 @@ export const adminOrders = {
   confirm: (orderCode: string, amount: number, bankReference: string) => request<AdminOrder>(`/api/v1/admin/orders/${encodeURIComponent(orderCode)}/confirm`, json('POST', { amount, bankReference })),
   /** `paymentCount` = payments the admin saw; the server refuses (STALE) when a newer one arrived. */
   reconcile: (orderCode: string, paymentCount: number) => request<AdminOrder>(`/api/v1/admin/orders/${encodeURIComponent(orderCode)}/reconcile`, json('POST', { paymentCount })),
+  sync: (orderCode: string) => request<AdminOrder>(`/api/v1/admin/orders/${encodeURIComponent(orderCode)}/sync`, { method: 'POST' }),
 }
 export const commission = {
   /** `null` while no policy exists. */

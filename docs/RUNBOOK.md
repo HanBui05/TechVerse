@@ -14,6 +14,7 @@
 - **DB:** database `POSTGRES_DB`, schema `techverse` (Hikari đặt `search_path`). `psql` trong container: `docker exec techverse psql -U <POSTGRES_USER> -d <POSTGRES_DB> -c "set search_path=techverse; ..."`.
 - **Đã có tiến trình đang chạy** (cổng 3000/8080 bận): kiểm `Get-NetTCPConnection -LocalPort <cổng>` + `CommandLine` của tiến trình. Của người dùng thì dùng chung, không tắt, không khởi động lại.
 - **Backend có đúng code không:** so `CreationDate` của tiến trình 8080 với lần sửa `server/` cuối (`git log -1 --format=%ci -- server`, cộng file chưa commit). Backend cũ hơn → ghi “chưa kiểm: backend chạy code cũ” và báo người dùng, không tự khởi động lại.
+- **Devtools + Gradle (2026-11-16):** IntelliJ chạy từ `server/build/classes/java/main` với devtools; `./gradlew test` biên dịch lại vào đó → devtools khởi động lại giữa lúc Gradle đang ghi → backend lên **thiếu controller/service vừa ghi** (route của chúng trả 500 `INTERNAL_ERROR` như route không tồn tại, vì `GlobalExceptionHandler` biến “không có route” thành 500). Sau khi chạy test backend mà người dùng định thử app thật: nhắc người dùng Stop → Run lại backend.
 
 ## Làm mới DB dev (khi Flyway mới không chạy trên dữ liệu cũ)
 
@@ -56,6 +57,14 @@ docker exec -i techverse sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON
 ```
 
 User/DB lấy từ biến môi trường trong container (Compose mặc định `techverse`, container hiện tại `root`). Không tìm thấy admin → seed báo lỗi và rollback toàn bộ. Console Windows có thể hiển thị lỗi vài ký tự tiếng Việt khi in kết quả; dữ liệu lưu đúng UTF-8.
+
+## Chạy payOS trên máy cá nhân
+
+1. Lấy khóa ở `my.payos.vn` (kênh thanh toán): điền `.env` đủ bốn biến `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `PAYOS_RETURN_BASE_URL` (URL frontend, vd. `http://localhost:5173`). Thiếu một biến hoặc URL sai dạng → payOS tắt, đơn mới đi VietQR thủ công. Khởi động lại backend.
+2. Mở đường từ ngoài vào backend: `ngrok http 8080` → lấy URL `https://<id>.ngrok-free.app`.
+3. Đăng ký webhook `https://<id>.ngrok-free.app/api/v1/payments/payos/webhook`: ở `my.payos.vn` (mục webhook của kênh) hoặc `curl -X POST https://api-merchant.payos.vn/confirm-webhook -H "x-client-id: …" -H "x-api-key: …" -H "Content-Type: application/json" -d '{"webhookUrl":"<URL trên>"}'`. payOS gửi một payload mẫu; backend trả 200 vì không khớp đơn nào.
+4. Webhook chỉ là tín hiệu: backend luôn tra cứu `GET /v2/payment-requests/{số đơn}` rồi mới cấp quyền. Webhook lỡ (ngrok tắt, URL đổi) thì học viên bấm kiểm tra (`POST /api/v1/orders/{mã}/sync`) hoặc Admin (`POST /api/v1/admin/orders/{mã}/sync`).
+5. Mỗi lần ngrok đổi URL phải đăng ký lại bước 3. Lần thử thật đầu tiên ghi vào log module: payOS có từ chối tạo trùng số đơn không, khoảng `orderCode`, số tiền tối thiểu.
 
 ## Luồng phiên đăng nhập (frontend)
 

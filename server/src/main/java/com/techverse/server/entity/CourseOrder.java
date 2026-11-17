@@ -45,4 +45,20 @@ public class CourseOrder extends BaseEntity {
 
     @Column(name = "reconciled_at", insertable = false, updatable = false)
     private Instant reconciledAt;
+
+    @Column(name = "payos_payment_link_id", length = 64, insertable = false, updatable = false)
+    private String payosPaymentLinkId;
+
+    @Column(name = "payos_amount_paid", insertable = false, updatable = false)
+    private Long payosAmountPaid;
+
+    /** An order is PAYOS when its payment row was opened for payOS; otherwise manual transfer. */
+    @org.hibernate.annotations.Formula(
+            "(CASE WHEN EXISTS (SELECT 1 FROM payment_transactions t WHERE t.order_id = id AND t.provider = 'PAYOS')"
+                    + " THEN 'PAYOS' ELSE 'MANUAL' END)")
+    private String provider;
+
+    public boolean isPayos() {
+        return "PAYOS".equals(provider);
+    }
 }

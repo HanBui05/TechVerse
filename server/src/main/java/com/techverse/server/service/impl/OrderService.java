@@ -15,6 +15,7 @@ import com.techverse.server.repository.*;
 import com.techverse.server.repository.specification.CourseSpecification;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
@@ -23,7 +24,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -35,10 +38,12 @@ import java.util.regex.Pattern;
  * buyer's {@code users} row (serialises that buyer's requests), then the course row (shared, so a
  * concurrent price change finishes first), then the order.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderService {
     static final int MANUAL_HOURS = 24;
+    static final int PAYOS_MINUTES = 15;
     private static final Pattern BANK_ID = Pattern.compile("[A-Za-z0-9]{2,20}");
     private static final Pattern ACCOUNT_NO = Pattern.compile("[0-9]{6,19}");
     private static final Pattern TEMPLATE = Pattern.compile("[A-Za-z0-9_]{1,30}");
@@ -50,6 +55,8 @@ public class OrderService {
     private final CourseEnrollmentRepository enrollments;
     private final UserRepository users;
     private final StringRedisTemplate redis;
+    private final PayosClient payos;
+    private final PlatformTransactionManager transactionManager;
 
     @Value("${vietqr.bank-id:}")
     private String bankId;
@@ -66,10 +73,16 @@ public class OrderService {
     @Value("${order.requests-per-minute:5}")
     private int requestsPerMinute;
 
-    /** Returns the buyer's open order for the course, or creates one with today's price and policy. */
-    @Transactional
+    /**
+     * Returns the buyer's open order for the course, or creates one with today's price and policy. The
+     * order commits first; a payOS link is asked for afterwards, outside every transaction and lock.
+     */
     public OrderResponse create(UUID actor, UUID courseId) {
         checkRate(actor);
+        return withPayosLink(tx().execute(s -> openOrder(actor, courseId)));
+    }
+
+    private OrderItem openOrder(UUID actor, UUID courseId) {
         User buyer = users.findByIdForAuthentication(actor)
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_ACCESS_TOKEN));
         if (!buyer.isActive()) throw new CustomException(ErrorCode.USER_INACTIVE);
@@ -87,17 +100,48 @@ public class OrderService {
 
         orders.expireOverdue(actor);
         var open = orders.findByStatus(actor, courseId, CourseOrder.Status.PENDING);
-        if (!open.isEmpty()) return response(open.getFirst());
+        if (!open.isEmpty()) return open.getFirst();
 
-        // Never create an order nobody can pay.
-        if (!qrConfigured()) throw new CustomException(ErrorCode.PAYMENT_UNAVAILABLE);
+        // Never create an order nobody can pay. payOS on: every new order is PAYOS; off: manual VietQR.
+        boolean payosOn = payos.enabled();
+        if (!payosOn && !qrConfigured()) throw new CustomException(ErrorCode.PAYMENT_UNAVAILABLE);
         orders.lockCommission();
         UUID policy =orders.activeCommissionPolicyId().orElseThrow(() -> new CustomException(ErrorCode.PAYMENT_UNAVAILABLE));
         UUID id = UUID.randomUUID();
-        orders.insertOrder(id, actor, MANUAL_HOURS);
+        orders.insertOrder(id, actor, payosOn ? PAYOS_MINUTES : MANUAL_HOURS * 60);
         orders.insertItem(id, courseId, title, price, policy, actor);
-        orders.insertManualTransaction(id, actor);
-        return response(orders.findItem(id).orElseThrow());
+        orders.insertTransaction(id, payosOn ? "PAYOS" : "MANUAL", actor);
+        return orders.findItem(id).orElseThrow();
+    }
+
+    /**
+     * "Ensure link" for a PENDING payOS order without one: (1) claim in a short transaction, (2) ask payOS
+     * with no transaction open, (3) store the link only if none is stored and no other order holds it.
+     * payOS failing leaves the order without a link; a read after 60 seconds tries again. The response is
+     * always rebuilt from the order as it is now (a webhook may have paid it meanwhile).
+     */
+    private OrderResponse withPayosLink(OrderItem item) {
+        var o = item.getOrder();
+        if (!o.isPayos() || o.getStatus() != CourseOrder.Status.PENDING || o.getPayosPaymentLinkId() != null) return response(item);
+        UUID orderId = o.getId();
+        if (tx().execute(s -> orders.claimPayosLink(orderId)) == 0) return response(item);
+        try {
+            String link = payos.link(o.getOrderCode(), o.getTotalAmount(), o.getExpiresAt());
+            Integer saved;
+            try {
+                saved = tx().execute(s -> orders.savePayosLink(orderId, link));
+            } catch (DataIntegrityViolationException e) {
+                saved = 0; // another order stored the same link id at the same moment
+            }
+            if (saved == 0) log.warn("payOS link for order {} not stored: the order or another order already holds a link", o.getOrderCode());
+        } catch (PayosClient.PayosException e) {
+            log.warn("payOS link for order {} not created: {}", o.getOrderCode(), e.getMessage());
+        }
+        return response(tx().execute(s -> orders.findItem(orderId).orElseThrow()));
+    }
+
+    private TransactionTemplate tx() {
+        return new TransactionTemplate(transactionManager);
     }
 
     /** The active commission policy, or null when none is set (orders are then unavailable). */
@@ -129,10 +173,11 @@ public class OrderService {
         return new CommissionPolicyResponse(p.getId(), p.getRateBps(), p.getEffectiveFrom());
     }
 
-    @Transactional
     public OrderResponse detail(UUID actor, String code) {
-        orders.expireOverdue(actor);
-        return response(owned(actor, code));
+        return withPayosLink(tx().execute(s -> {
+            orders.expireOverdue(actor);
+            return owned(actor, code);
+        }));
     }
 
     @Transactional
@@ -149,11 +194,106 @@ public class OrderService {
         orders.expireOverdue(actor);
         CourseOrder order = orders.findOwnedForUpdate(code, actor)
                 .orElseThrow(() -> new CustomException(ErrorCode.ORDER_NOT_FOUND));
-        // shortcut: every order is MANUAL while PayOS (1e) is deferred; check the provider when it lands.
-        if (order.getStatus() != CourseOrder.Status.PENDING && order.getStatus() != CourseOrder.Status.EXPIRED)
+        // payOS orders are confirmed by looking them up on payOS, never by the buyer's report.
+        if (!orders.isManual(order.getId())
+                || order.getStatus() != CourseOrder.Status.PENDING && order.getStatus() != CourseOrder.Status.EXPIRED)
             throw new CustomException(ErrorCode.ORDER_TRANSFER_REPORT_NOT_ALLOWED);
         orders.reportTransfer(order.getId());
         return response(owned(actor, code));
+    }
+
+    // ------------------------------------------------------------------ payOS confirmation
+
+    static final int SYNC_PER_MINUTE = 10;
+    static final long MAX_ORDER_NO = 999_999_999_999L;
+
+    enum SyncAction { NOTHING, IGNORE, RECORD, CONFIRM }
+
+    /** The buyer's "check with payOS": its own rate budget, separate from creating orders. */
+    public OrderResponse sync(UUID actor, String code) {
+        checkRate("order:sync:" + actor, SYNC_PER_MINUTE);
+        var row = orders.findPayosOrder(code).filter(r -> r.getUserId().equals(actor))
+                .orElseThrow(() -> new CustomException(ErrorCode.ORDER_NOT_FOUND));
+        syncPayos(code, row);
+        return tx().execute(s -> response(owned(actor, code)));
+    }
+
+    public AdminOrderResponse adminSync(String code) {
+        var row = orders.findPayosOrder(code).orElseThrow(() -> new CustomException(ErrorCode.ORDER_NOT_FOUND));
+        syncPayos(code, row);
+        return tx().execute(s -> adminView(row.getId()));
+    }
+
+    /**
+     * A correctly signed webhook is only a signal to look the order up. Unknown orders (payOS's sample
+     * payload) and PAID orders end here without calling payOS; an unpaid order triggers at most one lookup
+     * every 3 seconds, and a throttled signal is answered 503 so it is not taken as handled.
+     */
+    public void webhook(long orderNo) {
+        if (orderNo <= 0 || orderNo > MAX_ORDER_NO) return;
+        String code = "TV" + String.format("%012d", orderNo);
+        var row = orders.findPayosOrder(code).filter(r -> Boolean.TRUE.equals(r.getPayos())).orElse(null);
+        if (row == null || CourseOrder.Status.PAID.name().equals(row.getStatus())) return;
+        try {
+            if (!Boolean.TRUE.equals(redis.opsForValue().setIfAbsent("payos:webhook:" + code, "1", java.time.Duration.ofSeconds(3))))
+                throw new CustomException(ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE);
+        } catch (DataAccessException e) {
+            throw new CustomException(ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE);
+        }
+        syncPayos(code, row);
+    }
+
+    /** Looks the order up with no transaction open, then applies the answer under the buyer and order locks. */
+    private void syncPayos(String code, OrderRepository.PayosOrderRow row) {
+        if (!Boolean.TRUE.equals(row.getPayos())) throw new CustomException(ErrorCode.PAYMENT_STATE_INVALID);
+        if (!payos.enabled()) throw new CustomException(ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE);
+        Optional<PayosClient.Payment> found;
+        try {
+            found = payos.lookup(PayosClient.orderNo(code));
+        } catch (PayosClient.PayosException e) {
+            log.warn("payOS lookup for order {} failed: {}", code, e.getMessage());
+            throw new CustomException(ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE);
+        }
+        // An error code (auth, service, unknown order) is a failed lookup: 503, so a webhook is not taken as handled.
+        if (found.isEmpty()) {
+            log.warn("payOS lookup for order {} answered with an error code", code);
+            throw new CustomException(ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE);
+        }
+        tx().executeWithoutResult(s -> applyPayos(code, found.get()));
+    }
+
+    /** Same lock order as {@link #confirm}; the order is read after the lock, so a second request sees PAID and stops. */
+    private void applyPayos(String code, PayosClient.Payment p) {
+        CourseOrder order = lockOrder(code);
+        var status = order.getStatus();
+        String stored = order.getPayosPaymentLinkId();
+        var action = decide(status, stored, PayosClient.orderNo(code), order.getTotalAmount(), p);
+        if (action == SyncAction.IGNORE) log.warn("payOS lookup for order {} does not match the order; nothing changed", code);
+        if (action == SyncAction.IGNORE || action == SyncAction.NOTHING) return;
+        UUID id = order.getId();
+        if (stored == null && orders.savePayosLink(id, p.id()) == 0) {
+            log.warn("payOS link of order {} is held by another order; nothing changed", code);
+            return;
+        }
+        orders.recordPayosAmountPaid(id, p.amountPaid());
+        if (status == CourseOrder.Status.CANCELLED || status == CourseOrder.Status.FAILED)
+            log.warn("payOS reports a payment for order {} in state {}; no access granted", code, status);
+        if (action == SyncAction.CONFIRM && orders.confirmPayosPayment(id, p.id()) == 0)
+            log.warn("payOS order {} has no open payment row; nothing confirmed", code);
+    }
+
+    /**
+     * The rule table: access only when payOS says PAID with at least the order total, for this order, amount
+     * and link; anything missing or different is ignored. A PAID, cancelled or failed order only records the amount.
+     */
+    static SyncAction decide(CourseOrder.Status status, String storedLink, long orderNo, long total, PayosClient.Payment p) {
+        if (p.id() == null || p.orderCode() == null || p.status() == null || p.amount() == null || p.amountPaid() == null
+                || p.orderCode() != orderNo || p.amount() != total || storedLink != null && !storedLink.equals(p.id()))
+            return SyncAction.IGNORE;
+        if (p.amountPaid() <= 0) return SyncAction.NOTHING;
+        boolean full = "PAID".equals(p.status()) && p.amountPaid() >= total;
+        return full && (status == CourseOrder.Status.PENDING || status == CourseOrder.Status.EXPIRED)
+                ? SyncAction.CONFIRM : SyncAction.RECORD;
     }
 
     // ------------------------------------------------------------------ Admin confirmation
@@ -167,7 +307,7 @@ public class OrderService {
     @Transactional
     public AdminOrderResponse confirm(UUID admin, String code, long amount, String reference) {
         CourseOrder order = lockOrder(code);
-        // shortcut: every order is MANUAL while PayOS (1e) is deferred; a webhook path would skip this check.
+        // Admin confirms manual transfers only; payOS orders are confirmed by the payOS lookup.
         if (!orders.isManual(order.getId())) throw new CustomException(ErrorCode.PAYMENT_STATE_INVALID);
         var existing = orders.findManualPayment(reference);
         if (existing.isPresent()) {
@@ -502,10 +642,14 @@ public class OrderService {
 
     /** Create and transfer-report share one budget per user, retries included. */
     void checkRate(UUID actor) {
+        checkRate("order:rate:" + actor, requestsPerMinute);
+    }
+
+    private void checkRate(String key, int perMinute) {
         try {
-            Long count = redis.execute(COUNTER, List.of("order:rate:" + actor));
+            Long count = redis.execute(COUNTER, List.of(key));
             if (count == null) throw new CustomException(ErrorCode.PAYMENT_UNAVAILABLE);
-            if (count > requestsPerMinute) throw new CustomException(ErrorCode.ORDER_RATE_LIMITED);
+            if (count > perMinute) throw new CustomException(ErrorCode.ORDER_RATE_LIMITED);
         } catch (DataAccessException e) {
             throw new CustomException(ErrorCode.PAYMENT_UNAVAILABLE);
         }

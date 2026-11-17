@@ -89,6 +89,14 @@ vietqr:
   account-name: ${VIETQR_ACCOUNT_NAME:}
   template: ${VIETQR_TEMPLATE:compact2}
 
+# payOS is on only when all four are set (return-base-url: absolute http/https URL of the web app);
+# then every new order is paid through payOS, otherwise through VietQR with Admin confirmation.
+payos:
+  client-id: ${PAYOS_CLIENT_ID:}
+  api-key: ${PAYOS_API_KEY:}
+  checksum-key: ${PAYOS_CHECKSUM_KEY:}
+  return-base-url: ${PAYOS_RETURN_BASE_URL:}
+
 order:
   requests-per-minute: 5
 

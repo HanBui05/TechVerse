@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setAccessToken } from './api/client'
-import { authorCourses, authorShare, changedLessonFields, courseFilter, courseSearch, embedUrl, flatLessons, lessonAccess, publicCourses, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, orders, adminOrders, commission, revenue, revenueByCourse, payoutAccount, payouts, rateBps, amountText, priceValid, qrSrc, videoLink, visibleChanges, vnd, youtubeId } from './courseService'
+import { authorCourses, authorShare, changedLessonFields, courseFilter, courseSearch, embedUrl, flatLessons, lessonAccess, publicCourses, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, orders, adminOrders, commission, revenue, revenueByCourse, payoutAccount, payouts, rateBps, amountText, priceValid, payosSrc, qrSrc, videoLink, visibleChanges, vnd, youtubeId } from './courseService'
 import type { AuthorCourse, ChangeChapter, Lesson, ModeratorCourseDetail } from '../types/courses'
 
 const fetchMock = vi.fn<typeof fetch>()
@@ -239,6 +239,20 @@ describe('orders API', () => {
   it('accepts only an https QR image from the API; anything else counts as a failed QR', () => {
     expect(qrSrc('https://img.vietqr.io/image/970415-0123-compact2.png?amount=350000&addInfo=TV1')).toBe('https://img.vietqr.io/image/970415-0123-compact2.png?amount=350000&addInfo=TV1')
     for (const bad of ['', 'javascript:alert(1)', 'http://img.vietqr.io/x.png', 'data:image/png;base64,AAAA', '//img.vietqr.io/x.png', 'not a url']) expect(qrSrc(bad)).toBeNull()
+  })
+
+  it('syncs an order with payOS by POST without a body, for the buyer and the admin', async () => {
+    fetchMock.mockResolvedValue(ok({ orderCode: 'TV000000000123' }))
+    await orders.sync('TV000000000123')
+    expect(call(0).url.pathname).toBe('/api/v1/orders/TV000000000123/sync'); expect(call(0).init.method).toBe('POST'); expect(call(0).init.body).toBeUndefined()
+    await adminOrders.sync('TV/1')
+    expect(call(1).url.pathname).toBe('/api/v1/admin/orders/TV%2F1/sync'); expect(call(1).init.method).toBe('POST')
+  })
+
+  it('accepts only a payOS checkout URL of the form the embed library needs', () => {
+    const url = 'https://pay.payos.vn/web/0123456789abcdef0123456789ABCDEF'
+    expect(payosSrc(url)).toBe(url)
+    for (const bad of ['', 'http://pay.payos.vn/web/0123456789abcdef0123456789abcdef', 'https://evil.vn/web/0123456789abcdef0123456789abcdef', 'https://pay.payos.vn/web/123', 'javascript:alert(1)', 'https://pay.payos.vn.evil.vn/web/0123456789abcdef0123456789abcdef']) expect(payosSrc(bad)).toBeNull()
   })
 })
 

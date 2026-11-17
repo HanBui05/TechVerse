@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Receipt, RefreshCw, Search, TriangleAlert, X } from 'lucide-react'
+import { Loader2, Receipt, RefreshCw, Search, TriangleAlert, X } from 'lucide-react'
 import { cn } from 'cn'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
@@ -46,6 +46,8 @@ export function AdminOrdersPage({ language = 'vi' }: { language?: Language }) {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
+  // Order returned by a payOS check: keeps the sheet open when the order leaves the filtered list (e.g. PENDING → PAID).
+  const [held, setHeld] = useState<AdminOrder | null>(null)
   const latest = useRef(0)
 
   const load = useCallback(async () => {
@@ -69,7 +71,7 @@ export function AdminOrdersPage({ language = 'vi' }: { language?: Language }) {
     next.delete('page'); setParams(next)
   }
   const search = (e: FormEvent) => { e.preventDefault(); change({ code: codeInput.trim() || null }) }
-  const order = data?.content.find(item => item.orderCode === selected) ?? null
+  const order = data?.content.find(item => item.orderCode === selected) ?? (held?.orderCode === selected ? held : null)
 
   return <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
     <header className="flex flex-col gap-2">
@@ -115,6 +117,7 @@ export function AdminOrdersPage({ language = 'vi' }: { language?: Language }) {
             const open = item.status === 'PENDING' || item.status === 'EXPIRED'
             // Every PAID order opens the sheet: a second real transfer must be recordable even before (or after closing) the duplicate flag.
             const review = item.status === 'PAID'
+            const payos = item.provider === 'PAYOS'
             return <li key={item.orderCode} className={cn('flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm max-sm:flex-col max-sm:items-stretch',
               item.needsReconciliation ? 'border-l-4 border-l-tone-rose-fg' : open && item.transferReportedAt && 'border-l-4 border-l-tone-amber-fg')}>
               <div className="flex min-w-0 flex-col gap-2">
@@ -123,27 +126,38 @@ export function AdminOrdersPage({ language = 'vi' }: { language?: Language }) {
                 <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{item.buyerName} · {item.buyerEmail} · {t('created', { when: formatDate(item.createdAt, language) })}{open && ` · ${t('expires', { when: formatDate(item.expiresAt, language) })}`}{item.paidAt && ` · ${t('paidOn', { when: formatDate(item.paidAt, language, true) })}`}</p>
                 <p className="flex flex-wrap items-center gap-2 text-xs">
                   <Badge tone={ORDER_TONE[item.status]}>{t(item.status)}</Badge>
+                  <SourceBadge order={item} t={t} />
                   {item.transferReportedAt && <Badge tone="sky" title={t('reportedHint')}>{t('reportedAt', { time: formatDate(item.transferReportedAt, language, true) })}</Badge>}
                   {item.needsReconciliation && <Badge tone="rose"><TriangleAlert aria-hidden />{t('duplicate')}</Badge>}
                   {!item.needsReconciliation && item.reconciledAt && <Badge tone="slate">{t('reconciled')}</Badge>}
                 </p>
+                <Received order={item} t={t} language={language} />
               </div>
-              {(open || review) && <Button variant={open ? 'default' : 'outline'} className={cn('max-sm:w-full', touch)} onClick={() => setSelected(item.orderCode)}>{open ? t('confirmBtn') : t('viewBtn')}</Button>}
+              {(open || review) && <Button variant={open && !payos ? 'default' : 'outline'} className={cn('max-sm:w-full', touch)} onClick={() => setSelected(item.orderCode)}>{payos ? t('viewCheck') : open ? t('confirmBtn') : t('viewBtn')}</Button>}
             </li>
           })}</ul>}
 
     {data && !error && <AdminPagination language={language} page={page} size={ADMIN_ORDER_SIZE} total={data.totalElements} loading={loading} onPageChange={next => { const p = new URLSearchParams(params); next > 0 ? p.set('page', String(next)) : p.delete('page'); setParams(p) }} />}
 
-    <Sheet open={order !== null} onOpenChange={next => { if (!next) setSelected(null) }}>
+    <Sheet open={order !== null} onOpenChange={next => { if (!next) { setSelected(null); setHeld(null) } }}>
       <SheetContent closeLabel={t('close')} className="w-full gap-0 overflow-y-auto sm:max-w-[480px]">
-        {order && <ReviewSheet key={order.orderCode} order={order} language={language} t={t} reload={() => void load()} done={key => { setSelected(null); setNotice(t(key)); void load() }} />}
+        {order && <ReviewSheet key={order.orderCode} order={order} language={language} t={t} reload={() => void load()} synced={result => { setHeld(result); void load() }}
+          done={key => { setSelected(null); setHeld(null); setNotice(t(key)); void load() }} />}
       </SheetContent>
     </Sheet>
   </main>
 }
 
-/** Confirm (PENDING/EXPIRED) or review (PAID with the duplicate flag): amount is prefilled from the order but always re-checked by the admin; the server compares it. */
-function ReviewSheet({ order, language, t, reload, done }: { order: AdminOrder; language: Language; t: T; reload: () => void; done: (key: 'okConfirm' | 'okDuplicate' | 'okReconciled') => void }) {
+const SourceBadge = ({ order, t }: { order: AdminOrder; t: T }) => <Badge tone={order.provider === 'PAYOS' ? 'blue' : 'slate'}>{t(order.provider === 'PAYOS' ? 'srcPAYOS' : 'srcMANUAL')}</Badge>
+/** Shown only when payOS reported a different amount; overpaid is amber because the admin settles it outside the system. */
+const Received = ({ order, t, language }: { order: AdminOrder; t: T; language: Language }) => order.amountPaid === null || order.amountPaid === order.amount ? null
+  : <p className={cn('text-xs', order.amountPaid > order.amount ? 'font-semibold text-tone-amber-fg' : 'text-muted-foreground')}>{t('payosReceived', { paid: vnd(order.amountPaid, language), total: vnd(order.amount, language) })}</p>
+
+/** Confirm (PENDING/EXPIRED) or review (PAID with the duplicate flag): amount is prefilled from the order but always re-checked by the admin; the server compares it.
+ *  payOS orders (wireframe 8-5) have no manual form: only a check with payOS and, when flagged, closing the reconciliation flag. */
+function ReviewSheet({ order, language, t, reload, synced, done }: { order: AdminOrder; language: Language; t: T; reload: () => void; synced: (result: AdminOrder) => void; done: (key: 'okConfirm' | 'okDuplicate' | 'okReconciled') => void }) {
+  const payos = order.provider === 'PAYOS'
+  const [checked, setChecked] = useState<{ text: string; paid: boolean } | null>(null)
   const [amount, setAmount] = useState(String(order.amount))
   const [reference, setReference] = useState('')
   const [error, setError] = useState('')
@@ -169,35 +183,51 @@ function ReviewSheet({ order, language, t, reload, done }: { order: AdminOrder; 
   }
   const confirm = () => run(() => adminOrders.confirm(order.orderCode, value!, ref), result => result.needsReconciliation ? 'okDuplicate' : 'okConfirm', t('confirmFailed'))
   const close = () => run(() => adminOrders.reconcile(order.orderCode, order.payments.length), () => 'okReconciled', t('reconcileFailed'))
+  const check = async () => {
+    setBusy(true); setError(''); setReloadable(false); setChecked(null)
+    try {
+      const result = await adminOrders.sync(order.orderCode)
+      setChecked({ text: t(result.status === 'PAID' ? 'okConfirm' : 'payosNone'), paid: result.status === 'PAID' })
+      synced(result)
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'PAYMENT_STATE_INVALID') { setError(t('notPayos')); reload() } else setError(courseErrorText(e, language, t('checkFailed')))
+    } finally { setBusy(false) }
+  }
 
   return <>
     <SheetHeader className="gap-1 border-b border-border p-6">
-      <SheetTitle>{t(review ? 'reviewTitle' : 'sheetTitle', { code: order.orderCode })}</SheetTitle>
+      <SheetTitle className="flex flex-wrap items-center gap-2">{t(payos ? 'orderTitle' : review ? 'reviewTitle' : 'sheetTitle', { code: order.orderCode })}{payos && <><SourceBadge order={order} t={t} /><Badge tone={ORDER_TONE[order.status]}>{t(order.status)}</Badge></>}</SheetTitle>
       <SheetDescription>{order.courseTitle} · {order.buyerName}</SheetDescription>
     </SheetHeader>
     <div className="flex flex-col gap-4 p-6">
       {error && <div role="alert" className={alertBox}><span>{error}</span>{reloadable && <Button type="button" variant="outline" size="sm" className={touch} onClick={reload}><RefreshCw aria-hidden />{t('reload')}</Button>}</div>}
+      {checked && <p role="status" className={cn('rounded-lg border border-border px-4 py-3 text-sm', checked.paid ? 'bg-tone-green-bg text-tone-green-fg' : 'bg-tone-sky-bg text-tone-sky-fg')}>{checked.text}</p>}
       {order.needsReconciliation && <p className="rounded-lg border border-border bg-tone-rose-bg px-4 py-3 text-sm text-tone-rose-fg">{t('dupBlock')}</p>}
       <p className="flex items-baseline justify-between gap-3 text-sm"><span className="text-muted-foreground">{t('due')}</span><span className="text-lg font-bold tabular-nums">{money(order.amount)}</span></p>
-      <p className="text-sm text-muted-foreground">{t('check')}</p>
+      <Received order={order} t={t} language={language} />
+      <p className="text-sm text-muted-foreground">{t(payos ? 'payosNoManual' : 'check')}</p>
       {order.payments.length > 0 && <div className="flex flex-col gap-1 text-sm">
         <p className="font-semibold">{t('paymentsTitle', { n: order.payments.length })}</p>
         <ul className="flex flex-col gap-1 text-muted-foreground">{order.payments.map(p => <li key={`${p.reference}-${p.confirmedAt}`} className="[overflow-wrap:anywhere]">{p.reference} · {money(p.amount)} · {p.source} · {formatDate(p.confirmedAt, language, true)}</li>)}</ul>
       </div>}
-      {review && <p className="text-sm font-semibold">{t('addPayment')}</p>}
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="s-amount" className={fieldLabel}>{t('stmtAmount')} *</Label>
-        <Input id="s-amount" inputMode="numeric" className="pointer-coarse:min-h-11" value={amount} aria-invalid={value === null} onChange={e => setAmount(e.target.value)} />
-        {value === null && <p className="text-xs text-danger">{t('amountInvalid')}</p>}
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="s-ref" className={fieldLabel}>{t('stmtRef')} *</Label>
-        <Input id="s-ref" maxLength={255} className="pointer-coarse:min-h-11" value={reference} aria-invalid={reference.length > 0 && !ref} onChange={e => setReference(e.target.value)} />
-        <p className="flex justify-between text-xs text-muted-foreground"><span className="text-danger">{reference.length > 0 && !ref ? t('refInvalid') : ''}</span><span>{reference.length}/255</span></p>
-      </div>
+      {!payos && <>
+        {review && <p className="text-sm font-semibold">{t('addPayment')}</p>}
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="s-amount" className={fieldLabel}>{t('stmtAmount')} *</Label>
+          <Input id="s-amount" inputMode="numeric" className="pointer-coarse:min-h-11" value={amount} aria-invalid={value === null} onChange={e => setAmount(e.target.value)} />
+          {value === null && <p className="text-xs text-danger">{t('amountInvalid')}</p>}
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="s-ref" className={fieldLabel}>{t('stmtRef')} *</Label>
+          <Input id="s-ref" maxLength={255} className="pointer-coarse:min-h-11" value={reference} aria-invalid={reference.length > 0 && !ref} onChange={e => setReference(e.target.value)} />
+          <p className="flex justify-between text-xs text-muted-foreground"><span className="text-danger">{reference.length > 0 && !ref ? t('refInvalid') : ''}</span><span>{reference.length}/255</span></p>
+        </div>
+      </>}
       <div className="flex flex-wrap justify-end gap-2 max-sm:flex-col">
         {order.needsReconciliation && <Button type="button" variant="outline" className={cn('sm:mr-auto', touch)} disabled={busy} onClick={() => setAskClose(true)}>{t('closeFlag')}</Button>}
-        <Button type="button" disabled={!valid || busy} className={touch} onClick={() => setAskConfirm(true)}>{t('review')}</Button>
+        {payos
+          ? <Button type="button" disabled={busy} className={touch} onClick={() => void check()}>{busy ? <Loader2 aria-hidden className="animate-spin" /> : <RefreshCw aria-hidden />}{t('payosCheck')}</Button>
+          : <Button type="button" disabled={!valid || busy} className={touch} onClick={() => setAskConfirm(true)}>{t('review')}</Button>}
       </div>
     </div>
 
