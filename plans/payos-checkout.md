@@ -45,7 +45,7 @@ Chỉ được sửa các đường dẫn sau. Ngoài danh sách là ngoài ph�
 
 - V18: `orders.payos_payment_link_id varchar(64)` UNIQUE nullable; `orders.payos_link_requested_at timestamptz` (đánh dấu đang xin link); `orders.payos_amount_paid bigint` nullable (số payOS báo đã nhận, lần tra cứu gần nhất); mở rộng CHECK `confirmation_source` thêm `'PAYOS'`; `MAXVALUE` cho sequence mã đơn.
 - Tạo đơn (`POST /api/v1/orders`) khi payOS bật: transaction ngắn tạo đơn PENDING hạn 15 phút + một dòng `payment_transactions` PENDING `provider = 'PAYOS'`, **commit**, rồi mới chạy “đảm bảo link”. Nhánh trả đơn PENDING cũ và `GET /orders/{orderCode}` của đơn PAYOS còn PENDING chưa có link cũng chạy “đảm bảo link” theo cùng quy tắc.
-- “Đảm bảo link”: (1) transaction ngắn giành quyền bằng cập nhật có điều kiện (`payos_payment_link_id IS NULL` và `payos_link_requested_at` rỗng hoặc cũ hơn 60 giây — gấp đôi thời gian tối đa của một lượt, nên request cũ chắc chắn đã dừng trước khi request khác giành lại); không giành được thì trả đơn với `checkoutUrl = null`; (2) ngoài transaction: tra cứu `GET /v2/payment-requests/{số đơn}`, có thì dùng `id`; chưa có thì `POST /v2/payment-requests` (`amount`, `description`, `orderCode`, `returnUrl`, `cancelUrl`, `expiredAt` = hạn đơn, chữ ký HMAC-SHA256); payOS báo đơn đã tồn tại thì tra cứu lại; (3) transaction ngắn khóa đơn, đọc lại: chưa có mã link thì lưu; đã có (webhook/đồng bộ vừa lưu) và giống thì thôi; đã có mà khác, hoặc mã đó đã thuộc đơn khác (vỡ UNIQUE), thì không ghi đè, ghi log cảnh báo. Response luôn dựng từ trạng thái đơn đọc lại sau bước này (có thể đã PAID).
+- “Đảm bảo link”: (1) transaction ngắn giành quyền bằng cập nhật có điều kiện (`payos_payment_link_id IS NULL` và `payos_link_requested_at` rỗng hoặc cũ hơn 60 giây — gấp đôi thời gian tối đa của một lượt, nên request cũ chắc chắn đã dừng trước khi request khác giành lại); không giành được thì trả đơn với `checkoutUrl = null`; (2) ngoài transaction: tra cứu `GET /v2/payment-requests/{số đơn}`, có thì dùng `id`; chưa có thì `POST /v2/payment-requests` (`amount`, `description`, `orderCode`, `returnUrl`, `cancelUrl`, `expiredAt` = hạn đơn, chữ ký HMAC-SHA256); tra cứu HTTP 200 có `code` khác `"00"` được coi là chưa có link; khi tạo bị từ chối với bất kỳ mã lỗi nào thì tra cứu lại, vẫn không có link thì báo lỗi; (3) transaction ngắn khóa đơn, đọc lại: chưa có mã link thì lưu; đã có (webhook/đồng bộ vừa lưu) và giống thì thôi; đã có mà khác, hoặc mã đó đã thuộc đơn khác (vỡ UNIQUE), thì không ghi đè, ghi log cảnh báo. Response luôn dựng từ trạng thái đơn đọc lại sau bước này (có thể đã PAID).
 - payOS lỗi/timeout: đơn vẫn tồn tại, response trả đơn với `checkoutUrl = null`; sau 60 giây lần đọc đơn kế tiếp thử lại, luôn tra cứu trước khi tạo.
 - `OrderResponse` thêm `provider` (`MANUAL`/`PAYOS`), `checkoutUrl` (chỉ khi PAYOS + PENDING + có link) và `amountPaid` (khi payOS đã báo nhận tiền); đơn PAYOS có `vietQr = null`.
 - `POST /orders/{orderCode}/transfer-report` trên đơn PAYOS bị từ chối.
@@ -59,7 +59,7 @@ Chỉ được sửa các đường dẫn sau. Ngoài danh sách là ngoài ph�
 | payOS tắt (thiếu bất kỳ cấu hình nào, URL sai dạng) | Đi MANUAL nếu VietQR có, không thì như hiện tại | 200 / 503 `PAYMENT_UNAVAILABLE` | Thanh toán tạm thời không khả dụng. |
 | Đã có đơn PENDING còn hạn cho khóa đó | Trả đơn cũ (kể cả khác nguồn với cấu hình hiện tại) | 200 | — |
 | payOS timeout/từ chối/trả dữ liệu thiếu khi xin link | Đơn giữ PENDING, `checkoutUrl = null` | 200 (đơn) | Chưa tạo được mã thanh toán; hãy thử lại. |
-| Hai request cùng xin link cho một đơn | Trong 60 giây chỉ request giành được quyền gọi payOS; request kia nhận `checkoutUrl = null`. Chốt chặn cuối là payOS từ chối tạo trùng số đơn (chưa xác minh — kiểm ở lần thử thật, payOS không chặn thì dừng và báo người dùng) | 200 | — |
+| Hai request cùng xin link cho một đơn | Trong 60 giây chỉ request giành được quyền gọi payOS; request kia nhận `checkoutUrl = null`. Chốt chặn cuối là payOS từ chối tạo trùng số đơn (đã thử thật 2026-11-17: mã `231`) | 200 | — |
 | Server chết hoặc payOS timeout giữa lúc xin link (kể cả sau khi payOS đã tạo link) | Sau 60 giây request kế tiếp giành lại, tra cứu trước và dùng link đã có | 200 | — |
 | Kết quả xin link về sau khi đơn đã có mã link khác, hoặc mã đã thuộc đơn khác | Không ghi đè, không cấp quyền, log cảnh báo; trả trạng thái đơn hiện tại | 200 | — |
 | Đơn hết hạn trước khi có link | Đánh EXPIRED như hiện tại; mua lại tạo đơn mới | 200 | — |
@@ -67,17 +67,15 @@ Chỉ được sửa các đường dẫn sau. Ngoài danh sách là ngoài ph�
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** V18; `CourseOrder` (ba cột mới), `OrderRepository` (`insertOrder` nhận hạn theo phút, dòng giao dịch PAYOS, giành quyền và lưu link có điều kiện), `OrderService.create/detail/reportTransfer`, `OrderResponse`; lớp mới `PayosClient` (gọi HTTP, ký, kiểm chữ ký); `application.yaml`, `.env.example`.
-- **Phần dùng lại:** toàn bộ kiểm tra và khóa của `OrderService.create`; `expireOverdue`; cách đọc cấu hình bằng `@Value` như `vietqr.*`.
-- **Bẫy đã biết:** `create` và `detail` đang `@Transactional` trọn hàm và `create` giữ khóa người mua + khóa advisory hoa hồng tới commit — phải tách bằng `TransactionTemplate` (gọi hàm `@Transactional` cùng lớp không qua proxy) để lời gọi payOS nằm ngoài mọi transaction; hai chú thích `shortcut: every order is MANUAL` trong `OrderService` phải xử lý; `MANUAL_HOURS` là hằng số giờ; lỗi payOS chỉ có `code`/`desc` (`"00"` là thành công); `expiredAt` là Unix giây kiểu Int32; cột mới không dùng `char` (Hibernate validate). Chưa xác minh với payOS: tính duy nhất theo `orderCode` chỉ dựa vào lỗi “đơn đã tồn tại” ghi trong tài liệu, và khoảng giá trị `orderCode` — ghi kết quả thử thật vào log.
+- Task đã nhận; chi tiết thực hiện và kiểm chứng xem [log](payos-checkout.log.md).
 
 ### Xong khi
 
-- [ ] `PayosClientTest` (unit, HTTP giả): chữ ký tạo link đúng chuỗi `amount=…&cancelUrl=…&description=…&orderCode=…&returnUrl=…`; số đơn và `description` dựng đúng từ mã `TV…`; lỗi “đơn đã tồn tại” → tra cứu lại; timeout và dữ liệu thiếu → lỗi có kiểm soát.
-- [ ] `OrderServiceTest` (unit): payOS bật/tắt theo từng cấu hình thiếu và URL sai dạng.
-- [ ] `PayosIntegrationTest` (mới, DB/security thật, payOS giả): tạo đơn PAYOS có link và hạn 15 phút; payOS lỗi → đơn không link, đọc lại sau thời gian chờ thì có link; timeout nhưng link đã tồn tại ở payOS → dùng link tra cứu được, không gọi tạo lần hai; hai request song song (payOS giả giữ cả hai ở bước tra cứu) → đúng một lần gọi tạo; quyền xin link chỉ giành lại được sau 60 giây (thời gian giả lập) và lời gọi payOS bị cắt ở 10 giây; đồng bộ lưu mã link chen giữa lúc xin link → kết quả về sau không ghi đè, response đúng trạng thái mới; mã link đã thuộc đơn khác → không lưu, không 500; trong lúc payOS giả đang giữ request, không còn transaction/khóa mở trên đơn (đọc và cập nhật đơn từ kết nối khác không bị chờ); báo chuyển khoản → 409.
-- [ ] `CoursePaymentMigrationTest`: V1→V18 và DB rỗng; sequence vượt 12 chữ số báo lỗi thay vì cắt.
-- [ ] Các lớp trên + `OrderIntegrationTest`, `PaymentConfirmationIntegrationTest` (đơn MANUAL không đổi hành vi) đạt; full backend do CI.
+- [x] `PayosClientTest` (unit, HTTP giả): chữ ký tạo link đúng chuỗi `amount=…&cancelUrl=…&description=…&orderCode=…&returnUrl=…`; số đơn và `description` dựng đúng từ mã `TV…`; lỗi “đơn đã tồn tại” → tra cứu lại; timeout và dữ liệu thiếu → lỗi có kiểm soát.
+- [x] `PayosClientTest` (unit): payOS bật/tắt theo từng cấu hình thiếu và URL sai dạng.
+- [x] `PayosIntegrationTest` (mới, DB/security thật, payOS giả; `@MockitoSpyBean PayosClient` riêng tạo thêm một Spring context): tạo đơn PAYOS có link và hạn 15 phút; payOS lỗi → đơn không link, đọc lại sau thời gian chờ thì có link; timeout nhưng link đã tồn tại ở payOS → dùng link tra cứu được, không gọi tạo lần hai; hai request song song (payOS giả giữ cả hai ở bước tra cứu) → đúng một lần gọi tạo; quyền xin link chỉ giành lại được sau 60 giây (thời gian giả lập); `PayosClientTest` kiểm timeout mặc định 10 giây và cắt thật với timeout 50 ms; đồng bộ lưu mã link chen giữa lúc xin link → kết quả về sau không ghi đè, response đúng trạng thái mới; mã link đã thuộc đơn khác → không lưu, không 500; trong lúc payOS giả đang giữ request, không còn transaction/khóa mở trên đơn (đọc và cập nhật đơn từ kết nối khác không bị chờ); báo chuyển khoản → 409.
+- [x] `CoursePaymentMigrationTest`: V1→V18 và DB rỗng; sequence vượt 12 chữ số báo lỗi thay vì cắt.
+- [x] Các lớp trên + `OrderIntegrationTest`, `PaymentConfirmationIntegrationTest` (đơn MANUAL không đổi hành vi) đạt; full backend do CI.
 
 ## Task 1b — Xác nhận thanh toán: tra cứu và webhook
 
@@ -88,6 +86,7 @@ Chỉ được sửa các đường dẫn sau. Ngoài danh sách là ngoài ph�
 - **Đồng bộ đơn** (một hàm dùng chung): ngoài transaction gọi `GET /v2/payment-requests/{số đơn}`; rồi trong một transaction khóa người mua và đơn như `confirm`, áp bảng quy tắc dưới theo `id`, `status`, `amount`, `amountPaid` payOS trả. Đủ tiền thì chuyển dòng PAYOS đang mở (PENDING hoặc EXPIRED) thành SUCCEEDED với `provider_transaction_id` = mã link, `confirmed_by = null`, `confirmation_source = 'PAYOS'`; trigger V15 lo PAID, cấp quyền và cờ đối chiếu.
 - Ba nơi gọi đồng bộ: `POST /api/v1/orders/{orderCode}/sync` (chủ đơn; giới hạn tần suất **riêng** 10 lần/phút/người, không dùng chung ngân sách tạo đơn), `POST /api/v1/admin/orders/{orderCode}/sync` (ADMIN), và webhook. Đơn PENDING, EXPIRED, PAID đều đồng bộ được (người trả rồi quay lại sau hạn vẫn được cấp quyền). Sau khi khóa đơn luôn đọc lại trạng thái trước khi ghi, theo luật “không lùi trạng thái”.
 - `POST /api/v1/payments/payos/webhook`: route **duy nhất** `permitAll` thêm vào. Đọc JSON; kiểm chữ ký HMAC-SHA256 trên `data` (sắp key theo chữ cái, null → chuỗi rỗng, object/mảng lồng theo tài liệu, so sánh thời gian hằng) **trước** mọi xử lý; chỉ lấy `data.orderCode` để tìm đơn PAYOS rồi gọi đồng bộ. Chống phát lại: body tối đa 16 KB; đơn đã PAID thì trả 200 mà không gọi payOS; đơn chưa PAID thì webhook chỉ được kích hoạt tối đa một lần tra cứu mỗi 3 giây cho mỗi đơn, vượt thì trả 503 (không báo đã xử lý, để tín hiệu không bị coi là xong). Không dùng `success`, `code`, số tiền hay bất kỳ trường nào của webhook để quyết định.
+- Chống dồn webhook dùng Redis `SET NX`; Redis lỗi trả 503. Đồng bộ khi payOS đã tắt cấu hình hoặc tra cứu trả `code` khác `"00"` trả 503 `PAYMENT_PROVIDER_UNAVAILABLE`, không đổi DB.
 - `AdminOrderResponse` thêm `provider` và `amountPaid`. Hợp đồng `reconcile`/`paymentCount` không đổi.
 - `docs/RUNBOOK.md`: các bước chạy trên máy cá nhân (bốn cấu hình, bật ngrok, đăng ký webhook qua `my.payos.vn` hoặc `POST /confirm-webhook`).
 
@@ -98,7 +97,7 @@ Chỉ được sửa các đường dẫn sau. Ngoài danh sách là ngoài ph�
 | Webhook: JSON hỏng, thiếu `data`/`signature`/`data.orderCode`, chữ ký sai, payOS tắt | Không đổi DB; không lộ lý do | 400 `PAYMENT_WEBHOOK_INVALID` | — |
 | Webhook hợp lệ, số đơn không khớp đơn PAYOS nào (gồm payload mẫu lúc đăng ký) | Không đổi DB, không gọi payOS | 200 | — |
 | Webhook hợp lệ, khớp đơn | Chạy đồng bộ; kết quả theo các dòng dưới | 200 | — |
-| Webhook: payOS không tra cứu được, hoặc lỗi DB | Rollback; để lần đồng bộ sau xử lý | 503 `PAYMENT_PROVIDER_UNAVAILABLE` / 500 | — |
+| Webhook: payOS không tra cứu được, Redis lỗi khi chống dồn, hoặc lỗi DB | Rollback; để lần đồng bộ sau xử lý | 503 `PAYMENT_PROVIDER_UNAVAILABLE` / 500 | — |
 | Webhook: body quá 16 KB | Từ chối trước khi đọc JSON | 400 `PAYMENT_WEBHOOK_INVALID` | — |
 | Webhook hợp lệ gửi lặp cho đơn đã PAID | Không gọi payOS, không đổi DB | 200 | — |
 | Webhook hợp lệ gửi dồn cho đơn chưa PAID (quá một lần mỗi 3 giây) | Không gọi payOS | 503 `PAYMENT_PROVIDER_UNAVAILABLE` | — |
@@ -107,31 +106,29 @@ Chỉ được sửa các đường dẫn sau. Ngoài danh sách là ngoài ph�
 | Như trên nhưng đơn đã PAID (webhook lặp, webhook cùng lúc với tra cứu, bấm lại) | Không ghi thêm gì | 200 | — |
 | Như trên nhưng học viên đã có quyền qua đơn khác | Trigger đánh PAID + cờ đối chiếu, không thêm quyền, không nhân doanh thu | 200 | — |
 | `0 < amountPaid < amount` (trả thiếu, payOS chưa PAID) | Không cấp quyền; lưu `amountPaid` để hiển thị; link vẫn nhận phần còn thiếu | 200 | payOS đã nhận {paid}, còn thiếu {remaining}. |
-| `amountPaid > amount` (trả thừa) | Cấp quyền như đủ tiền; lưu `amountPaid` để Admin thấy | 200 | — |
-| `id` khác mã link đã lưu, hoặc `amount` khác tổng đơn, hoặc thiếu trường bắt buộc | Không đổi DB; ghi log cảnh báo (không payload) | 200 (đơn hiện tại) | — |
+| `amountPaid > amount` (trả thừa) | Chỉ cấp quyền khi `status = PAID`; lưu `amountPaid` để Admin thấy | 200 | — |
+| `id` khác mã link đã lưu hoặc đã thuộc đơn khác, hoặc `amount` khác tổng đơn, hoặc thiếu trường bắt buộc (gồm `amountPaid`) | Không đổi DB; ghi log cảnh báo (không payload) | 200 (đơn hiện tại) | — |
 | payOS báo chưa trả / đã hủy / hết hạn | Không đổi DB | 200 | — |
 | Đơn ở trạng thái CANCELLED/FAILED (sản phẩm hiện không tạo ra) | Không cấp quyền; lưu `amountPaid`; ghi log cảnh báo | 200 | — |
 | Đồng bộ: đơn MANUAL | Không áp dụng | 409 `PAYMENT_STATE_INVALID` | Đơn này không thanh toán qua payOS. |
 | Đồng bộ: không phải chủ đơn / không tồn tại; Admin: không phải ADMIN | — | 404 `ORDER_NOT_FOUND` / 403 `ACCESS_DENIED` | Không tìm thấy đơn hàng. / Bạn không có quyền. |
-| Đồng bộ: payOS lỗi/timeout | Không đổi DB | 503 `PAYMENT_PROVIDER_UNAVAILABLE` | Cổng thanh toán tạm thời không phản hồi; hãy thử lại. |
+| Đồng bộ: payOS tắt, lỗi/timeout hoặc tra cứu trả `code` khác `"00"` | Không đổi DB | 503 `PAYMENT_PROVIDER_UNAVAILABLE` | Cổng thanh toán tạm thời không phản hồi; hãy thử lại. |
 | Đồng bộ của học viên: vượt 10 lần/phút; Redis lỗi | — | 429 `ORDER_RATE_LIMITED` / như hiện tại | Bạn thao tác quá nhanh; hãy thử lại sau. |
 | Admin xác nhận tay đơn PAYOS | Vẫn cấm (hiện có) | 409 `PAYMENT_STATE_INVALID` | Đơn payOS không xác nhận tay; hãy bấm kiểm tra với payOS. |
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** `OrderService` (hàm đồng bộ, hai hàm gọi theo vai), `OrderRepository` (chuyển dòng PAYOS đang mở, lưu mã link và `amountPaid`), `OrderController` (hai route đồng bộ), controller webhook mới `PayosWebhookController` (nhóm route công khai, không `@PreAuthorize` của `OrderController`), `PayosClient` (tra cứu, kiểm chữ ký webhook), `AdminOrderResponse`, `ErrorCode`, `SecurityConfiguration`.
-- **Phần dùng lại:** `lockOrder` và thứ tự khóa của `confirm`; trigger V15; mẫu chuyển dòng đang mở `confirmOpenPayment` (đổi `provider`, nguồn xác nhận).
-- **Bẫy đã biết:** trigger V1 `validate_payment_transaction` bắt mọi dòng giao dịch phải đúng tổng đơn và VND — không ghi dòng “sai tiền” vào `payment_transactions`, chỉ lưu `payos_amount_paid` trên đơn; `expireOverdue` đã đổi dòng PENDING thành EXPIRED nên phải tìm cả hai trạng thái; hai request đồng bộ cùng lúc: request sau khóa xong phải đọc lại đơn (đã PAID thì dừng), không dựa vào bắt lỗi UNIQUE trong transaction đang dùng; chữ ký webhook khác chữ ký tạo link; `SecurityConfiguration` kết thúc bằng `denyAll` và hiện chỉ cho `POST /api/v1/orders` cùng `/orders/*/transfer-report` — phải thêm matcher `permitAll` cho POST webhook **và** matcher đã đăng nhập cho `POST /api/v1/orders/*/sync` (route Admin đã nằm dưới `/api/v1/admin/**`).
+- Task đã nhận; chi tiết thực hiện và kiểm chứng xem [log](payos-checkout.log.md).
 
 ### Xong khi
 
-- [ ] `PayosClientTest`: kiểm chữ ký webhook với vector tự dựng (key sắp xếp, giá trị null, object lồng, sai một ký tự, sai khóa).
-- [ ] `OrderServiceTest` (unit): bảng quyết định đồng bộ theo từng dòng (đủ, thừa, thiếu, `id` khác, `amount` khác, thiếu trường, chưa trả/hủy/hết hạn).
-- [ ] `PayosIntegrationTest`: webhook hợp lệ → PAID + một enrollment + doanh thu một lần, dòng SUCCEEDED mang mã link và nguồn `PAYOS`; chữ ký sai → 400, DB không đổi, payOS giả không bị gọi; payload mẫu → 200; trả thiếu → không quyền, `amountPaid` được lưu, trả nốt → PAID; đơn EXPIRED đã trả → PAID; học viên đã có quyền → cờ đối chiếu; webhook không token được chấp nhận còn route khác vẫn đòi quyền.
-- [ ] Ca đồng thời: hai webhook giống nhau song song, và webhook song song với đồng bộ của học viên → đúng một dòng SUCCEEDED, một enrollment, không request nào 500; hai kết quả tra cứu về ngược thứ tự (đủ rồi mới tới thiếu) → đơn vẫn PAID, `amountPaid` không giảm.
-- [ ] Chống phát lại: webhook lặp cho đơn PAID không gọi payOS giả; 5 webhook dồn cho đơn chưa PAID chỉ gây một lần tra cứu, các lần khác 503; body 17 KB → 400.
-- [ ] Đồng bộ: chủ đơn gọi được, không token → 401; Admin; payOS lỗi → 503; đơn MANUAL → 409; người khác → 404; AUTHOR gọi route Admin → 403; lần thứ 11 trong một phút → 429 mà tạo đơn vẫn dùng được.
-- [ ] Các lớp trên + `PaymentConfirmationIntegrationTest`, `OrderIntegrationTest` đạt; full backend do CI.
+- [x] `PayosClientTest`: kiểm chữ ký webhook với vector tự dựng (key sắp xếp, giá trị null, object lồng, sai một ký tự, sai khóa).
+- [x] `OrderServiceTest` (unit): bảng quyết định đồng bộ theo từng dòng (đủ, thừa, thiếu, `id` khác, `amount` khác, thiếu trường, chưa trả/hủy/hết hạn).
+- [x] `PayosIntegrationTest`: webhook hợp lệ → PAID + một enrollment + doanh thu một lần, dòng SUCCEEDED mang mã link và nguồn `PAYOS`; chữ ký sai → 400, DB không đổi, payOS giả không bị gọi; payload mẫu → 200; trả thiếu → không quyền, `amountPaid` được lưu, trả nốt → PAID; đơn EXPIRED đã trả → PAID; học viên đã có quyền → cờ đối chiếu; webhook không token được chấp nhận còn route khác vẫn đòi quyền.
+- [x] Ca đồng thời: hai webhook giống nhau song song (webhook thứ hai nhận 503 nếu đơn chưa PAID), và webhook song song với đồng bộ của học viên → đúng một dòng SUCCEEDED, một enrollment, không request nào 500; hai kết quả tra cứu được kiểm tuần tự theo thứ tự đủ rồi thiếu → đơn vẫn PAID, `amountPaid` không giảm.
+- [x] Chống phát lại: webhook lặp cho đơn PAID không gọi payOS giả; 5 webhook dồn cho đơn chưa PAID chỉ gây một lần tra cứu, các lần khác 503; body 17 KB → 400.
+- [x] Đồng bộ: chủ đơn gọi được, không token → 401; Admin; payOS lỗi → 503; đơn MANUAL → 409; người khác → 404; AUTHOR gọi route Admin → 403; lần thứ 11 trong một phút → 429 mà tạo đơn vẫn dùng được.
+- [x] Các lớp trên + `PaymentConfirmationIntegrationTest`, `OrderIntegrationTest` đạt; full backend do CI.
 
 ## Task 2 — Trang đơn với khung payOS và đơn payOS ở Admin (giao diện)
 
@@ -147,7 +144,7 @@ Chỉ được sửa các đường dẫn sau. Ngoài danh sách là ngoài ph�
 
 ### Quy tắc nghiệp vụ và mã lỗi
 
-Theo bảng Task 1a, 1b. `onSuccess`, `onCancel`, `onExit` chỉ đổi giao diện, không tự coi đơn là đã trả.
+Theo bảng Task 1a, 1b; `ORDER_RATE_LIMITED` và `ORDER_NOT_FOUND` giữ copy cũ tại các màn hiện có. `onSuccess`, `onCancel`, `onExit` chỉ đổi giao diện, không tự coi đơn là đã trả.
 
 ### Copy vi/en
 
@@ -170,15 +167,18 @@ Theo bảng Task 1a, 1b. `onSuccess`, `onCancel`, `onExit` chỉ đổi giao di�
 
 ### UI
 
-- Theo wireframe đã duyệt và `docs/design/UI_GUIDE.md`. Khung payOS do payOS vẽ: đặt trong vùng nền trắng cố định như ảnh QR hiện tại để dùng được ở dark mode; không cuộn ngang ở 390px; nút ≥ 44px.
+- Theo [wireframe mục 8](course-payment.wireframe.md) được duyệt 2026-11-16 và `docs/design/UI_GUIDE.md`: nhãn đơn PAYOS đang chờ là “Chờ thanh toán”; hạn 15 phút đếm ngược theo giây, về 0 ẩn khung và sync một lần; `onSuccess` ẩn khung. Link payOS là nút viền trên desktop và full width trên mobile; Admin không có bộ lọc nguồn.
+- Khung payOS nền trắng cao cố định 520 px; không cuộn ngang ở 390px; nút ≥ 44px. Bấm “Kiểm tra lại” giữ khung và hiện trạng thái kiểm tra cạnh nút; sau `onSuccess`, lỗi 503 hoặc lỗi khác vẫn tính là chưa thấy tiền và tiếp tục các lượt thử, riêng 429 dừng. Sheet Admin dùng nút ✕ hiện có, không thêm nút Đóng riêng.
 
 ### Xong khi
 
-- [ ] `Payments.test.tsx` (thư viện payOS được giả lập): đơn PAYOS dựng khung với đúng `checkoutUrl` và có link dự phòng, không có nút báo chuyển khoản; `onSuccess` → gọi đồng bộ → hiện đã trả; chưa thấy tiền → thử lại đúng 3 lần rồi hiện nút; 429 → dừng tự thử; trả thiếu hiện số còn thiếu; `checkoutUrl = null` → Thử lại; đơn EXPIRED của PAYOS gọi đồng bộ một lần; đơn MANUAL như cũ; đổi sang đơn khác không giữ khung của đơn cũ.
-- [ ] `AdminOrders.test.tsx`: nhãn nguồn; đơn PAYOS không có form xác nhận, nút kiểm tra gọi đúng API và cập nhật Sheet; hiện số nhận lệch; đơn MANUAL như cũ.
-- [ ] `courseService.test.ts`, `courseI18n.test.ts`: API và mã lỗi mới.
-- [ ] Các file test trên + `npm run build` trong `app/` đạt. Kiểm mắt trang đơn PAYOS và Sheet Admin dark/light × desktop + mobile một lượt (khung payOS thật nếu đã có khóa; chưa có thì ghi “chưa kiểm” kèm lý do).
-- [ ] Thử thật, chỉ khi người dùng đã có tài khoản payOS và đồng ý chi tiền: giao dịch 1 có ngrok (webhook tới, đơn PAID); giao dịch 2 tắt ngrok trước khi trả (đồng bộ cập nhật đơn). Số tiền thử là giá thấp nhất payOS chấp nhận, xác định ở giao dịch 1. Ghi kết quả vào log; không đủ điều kiện thì ghi “chưa kiểm”.
+- [x] `Payments.test.tsx` (thư viện payOS được giả lập): đơn PAYOS dựng khung với đúng `checkoutUrl` và có link dự phòng, không có nút báo chuyển khoản; `onSuccess` → gọi đồng bộ → hiện đã trả; chưa thấy tiền → thử lại đúng 3 lần rồi hiện nút; 429 → dừng tự thử; trả thiếu hiện số còn thiếu; `checkoutUrl = null` → Thử lại; đơn EXPIRED của PAYOS gọi đồng bộ một lần; đơn MANUAL như cũ; đổi sang đơn khác không giữ khung của đơn cũ.
+- [x] `AdminOrders.test.tsx`: nhãn nguồn; đơn PAYOS không có form xác nhận, nút kiểm tra gọi đúng API và cập nhật Sheet; hiện số nhận lệch; đơn MANUAL như cũ.
+- [x] `courseService.test.ts`, `courseI18n.test.ts`: API và mã lỗi mới.
+- [x] Các file test trên + `npm run build` trong `app/` đạt.
+- [ ] Kiểm mắt trang đơn PAYOS và Sheet Admin dark/light × desktop + mobile một lượt (chưa kiểm — xem log; chưa có đủ bằng chứng cho mọi tổ hợp).
+- [ ] Thử thật toàn bộ khoảng `orderCode` và link nhận tiếp phần trả thiếu (chưa kiểm — xem log).
+- [x] Thử thật, chỉ khi người dùng đã có tài khoản payOS và đồng ý chi tiền: giao dịch 1 có ngrok (webhook tới, đơn PAID); giao dịch 2 tắt ngrok trước khi trả (đồng bộ cập nhật đơn). Số tiền thử là giá thấp nhất payOS chấp nhận, xác định ở giao dịch 1. Ghi kết quả vào log; không đủ điều kiện thì ghi “chưa kiểm”.
 
 ## Quyết định của người dùng
 
@@ -188,4 +188,4 @@ Theo bảng Task 1a, 1b. `onSuccess`, `onCancel`, `onExit` chỉ đổi giao di�
 2. Học viên không chọn cách thanh toán: payOS bật thì mọi đơn mới đi payOS, tắt thì VietQR + Admin xác nhận tay.
 3. Trả thiếu chưa cấp quyền, trang đơn báo còn thiếu, trả nốt là được; trả thừa vẫn cấp quyền; phần chênh Admin xử lý ngoài hệ thống; không hoàn tiền.
 4. Thư viện nhúng không chạy được với dự án: lùi về mở trang payOS ở tab mới, báo người dùng trước khi đổi.
-5. Phải kiểm ở lần thử thật trước khi bật: payOS từ chối tạo trùng số đơn (không chặn thì dừng, thiết kế lại bước xin link), số tiền tối thiểu, khoảng `orderCode`, link nhận tiếp phần trả thiếu.
+5. Thử thật: payOS từ chối tạo trùng số đơn (mã `231`), tạo và thanh toán được với `orderCode` 2 và 3, số tiền 10.000 ₫; khoảng `orderCode` đầy đủ và link nhận tiếp phần trả thiếu chưa kiểm — xem log.
