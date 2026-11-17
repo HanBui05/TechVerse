@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`exercise-practice
 
 ## Bắt đầu từ đây (cập nhật 2026-11-17)
 
-- **Task tiếp:** Cổng wireframe — viết `plans/exercise-practice.wireframe.md` (desktop + mobile, đủ trạng thái rỗng/lỗi/chờ), dừng chờ duyệt, rồi Task 2a (Task 1c đã nhận 2026-11-17) · Giao diện: Có
+- **Task tiếp:** Task 2a — giao diện tác giả, theo `plans/exercise-practice.wireframe.md` (đã duyệt 2026-11-17) · Giao diện: Có
 - Spec chốt 2026-11-15; `course-payment` và `course-ai-tutor` đã merge vào `main` nên đủ điều kiện bắt đầu. Migration lấy số kế tiếp lúc code (spec ghi V14 nếu V13 đã có) — kiểm `db/migration` trước.
 - Nhánh: `feature/exercise-practice` (từ `main` sau PR #10).
 
@@ -12,11 +12,16 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`exercise-practice
 
 - **2026-11-17:** body `POST …/ai/questions` thêm `version` bắt buộc (≥ 0); lệch version → 409 `EXERCISE_VERSION_CONFLICT`, hoàn lượt (không gọi model nếu lệch ngay từ đầu). Task 2a phải gửi `version` đang giữ và dùng `version` trả về cho lần `PUT questions` sau.
 
+- **2026-11-17:** duyệt wireframe, cả 5 câu mục 9 theo khuyến nghị: một nút Lưu ghi cả thông tin + câu hỏi; sắp xếp bằng ↑↓; không lưu bài làm dở; giữ các chi tiết nhỏ ngoài spec (lọc câu sai, thẻ trước, copy mới); không ô số liệu Moderator.
+
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-17 — Cổng wireframe: viết xong, chờ duyệt
+- Viết `plans/exercise-practice.wireframe.md`: danh sách + trình soạn tác giả (hai loại, panel AI, chỉ đọc, xung đột version), màn Moderator (không ô số liệu), khu Luyện tập (danh sách, giới thiệu, làm trắc nghiệm, flashcard, kết quả, lịch sử); desktop/mobile + rỗng/lỗi/chờ, bảng lỗi theo mã 1a–1c.
+- Chi tiết ngoài spec ghi “(copy mới)” hoặc nêu ở mục 9 để người dùng bỏ/giữ. Chỉ tài liệu, không có test/build.
 ### 2026-11-17 — Task 1c đã nhận: AI sinh câu hỏi
 - Code: `ExerciseAiService` (+ `POST /author/exercise-sets/{id}/ai/questions` trong `AuthorExerciseController`), `AuthorExerciseService.aiContext/markAiAssisted/aiUsable`, `AiPromptFactory.exercise*`, `Kind.EXERCISE`, `AiAssistProperties` (+`exercisePerDay`, `exerciseTimeout`, token `EXERCISE`), `AiQuotaResponse.exercise`, YAML + `.env.example`; handler `QuotaAwareException` chuyển từ `AuthorAiController` sang `GlobalExceptionHandler` để dùng chung header quota.
 - Test: `./gradlew test --tests 'exercise.*' --tests 'ai.*'` — 204 ca, 0 lỗi (`ExerciseAiServiceTest` 11 ca mới, `AiPromptFactoryTest`, `AuthorExerciseControllerTest`, 3 ca mới ở `AuthorExerciseIntegrationTest`; 1 ca đỏ do tôi viết sai 409 đã sửa, chạy lại đạt).
