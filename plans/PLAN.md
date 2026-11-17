@@ -22,7 +22,7 @@ Module đang làm: [payos-checkout](payos-checkout.md)
 | Course free | [spec](course-free.md) | Đang thực hiện | Claude | Mọi task đã nhận (2026-11-10), spec đã đồng bộ (2026-11-14); PR #4 đang mở, CI backend fail (kiểm 2026-11-14), chưa merge; xem log. | [log](course-free.log.md) |
 | Course payment | [spec](course-payment.md) | Hoàn tất | Claude | Task 1a–1d, 2a–2c đã nhận; spec đồng bộ 2026-11-16. Các mục chưa kiểm và lỗi test có sẵn: xem spec và log. | [log](course-payment.log.md) |
 | Author payout | [spec](author-payout.md) | Hoàn tất | Claude | Task 1a–1d, 2a–2c đã nhận; spec đồng bộ 2026-11-16. Các mục chưa kiểm và review Task 1b: xem spec và log. | [log](author-payout.log.md) |
-| PayOS checkout | [spec](payos-checkout.md) | Đang thực hiện | Claude | Task 1a, 1b đã nhận (2026-11-16), Task 2 đã nhận (2026-11-17); tiếp: đồng bộ spec cuối module; xem log. | [log](payos-checkout.log.md) |
+| PayOS checkout | [spec](payos-checkout.md) | Hoàn tất | Claude | Task 1a, 1b và 2 đã nhận; spec đã đồng bộ 2026-11-17. Các mục chưa kiểm: xem spec và log. | [log](payos-checkout.log.md) |
 | Course AI tutor | [spec](course-ai-tutor.md) | Đã chốt | Claude | Spec chốt 2026-11-14 (chưa qua Codex phản biện); Task 1 làm sau Task 1a của `course-payment`. | — |
 | Exercise practice | [spec](exercise-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `course-payment` + `course-ai-tutor`, bắt đầu Task 1a. | — |
 | Interview practice | [spec](interview-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định, Admin/Moderator không vào trang; Codex phản biện một vòng); làm sau `exercise-practice`, bắt đầu Task 1a. | — |
