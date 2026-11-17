@@ -1,10 +1,13 @@
 package com.techverse.server.service.impl;
 
 import com.techverse.server.dto.response.AdminOrderResponse;
+import com.techverse.server.dto.response.AdminPayoutResponse;
+import com.techverse.server.dto.response.AdminRevenueResponse;
 import com.techverse.server.dto.response.AuthorRevenueResponse;
 import com.techverse.server.dto.response.CommissionPolicyResponse;
 import com.techverse.server.dto.response.OrderResponse;
 import com.techverse.server.dto.response.PageResponse;
+import com.techverse.server.dto.response.PayoutResponse;
 import com.techverse.server.entity.*;
 import com.techverse.server.enums.RoleName;
 import com.techverse.server.exception.*;
@@ -221,12 +224,237 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public AuthorRevenueResponse revenue(UUID author, int page, int size) {
-        var t = orders.revenueTotals(author);
-        var items = orders.findRevenue(author, PageRequest.of(page, size));
+    public AuthorRevenueResponse revenue(UUID author, String courseId, String from, String to, int page, int size) {
+        var range = range(from, to);
+        UUID course = courseId == null || courseId.isEmpty() ? null : uuid(courseId, ErrorCode.REVENUE_FILTER_INVALID);
+        if (course != null && !orders.ownsCourse(course, author)) throw new CustomException(ErrorCode.COURSE_NOT_FOUND);
+        var t = orders.revenueTotals(author, course, range[0], range[1]);
+        var items = orders.findRevenue(author, course, range[0], range[1], PageRequest.of(page, size));
+        // Balance is always all-time: with a filter, earned and paid out come from one unfiltered statement.
+        var all = course == null && from == null && to == null ? t
+                : orders.revenueTotals(author, null, OrderRepository.ALWAYS_FROM, OrderRepository.ALWAYS_TO);
         return new AuthorRevenueResponse(
-                new AuthorRevenueResponse.Totals(t.getItemCount(), t.getGrossAmount(), t.getPlatformAmount(), t.getAuthorAmount()),
+                new AuthorRevenueResponse.Totals(t.getItemCount(), t.getGrossAmount(), t.getPlatformAmount(), t.getAuthorAmount(),
+                        all.getPaidOutAmount(), all.getAuthorAmount() - all.getPaidOutAmount()),
                 PageResponse.from(items, items.stream().map(AuthorRevenueResponse.Item::of).toList()));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<AuthorRevenueResponse.CourseRow> revenueByCourse(UUID author, String from, String to, int page, int size) {
+        var range = range(from, to);
+        var rows = orders.findCourseRevenue(author, range[0], range[1], PageRequest.of(page, size));
+        return PageResponse.from(rows, rows.stream().map(r -> new AuthorRevenueResponse.CourseRow(
+                r.getCourseId(), r.getCourseTitle(), r.getItemCount(), r.getGrossAmount(), r.getPlatformAmount(),
+                r.getAuthorAmount())).toList());
+    }
+
+    @Transactional(readOnly = true)
+    public AdminRevenueResponse adminRevenue(String from, String to, int page, int size) {
+        var range = range(from, to);
+        var t = orders.revenueTotals(null, null, range[0], range[1]);
+        var l = orders.ledger();
+        var rows = orders.findCourseRevenue(null, range[0], range[1], PageRequest.of(page, size));
+        return new AdminRevenueResponse(
+                new AdminRevenueResponse.Totals(t.getItemCount(), t.getGrossAmount(), t.getPlatformAmount(), t.getAuthorAmount()),
+                new AdminRevenueResponse.Ledger(l.getEarnedAmount(), l.getPaidOutAmount(), l.getEarnedAmount() - l.getPaidOutAmount()),
+                PageResponse.from(rows, rows.stream().map(r -> new AdminRevenueResponse.CourseRow(
+                        r.getCourseId(), r.getCourseTitle(), r.getAuthorId(), r.getAuthorName(), r.getItemCount(),
+                        r.getGrossAmount(), r.getPlatformAmount(), r.getAuthorAmount())).toList()));
+    }
+
+    private static final java.time.ZoneId VIETNAM = java.time.ZoneId.of("Asia/Ho_Chi_Minh");
+
+    /** {@code yyyy-MM-dd} days, both ends inclusive in Vietnam time, as [from, to); null or empty = open end. */
+    public static java.time.Instant[] range(String from, String to) {
+        try {
+            var start = from == null || from.isEmpty() ? null : java.time.LocalDate.parse(from);
+            var end = to == null || to.isEmpty() ? null : java.time.LocalDate.parse(to);
+            if (start != null && end != null && start.isAfter(end)) throw new CustomException(ErrorCode.REVENUE_FILTER_INVALID);
+            return new java.time.Instant[] {
+                    start == null ? OrderRepository.ALWAYS_FROM : start.atStartOfDay(VIETNAM).toInstant(),
+                    end == null ? OrderRepository.ALWAYS_TO : end.plusDays(1).atStartOfDay(VIETNAM).toInstant()};
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new CustomException(ErrorCode.REVENUE_FILTER_INVALID);
+        }
+    }
+
+    // ------------------------------------------------------------------ author payouts
+
+    /** VietQR BINs (api.vietqr.io/v2/banks, 2026-11-16); the only banks a payout account may use. */
+    static final List<PayoutResponse.Bank> BANKS = List.of(
+            new PayoutResponse.Bank("970436", "Vietcombank"),
+            new PayoutResponse.Bank("970415", "VietinBank"),
+            new PayoutResponse.Bank("970418", "BIDV"),
+            new PayoutResponse.Bank("970405", "Agribank"),
+            new PayoutResponse.Bank("970422", "MBBank"),
+            new PayoutResponse.Bank("970407", "Techcombank"),
+            new PayoutResponse.Bank("970416", "ACB"),
+            new PayoutResponse.Bank("970432", "VPBank"),
+            new PayoutResponse.Bank("970423", "TPBank"),
+            new PayoutResponse.Bank("970403", "Sacombank"),
+            new PayoutResponse.Bank("970437", "HDBank"),
+            new PayoutResponse.Bank("970441", "VIB"),
+            new PayoutResponse.Bank("970443", "SHB"),
+            new PayoutResponse.Bank("970431", "Eximbank"),
+            new PayoutResponse.Bank("970426", "MSB"),
+            new PayoutResponse.Bank("970448", "OCB"),
+            new PayoutResponse.Bank("970440", "SeABank"),
+            new PayoutResponse.Bank("970449", "LPBank"),
+            new PayoutResponse.Bank("970454", "VietCapitalBank"),
+            new PayoutResponse.Bank("970428", "NamABank"));
+    private static final Pattern PAYOUT_ACCOUNT_NO = Pattern.compile("[A-Za-z0-9]{6,30}");
+
+    record PayoutAccountInput(String bankId, String accountNo, String accountName) {}
+
+    @Transactional(readOnly = true)
+    public PayoutResponse.AccountView payoutAccount(UUID author) {
+        return accountView(author);
+    }
+
+    /** Creates or replaces the account under the author's users row lock, the lock payout recording takes too. */
+    @Transactional
+    public PayoutResponse.AccountView savePayoutAccount(UUID author, Map<String, Object> body) {
+        var input = payoutAccountInput(body);
+        users.findByIdForAuthentication(author).orElseThrow(() -> new CustomException(ErrorCode.INVALID_ACCESS_TOKEN));
+        orders.upsertPayoutAccount(author, input.bankId(), input.accountNo(), input.accountName());
+        return accountView(author);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PayoutResponse> payouts(UUID author, int page, int size) {
+        var result = orders.findPayouts(author, PageRequest.of(page, size));
+        return PageResponse.from(result, result.stream()
+                .map(p -> new PayoutResponse(p.getAmount(), p.getBankReference(), maskAccountNo(p.getAccountNo()), p.getCreatedAt()))
+                .toList());
+    }
+
+    private PayoutResponse.AccountView accountView(UUID author) {
+        var account = orders.findPayoutAccount(author).map(a -> new PayoutResponse.Account(
+                a.getBankId(), bankName(a.getBankId()), a.getAccountNo(), a.getAccountName(), a.getUpdatedAt()));
+        return new PayoutResponse.AccountView(account.orElse(null), BANKS);
+    }
+
+    private static String bankName(String bankId) {
+        return BANKS.stream().filter(b -> b.id().equals(bankId)).map(PayoutResponse.Bank::name).findFirst().orElse(null);
+    }
+
+    /** Exactly bankId, accountNo, accountName as strings; stripped, name upper-cased as banks print it. */
+    static PayoutAccountInput payoutAccountInput(Map<String, Object> body) {
+        if (body == null || body.size() != 3) throw new CustomException(ErrorCode.PAYOUT_ACCOUNT_INVALID);
+        return accountInput(body, ErrorCode.PAYOUT_ACCOUNT_INVALID);
+    }
+
+    private static PayoutAccountInput accountInput(Map<String, Object> body, ErrorCode invalid) {
+        if (!(body.get("bankId") instanceof String bank)
+                || !(body.get("accountNo") instanceof String no)
+                || !(body.get("accountName") instanceof String name))
+            throw new CustomException(invalid);
+        String bankId = bank.strip();
+        String accountNo = no.strip();
+        String accountName = name.strip().toUpperCase(Locale.ROOT);
+        if (bankName(bankId) == null || !PAYOUT_ACCOUNT_NO.matcher(accountNo).matches()
+                || accountName.isEmpty() || accountName.length() > 100 || accountName.chars().anyMatch(Character::isISOControl))
+            throw new CustomException(invalid);
+        return new PayoutAccountInput(bankId, accountNo, accountName);
+    }
+
+    // ------------------------------------------------------------------ Admin payouts
+
+    record PayoutInput(UUID authorId, long amount, String bankReference, PayoutAccountInput account) {}
+
+    /** Exactly six fields; amount a JSON integer (no decimals, strings or beyond long); the account the Admin paid. */
+    static PayoutInput payoutInput(Map<String, Object> body) {
+        if (body == null || body.size() != 6
+                || !(body.get("authorId") instanceof String id)
+                || !(body.get("amount") instanceof Integer || body.get("amount") instanceof Long)
+                || ((Number) body.get("amount")).longValue() <= 0
+                || !(body.get("bankReference") instanceof String reference)
+                || reference.strip().isEmpty() || reference.strip().length() > 255)
+            throw new CustomException(ErrorCode.PAYOUT_INVALID);
+        return new PayoutInput(uuid(id, ErrorCode.PAYOUT_INVALID), ((Number) body.get("amount")).longValue(),
+                reference.strip(), accountInput(body, ErrorCode.PAYOUT_INVALID));
+    }
+
+    /** Canonical form only: {@code UUID.fromString} also accepts short forms such as "1-1-1-1-1". */
+    public static UUID uuid(String value, ErrorCode invalid) {
+        try {
+            UUID parsed = UUID.fromString(value);
+            if (parsed.toString().equalsIgnoreCase(value)) return parsed;
+        } catch (IllegalArgumentException e) {
+        }
+        throw new CustomException(invalid);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<AdminPayoutResponse.AuthorBalance> authorBalances(boolean owedOnly, int page, int size) {
+        var result = orders.findAuthorBalances(owedOnly, PageRequest.of(page, size));
+        return PageResponse.from(result, result.stream().map(b -> {
+            var account = b.getBankId() == null ? null
+                    : new PayoutResponse.Account(b.getBankId(), bankName(b.getBankId()), b.getAccountNo(), b.getAccountName(), b.getUpdatedAt());
+            var qr = account == null ? null
+                    : payoutQr(b.getAuthorId(), b.getBankId(), b.getAccountNo(), b.getAccountName(), b.getBalanceAmount());
+            return new AdminPayoutResponse.AuthorBalance(b.getAuthorId(), b.getFullName(), b.getEmail(),
+                    b.getEarnedAmount(), b.getPaidOutAmount(), b.getBalanceAmount(), account, qr);
+        }).toList());
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<AdminPayoutResponse> adminPayouts(UUID authorId, int page, int size) {
+        var result = orders.findAdminPayouts(authorId, PageRequest.of(page, size));
+        return PageResponse.from(result, result.stream().map(p -> adminPayoutView(p, null)).toList());
+    }
+
+    /**
+     * Records a transfer the Admin already made. Locks only the author's users row (the lock
+     * {@link #savePayoutAccount} takes), never an order or buyer, so it cannot deadlock with {@link #confirm}.
+     * A known reference is a retry when author and amount match, a conflict otherwise; the balance is read
+     * after the lock in one statement, so two Admins can never pay out more than was earned.
+     */
+    @Transactional
+    public AdminPayoutResponse recordPayout(UUID admin, Map<String, Object> body) {
+        var input = payoutInput(body);
+        users.findByIdForAuthentication(input.authorId()).orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        var existing = orders.findPayoutByReference(input.bankReference());
+        if (existing.isPresent()) return replay(existing.get(), input);
+        var totals = orders.revenueTotals(input.authorId());
+        if (input.amount() > totals.getAuthorAmount() - totals.getPaidOutAmount())
+            throw new CustomException(ErrorCode.PAYOUT_EXCEEDS_BALANCE);
+        var account = input.account();
+        // 0 rows: another author's payout took this reference after our check (different lock).
+        if (orders.insertPayout(input.authorId(), input.amount(), input.bankReference(),
+                account.bankId(), account.accountNo(), account.accountName(), admin) == 0)
+            return replay(orders.findPayoutByReference(input.bankReference())
+                    .orElseThrow(() -> new CustomException(ErrorCode.PAYOUT_REFERENCE_CONFLICT)), input);
+        return withAccountCheck(orders.findPayoutByReference(input.bankReference()).orElseThrow());
+    }
+
+    private AdminPayoutResponse replay(OrderRepository.AdminPayoutRow row, PayoutInput input) {
+        if (!row.getAuthorId().equals(input.authorId()) || row.getAmount() != input.amount())
+            throw new CustomException(ErrorCode.PAYOUT_REFERENCE_CONFLICT);
+        return withAccountCheck(row);
+    }
+
+    private AdminPayoutResponse withAccountCheck(OrderRepository.AdminPayoutRow row) {
+        var current = orders.findPayoutAccount(row.getAuthorId());
+        boolean changed = current.map(a -> !a.getBankId().equals(row.getBankId())
+                || !a.getAccountNo().equals(row.getAccountNo()) || !a.getAccountName().equals(row.getAccountName())).orElse(true);
+        return adminPayoutView(row, changed);
+    }
+
+    private static AdminPayoutResponse adminPayoutView(OrderRepository.AdminPayoutRow p, Boolean accountChanged) {
+        return new AdminPayoutResponse(p.getId(), p.getAuthorId(), p.getAuthorName(), p.getAmount(), p.getBankReference(),
+                p.getBankId(), bankName(p.getBankId()), p.getAccountNo(), p.getAccountName(), p.getRecordedById(),
+                p.getRecordedByName(), p.getCreatedAt(), accountChanged);
+    }
+
+    /** QR to the author's own account (not the platform's {@code vietqr.*}); null when nothing is owed. */
+    OrderResponse.VietQr payoutQr(UUID author, String bank, String account, String name, long balance) {
+        if (balance <= 0 || template == null || !TEMPLATE.matcher(template).matches()) return null;
+        return vietQr(bank, account, name, balance, "TVPAY" + author.toString().substring(0, 8).toUpperCase(Locale.ROOT));
+    }
+
+    static String maskAccountNo(String accountNo) {
+        return "****" + accountNo.substring(accountNo.length() - 4);
     }
 
     // ------------------------------------------------------------------ helpers
@@ -254,12 +482,15 @@ public class OrderService {
 
     /** VietQR quick-link image; the browser fetches it, the server never calls VietQR. */
     OrderResponse.VietQr vietQr(long amount, String code) {
-        if (!qrConfigured()) return null;
-        String url = "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-" + template + ".png"
+        return qrConfigured() ? vietQr(bankId, accountNo, accountName.strip(), amount, code) : null;
+    }
+
+    private OrderResponse.VietQr vietQr(String bank, String account, String name, long amount, String content) {
+        String url = "https://img.vietqr.io/image/" + bank + "-" + account + "-" + template + ".png"
                 + "?amount=" + amount
-                + "&addInfo=" + UriUtils.encodeQueryParam(code, StandardCharsets.UTF_8)
-                + "&accountName=" + UriUtils.encodeQueryParam(accountName.strip(), StandardCharsets.UTF_8);
-        return new OrderResponse.VietQr(bankId, accountNo, accountName.strip(), amount, code, url);
+                + "&addInfo=" + UriUtils.encodeQueryParam(content, StandardCharsets.UTF_8)
+                + "&accountName=" + UriUtils.encodeQueryParam(name, StandardCharsets.UTF_8);
+        return new OrderResponse.VietQr(bank, account, name, amount, content, url);
     }
 
     boolean qrConfigured() {

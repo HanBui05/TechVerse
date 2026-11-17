@@ -110,6 +110,9 @@ describe('admin payment copy (Task 2c)', () => {
     expect(vi('PAYMENT_RECONCILIATION_NOT_REQUIRED')).toBe('Không có khoản cần đối chiếu.')
     expect(vi('PAYMENT_RECONCILIATION_STALE')).toBe('Có khoản thanh toán mới; hãy xem lại danh sách.')
     expect(vi('COMMISSION_RATE_INVALID', 400)).toBe('Tỷ lệ không hợp lệ.')
+    expect(vi('PAYOUT_ACCOUNT_INVALID', 400)).toBe('Thông tin tài khoản không hợp lệ.')
+    expect(vi('REVENUE_FILTER_INVALID', 400)).toBe('Khoảng ngày không hợp lệ.')
+    expect(courseErrorText(new ApiError('English', 400, 'PAYOUT_ACCOUNT_INVALID'), 'en', 'F')).toBe('Bank account details are invalid.')
     expect(courseErrorText(new ApiError('English', 409, 'PAYMENT_AMOUNT_MISMATCH'), 'en', 'F')).toMatch(/does not match/)
   })
 

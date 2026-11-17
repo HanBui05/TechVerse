@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { MutableRefObject, ReactNode } from 'react'
 import { Link, UNSAFE_DataRouterContext, useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, ExternalLink, Info, ListTree, RefreshCw, Send } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ExternalLink, Info, ListTree, RefreshCw, Send, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -255,6 +255,7 @@ export function CourseEditorPage({ language = 'vi' }: { language?: Language } = 
         <CourseStatusBadges course={course} language={language} />
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground">{savedAt}</span>
+          {course.id && <Button asChild variant="outline" className={touch}><Link to={`/author/courses/${course.id}/students`}><Users />{t('studentsTitle')}</Link></Button>}
           {live && !isMobile && <Button asChild variant="outline" className={touch}><Link to={`/courses/${course.id}`} target="_blank" rel="noopener"><ExternalLink />{t('previewCourse')}</Link></Button>}
           {!readOnly && !isMobile && <Button className={touch} disabled={busy || uploading} onClick={() => void submit()}><Send />{t('submit')}</Button>}
           <CourseActionMenu course={course} language={language} onAsk={actions.ask} disabled={actions.busy} />

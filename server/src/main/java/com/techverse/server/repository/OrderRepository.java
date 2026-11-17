@@ -200,24 +200,217 @@ public interface OrderRepository extends JpaRepository<CourseOrder, UUID> {
 
     // ------------------------------------------------------------------ Author revenue (snapshots of PAID items)
 
+    /** Open ends of the revenue date filter; avoids null parameters in the filtered queries. */
+    java.time.Instant ALWAYS_FROM = java.time.Instant.parse("1970-01-01T00:00:00Z");
+    java.time.Instant ALWAYS_TO = java.time.Instant.parse("9999-01-01T00:00:00Z");
+
+    @Query("select count(c) > 0 from Course c where c.id = :id and c.author.id = :authorId")
+    boolean ownsCourse(@Param("id") UUID id, @Param("authorId") UUID authorId);
+
+    /** {@code courseId} null = every course; paid in [from, to). */
     @Query(
             value = "select i from OrderItem i join fetch i.order o where o.status = 'PAID'"
                     + " and i.courseId in (select c.id from Course c where c.author.id = :authorId)"
+                    + " and (:courseId is null or i.courseId = :courseId) and o.paidAt >= :from and o.paidAt < :to"
                     + " order by o.paidAt desc, o.id desc",
             countQuery = "select count(i) from OrderItem i join i.order o where o.status = 'PAID'"
-                    + " and i.courseId in (select c.id from Course c where c.author.id = :authorId)")
-    Page<OrderItem> findRevenue(@Param("authorId") UUID authorId, Pageable pageable);
+                    + " and i.courseId in (select c.id from Course c where c.author.id = :authorId)"
+                    + " and (:courseId is null or i.courseId = :courseId) and o.paidAt >= :from and o.paidAt < :to")
+    Page<OrderItem> findRevenue(
+            @Param("authorId") UUID authorId, @Param("courseId") UUID courseId,
+            @Param("from") java.time.Instant from, @Param("to") java.time.Instant to, Pageable pageable);
 
     interface RevenueTotals {
         Long getItemCount();
         Long getGrossAmount();
         Long getPlatformAmount();
         Long getAuthorAmount();
+        Long getPaidOutAmount();
     }
 
-    @Query("select count(i) as itemCount, coalesce(sum(i.unitPriceAmount), 0) as grossAmount,"
-            + " coalesce(sum(i.commissionAmount), 0) as platformAmount, coalesce(sum(i.authorNetAmount), 0) as authorAmount"
-            + " from OrderItem i join i.order o where o.status = 'PAID'"
-            + " and i.courseId in (select c.id from Course c where c.author.id = :authorId)")
-    RevenueTotals revenueTotals(@Param("authorId") UUID authorId);
+    /**
+     * Earned and paid out in one statement, so the balance never mixes two snapshots. {@code authorId} null =
+     * every author (paidOut is then 0; use {@link #ledger}); paidOut ignores the course and date filter.
+     */
+    @Query(
+            value = "SELECT count(i.id) AS itemCount, coalesce(sum(i.unit_price_amount), 0)::bigint AS grossAmount,"
+                    + " coalesce(sum(i.commission_amount), 0)::bigint AS platformAmount,"
+                    + " coalesce(sum(i.author_net_amount), 0)::bigint AS authorAmount,"
+                    + " (SELECT coalesce(sum(p.amount), 0) FROM author_payouts p WHERE p.author_id = CAST(:authorId AS uuid))::bigint AS paidOutAmount"
+                    + " FROM order_items i JOIN orders o ON o.id = i.order_id JOIN courses c ON c.id = i.course_id"
+                    + " WHERE o.status = 'PAID' AND (CAST(:authorId AS uuid) IS NULL OR c.author_id = CAST(:authorId AS uuid))"
+                    + " AND (CAST(:courseId AS uuid) IS NULL OR c.id = CAST(:courseId AS uuid))"
+                    + " AND o.paid_at >= :from AND o.paid_at < :to",
+            nativeQuery = true)
+    RevenueTotals revenueTotals(
+            @Param("authorId") UUID authorId, @Param("courseId") UUID courseId,
+            @Param("from") java.time.Instant from, @Param("to") java.time.Instant to);
+
+    default RevenueTotals revenueTotals(UUID authorId) {
+        return revenueTotals(authorId, null, ALWAYS_FROM, ALWAYS_TO);
+    }
+
+    interface LedgerRow {
+        Long getEarnedAmount();
+        Long getPaidOutAmount();
+    }
+
+    /** All authors, all time, one statement. */
+    @Query(
+            value = "SELECT (SELECT coalesce(sum(i.author_net_amount), 0) FROM order_items i JOIN orders o ON o.id = i.order_id"
+                    + " WHERE o.status = 'PAID')::bigint AS earnedAmount,"
+                    + " (SELECT coalesce(sum(amount), 0) FROM author_payouts)::bigint AS paidOutAmount",
+            nativeQuery = true)
+    LedgerRow ledger();
+
+    interface CourseRevenueRow {
+        UUID getCourseId();
+        String getCourseTitle();
+        UUID getAuthorId();
+        String getAuthorName();
+        Long getItemCount();
+        Long getGrossAmount();
+        Long getPlatformAmount();
+        Long getAuthorAmount();
+    }
+
+    String COURSE_REVENUE = " FROM order_items i JOIN orders o ON o.id = i.order_id JOIN courses c ON c.id = i.course_id"
+            + " JOIN users u ON u.id = c.author_id WHERE o.status = 'PAID'"
+            + " AND (CAST(:authorId AS uuid) IS NULL OR c.author_id = CAST(:authorId AS uuid))"
+            + " AND o.paid_at >= :from AND o.paid_at < :to";
+
+    /** One row per course with a sale in the range, highest gross first; {@code authorId} null = every author. */
+    @Query(
+            value = "SELECT c.id AS courseId, c.title AS courseTitle, c.author_id AS authorId, u.full_name AS authorName,"
+                    + " count(i.id) AS itemCount, sum(i.unit_price_amount)::bigint AS grossAmount,"
+                    + " sum(i.commission_amount)::bigint AS platformAmount, sum(i.author_net_amount)::bigint AS authorAmount"
+                    + COURSE_REVENUE + " GROUP BY c.id, c.title, c.author_id, u.full_name"
+                    + " ORDER BY sum(i.unit_price_amount) DESC, c.id",
+            countQuery = "SELECT count(DISTINCT c.id)" + COURSE_REVENUE,
+            nativeQuery = true)
+    Page<CourseRevenueRow> findCourseRevenue(
+            @Param("authorId") UUID authorId, @Param("from") java.time.Instant from, @Param("to") java.time.Instant to,
+            Pageable pageable);
+
+    // ------------------------------------------------------------------ author payouts
+
+    interface PayoutAccountRow {
+        String getBankId();
+        String getAccountNo();
+        String getAccountName();
+        java.time.Instant getUpdatedAt();
+    }
+
+    @Query(
+            value = "SELECT bank_id AS bankId, account_no AS accountNo, account_name AS accountName, updated_at AS updatedAt"
+                    + " FROM author_payout_accounts WHERE user_id = :userId",
+            nativeQuery = true)
+    Optional<PayoutAccountRow> findPayoutAccount(@Param("userId") UUID userId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value = "INSERT INTO author_payout_accounts (user_id, bank_id, account_no, account_name)"
+                    + " VALUES (:userId, :bankId, :accountNo, :accountName)"
+                    + " ON CONFLICT (user_id) DO UPDATE SET bank_id = EXCLUDED.bank_id,"
+                    + " account_no = EXCLUDED.account_no, account_name = EXCLUDED.account_name",
+            nativeQuery = true)
+    void upsertPayoutAccount(
+            @Param("userId") UUID userId,
+            @Param("bankId") String bankId,
+            @Param("accountNo") String accountNo,
+            @Param("accountName") String accountName);
+
+    interface PayoutRow {
+        Long getAmount();
+        String getBankReference();
+        String getAccountNo();
+        java.time.Instant getCreatedAt();
+    }
+
+    @Query(
+            value = "SELECT amount, bank_reference AS bankReference, account_no AS accountNo, created_at AS createdAt"
+                    + " FROM author_payouts WHERE author_id = :authorId ORDER BY created_at DESC, id DESC",
+            countQuery = "SELECT count(*) FROM author_payouts WHERE author_id = :authorId",
+            nativeQuery = true)
+    Page<PayoutRow> findPayouts(@Param("authorId") UUID authorId, Pageable pageable);
+
+    // ------------------------------------------------------------------ Admin payouts
+
+    interface AuthorBalanceRow {
+        UUID getAuthorId();
+        String getFullName();
+        String getEmail();
+        Long getEarnedAmount();
+        Long getPaidOutAmount();
+        Long getBalanceAmount();
+        String getBankId();
+        String getAccountNo();
+        String getAccountName();
+        java.time.Instant getUpdatedAt();
+    }
+
+    /** Every author with PAID revenue; same earned formula as {@link #revenueTotals}, largest balance first. */
+    String AUTHOR_BALANCES = " FROM (SELECT e.author_id, e.earned,"
+            + " (SELECT coalesce(sum(p.amount), 0) FROM author_payouts p WHERE p.author_id = e.author_id)::bigint AS paid"
+            + " FROM (SELECT c.author_id, sum(i.author_net_amount)::bigint AS earned FROM order_items i"
+            + " JOIN orders o ON o.id = i.order_id JOIN courses c ON c.id = i.course_id"
+            + " WHERE o.status = 'PAID' GROUP BY c.author_id) e) b"
+            + " JOIN users u ON u.id = b.author_id LEFT JOIN author_payout_accounts a ON a.user_id = b.author_id"
+            + " WHERE (:owedOnly = false OR b.earned > b.paid)";
+
+    @Query(
+            value = "SELECT b.author_id AS authorId, u.full_name AS fullName, u.email::text AS email, b.earned AS earnedAmount,"
+                    + " b.paid AS paidOutAmount, b.earned - b.paid AS balanceAmount, a.bank_id AS bankId,"
+                    + " a.account_no AS accountNo, a.account_name AS accountName, a.updated_at AS updatedAt"
+                    + AUTHOR_BALANCES + " ORDER BY b.earned - b.paid DESC, b.author_id",
+            countQuery = "SELECT count(*)" + AUTHOR_BALANCES,
+            nativeQuery = true)
+    Page<AuthorBalanceRow> findAuthorBalances(@Param("owedOnly") boolean owedOnly, Pageable pageable);
+
+    interface AdminPayoutRow {
+        UUID getId();
+        UUID getAuthorId();
+        String getAuthorName();
+        Long getAmount();
+        String getBankReference();
+        String getBankId();
+        String getAccountNo();
+        String getAccountName();
+        UUID getRecordedById();
+        String getRecordedByName();
+        java.time.Instant getCreatedAt();
+    }
+
+    String ADMIN_PAYOUT = "SELECT p.id, p.author_id AS authorId, au.full_name AS authorName, p.amount,"
+            + " p.bank_reference AS bankReference, p.bank_id AS bankId, p.account_no AS accountNo,"
+            + " p.account_name AS accountName, p.created_by AS recordedById, ad.full_name AS recordedByName,"
+            + " p.created_at AS createdAt"
+            + " FROM author_payouts p JOIN users au ON au.id = p.author_id JOIN users ad ON ad.id = p.created_by";
+
+    @Query(value = ADMIN_PAYOUT + " WHERE p.bank_reference = :reference", nativeQuery = true)
+    Optional<AdminPayoutRow> findPayoutByReference(@Param("reference") String reference);
+
+    @Query(
+            value = ADMIN_PAYOUT + " WHERE (CAST(:authorId AS uuid) IS NULL OR p.author_id = CAST(:authorId AS uuid))"
+                    + " ORDER BY p.created_at DESC, p.id DESC",
+            countQuery = "SELECT count(*) FROM author_payouts p"
+                    + " WHERE (CAST(:authorId AS uuid) IS NULL OR p.author_id = CAST(:authorId AS uuid))",
+            nativeQuery = true)
+    Page<AdminPayoutRow> findAdminPayouts(@Param("authorId") UUID authorId, Pageable pageable);
+
+    /** 0 rows: the reference was taken meanwhile; never a unique violation that would poison the transaction. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value = "INSERT INTO author_payouts (author_id, amount, bank_reference, bank_id, account_no, account_name, created_by)"
+                    + " VALUES (:authorId, :amount, :reference, :bankId, :accountNo, :accountName, :admin)"
+                    + " ON CONFLICT (bank_reference) DO NOTHING",
+            nativeQuery = true)
+    int insertPayout(
+            @Param("authorId") UUID authorId,
+            @Param("amount") long amount,
+            @Param("reference") String reference,
+            @Param("bankId") String bankId,
+            @Param("accountNo") String accountNo,
+            @Param("accountName") String accountName,
+            @Param("admin") UUID admin);
 }

@@ -33,6 +33,8 @@ import { AuthorApplicationsPage } from './pages/Admin/AuthorApplicationsPage'
 import { AdminUsersPage } from './pages/Admin/AdminUsersPage'
 import { TaxonomyPage } from './pages/Admin/TaxonomyPage'
 import { AdminOrdersPage } from './pages/Admin/Orders/AdminOrdersPage'
+import { AdminRevenuePage } from './pages/Admin/Revenue/AdminRevenuePage'
+import { AdminPayoutsPage } from './pages/Admin/Payouts/AdminPayoutsPage'
 import { AdminCommissionPage } from './pages/Admin/Commission/AdminCommissionPage'
 import { AuthorRevenuePage } from './pages/Author/Revenue/AuthorRevenuePage'
 import { AuthorApplyPage } from './pages/Author/AuthorApplyPage'
@@ -41,6 +43,7 @@ import { ArticleEditorPage } from './pages/Author/ArticleEditorPage'
 import { AiArticlePage } from './pages/Author/AiArticlePage'
 import { AuthorCoursesPage } from './pages/Author/Courses/AuthorCoursesPage'
 import { CourseEditorPage } from './pages/Author/Courses/CourseEditorPage'
+import { CourseStudentsPage } from './pages/Author/Courses/CourseStudentsPage'
 import { ModeratorDashboardPage } from './pages/Moderator/ModeratorDashboardPage'
 import { ModeratorArticlesPage } from './pages/Moderator/ModeratorArticlesPage'
 import { ModeratorArticleDetailPage } from './pages/Moderator/ModeratorArticleDetailPage'
@@ -193,6 +196,8 @@ export default function App() {
       <Route path="/admin/tags" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="tags" language={language} /></RoleRoute>} />
       <Route path="/admin/orders" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminOrdersPage language={language} /></RoleRoute>} />
       <Route path="/admin/commission" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminCommissionPage language={language} /></RoleRoute>} />
+      <Route path="/admin/revenue" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminRevenuePage language={language} /></RoleRoute>} />
+      <Route path="/admin/payouts" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminPayoutsPage language={language} /></RoleRoute>} />
       <Route path="/author/revenue" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AuthorRevenuePage language={language} /></RoleRoute>} />
       <Route path="/author/apply" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['LEARNER']}><AuthorApplyPage language={language} /></RoleRoute>} />
       <Route path="/author/blogs" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AuthorBlogsPage language={language} /></RoleRoute>} />
@@ -203,6 +208,7 @@ export default function App() {
       <Route path="/author/courses" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AuthorCoursesPage language={language} /></RoleRoute>} />
       {/* Same element type on both paths: after the first create /new → /:id/edit keeps editor state. */}
       <Route path="/author/courses/new" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><CourseEditorPage language={language} /></RoleRoute>} />
+      <Route path="/author/courses/:id/students" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><CourseStudentsPage language={language} /></RoleRoute>} />
       <Route path="/author/courses/:id/edit" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><CourseEditorPage language={language} /></RoleRoute>} />
       <Route path="/settings/theme" element={<ThemePage theme={theme} setTheme={setTheme} t={t} />} />
       <Route path="/settings/language" element={<LanguagePage language={language} setLanguage={setLanguage} t={t} />} />

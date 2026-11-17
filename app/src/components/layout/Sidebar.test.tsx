@@ -89,7 +89,7 @@ it('lists only routable entries for a signed-out visitor', () => {
 it('lists only routable entries in the admin sidebar and keeps the moderator link', () => {
   render(<Shell><AdminSidebar language="vi" profile={profile} onLogout={props.onLogout} isModerator /></Shell>)
   expect(hrefs().filter(href => deadAdminPaths.test(href))).toEqual([])
-  for (const name of ['Trang chủ', 'Hồ sơ tác giả', 'Quản lý người dùng', 'Chủ đề', 'Thẻ', 'Kiểm duyệt bài viết']) expect(screen.queryByRole('link', { name })).not.toBeNull()
+  for (const name of ['Trang chủ', 'Hồ sơ tác giả', 'Quản lý người dùng', 'Chủ đề', 'Thẻ', 'Đơn hàng', 'Hoa hồng', 'Doanh thu', 'Chi trả tác giả', 'Kiểm duyệt bài viết']) expect(screen.queryByRole('link', { name })).not.toBeNull()
 })
 
 // Management accounts are redirected away from Reader routes, so neither staff sidebar links back to them.

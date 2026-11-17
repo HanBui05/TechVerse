@@ -1,7 +1,7 @@
 import { request } from './api/client'
 import type { ArticleOption, AuthorArticleFilter, HistoryEntry, ImageIssue, ModeratorArticleFilter, Page } from '../types/articles'
 import type { Language } from '../types/preferences'
-import type { AdminOrder, AdminOrderFilter, AuthorCourse, AuthorRevenue, CommissionPolicy, CourseFilter, CourseOrder, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
+import type { CourseStudents, StudentProgress, AdminOrder, AdminOrderFilter, AdminPayout, AdminRevenue, AuthorBalance, PayoutRecord, AuthorCourse, AuthorPayout, AuthorRevenue, PayoutAccountForm, PayoutAccountView, RevenueCourseRow, RevenueFilter, CommissionPolicy, CourseFilter, CourseOrder, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
 
 const base = '/api/v1/author/courses'
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
@@ -17,6 +17,7 @@ export const authorCourses = {
   list: (filter: AuthorArticleFilter) => request<Page<AuthorCourseSummary>>(`${base}?${query(filter)}`),
   options: () => request<{ topics: Page<ArticleOption>; tags: Page<ArticleOption> }>(`${base}/options?topicSize=100&tagSize=100`),
   detail: (id: string) => request<AuthorCourse>(`${base}/${id}`),
+  students: (id: string, filter: { q: string; progress: StudentProgress; page: number; size: number }) => request<CourseStudents>(`${base}/${id}/students?${query(filter)}`),
   create: (body: CourseWrite, idempotencyKey: string) => request<AuthorCourse>(base, withKey('POST', body, 'Idempotency-Key', idempotencyKey)),
   update: (id: string, body: CourseWrite) => request<AuthorCourse>(`${base}/${id}`, json('PATCH', body)),
   withdraw: (id: string) => request<AuthorCourse>(`${base}/${id}/withdraw`, { method: 'POST' }),
@@ -224,7 +225,20 @@ export const commission = {
   change: (rateBps: number) => request<CommissionPolicy>('/api/v1/admin/commission-policy', json('PUT', { rateBps })),
 }
 export const REVENUE_PAGE_SIZE = 10
-export const revenue = (page: number) => request<AuthorRevenue>(`/api/v1/author/revenue?${query({ page, size: REVENUE_PAGE_SIZE })}`)
+export const revenue = (page: number, filter: RevenueFilter = {}) => request<AuthorRevenue>(`/api/v1/author/revenue?${query({ ...filter, page, size: REVENUE_PAGE_SIZE })}`)
+export const revenueByCourse = (page: number, filter: RevenueFilter = {}) => request<Page<RevenueCourseRow>>(`/api/v1/author/revenue/courses?${query({ from: filter.from, to: filter.to, page, size: REVENUE_PAGE_SIZE })}`)
+export const payoutAccount = {
+  get: () => request<PayoutAccountView>('/api/v1/author/payout-account'),
+  save: (form: PayoutAccountForm) => request<PayoutAccountView>('/api/v1/author/payout-account', json('PUT', form)),
+}
+export const adminRevenue = (page: number, filter: { from?: string; to?: string } = {}) => request<AdminRevenue>(`/api/v1/admin/revenue?${query({ ...filter, page, size: REVENUE_PAGE_SIZE })}`)
+export const adminPayouts = {
+  authors: (page: number, owedOnly: boolean) => request<Page<AuthorBalance>>(`/api/v1/admin/payouts/authors?${query({ owedOnly, page, size: REVENUE_PAGE_SIZE })}`),
+  list: (page: number, authorId?: string) => request<Page<AdminPayout>>(`/api/v1/admin/payouts?${query({ authorId, page, size: REVENUE_PAGE_SIZE })}`),
+  /** Account fields are where the admin actually transferred (the Sheet's account); the server keeps them as the snapshot. */
+  record: (body: PayoutRecord) => request<AdminPayout>('/api/v1/admin/payouts', json('POST', body)),
+}
+export const payouts = (page: number) => request<Page<AuthorPayout>>(`/api/v1/author/payouts?${query({ page, size: REVENUE_PAGE_SIZE })}`)
 
 /** Percent text → whole basis points: 0–100 with at most 2 decimals (comma allowed), else null; the server stays the judge. */
 export function rateBps(text: string) {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ComponentType } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CheckCircle2, Clock, Eye, GraduationCap, Layers, PencilLine, Plus, RefreshCw, Search, SlidersHorizontal, SquarePen } from 'lucide-react'
+import { CheckCircle2, Clock, Eye, GraduationCap, Layers, PencilLine, Plus, RefreshCw, Search, SlidersHorizontal, SquarePen, Users } from 'lucide-react'
 import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -172,6 +172,7 @@ export function AuthorCoursesPage({ language = 'vi' }: { language?: Language } =
                       <Badge tone={toneFor(item.topic.name)} className="max-w-full whitespace-normal">{item.topic.name}</Badge>
                       <Badge tone="slate">{t(item.level)}</Badge>
                       <Badge tone={item.priceAmount === 0 ? 'green' : 'blue'} className="tabular-nums">{item.priceAmount === 0 ? t('priceFree') : vnd(item.priceAmount, language)}</Badge>
+                      {item.studentCount !== undefined && <Link to={`/author/courses/${item.id}/students`} className={`inline-flex items-center gap-1 font-medium text-foreground underline-offset-2 hover:underline ${touch}`}><Users aria-hidden className="size-3.5" />{t('studentCount', { count: item.studentCount })}</Link>}
                       <span>{t('updated', { date: formatDate(item.updatedAt, language) })}</span>
                       {item.publishedAt && <span>· {t('publishedOn', { date: formatDate(item.publishedAt, language) })}</span>}
                     </span>

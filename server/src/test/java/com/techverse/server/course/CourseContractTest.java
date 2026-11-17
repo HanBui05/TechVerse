@@ -48,6 +48,13 @@ class CourseContractTest {
     }
 
     @Test
+    void studentCountOnlyInTheAuthorDtos() {
+        for (Class<?> type : RESPONSES)
+            assertThat(fieldNames(type, new HashSet<>()).contains("studentCount")).as(type.getSimpleName())
+                    .isEqualTo(type == CourseResponse.class || type == CourseSummaryResponse.class);
+    }
+
+    @Test
     void responsesExposeOnlyProviderAndVideoId() {
         for (Class<?> type : RESPONSES)
             assertThat(fieldNames(type, new HashSet<>())).as(type.getSimpleName()).doesNotContain("videoUrl");

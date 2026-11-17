@@ -19,6 +19,7 @@ export const COURSE_ERROR_CODES = [
   'COURSE_PRICE_INVALID', 'COURSE_PRICE_TYPE_LOCKED', 'COURSE_PURCHASE_REQUIRED', 'ORDER_INVALID', 'ORDER_COURSE_UNAVAILABLE', 'ORDER_ALREADY_ENROLLED', 'PAYMENT_UNAVAILABLE',
   'ORDER_RATE_LIMITED', 'ORDER_NOT_FOUND', 'ORDER_TRANSFER_REPORT_NOT_ALLOWED', 'AUTH_ACCESS_TOKEN_REQUIRED', 'AUTH_INVALID_ACCESS_TOKEN',
   'PAYMENT_INVALID', 'PAYMENT_AMOUNT_MISMATCH', 'PAYMENT_STATE_INVALID', 'PAYMENT_REFERENCE_CONFLICT', 'PAYMENT_RECONCILIATION_NOT_REQUIRED', 'PAYMENT_RECONCILIATION_STALE', 'COMMISSION_RATE_INVALID',
+  'COURSE_STUDENT_FILTER_INVALID', 'PAYOUT_ACCOUNT_INVALID', 'REVENUE_FILTER_INVALID', 'PAYOUT_INVALID', 'PAYOUT_REFERENCE_CONFLICT', 'PAYOUT_EXCEEDS_BALANCE', 'USER_NOT_FOUND',
 ] as const
 
 const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
@@ -76,6 +77,13 @@ const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
   PAYMENT_RECONCILIATION_NOT_REQUIRED: { vi: 'Không có khoản cần đối chiếu.', en: 'Nothing needs reconciling.' },
   PAYMENT_RECONCILIATION_STALE: { vi: 'Có khoản thanh toán mới; hãy xem lại danh sách.', en: 'A new payment arrived; review the list again.' },
   COMMISSION_RATE_INVALID: { vi: 'Tỷ lệ không hợp lệ.', en: 'The rate is invalid.' },
+  COURSE_STUDENT_FILTER_INVALID: { vi: 'Bộ lọc không hợp lệ.', en: 'The filters are invalid.' },
+  PAYOUT_ACCOUNT_INVALID: { vi: 'Thông tin tài khoản không hợp lệ.', en: 'Bank account details are invalid.' },
+  REVENUE_FILTER_INVALID: { vi: 'Khoảng ngày không hợp lệ.', en: 'The date range is invalid.' },
+  PAYOUT_INVALID: { vi: 'Thông tin khoản chi không hợp lệ.', en: 'Payout details are invalid.' },
+  PAYOUT_REFERENCE_CONFLICT: { vi: 'Mã sao kê này đã được dùng.', en: 'This bank reference is already used.' },
+  PAYOUT_EXCEEDS_BALANCE: { vi: 'Số tiền vượt quá số còn phải chi.', en: 'Amount exceeds what is owed.' },
+  USER_NOT_FOUND: { vi: 'Không tìm thấy tác giả.', en: 'Author not found.' },
   AUTH_ACCESS_TOKEN_REQUIRED: { vi: 'Hãy đăng nhập để tiếp tục.', en: 'Sign in to continue.' },
   AUTH_INVALID_ACCESS_TOKEN: { vi: 'Hãy đăng nhập để tiếp tục.', en: 'Sign in to continue.' },
 }
@@ -126,6 +134,9 @@ const vi = {
   replaceContent: 'Thay nội dung đang có?', replaceContentText: 'Bản nháp AI sẽ thay tiêu đề, tóm tắt và nội dung đang soạn của bài này.', replace: 'Thay nội dung',
   price: 'Giá (VND)', priceFree: 'Miễn phí', priceHelp: 'Miễn phí hoặc từ 10.000 đến 50.000.000 ₫. Giá được áp dụng ngay cho đơn mới, không cần gửi duyệt; đơn cũ giữ giá lúc tạo.',
   priceLocked: 'Khóa đã công khai không đổi giữa miễn phí và trả phí.', priceInvalid: 'Giá khóa học không hợp lệ.', share: 'Nền tảng giữ {rate}%, bạn nhận {amount}',
+  studentsTitle: 'Học viên', studentsTotal: 'Tổng học viên', studentsNotStarted: 'Chưa học', studentsCompleted: 'Đã hoàn thành', studentsInProgress: 'Đang học', studentProgress: 'Tiến độ',
+  studentSearch: 'Tìm theo tên học viên', studentLessons: '{done}/{total} bài', studentNone: 'Chưa học bài nào', studentsEmpty: 'Khóa học chưa có học viên.', studentsNoMatch: 'Không có học viên khớp bộ lọc.',
+  studentCount: '{count} học viên', enrolledOn: 'Vào học {date}', lastSeen: 'Học gần nhất {date}', studentsError: 'Không thể tải danh sách học viên.',
 }
 export type CourseCopy = typeof vi
 
@@ -165,6 +176,9 @@ const en: CourseCopy = {
   replaceContent: 'Replace the current content?', replaceContentText: 'The AI draft replaces this lesson’s title, summary and content.', replace: 'Replace content',
   price: 'Price (VND)', priceFree: 'Free', priceHelp: 'Free or between 10,000 and 50,000,000 ₫. A new price applies to new orders right away, with no review; existing orders keep the price they were created with.',
   priceLocked: 'A published course cannot switch between free and paid.', priceInvalid: 'The course price is invalid.', share: 'Platform keeps {rate}%; you receive {amount}',
+  studentsTitle: 'Students', studentsTotal: 'Total students', studentsNotStarted: 'Not started', studentsCompleted: 'Completed', studentsInProgress: 'In progress', studentProgress: 'Progress',
+  studentSearch: 'Search by student name', studentLessons: '{done}/{total} lessons', studentNone: 'Not started', studentsEmpty: 'This course has no students yet.', studentsNoMatch: 'No students match the filters.',
+  studentCount: '{count} students', enrolledOn: 'Joined {date}', lastSeen: 'Last active {date}', studentsError: 'Unable to load the students.',
 }
 
 export function courseText(language: Language) {
@@ -333,6 +347,20 @@ const payVi = {
   revenueTitle: 'Doanh thu tác giả', authorSpace: 'Không gian tác giả', orders: 'Số đơn', gross: 'Tổng bán', platformShare: 'Nền tảng giữ', yourShare: 'Bạn nhận',
   snapshotNote: 'Số liệu theo tỷ lệ tại thời điểm mỗi đơn được tạo.', itemLine: 'Giá {price} · Nền tảng giữ {rate}% ({platform}) · Bạn nhận {author}',
   revenueEmpty: 'Chưa có doanh thu', revenueEmptyText: 'Doanh thu hiện khi có người học thanh toán khóa của bạn.', revenueLoading: 'Đang tải doanh thu...', revenueLoadError: 'Không tải được doanh thu.',
+  paidOutTile: 'Đã nhận', pendingTile: 'Chờ chi', filteredHeading: 'Theo bộ lọc', allTimeHeading: 'Toàn thời gian', allTimeNote: 'Tính trên toàn bộ thời gian, không theo bộ lọc.',
+  tabSales: 'Lượt bán', tabCourses: 'Theo khóa', tabPayouts: 'Chi trả', tabs: 'Nhóm doanh thu', fromDate: 'Từ ngày', toDate: 'Đến ngày', pickDate: 'Chọn ngày', filtering: 'Đang lọc: {course}', removeCourse: 'Gỡ bộ lọc khóa',
+  filterEmpty: 'Không có lượt bán nào trong khoảng đã chọn.', rangeInvalid: 'Khoảng ngày không hợp lệ.', courseLine: '{n} lượt bán · Tổng thu {gross} · Hoa hồng {platform} · Bạn nhận {author}',
+  noAccount: 'Hãy khai tài khoản ngân hàng để nhận doanh thu.', addAccount: 'Khai tài khoản', editAccount: 'Sửa', accountTitle: 'Tài khoản nhận tiền', bank: 'Ngân hàng', pickBank: 'Chọn ngân hàng', accountNo: 'Số tài khoản', accountName: 'Chủ tài khoản',
+  payoutNote: 'Nền tảng chuyển khoản thủ công; thời gian nhận tùy đợt chi.', payoutHistory: 'Lịch sử chi trả', payoutEmpty: 'Chưa có khoản chi nào.', accountSaved: 'Đã lưu tài khoản nhận tiền.', saveAccount: 'Lưu', saving: 'Đang lưu...',
+  accountLoadError: 'Không tải được tài khoản nhận tiền.', payoutsLoadError: 'Không tải được lịch sử chi trả.', payoutLine: 'Mã sao kê {ref} · TK {account}',
+  confirm: 'Xác nhận', staleChanged: 'Số còn nợ đã thay đổi. Đóng Sheet và mở lại để xem số mới; nếu đã chuyển khoản, đối chiếu sao kê trước khi ghi.', staleOwed: 'Số còn nợ hiện tại: {amount}. Đóng Sheet và mở lại để chi theo số mới; nếu đã chuyển khoản, đối chiếu sao kê trước khi ghi.', adminRevenueTitle: 'Doanh thu', paidOrders: 'Đơn đã trả', totalIn: 'Tổng thu', platformFee: 'Hoa hồng sàn', authorShare: 'Phần tác giả', earnedTile: 'Tác giả được hưởng', spentTile: 'Đã chi', owedTile: 'Còn nợ',
+  goPayouts: 'Chi trả tác giả', adminCourseLine: 'Thu {gross} · HH {platform} · Tác giả {author}', salesCount: '{n} lượt', adminRevenueLoadError: 'Không tải được doanh thu.', adminRevenueLoading: 'Đang tải doanh thu...',
+  payoutsTitle: 'Chi trả tác giả', tabOwed: 'Công nợ', tabHistory: 'Lịch sử chi', showAll: 'Hiện cả tác giả đã chi đủ', earned: 'Đã kiếm', paid: 'Đã chi', owed: 'Còn nợ', payBtn: 'Chi trả', payBtnFor: 'Chi trả {name}',
+  owedEmpty: 'Không còn khoản nào phải chi.', owedLoading: 'Đang tải công nợ...', owedLoadError: 'Không tải được công nợ.', historyLoadError: 'Không tải được lịch sử chi.', noAccountAuthor: 'Tác giả chưa khai tài khoản nhận tiền.',
+  sheetPay: 'Chi trả — {name}', amountToSend: 'Số tiền cần chuyển', fixedAmount: 'cố định', copyWhat: 'Sao chép {what}', qrAlt: 'Mã VietQR chi trả cho {name}', qrUnavailable: 'Không tải được mã QR',
+  holderCheck: 'Đối chiếu tên chủ tài khoản app ngân hàng hiện ra với tên bên dưới trước khi chuyển.', reference: 'Mã sao kê', referenceHint: '1–255 ký tự, lấy từ sao kê ngân hàng.', recordBtn: 'Ghi nhận đã chuyển',
+  recordQ: 'Ghi nhận đã chuyển {amount} cho {name}? Không sửa được sau khi ghi.', recordOk: 'Đã ghi nhận khoản chi.', recordFailed: 'Không ghi nhận được khoản chi.',
+  accountChanged: 'Tác giả đã đổi tài khoản sau khi bạn mở; khoản chi ghi theo tài khoản bạn đã chuyển.', authorHistory: 'Lịch sử chi của tác giả này', recordedBy: 'Ghi bởi: {name}', historyLine: '{bank} {no} · {holder}',
 }
 type PayCopy = typeof payVi
 const payEn: PayCopy = {
@@ -356,6 +384,20 @@ const payEn: PayCopy = {
   revenueTitle: 'Author revenue', authorSpace: 'Author space', orders: 'Orders', gross: 'Gross sales', platformShare: 'Platform share', yourShare: 'Your share',
   snapshotNote: 'Figures use the rate at the time each order was created.', itemLine: 'Price {price} · Platform share {rate}% ({platform}) · Your share {author}',
   revenueEmpty: 'No revenue yet', revenueEmptyText: 'Revenue appears when learners pay for your courses.', revenueLoading: 'Loading revenue...', revenueLoadError: 'Unable to load revenue.',
+  paidOutTile: 'Paid out', pendingTile: 'Pending payout', filteredHeading: 'Filtered', allTimeHeading: 'All time', allTimeNote: 'All time, not affected by filters.',
+  tabSales: 'Sales', tabCourses: 'By course', tabPayouts: 'Payouts', tabs: 'Revenue sections', fromDate: 'From', toDate: 'To', pickDate: 'Pick a date', filtering: 'Filtering: {course}', removeCourse: 'Remove course filter',
+  filterEmpty: 'No sales in the selected range.', rangeInvalid: 'The date range is invalid.', courseLine: '{n} sales · Gross {gross} · Platform {platform} · Your share {author}',
+  noAccount: 'Add a bank account to receive your revenue.', addAccount: 'Add account', editAccount: 'Edit', accountTitle: 'Payout account', bank: 'Bank', pickBank: 'Choose a bank', accountNo: 'Account number', accountName: 'Account holder',
+  payoutNote: 'Payouts are transferred manually; timing depends on the payout run.', payoutHistory: 'Payout history', payoutEmpty: 'No payouts yet.', accountSaved: 'Payout account saved.', saveAccount: 'Save', saving: 'Saving...',
+  accountLoadError: 'Unable to load the payout account.', payoutsLoadError: 'Unable to load payout history.', payoutLine: 'Reference {ref} · Account {account}',
+  confirm: 'Confirm', staleChanged: 'The amount owed has changed. Close this sheet and reopen it to see the new amount; if you already transferred, check the statement before recording.', staleOwed: 'Amount owed now: {amount}. Close this sheet and reopen it to pay the new amount; if you already transferred, check the statement before recording.', adminRevenueTitle: 'Revenue', paidOrders: 'Paid orders', totalIn: 'Total received', platformFee: 'Platform commission', authorShare: 'Author share', earnedTile: 'Owed to authors', spentTile: 'Paid out', owedTile: 'Still owed',
+  goPayouts: 'Author payouts', adminCourseLine: 'Received {gross} · Platform {platform} · Author {author}', salesCount: '{n} sales', adminRevenueLoadError: 'Unable to load revenue.', adminRevenueLoading: 'Loading revenue...',
+  payoutsTitle: 'Author payouts', tabOwed: 'Owed', tabHistory: 'Payout history', showAll: 'Show fully paid authors too', earned: 'Earned', paid: 'Paid out', owed: 'Owed', payBtn: 'Pay out', payBtnFor: 'Pay out {name}',
+  owedEmpty: 'Nothing left to pay out.', owedLoading: 'Loading balances...', owedLoadError: 'Unable to load balances.', historyLoadError: 'Unable to load payout history.', noAccountAuthor: 'This author has not added a bank account.',
+  sheetPay: 'Pay out — {name}', amountToSend: 'Amount to transfer', fixedAmount: 'fixed', copyWhat: 'Copy {what}', qrAlt: 'VietQR code for the payout to {name}', qrUnavailable: 'Unable to load the QR code',
+  holderCheck: 'Check that the account holder shown by your banking app matches the name below before transferring.', reference: 'Bank reference', referenceHint: '1–255 characters, from the bank statement.', recordBtn: 'Record as transferred',
+  recordQ: 'Record {amount} paid to {name}? This cannot be edited.', recordOk: 'Payout recorded.', recordFailed: 'Unable to record the payout.',
+  accountChanged: 'The author changed their account after you opened this; the payout is recorded against the account you paid.', authorHistory: "This author's payouts", recordedBy: 'Recorded by: {name}', historyLine: '{bank} {no} · {holder}',
 }
 export function payAdminText(language: Language) {
   const copy = language === 'vi' ? payVi : payEn

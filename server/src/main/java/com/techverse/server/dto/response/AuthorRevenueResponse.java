@@ -8,7 +8,13 @@ import java.util.UUID;
 /** Author's revenue from PAID items of their courses, using the order-time snapshot; no buyer data. */
 public record AuthorRevenueResponse(Totals totals, PageResponse<Item> items) {
 
-    public record Totals(long itemCount, long grossAmount, long platformAmount, long authorAmount) {}
+    /** {@code balanceAmount = authorAmount - paidOutAmount}, both read in one statement. */
+    public record Totals(
+            long itemCount, long grossAmount, long platformAmount, long authorAmount, long paidOutAmount, long balanceAmount) {}
+
+    /** One course with sales in the filter range; the title is the current one. */
+    public record CourseRow(
+            UUID courseId, String courseTitle, long itemCount, long grossAmount, long platformAmount, long authorAmount) {}
 
     public record Item(
             UUID courseId,

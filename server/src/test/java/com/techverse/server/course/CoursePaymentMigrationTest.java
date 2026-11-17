@@ -12,7 +12,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.util.UUID;
 
-/** Plain Flyway (V1–V13) against a real PostgreSQL: no Spring context. */
+/** Plain Flyway (V1 to the latest) against a real empty PostgreSQL: no Spring context. */
 @Testcontainers
 class CoursePaymentMigrationTest {
     @Container
@@ -71,6 +71,31 @@ class CoursePaymentMigrationTest {
         assertThat(updatedAt(course)).isEqualTo(created);
         jdbc.update("UPDATE courses SET title='Changed' WHERE id=?", course);
         assertThat(updatedAt(course)).isAfter(created);
+    }
+
+    @Test
+    void authorPayoutsArePositiveUniqueByReferenceAndImmutable() {
+        UUID author = jdbc.queryForObject("INSERT INTO users(full_name, email) VALUES ('A', ?) RETURNING id",
+                UUID.class, UUID.randomUUID() + "@example.com");
+        String ref = "FT" + UUID.randomUUID();
+        UUID id = payout(author, 100_000, ref);
+        assertThatThrownBy(() -> payout(author, 0, "FT" + UUID.randomUUID())).hasMessageContaining("ck_author_payouts_amount");
+        assertThatThrownBy(() -> payout(author, -1, "FT" + UUID.randomUUID())).hasMessageContaining("ck_author_payouts_amount");
+        assertThatThrownBy(() -> payout(author, 5, ref)).hasMessageContaining("uq_author_payouts_bank_reference");
+        assertThatThrownBy(() -> jdbc.update("UPDATE author_payouts SET amount = 1 WHERE id=?", id)).hasMessageContaining("immutable");
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM author_payouts WHERE id=?", id)).hasMessageContaining("immutable");
+        assertThat(jdbc.queryForObject("SELECT amount FROM author_payouts WHERE id=?", Long.class, id)).isEqualTo(100_000);
+
+        // One account per author.
+        jdbc.update("INSERT INTO author_payout_accounts(user_id, bank_id, account_no, account_name) VALUES (?,'970436','0123456','A')", author);
+        assertThatThrownBy(() -> jdbc.update(
+                "INSERT INTO author_payout_accounts(user_id, bank_id, account_no, account_name) VALUES (?,'970436','999999','B')", author))
+                .hasMessageContaining("author_payout_accounts_pkey");
+    }
+
+    private static UUID payout(UUID author, long amount, String ref) {
+        return jdbc.queryForObject("INSERT INTO author_payouts(author_id, amount, bank_reference, bank_id, account_no, account_name, created_by)"
+                + " VALUES (?,?,?,'970436','0123456789','NGUYEN VAN A',?) RETURNING id", UUID.class, author, amount, ref, author);
     }
 
     private static UUID course(long price) {

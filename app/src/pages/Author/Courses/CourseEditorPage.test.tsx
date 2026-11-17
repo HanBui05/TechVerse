@@ -73,6 +73,11 @@ it('creates a course with one Idempotency-Key, validates title/topic first, then
   expect(create.headers.get('Idempotency-Key')).toMatch(/[0-9a-f-]{36}/)
 })
 
+it('links an existing course to its students page', async () => {
+  renderEditor('/author/courses/c1/edit')
+  expect((await screen.findByRole('link', { name: 'Học viên' })).getAttribute('href')).toBe('/author/courses/c1/students')
+})
+
 it('saves only the changed metadata and keeps unsaved edits guarded when switching items', async () => {
   const user = userEvent.setup()
   renderEditor('/author/courses/c1/edit')
