@@ -19,6 +19,11 @@ Cách chạy và đọc kết quả test: dùng skill `backend-test`.
 - **Ưu tiên lớp tích hợp có sẵn.** Mỗi lớp tích hợp mới tốn khoảng 10–45 giây khởi động container + Spring context; không tạo lớp mới chỉ để kiểm validation.
 - **Giữ cache context.** Không tự thêm tổ hợp `properties`, `@MockitoBean`, `@DirtiesContext` riêng nếu không bắt buộc; mỗi tổ hợp khác nhau làm Spring dựng lại context.
 
+## Ít class (người dùng chốt 2026-11-15)
+
+- Code mới viết vào class sẵn có cùng miền (service/impl, controller, repository, DTO) nếu đặt vào đó được; chỉ tạo class mới khi không có chỗ hợp lý (entity/bảng mới, controller cho nhóm route mới, DTO request/response mới).
+- Không tách helper/validator/mapper/“XxxErrors”/“XxxPolicy” riêng cho vài hàm: để `private` trong service dùng nó. DTO nhỏ chỉ một chỗ dùng: `record` lồng trong DTO/service cha. Test cũng gộp vào lớp test có sẵn của miền.
+
 ## Dữ liệu và schema
 
 - DB đổi bằng Flyway migration mới theo thứ tự; không sửa migration đã áp dụng. `docs/technical/db/final.sql` chỉ để tham khảo, không đưa vào `db/migration`.

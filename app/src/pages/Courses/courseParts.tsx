@@ -3,6 +3,7 @@ import { ArrowRight, CalendarDays, Hash } from 'lucide-react'
 import { cn } from 'cn'
 import { Badge } from '@/components/ui/badge'
 import { toneFor } from '@/lib/utils'
+import { vnd } from '../../services/courseService'
 import { UserAvatar } from '../../components/UserAvatar'
 import { topicIcon } from '../../components/articles/ArticleCard'
 import { readerCourseText } from '../../data/courseI18n'
@@ -18,6 +19,14 @@ export function ProgressBar({ percent, label, className }: { percent: number; la
   return <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} className={cn('h-2 w-full overflow-hidden rounded-full bg-muted', className)}>
     <div className="h-full rounded-full bg-primary transition-[width] motion-reduce:transition-none" style={{ width: `${percent}%` }} />
   </div>
+}
+
+/** Free (green) or the live price (blue); the price is never taken from an order snapshot. */
+export function PriceChip({ amount, language, className }: { amount: number; language: Language; className?: string }) {
+  const t = readerCourseText(language)
+  return amount === 0
+    ? <Badge tone="green" className={cn('font-semibold', className)}>{t('free')}</Badge>
+    : <Badge tone="blue" className={cn('font-semibold tabular-nums', className)}>{vnd(amount, language)}</Badge>
 }
 
 /** Cover image, or the tone tile with the topic icon (same fallback as article cards). */
@@ -49,7 +58,10 @@ export function CourseCard({ course, language }: { course: PublicCourseSummary; 
         {course.tags.slice(0, 3).map(tag => <li key={tag.id}><Badge tone={toneFor(tag.name)} className="rounded-lg px-2 py-1"><Hash aria-hidden />{tag.name}</Badge></li>)}
         {extra > 0 && <li><Badge variant="outline" className="rounded-lg px-2 py-1 font-semibold text-muted-foreground">{t('moreTags', { n: extra })}</Badge></li>}
       </ul>
-      <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarDays className="size-3.5" aria-hidden /><time dateTime={course.updatedAt}>{t('updated', { date: formatDate(course.updatedAt, language) })}</time></p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarDays className="size-3.5" aria-hidden /><time dateTime={course.updatedAt}>{t('updated', { date: formatDate(course.updatedAt, language) })}</time></p>
+        <PriceChip amount={course.priceAmount} language={language} />
+      </div>
       <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-4">
         <span className="flex min-w-0 items-center gap-2.5">
           <UserAvatar name={course.author.fullName} url={course.author.avatarUrl} className="size-9 text-xs ring-2 ring-accent-text/30 ring-offset-2 ring-offset-card" />

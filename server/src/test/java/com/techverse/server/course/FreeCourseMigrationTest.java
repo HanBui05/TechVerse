@@ -74,7 +74,7 @@ class FreeCourseMigrationTest {
     @Test
     void courseMustStayFreeAndConsistent() {
         assertThatThrownBy(() -> jdbc.update("UPDATE courses SET price_amount=1000 WHERE id=?", course))
-                .hasMessageContaining("ck_courses_free");
+                .hasMessageContaining("ck_courses_price");
         assertThatThrownBy(() -> jdbc.update("UPDATE courses SET publication_status='PUBLISHED' WHERE id=?", course))
                 .hasMessageContaining("ck_courses_");
         assertThatThrownBy(() -> jdbc.update("UPDATE courses SET workflow_status='PUBLISHED' WHERE id=?", course))
@@ -181,10 +181,9 @@ class FreeCourseMigrationTest {
     }
 
     @Test
-    void leavesPaymentAndRefundObjectsUntouched() {
-        assertThat(count("information_schema.tables", "table_name IN ('refunds','orders','payment_transactions')"))
-                .isEqualTo(3);
-        assertThat(count("pg_trigger", "tgname='trg_refunds_revoke_course_access'")).isEqualTo(1);
+    void leavesOrderAndPaymentObjectsUntouched() {
+        assertThat(count("information_schema.tables", "table_name IN ('orders','payment_transactions')"))
+                .isEqualTo(2);
         assertThat(count("pg_proc", "proname='grant_course_access_after_payment'")).isEqualTo(1);
     }
 

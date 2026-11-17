@@ -3,6 +3,7 @@ import type { MutableRefObject } from 'react'
 import { ImagePlus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
@@ -10,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { TagPicker } from '../../../components/TagPicker'
 import { MarkdownContent } from '../../../components/MarkdownContent'
 import { courseErrorText, courseText } from '../../../data/courseI18n'
-import { authorCourses, courseChangedFields } from '../../../services/courseService'
+import { authorCourses, authorShare, courseChangedFields, priceValid, vnd } from '../../../services/courseService'
 import { imageSources } from '../../../services/articleService'
 import { fieldLabel } from '../AuthorBlogsPage'
 import { MarkdownComposer } from './MarkdownComposer'
@@ -20,9 +21,9 @@ import type { Language } from '../../../types/preferences'
 
 const touch = 'pointer-coarse:min-h-11 pointer-coarse:min-w-11'
 const LEVELS: CourseLevel[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED']
-const EMPTY: CourseFields = { title: '', summary: '', description: '', level: 'BEGINNER', topicId: '', tagIds: [], coverImageUrl: null }
-const fieldsOf = (c: AuthorCourse): CourseFields => ({ title: c.title, summary: c.summary ?? '', description: c.description ?? '', level: c.level, topicId: c.topic.id, tagIds: c.tags.map(tag => tag.id), coverImageUrl: c.coverImageUrl })
-type Key = 'title' | 'topicId'
+const EMPTY: CourseFields = { title: '', summary: '', description: '', level: 'BEGINNER', topicId: '', tagIds: [], coverImageUrl: null, priceAmount: 0 }
+const fieldsOf = (c: AuthorCourse): CourseFields => ({ title: c.title, summary: c.summary ?? '', description: c.description ?? '', level: c.level, topicId: c.topic.id, tagIds: c.tags.map(tag => tag.id), coverImageUrl: c.coverImageUrl, priceAmount: c.priceAmount })
+type Key = 'title' | 'topicId' | 'priceAmount'
 
 /** What the editor shell needs from the active panel: is it dirty, and can it save itself (used before leaving the item). */
 export type Guard = { dirty: boolean; save: () => Promise<boolean> }
@@ -40,6 +41,8 @@ export function CourseInfoPanel({ language, course, options, readOnly, busy, onS
   const [errors, setErrors] = useState<Partial<Record<Key, string>>>({})
   const [trusted, setTrusted] = useState<Set<string>>(() => new Set(course ? [...imageSources(course.description ?? ''), ...(course.coverImageUrl ? [course.coverImageUrl] : [])].filter(url => !course.imageIssues.some(i => i.source === url)) : []))
   const [message, setMessage] = useState('')
+  const [free, setFree] = useState(!course || course.priceAmount === 0)
+  const [priceText, setPriceText] = useState(course && course.priceAmount > 0 ? String(course.priceAmount) : '')
   const cover = useRef<HTMLInputElement>(null)
   const [uploading, setUploadingState] = useState(false)
   const setUploading = (next: boolean) => { setUploadingState(next); onUploading(next) }
@@ -53,6 +56,7 @@ export function CourseInfoPanel({ language, course, options, readOnly, busy, onS
     const next: Partial<Record<Key, string>> = {}
     if (!form.title.trim()) next.title = t('titleRequired')
     if (!form.topicId) next.topicId = t('topicRequired')
+    if (!free && (form.priceAmount === 0 || !priceValid(form.priceAmount))) next.priceAmount = t('priceInvalid')
     setErrors(next)
     if (Object.keys(next).length) return false
     if (course && !dirty) return true
@@ -70,6 +74,12 @@ export function CourseInfoPanel({ language, course, options, readOnly, busy, onS
     catch (e) { setMessage(courseErrorText(e, language, t('loadError'))) }
     finally { setUploading(false) }
   }
+  // Keep what was typed: "10000.5" must be refused, not turned into 100005 (NaN fails priceValid).
+  const setPrice = (text: string) => { const raw = text.trim(); setPriceText(raw); set('priceAmount', raw === '' ? 0 : /^\d{1,9}$/.test(raw) ? Number(raw) : Number.NaN) }
+  const toggleFree = (on: boolean) => { setFree(on); if (on) { setPriceText(''); set('priceAmount', 0) } }
+  // A course that was ever published cannot switch between free and paid (server: COURSE_PRICE_TYPE_LOCKED).
+  const typeLocked = course?.publishedVersion != null
+  const share = course && !free && form.priceAmount > 0 && priceValid(form.priceAmount) ? authorShare(form.priceAmount, course.commissionRateBps) : null
   const allowed = (src: string) => trusted.has(src) && src.startsWith('https://res.cloudinary.com/')
   const topics = course && !options.topics.some(o => o.id === course.topic.id) ? [course.topic, ...options.topics] : options.topics
   const tags = [...options.tags, ...(course?.tags.filter(tag => !options.tags.some(o => o.id === tag.id)) ?? [])]
@@ -104,6 +114,20 @@ export function CourseInfoPanel({ language, course, options, readOnly, busy, onS
           <NativeSelect id={`${uid}-level`} value={form.level} disabled={locked} className={touch} onChange={e => set('level', e.target.value as CourseLevel)}>
             {LEVELS.map(level => <NativeSelectOption key={level} value={level}>{t(level)}</NativeSelectOption>)}
           </NativeSelect>
+        </div>
+        <div className="flex flex-col gap-2 md:col-span-2">
+          <Label htmlFor={`${uid}-price`} className={fieldLabel}>{t('price')}</Label>
+          <div className="flex flex-wrap items-center gap-4">
+            <Input id={`${uid}-price`} inputMode="numeric" autoComplete="off" maxLength={12} value={priceText} disabled={locked || free} className={`w-44 tabular-nums ${touch}`} onChange={e => setPrice(e.target.value)} {...describe('priceAmount')} />
+            <span className="flex items-center gap-2">
+              <Checkbox id={`${uid}-free`} checked={free} disabled={locked || typeLocked} onCheckedChange={checked => toggleFree(checked === true)} />
+              <Label htmlFor={`${uid}-free`} className="text-sm">{t('priceFree')}</Label>
+            </span>
+          </div>
+          {fieldError('priceAmount')}
+          <p className="text-xs text-muted-foreground"><span aria-hidden>ⓘ </span>{t('priceHelp')}</p>
+          {typeLocked && <p className="text-xs text-muted-foreground"><span aria-hidden>ⓘ </span>{t('priceLocked')}</p>}
+          {share && course && <p className="text-sm font-medium">{t('share', { rate: course.commissionRateBps / 100, amount: vnd(share.author, language) })}</p>}
         </div>
         <div className="md:col-span-2"><TagPicker language={language} options={tags} selected={form.tagIds} disabled={locked} onChange={ids => set('tagIds', ids)} /></div>
         <div className="flex flex-col gap-2 md:col-span-2">

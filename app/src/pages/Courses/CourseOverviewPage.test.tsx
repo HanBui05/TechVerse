@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { CourseOverviewPage } from './CourseOverviewPage'
 import { setAccessToken } from '../../services/api/client'
-import { detail, json, learning } from './fixtures'
+import { detail, json, learning, order } from './fixtures'
 import type { PublicCourseDetail } from '../../types/courses'
 
 afterEach(() => { cleanup(); setAccessToken(null); localStorage.clear(); vi.unstubAllGlobals() })
@@ -83,4 +83,89 @@ it('hides hidden or removed courses behind the same not-found, and shows a retry
   mockApi(() => json(null, 500, 'INTERNAL_ERROR'))
   renderPage()
   expect(await screen.findByRole('button', { name: 'Thử lại' })).toBeTruthy()
+})
+
+// Task 2a: a paid course sells instead of starting.
+const paid = (over: Partial<PublicCourseDetail> = {}) => ok({ priceAmount: 350000, ...over })
+const orderCalls = (fetch: ReturnType<typeof mockApi>) => fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname === '/api/v1/orders')
+const renderPaid = (authenticated: boolean) => render(<MemoryRouter initialEntries={['/courses/c1']}><Routes>
+  <Route path="/courses/:id" element={<CourseOverviewPage language="vi" authenticated={authenticated} />} />
+  <Route path="/me/orders/:orderCode" element={<Where />} /><Route path="/login" element={<Where />} /></Routes></MemoryRouter>)
+
+it('shows Free on a free course and the price with Buy and the no-refund note on a paid one, never Start', async () => {
+  mockApi(ok())
+  const free = renderPage(true)
+  expect(await screen.findByText('Miễn phí')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Bắt đầu học' })).toBeTruthy()
+  free.unmount()
+  mockApi(paid())
+  renderPage(true)
+  expect(await screen.findByText(/^350\.000\s₫$/)).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Mua khóa học' })).toBeTruthy()
+  expect(screen.getByText('Khóa học đã mua không được hoàn tiền.')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Bắt đầu học' })).toBeNull()
+})
+
+it('asks a Guest to sign in before buying and calls no order endpoint', async () => {
+  const fetch = mockApi(paid())
+  const user = userEvent.setup()
+  renderPaid(false)
+  await user.click(await screen.findByRole('button', { name: 'Mua khóa học' }))
+  expect(await screen.findByText('Đăng nhập để mua khóa học.')).toBeTruthy()
+  await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
+  expect(screen.getByTestId('where').textContent).toBe('/login')
+  expect(orderCalls(fetch)).toHaveLength(0)
+})
+
+it('POSTs only the course id on Buy and opens the order it returns', async () => {
+  const fetch = mockApi(paid(), () => json(order, 201))
+  const user = userEvent.setup()
+  renderPaid(true)
+  await user.click(await screen.findByRole('button', { name: 'Mua khóa học' }))
+  await vi.waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/me/orders/TV000000000123'))
+  const [[, init]] = orderCalls(fetch)
+  expect(init?.method).toBe('POST')
+  expect(JSON.parse(String(init?.body))).toEqual({ courseId: 'c1' })
+  expect(fetch.mock.calls.some(([input]) => new URL(String(input)).pathname.endsWith('/start'))).toBe(false)
+})
+
+it.each([
+  ['ORDER_ALREADY_ENROLLED', 409, 'Bạn đã có quyền học khóa này. Hãy tải lại trang.'],
+  ['ORDER_COURSE_UNAVAILABLE', 409, 'Không thể mua khóa học này.'],
+  ['PAYMENT_UNAVAILABLE', 503, 'Thanh toán tạm thời không khả dụng.'],
+  ['ORDER_RATE_LIMITED', 429, 'Bạn thao tác quá nhanh, hãy thử lại sau.'],
+  ['COURSE_NOT_FOUND', 404, 'Không tìm thấy khóa học hoặc bài học.'],
+])('shows the %s sentence under the button and lets the Learner try again', async (code, status, text) => {
+  const fetch = mockApi(paid(), () => json(null, status, code))
+  const user = userEvent.setup()
+  renderPaid(true)
+  await user.click(await screen.findByRole('button', { name: 'Mua khóa học' }))
+  expect((await screen.findByRole('alert')).textContent).toBe(text)
+  expect((screen.getByRole('button', { name: 'Mua khóa học' }) as HTMLButtonElement).disabled).toBe(false)
+  expect(orderCalls(fetch)).toHaveLength(1)
+})
+
+it('opens the buy dialog from a locked lesson instead of starting the course', async () => {
+  const fetch = mockApi(paid(), () => json(order, 201))
+  const user = userEvent.setup()
+  renderPaid(true)
+  await user.click((await screen.findAllByRole('button', { name: /Cài đặt/ }))[0])
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('Hãy mua khóa học để tiếp tục.')).toBeTruthy()
+  expect(orderCalls(fetch)).toHaveLength(0)
+  await user.click(within(dialog).getByRole('button', { name: 'Mua khóa học' }))
+  await vi.waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/me/orders/TV000000000123'))
+  expect(fetch.mock.calls.some(([input]) => new URL(String(input)).pathname.endsWith('/start'))).toBe(false)
+})
+
+it('offers the owner of a paid course no Buy button, and an enrolled buyer Continue', async () => {
+  mockApi(paid({ viewer: { enrolled: false, canStart: false } }))
+  const owner = renderPaid(true)
+  expect((await screen.findAllByText('Bạn là tác giả khóa này — chỉ xem bài học thử.')).length).toBeGreaterThan(0)
+  expect(screen.queryByRole('button', { name: 'Mua khóa học' })).toBeNull()
+  owner.unmount()
+  mockApi(paid({ viewer: { enrolled: true, canStart: true }, learning }))
+  renderPaid(true)
+  expect(await screen.findByRole('link', { name: /Tiếp tục học: Cài đặt/ })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Mua khóa học' })).toBeNull()
 })

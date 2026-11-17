@@ -6,7 +6,7 @@ export const options = { topics: page([{ id: 'java', name: 'Java' }]), tags: pag
 
 export const summary: PublicCourseSummary = {
   id: 'c1', title: 'Java cơ bản', summary: 'Học Java từ đầu', coverImageUrl: null, level: 'BEGINNER', topic: { id: 'java', name: 'Java' }, tags: [{ id: 'spring', name: 'Spring' }],
-  author: { id: 'a1', fullName: 'Trần B', avatarUrl: null }, publishedAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-08T00:00:00Z',
+  author: { id: 'a1', fullName: 'Trần B', avatarUrl: null }, publishedAt: '2026-11-01T00:00:00Z', updatedAt: '2026-11-08T00:00:00Z', priceAmount: 0,
 }
 const item = (id: string, position: number, title: string, preview = false, hasVideo = false) => ({ id, title, summary: null, position, preview, hasVideo, hasContent: !hasVideo })
 export const chapters = [
@@ -24,3 +24,5 @@ export const lessonOf = (id: string, over: Partial<PublicLesson> = {}): PublicLe
   courseId: 'c1', courseTitle: 'Java cơ bản', chapters, viewer: { enrolled: true, canStart: true }, learning,
   lesson: { id, chapterId: 'ch1', title: id === 'l2' ? 'Cài đặt' : 'Giới thiệu', summary: null, content: '## Mở đầu\n\nXin chào\n\n### Chi tiết\n\nThêm', video: null, position: 1, preview: false }, ...over,
 })
+
+export const order = { orderCode: 'TV000000000123', courseId: 'c1', courseTitle: 'Java cơ bản', amount: 350000, currency: 'VND', status: 'PENDING', createdAt: '2026-11-15T00:00:00Z', expiresAt: '2026-11-16T00:00:00Z', paidAt: null, transferReportedAt: null, vietQr: null }

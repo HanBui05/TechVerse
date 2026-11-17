@@ -8,7 +8,10 @@ import lombok.Builder;
 import java.time.Instant;
 import java.util.*;
 
-/** Author view: working metadata/tree plus the published tree; lesson content is not embedded. */
+/**
+ * Author view: working metadata/tree plus the published tree; lesson content is not embedded.
+ * {@code commissionRateBps} is the active policy, so the Author can estimate the share after fees.
+ */
 @Builder
 public record CourseResponse(
         UUID id,
@@ -22,6 +25,9 @@ public record CourseResponse(
         List<ArticleOptionResponse> tags,
         ArticleWorkflowStatus workflowStatus,
         ArticlePublicationStatus publicationStatus,
+        long priceAmount,
+        String currency,
+        int commissionRateBps,
         String fingerprint,
         boolean hasUnpublishedChanges,
         List<Chapter> chapters,
@@ -47,7 +53,7 @@ public record CourseResponse(
     public record Version(
             UUID id, int versionNumber, Instant approvedAt, String fingerprint, List<Chapter> chapters) {}
 
-    public static CourseResponse from(Course c, List<ArticleImageIssueResponse> imageIssues) {
+    public static CourseResponse from(Course c, List<ArticleImageIssueResponse> imageIssues, int commissionRateBps) {
         return CourseResponse.builder()
                 .id(c.getId())
                 .authorId(c.getAuthor().getId())
@@ -60,6 +66,9 @@ public record CourseResponse(
                 .tags(c.getCourseTags().stream().map(t -> option(t.getTag())).toList())
                 .workflowStatus(c.getWorkflowStatus())
                 .publicationStatus(c.getPublicationStatus())
+                .priceAmount(c.getPriceAmount())
+                .currency("VND")
+                .commissionRateBps(commissionRateBps)
                 .fingerprint(c.getContentFingerprint())
                 .hasUnpublishedChanges(c.hasUnpublishedChanges())
                 .chapters(

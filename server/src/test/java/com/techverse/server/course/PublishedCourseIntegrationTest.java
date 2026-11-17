@@ -28,7 +28,8 @@ class PublishedCourseIntegrationTest extends CourseIntegrationTestBase {
                 .andExpect(jsonPath("$.data.content[1].author.fullName").value("User author@example.com"))
                 .andExpect(jsonPath("$.data.content[1].tags[0].name").value("Java"))
                 .andExpect(jsonPath("$.data.content[1].level").value("INTERMEDIATE"))
-                .andExpect(jsonPath("$.data.content[1].priceAmount").doesNotExist())
+                .andExpect(jsonPath("$.data.content[1].priceAmount").value(0))
+                .andExpect(jsonPath("$.data.content[1].currency").value("VND"))
                 .andExpect(jsonPath("$.data.content[1].chapters").doesNotExist());
         get(PUBLIC + "?sort=OLDEST&size=1", null)
                 .andExpect(jsonPath("$.data.content.length()").value(1))
@@ -43,6 +44,20 @@ class PublishedCourseIntegrationTest extends CourseIntegrationTestBase {
         get(PUBLIC + "?level=ADVANCED", null).andExpect(jsonPath("$.data.totalElements").value(0));
         get(PUBLIC + "?tagId=" + UUID.randomUUID(), null).andExpect(jsonPath("$.data.totalElements").value(0));
         get(PUBLIC + "?size=101", null).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void priceIsLiveOnTheCourseAndIndependentOfTheSnapshot() throws Exception {
+        String paid = publishedPaidCourse("Paid", 150_000);
+        get(PUBLIC, learnerToken).andExpect(jsonPath("$.data.content[0].priceAmount").value(150_000))
+                .andExpect(jsonPath("$.data.content[0].currency").value("VND"));
+        get(PUBLIC + "/" + paid, null).andExpect(jsonPath("$.data.priceAmount").value(150_000))
+                .andExpect(jsonPath("$.data.currency").value("VND"))
+                .andExpect(jsonPath("$.data.viewer.canStart").value(true));
+        // A new amount reaches readers at once, without a review round.
+        send(patch(AUTHOR + "/" + paid), authorToken, Map.of("action", "SAVE", "priceAmount", 200_000)).andExpect(status().isOk());
+        get(PUBLIC + "/" + paid, null).andExpect(jsonPath("$.data.priceAmount").value(200_000));
+        get(PUBLIC, null).andExpect(jsonPath("$.data.content[0].priceAmount").value(200_000));
     }
 
     @Test
@@ -65,7 +80,8 @@ class PublishedCourseIntegrationTest extends CourseIntegrationTestBase {
                 .andExpect(jsonPath("$.data.chapters[0].lessons[0].preview").value(true))
                 .andExpect(jsonPath("$.data.chapters[0].lessons[0].hasContent").value(true))
                 .andExpect(jsonPath("$.data.chapters[0].lessons[0].content").doesNotExist())
-                .andExpect(jsonPath("$.data.priceAmount").doesNotExist()));
+                .andExpect(jsonPath("$.data.priceAmount").value(0))
+                .andExpect(jsonPath("$.data.currency").value("VND")));
         String a1 = detail.at("/chapters/0/lessons/0/id").asText();
         String a2 = detail.at("/chapters/0/lessons/1/id").asText();
 

@@ -17,8 +17,8 @@ import type { CourseLearning, PublicChapter, PublicCourseDetail, PublicLesson, V
 import type { Language } from '../../types/preferences'
 
 type Heading = { id: string; text: string; level: 2 | 3 }
-type Tree = { courseTitle: string; chapters: PublicChapter[]; viewer: Viewer; learning: CourseLearning | null }
-type Failure = { kind: 'missing' | 'locked' | 'error'; text: string; tree?: Tree }
+type Tree = { courseTitle: string; chapters: PublicChapter[]; viewer: Viewer; learning: CourseLearning | null; priceAmount: number }
+type Failure = { kind: 'missing' | 'locked' | 'error'; text: string; purchase?: boolean; tree?: Tree }
 
 /** Lesson page (wireframe 2c-4/2c-5): video, Markdown with TOC, completion toggle and previous/next from the curriculum. */
 export function CourseLessonPage({ language = 'vi', authenticated = false }: { language?: Language; authenticated?: boolean }) {
@@ -28,6 +28,8 @@ export function CourseLessonPage({ language = 'vi', authenticated = false }: { l
   const { key } = useLocation()
   const [data, setData] = useState<PublicLesson | null>(null)
   const [learning, setLearning] = useState<CourseLearning | null>(null)
+  // The lesson response has no price: a non-enrolled reader's tree needs it to choose Buy over Start.
+  const [price, setPrice] = useState(0)
   const [failure, setFailure] = useState<Failure | null>(null)
   const [headings, setHeadings] = useState<Heading[]>([])
   const [saving, setSaving] = useState(false)
@@ -42,19 +44,21 @@ export function CourseLessonPage({ language = 'vi', authenticated = false }: { l
     if (!quiet) { setData(null); setFailure(null); setHeadings([]); setCompletionError(''); setStatus('') }
     try {
       const result = await publicCourses.lesson(courseId, lessonId)
+      const amount = result.viewer.enrolled ? 0 : (await publicCourses.detail(courseId)).priceAmount
       if (request !== latest.current) return
-      setData(result); setLearning(result.learning)
+      setData(result); setLearning(result.learning); setPrice(amount)
     } catch (e) {
       if (request !== latest.current) return
       const text = courseErrorText(e, language, t('loadError'))
-      if (e instanceof ApiError && e.code === 'LESSON_PREVIEW_ONLY') {
+      if (e instanceof ApiError && (e.code === 'LESSON_PREVIEW_ONLY' || e.code === 'COURSE_PURCHASE_REQUIRED')) {
         // The locked card still shows the curriculum, taken from the overview.
         let tree: Tree | undefined
         try {
           const detail: PublicCourseDetail = await publicCourses.detail(courseId)
-          tree = { courseTitle: detail.title, chapters: detail.chapters, viewer: detail.viewer, learning: detail.learning }
+          tree = { courseTitle: detail.title, chapters: detail.chapters, viewer: detail.viewer, learning: detail.learning, priceAmount: detail.priceAmount }
         } catch { /* the card alone is enough */ }
-        if (request === latest.current) setFailure({ kind: 'locked', text: t('lockedText'), tree })
+        const purchase = e.code === 'COURSE_PURCHASE_REQUIRED'
+        if (request === latest.current) setFailure({ kind: 'locked', text: purchase ? t('noRefund') : t('lockedText'), purchase, tree })
       } else setFailure({ kind: e instanceof ApiError && e.status === 404 ? 'missing' : 'error', text: e instanceof ApiError && e.status === 404 ? t('notFound') : text })
     }
   }, [courseId, lessonId, key, language]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -75,13 +79,15 @@ export function CourseLessonPage({ language = 'vi', authenticated = false }: { l
     <span>{failure.text}</span><Button type="button" variant="outline" size="sm" className={touch} onClick={() => void load()}><RefreshCw aria-hidden />{t('retry')}</Button></div>)
   if (failure?.kind === 'locked') {
     const card = (actions?: FrameActions) => <main id="lesson-content" className="tw-page mx-auto flex w-full max-w-3xl flex-col px-4 py-10 sm:px-6">
-      <EmptyState icon={Lock} title={t('lockedTitle')} description={failure.text} action={actions && failure.tree && (authenticated
-        ? failure.tree.viewer.canStart && <Button type="button" className={touch} disabled={actions.starting} onClick={() => void actions.start(lessonId)}>{t('startLearning')}</Button>
+      <EmptyState icon={Lock} title={t(failure.purchase ? 'purchaseRequired' : 'lockedTitle')} description={failure.text} action={actions && failure.tree && (authenticated
+        ? failure.tree.viewer.canStart && (failure.purchase
+          ? <Button type="button" className={touch} disabled={actions.starting} onClick={() => void actions.buy()}>{t('buy')}</Button>
+          : <Button type="button" className={touch} disabled={actions.starting} onClick={() => void actions.start(lessonId)}>{t('startLearning')}</Button>)
         : <Button type="button" className={touch} onClick={() => actions.askLogin(`/courses/${courseId}/lessons/${lessonId}`)}>{t('login')}</Button>)} />
       {actions?.startError && <p role="alert" className="mt-3 text-center text-sm text-danger">{actions.startError}</p>}
     </main>
     return failure.tree
-      ? <CourseFrame language={language} authenticated={authenticated} courseId={courseId} title={failure.tree.courseTitle} chapters={failure.tree.chapters} viewer={failure.tree.viewer} learning={failure.tree.learning} currentLessonId={lessonId}>{actions => card(actions)}</CourseFrame>
+      ? <CourseFrame language={language} authenticated={authenticated} courseId={courseId} title={failure.tree.courseTitle} chapters={failure.tree.chapters} viewer={failure.tree.viewer} learning={failure.tree.learning} priceAmount={failure.tree.priceAmount} currentLessonId={lessonId}>{actions => card(actions)}</CourseFrame>
       : card()
   }
   if (!data) return page(<div role="status" aria-label={t('loading')} className="flex flex-col gap-4"><Skeleton className="h-9 w-3/4" /><Skeleton className="aspect-video rounded-2xl" />{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-4 w-full" />)}</div>)
@@ -90,7 +96,7 @@ export function CourseLessonPage({ language = 'vi', authenticated = false }: { l
   const lessons = flatLessons(data.chapters)
   const index = lessons.findIndex(item => item.id === lesson.id)
   const chapter = data.chapters.find(item => item.id === lesson.chapterId)
-  const neighbour = (item: (typeof lessons)[number] | undefined) => item && { item, mode: lessonAccess(item, viewer, authenticated) }
+  const neighbour = (item: (typeof lessons)[number] | undefined) => item && { item, mode: lessonAccess(item, viewer, authenticated, price > 0) }
   const prev = neighbour(lessons[index - 1])
   const next = neighbour(lessons[index + 1])
   const video = embedUrl(lesson.video)
@@ -116,13 +122,13 @@ export function CourseLessonPage({ language = 'vi', authenticated = false }: { l
     const text = <>{dir === 'prev' && <Icon aria-hidden />}<span className="max-md:sr-only">{t(dir)}</span>{dir === 'next' && <Icon aria-hidden />}</>
     if (target.mode === 'open') return <Button asChild variant="outline" className={touch}><Link to={`/courses/${courseId}/lessons/${target.item.id}`} aria-label={label}>{text}</Link></Button>
     return <Button type="button" variant="outline" className={touch} aria-label={label} aria-disabled={target.mode === 'locked'}
-      onClick={() => { if (target.mode === 'login') actions.askLogin(`/courses/${courseId}/lessons/${target.item.id}`); else if (target.mode === 'start') void actions.start(target.item.id) }}>{text}</Button>
+      onClick={() => { if (target.mode === 'login') actions.askLogin(`/courses/${courseId}/lessons/${target.item.id}`); else if (target.mode === 'buy') actions.askBuy(); else if (target.mode === 'start') void actions.start(target.item.id) }}>{text}</Button>
   }
 
   const toc = headings.length > 0 && <ol className="flex flex-col gap-0.5 text-sm">{headings.map(h => <li key={h.id} className={h.level === 3 ? 'pl-4' : ''}>
     <a href={`#${h.id}`} className={cn('block rounded-md px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring', touch)}>{h.text}</a></li>)}</ol>
 
-  return <CourseFrame language={language} authenticated={authenticated} courseId={courseId} title={data.courseTitle} chapters={data.chapters} viewer={viewer} learning={learning} currentLessonId={lesson.id}>
+  return <CourseFrame language={language} authenticated={authenticated} courseId={courseId} title={data.courseTitle} chapters={data.chapters} viewer={viewer} learning={learning} priceAmount={price} currentLessonId={lesson.id}>
     {actions => <div className="mx-auto flex w-full max-w-6xl gap-8 px-4 py-6 pb-24 sm:px-6 md:pb-6">
       <main id="lesson-content" className="flex min-w-0 max-w-3xl flex-1 flex-col gap-5">
         <nav aria-label={t('breadcrumb')} className="text-sm text-muted-foreground"><Link to={`/courses/${courseId}`} className={cn('hover:text-foreground', touch)}>{data.courseTitle}</Link>{chapter && <> › {chapter.title}</>}</nav>
@@ -135,9 +141,10 @@ export function CourseLessonPage({ language = 'vi', authenticated = false }: { l
         {headings.length > 0 && <details className="rounded-xl border border-border xl:hidden"><summary className={cn('flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-semibold', touch)}><ListTree className="size-4" aria-hidden />{t('toc')}</summary><nav aria-label={t('toc')} className="px-2 pb-2">{toc}</nav></details>}
         {lesson.content && <div ref={body} className="[&>div]:text-base [&>div]:leading-[1.85]"><MarkdownContent content={lesson.content} anchors language={language} /></div>}
 
-        {!viewer.enrolled && <div className="flex flex-col items-start gap-2 rounded-xl border border-border bg-muted/40 p-4"><p className="text-sm">{t('previewHint')}</p>
+        {!viewer.enrolled && <div className="flex flex-col items-start gap-2 rounded-xl border border-border bg-muted/40 p-4"><p className="text-sm">{t(price > 0 ? 'buyHint' : 'previewHint')}</p>
+          {price > 0 && <p className="text-xs text-muted-foreground">{t('noRefund')}</p>}
           {viewer.canStart && (authenticated
-            ? <Button type="button" className={touch} disabled={actions.starting} onClick={() => void actions.start()}>{t('startLearning')}</Button>
+            ? <Button type="button" className={touch} disabled={actions.starting} onClick={() => void (price > 0 ? actions.buy() : actions.start())}>{t(price > 0 ? 'buy' : 'startLearning')}</Button>
             : <Button type="button" className={touch} onClick={() => actions.askLogin(`/courses/${courseId}/lessons/${lesson.id}`)}>{t('login')}</Button>)}
           {actions.startError && <p role="alert" className="text-sm text-danger">{actions.startError}</p>}</div>}
 

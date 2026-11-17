@@ -1,6 +1,7 @@
 import { request } from './api/client'
 import type { ArticleOption, AuthorArticleFilter, HistoryEntry, ImageIssue, ModeratorArticleFilter, Page } from '../types/articles'
-import type { AuthorCourse, CourseFilter, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
+import type { Language } from '../types/preferences'
+import type { AdminOrder, AdminOrderFilter, AuthorCourse, AuthorRevenue, CommissionPolicy, CourseFilter, CourseOrder, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
 
 const base = '/api/v1/author/courses'
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
@@ -109,6 +110,7 @@ export function courseChangedFields(form: CourseFields, saved: AuthorCourse | nu
   if (form.topicId !== saved.topic.id) diff.topicId = form.topicId
   if (form.tagIds.length !== savedTags.length || form.tagIds.some(id => !savedTags.includes(id))) diff.tagIds = form.tagIds
   if (form.coverImageUrl !== saved.coverImageUrl) diff.coverImageUrl = form.coverImageUrl
+  if (form.priceAmount !== saved.priceAmount) diff.priceAmount = form.priceAmount
   return diff
 }
 
@@ -171,13 +173,35 @@ export function courseSearch({ keyword, topicId, tagId, level, sort, page }: Cou
   return params
 }
 
-export type LessonAccess = 'open' | 'login' | 'start' | 'locked'
-/** Wireframe 2c-2 table: enrolled or preview opens; otherwise Guest logs in, a Learner starts, the owner stays locked. */
-export function lessonAccess(lesson: { preview: boolean }, viewer: Viewer, authenticated: boolean): LessonAccess {
+export type LessonAccess = 'open' | 'login' | 'start' | 'buy' | 'locked'
+/** Wireframe 2c-2 table: enrolled or preview opens; otherwise Guest logs in, a Learner starts (buys, on a paid course), the owner stays locked. */
+export function lessonAccess(lesson: { preview: boolean }, viewer: Viewer, authenticated: boolean, paid = false): LessonAccess {
   if (viewer.enrolled || lesson.preview) return 'open'
   if (!authenticated) return 'login'
-  return viewer.canStart ? 'start' : 'locked'
+  return viewer.canStart ? (paid ? 'buy' : 'start') : 'locked'
 }
+
+// Price rules of Task 1a; the server (`COURSE_PRICE_INVALID`) stays the judge.
+export const PRICE_MIN = 10_000
+export const PRICE_MAX = 50_000_000
+export const priceValid = (amount: number) => Number.isInteger(amount) && (amount === 0 || (amount >= PRICE_MIN && amount <= PRICE_MAX))
+/** Platform share is floored, the Author keeps the rest (same split as the order snapshot trigger). */
+export function authorShare(price: number, rateBps: number) {
+  const platform = Math.floor(price * rateBps / 10_000)
+  return { platform, author: price - platform }
+}
+export const vnd = (amount: number, language: Language) => new Intl.NumberFormat(language === 'vi' ? 'vi-VN' : 'en-US', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(amount)
+
+export const orders = {
+  /** Always POSTs, even when a pending order exists: the server returns that order and the client opens it. */
+  create: (courseId: string) => request<CourseOrder>('/api/v1/orders', json('POST', { courseId })),
+  mine: (page: number) => request<Page<CourseOrder>>(`/api/v1/me/orders?${query({ page, size: COURSE_PAGE_SIZE })}`),
+  get: (orderCode: string) => request<CourseOrder>(`/api/v1/orders/${encodeURIComponent(orderCode)}`),
+  /** Idempotent on the server (the first time is kept); never grants access. */
+  reportTransfer: (orderCode: string) => request<CourseOrder>(`/api/v1/orders/${encodeURIComponent(orderCode)}/transfer-report`, { method: 'POST' }),
+}
+/** The QR image comes from the API; only an https URL is rendered, anything else counts as a failed QR. */
+export const qrSrc = (url: string) => /^https:\/\/[^\s/]/i.test(url) ? url : null
 
 export const flatLessons = (chapters: PublicChapter[]) => chapters.flatMap(chapter => chapter.lessons)
 
@@ -185,3 +209,27 @@ export const flatLessons = (chapters: PublicChapter[]) => chapters.flatMap(chapt
 export function embedUrl(video: { provider: string; videoId: string } | null) {
   return video?.provider === 'YOUTUBE' && VIDEO_ID.test(video.videoId) ? `https://www.youtube-nocookie.com/embed/${video.videoId}` : null
 }
+
+export const ADMIN_ORDER_SIZE = 10
+export const adminOrders = {
+  list: ({ page, ...filter }: AdminOrderFilter) => request<Page<AdminOrder>>(`/api/v1/admin/orders?${query({ ...filter, page, size: ADMIN_ORDER_SIZE })}`),
+  /** `amount` and `bankReference` come from the bank statement; the server compares the amount with the order snapshot. */
+  confirm: (orderCode: string, amount: number, bankReference: string) => request<AdminOrder>(`/api/v1/admin/orders/${encodeURIComponent(orderCode)}/confirm`, json('POST', { amount, bankReference })),
+  /** `paymentCount` = payments the admin saw; the server refuses (STALE) when a newer one arrived. */
+  reconcile: (orderCode: string, paymentCount: number) => request<AdminOrder>(`/api/v1/admin/orders/${encodeURIComponent(orderCode)}/reconcile`, json('POST', { paymentCount })),
+}
+export const commission = {
+  /** `null` while no policy exists. */
+  get: () => request<CommissionPolicy | null>('/api/v1/admin/commission-policy'),
+  change: (rateBps: number) => request<CommissionPolicy>('/api/v1/admin/commission-policy', json('PUT', { rateBps })),
+}
+export const REVENUE_PAGE_SIZE = 10
+export const revenue = (page: number) => request<AuthorRevenue>(`/api/v1/author/revenue?${query({ page, size: REVENUE_PAGE_SIZE })}`)
+
+/** Percent text → whole basis points: 0–100 with at most 2 decimals (comma allowed), else null; the server stays the judge. */
+export function rateBps(text: string) {
+  const value = text.trim().replace(',', '.')
+  return /^\d{1,3}(\.\d{1,2})?$/.test(value) && Number(value) <= 100 ? Math.round(Number(value) * 100) : null
+}
+/** Statement amount typed by the admin: positive whole VND, no leading zero, at most 15 digits (safe integer). */
+export const amountText = (text: string) => /^[1-9]\d{0,14}$/.test(text.trim()) ? Number(text.trim()) : null

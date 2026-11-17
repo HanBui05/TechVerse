@@ -62,7 +62,7 @@ public class ModeratorCourseServiceImpl implements ModeratorCourseService {
                 page,
                 page.stream()
                         .map(c -> new ModeratorCourseSummaryResponse(
-                                CourseSummaryResponse.from(c), author(c.getAuthor()), eligible.contains(c.getAuthor().getId())))
+                                ModeratorCourseSummaryResponse.Item.from(c), author(c.getAuthor()), eligible.contains(c.getAuthor().getId())))
                         .toList());
     }
 
@@ -258,7 +258,7 @@ public class ModeratorCourseServiceImpl implements ModeratorCourseService {
         var v = c.getPublishedVersion();
         var rows = v == null ? List.<CourseLessonRow>of() : versionLessons.findRows(List.of(v.getId()));
         return new ModeratorCourseDetailResponse(
-                CourseResponse.from(c, List.of()),
+                ModeratorCourseResponse.from(CourseResponse.from(c, List.of(), 0)),
                 author(c.getAuthor()),
                 reviewToken(c),
                 articles.findEligibleAuthorIds(List.of(c.getAuthor().getId())).contains(c.getAuthor().getId()),

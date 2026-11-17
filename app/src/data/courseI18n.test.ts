@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../services/api/client'
-import { COURSE_ERROR_CODES, courseErrorText, courseText, isCourseStale, moderatorCourseErrorText, moderatorCourseText, readerCourseText } from './courseI18n'
+import { COURSE_ERROR_CODES, courseErrorText, courseText, isCourseStale, moderatorCourseErrorText, moderatorCourseText, readerCourseText, payAdminText } from './courseI18n'
 
 describe('courseI18n', () => {
   it.each(COURSE_ERROR_CODES)('maps %s in both languages without the backend message', code => {
@@ -68,5 +68,58 @@ describe('reader course copy', () => {
     expect(vi('continueLearning')).toBe('Tiếp tục học'); expect(en('startLearning')).toBe('Start learning')
     expect(vi('chapterProgress', { x: 1, y: 3 })).toBe('Đã học 1/3 bài')
     expect(vi('notFound')).toBe('Không tìm thấy khóa học hoặc bài học.'); expect(en('notFound')).toBe('Course or lesson not found.')
+  })
+})
+
+describe('payment copy (Tasks 1a–1b table rows)', () => {
+  const code = (name: string, status: number, language: 'vi' | 'en') => courseErrorText(new ApiError('English', status, name), language, 'F')
+  it.each([
+    ['COURSE_PRICE_INVALID', 400, 'Giá khóa học không hợp lệ.', 'The course price is invalid.'],
+    ['COURSE_PRICE_TYPE_LOCKED', 409, 'Không thể đổi loại giá của khóa đã công khai.', 'A published course cannot switch between free and paid.'],
+    ['COURSE_PURCHASE_REQUIRED', 403, 'Hãy mua khóa học để tiếp tục.', 'Buy this course to continue.'],
+    ['ORDER_INVALID', 400, 'Thông tin đơn hàng không hợp lệ.', 'The order details are invalid.'],
+    ['ORDER_COURSE_UNAVAILABLE', 409, 'Không thể mua khóa học này.', 'This course cannot be purchased.'],
+    ['ORDER_ALREADY_ENROLLED', 409, 'Bạn đã có quyền học khóa này. Hãy tải lại trang.', 'You already have access to this course. Reload the page.'],
+    ['PAYMENT_UNAVAILABLE', 503, 'Thanh toán tạm thời không khả dụng.', 'Payment is temporarily unavailable.'],
+    ['ORDER_RATE_LIMITED', 429, 'Bạn thao tác quá nhanh, hãy thử lại sau.', 'You are going too fast; try again later.'],
+    ['ORDER_NOT_FOUND', 404, 'Không tìm thấy đơn.', 'Order not found.'],
+    ['ORDER_TRANSFER_REPORT_NOT_ALLOWED', 409, 'Đơn này không cần báo chuyển khoản.', 'This order does not need a transfer report.'],
+    ['AUTH_ACCESS_TOKEN_REQUIRED', 401, 'Hãy đăng nhập để tiếp tục.', 'Sign in to continue.'],
+    ['AUTH_INVALID_ACCESS_TOKEN', 401, 'Hãy đăng nhập để tiếp tục.', 'Sign in to continue.'],
+  ])('%s → vi/en sentence', (name, status, vi, en) => {
+    expect(code(name, status, 'vi')).toBe(vi)
+    expect(code(name, status, 'en')).toBe(en)
+  })
+
+  it('has the price and buy copy of the Task 2a table in vi/en', () => {
+    const [rvi, ren, avi, aen] = [readerCourseText('vi'), readerCourseText('en'), courseText('vi'), courseText('en')]
+    expect([rvi('free'), rvi('buy'), rvi('purchaseRequired'), rvi('noRefund')]).toEqual(['Miễn phí', 'Mua khóa học', 'Hãy mua khóa học để tiếp tục.', 'Khóa học đã mua không được hoàn tiền.'])
+    expect([ren('free'), ren('buy'), ren('purchaseRequired'), ren('noRefund')]).toEqual(['Free', 'Buy course', 'Buy this course to continue.', 'Purchased courses are non-refundable.'])
+    expect(avi('share', { rate: 20, amount: '280.000 ₫' })).toBe('Nền tảng giữ 20%, bạn nhận 280.000 ₫')
+    expect(aen('share', { rate: 20, amount: '₫280,000' })).toBe('Platform keeps 20%; you receive ₫280,000')
+  })
+})
+
+describe('admin payment copy (Task 2c)', () => {
+  it('uses the 1c-1d sentences for the new codes', () => {
+    const vi = (code: string, status = 409) => courseErrorText(new ApiError('English', status, code), 'vi', 'F')
+    expect(vi('PAYMENT_INVALID', 400)).toBe('Thông tin đối chiếu không hợp lệ.')
+    expect(vi('PAYMENT_AMOUNT_MISMATCH')).toBe('Số tiền không khớp đơn; hãy đối chiếu sao kê.')
+    expect(vi('PAYMENT_STATE_INVALID')).toBe('Không thể xác nhận đơn ở trạng thái này.')
+    expect(vi('PAYMENT_REFERENCE_CONFLICT')).toBe('Mã giao dịch đã được dùng hoặc không khớp.')
+    expect(vi('PAYMENT_RECONCILIATION_NOT_REQUIRED')).toBe('Không có khoản cần đối chiếu.')
+    expect(vi('PAYMENT_RECONCILIATION_STALE')).toBe('Có khoản thanh toán mới; hãy xem lại danh sách.')
+    expect(vi('COMMISSION_RATE_INVALID', 400)).toBe('Tỷ lệ không hợp lệ.')
+    expect(courseErrorText(new ApiError('English', 409, 'PAYMENT_AMOUNT_MISMATCH'), 'en', 'F')).toMatch(/does not match/)
+  })
+
+  it('has the spec copy in both languages and fills placeholders', () => {
+    expect(payAdminText('vi')('received')).toBe('Đã nhận tiền')
+    expect(payAdminText('vi')('duplicate')).toBe('Có khoản thanh toán trùng cần đối chiếu')
+    expect(payAdminText('en')('duplicate')).toBe('Duplicate payment requires reconciliation')
+    expect(payAdminText('vi')('policy', { date: '14/11/2026' })).toBe('Tỷ lệ hoa hồng · Hiệu lực từ 14/11/2026')
+    expect(payAdminText('en')('policy', { date: '11/14/2026' })).toBe('Commission rate · Effective from 11/14/2026')
+    expect(payAdminText('vi')('revenueTitle')).toBe('Doanh thu tác giả')
+    expect(payAdminText('en')('yourShare')).toBe('Your share')
   })
 })

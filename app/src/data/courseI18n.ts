@@ -16,6 +16,9 @@ export const COURSE_ERROR_CODES = [
   'COURSE_IMAGE_INVALID', 'COURSE_IMAGE_TOO_LARGE', 'COURSE_IMAGE_UNSUPPORTED', 'COURSE_IMAGE_UPLOAD_FAILED', 'COURSE_RATE_LIMITED', 'COURSE_STORAGE_UNAVAILABLE',
   'LESSON_CONTENT_REQUIRED', 'LESSON_VIDEO_INVALID', 'COURSE_REVIEW_STALE', 'COURSE_SELF_REVIEW_NOT_ALLOWED', 'COURSE_AUTHOR_INELIGIBLE', 'COURSE_REVIEW_NOTE_REQUIRED',
   'COURSE_PUBLICATION_NOTE_REQUIRED', 'LESSON_PREVIEW_ONLY', 'COURSE_ENROLLMENT_REQUIRED', 'ACCESS_DENIED', 'VALIDATION_ERROR', 'MALFORMED_REQUEST',
+  'COURSE_PRICE_INVALID', 'COURSE_PRICE_TYPE_LOCKED', 'COURSE_PURCHASE_REQUIRED', 'ORDER_INVALID', 'ORDER_COURSE_UNAVAILABLE', 'ORDER_ALREADY_ENROLLED', 'PAYMENT_UNAVAILABLE',
+  'ORDER_RATE_LIMITED', 'ORDER_NOT_FOUND', 'ORDER_TRANSFER_REPORT_NOT_ALLOWED', 'AUTH_ACCESS_TOKEN_REQUIRED', 'AUTH_INVALID_ACCESS_TOKEN',
+  'PAYMENT_INVALID', 'PAYMENT_AMOUNT_MISMATCH', 'PAYMENT_STATE_INVALID', 'PAYMENT_REFERENCE_CONFLICT', 'PAYMENT_RECONCILIATION_NOT_REQUIRED', 'PAYMENT_RECONCILIATION_STALE', 'COMMISSION_RATE_INVALID',
 ] as const
 
 const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
@@ -56,6 +59,25 @@ const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
   COURSE_PUBLICATION_NOTE_REQUIRED: { vi: 'Hãy nhập lý do khi ẩn hoặc gỡ khóa học.', en: 'A reason is required to hide or remove a course.' },
   LESSON_PREVIEW_ONLY: { vi: 'Đăng nhập và bắt đầu khóa học để đọc bài này.', en: 'Sign in and start the course to read this lesson.' },
   COURSE_ENROLLMENT_REQUIRED: { vi: 'Hãy bắt đầu khóa học trước.', en: 'Start the course first.' },
+  COURSE_PRICE_INVALID: { vi: 'Giá khóa học không hợp lệ.', en: 'The course price is invalid.' },
+  COURSE_PRICE_TYPE_LOCKED: { vi: 'Không thể đổi loại giá của khóa đã công khai.', en: 'A published course cannot switch between free and paid.' },
+  COURSE_PURCHASE_REQUIRED: { vi: 'Hãy mua khóa học để tiếp tục.', en: 'Buy this course to continue.' },
+  ORDER_INVALID: { vi: 'Thông tin đơn hàng không hợp lệ.', en: 'The order details are invalid.' },
+  ORDER_COURSE_UNAVAILABLE: { vi: 'Không thể mua khóa học này.', en: 'This course cannot be purchased.' },
+  ORDER_ALREADY_ENROLLED: { vi: 'Bạn đã có quyền học khóa này. Hãy tải lại trang.', en: 'You already have access to this course. Reload the page.' },
+  PAYMENT_UNAVAILABLE: { vi: 'Thanh toán tạm thời không khả dụng.', en: 'Payment is temporarily unavailable.' },
+  ORDER_RATE_LIMITED: { vi: 'Bạn thao tác quá nhanh, hãy thử lại sau.', en: 'You are going too fast; try again later.' },
+  ORDER_NOT_FOUND: { vi: 'Không tìm thấy đơn.', en: 'Order not found.' },
+  ORDER_TRANSFER_REPORT_NOT_ALLOWED: { vi: 'Đơn này không cần báo chuyển khoản.', en: 'This order does not need a transfer report.' },
+  PAYMENT_INVALID: { vi: 'Thông tin đối chiếu không hợp lệ.', en: 'The reconciliation details are invalid.' },
+  PAYMENT_AMOUNT_MISMATCH: { vi: 'Số tiền không khớp đơn; hãy đối chiếu sao kê.', en: 'The amount does not match the order; check the bank statement.' },
+  PAYMENT_STATE_INVALID: { vi: 'Không thể xác nhận đơn ở trạng thái này.', en: 'This order cannot be confirmed in its current state.' },
+  PAYMENT_REFERENCE_CONFLICT: { vi: 'Mã giao dịch đã được dùng hoặc không khớp.', en: 'This reference is already used or does not match.' },
+  PAYMENT_RECONCILIATION_NOT_REQUIRED: { vi: 'Không có khoản cần đối chiếu.', en: 'Nothing needs reconciling.' },
+  PAYMENT_RECONCILIATION_STALE: { vi: 'Có khoản thanh toán mới; hãy xem lại danh sách.', en: 'A new payment arrived; review the list again.' },
+  COMMISSION_RATE_INVALID: { vi: 'Tỷ lệ không hợp lệ.', en: 'The rate is invalid.' },
+  AUTH_ACCESS_TOKEN_REQUIRED: { vi: 'Hãy đăng nhập để tiếp tục.', en: 'Sign in to continue.' },
+  AUTH_INVALID_ACCESS_TOKEN: { vi: 'Hãy đăng nhập để tiếp tục.', en: 'Sign in to continue.' },
 }
 
 /** `code × language`; AI_* codes reuse the AI table, unknown 5xx get the generic message, anything else the fallback. */
@@ -68,7 +90,7 @@ export function courseErrorText(error: unknown, language: Language, fallback: st
 }
 
 const vi = {
-  kicker: 'Không gian tác giả', title: 'Khóa học của tôi', subtitle: 'Soạn khóa học miễn phí, gửi duyệt và quản lý bản đã công khai.', newCourse: 'Tạo khóa học',
+  kicker: 'Không gian tác giả', title: 'Khóa học của tôi', subtitle: 'Soạn khóa học, đặt giá, gửi duyệt và quản lý bản đã công khai.', newCourse: 'Tạo khóa học',
   total: 'Tổng', stats: 'Số liệu khóa học', filters: 'Bộ lọc', search: 'Tìm theo tên khóa học', searchPlaceholder: 'Tìm theo tên khóa học...', topic: 'Chủ đề', tag: 'Thẻ', sort: 'Sắp xếp',
   all: 'Tất cả', allTopics: 'Mọi chủ đề', allTags: 'Mọi thẻ', newest: 'Mới tạo nhất', oldest: 'Cũ nhất', recentlyEdited: 'Sửa gần đây', titleAz: 'Tên A–Z',
   workflowFilter: 'Soạn thảo', publicationFilter: 'Công khai', list: 'Danh sách khóa học', count: '{n} khóa học', edit: 'Sửa', view: 'Xem', more: 'Thao tác khác cho {title}', moreShort: 'Thao tác khóa học',
@@ -102,11 +124,13 @@ const vi = {
   leaveTitle: 'Thay đổi chưa lưu sẽ mất', leaveText: 'Mục đang sửa chưa lưu được. Rời đi sẽ bỏ các thay đổi này.', stay: 'Ở lại', leave: 'Rời đi', structureSheet: 'Cấu trúc: {name}', compose: 'Soạn thảo', mobileView: 'Soạn thảo hoặc xem trước',
   aiSheetTitle: 'Soạn bài học bằng AI', aiNote: 'Dùng chủ đề và thẻ của khóa học.', useDraft: 'Dùng bản nháp này cho bài học', aiInvalid: 'Bản nháp AI không còn hợp lệ. Hãy tạo lại.',
   replaceContent: 'Thay nội dung đang có?', replaceContentText: 'Bản nháp AI sẽ thay tiêu đề, tóm tắt và nội dung đang soạn của bài này.', replace: 'Thay nội dung',
+  price: 'Giá (VND)', priceFree: 'Miễn phí', priceHelp: 'Miễn phí hoặc từ 10.000 đến 50.000.000 ₫. Giá được áp dụng ngay cho đơn mới, không cần gửi duyệt; đơn cũ giữ giá lúc tạo.',
+  priceLocked: 'Khóa đã công khai không đổi giữa miễn phí và trả phí.', priceInvalid: 'Giá khóa học không hợp lệ.', share: 'Nền tảng giữ {rate}%, bạn nhận {amount}',
 }
 export type CourseCopy = typeof vi
 
 const en: CourseCopy = {
-  kicker: 'Author workspace', title: 'My courses', subtitle: 'Write free courses, submit them for review and manage the published version.', newCourse: 'Create course',
+  kicker: 'Author workspace', title: 'My courses', subtitle: 'Write courses, set a price, submit them for review and manage the published version.', newCourse: 'Create course',
   total: 'Total', stats: 'Course counts', filters: 'Filters', search: 'Search by course title', searchPlaceholder: 'Search by course title...', topic: 'Topic', tag: 'Tag', sort: 'Sort',
   all: 'All', allTopics: 'All topics', allTags: 'All tags', newest: 'Newest', oldest: 'Oldest', recentlyEdited: 'Recently edited', titleAz: 'Title A–Z',
   workflowFilter: 'Editing', publicationFilter: 'Publication', list: 'Courses', count: '{n} courses', edit: 'Edit', view: 'View', more: 'More actions for {title}', moreShort: 'Course actions',
@@ -139,6 +163,8 @@ const en: CourseCopy = {
   leaveTitle: 'Unsaved changes will be lost', leaveText: 'The item you are editing could not be saved. Leaving drops these changes.', stay: 'Stay', leave: 'Leave', structureSheet: 'Structure: {name}', compose: 'Write', mobileView: 'Write or preview',
   aiSheetTitle: 'Write the lesson with AI', aiNote: 'Uses the course topic and tags.', useDraft: 'Use this draft for the lesson', aiInvalid: 'The AI draft is no longer valid. Generate it again.',
   replaceContent: 'Replace the current content?', replaceContentText: 'The AI draft replaces this lesson’s title, summary and content.', replace: 'Replace content',
+  price: 'Price (VND)', priceFree: 'Free', priceHelp: 'Free or between 10,000 and 50,000,000 ₫. A new price applies to new orders right away, with no review; existing orders keep the price they were created with.',
+  priceLocked: 'A published course cannot switch between free and paid.', priceInvalid: 'The course price is invalid.', share: 'Platform keeps {rate}%; you receive {amount}',
 }
 
 export function courseText(language: Language) {
@@ -206,7 +232,7 @@ export type ModeratorCourseText = ReturnType<typeof moderatorCourseText>
 
 // Reader (catalog, overview, lesson frame, my courses): wireframe section 5.
 const readerVi = {
-  kicker: 'Học miễn phí', title: 'Khóa học', subtitle: 'Lộ trình có chương và bài học, học thử trước khi bắt đầu.', myCourses: 'Khóa học của tôi', allCourses: 'Tất cả khóa học',
+  kicker: 'Học trực tuyến', title: 'Khóa học', subtitle: 'Lộ trình có chương và bài học, học thử trước khi bắt đầu.', myCourses: 'Khóa học của tôi', allCourses: 'Tất cả khóa học',
   filters: 'Bộ lọc', search: 'Tìm khóa học', searchPlaceholder: 'Tìm khóa học…', clearSearch: 'Xóa từ khóa', tag: 'Thẻ', allTags: 'Mọi thẻ', level: 'Trình độ', allLevels: 'Mọi trình độ', sort: 'Sắp xếp',
   newest: 'Mới nhất', oldest: 'Cũ nhất', topics: 'Chủ đề', allTopics: 'Tất cả', count: '{n} khóa học', list: 'Danh sách khóa học', loading: 'Đang tải khóa học...', loadError: 'Không thể tải khóa học.',
   retry: 'Thử lại', optionsError: 'Không tải được bộ lọc.', empty: 'Chưa có khóa học nào', emptyText: 'Khóa học mới sẽ xuất hiện ở đây.', emptyFiltered: 'Không tìm thấy khóa học phù hợp', emptyFilteredText: 'Thử đổi hoặc xóa bộ lọc.', clearFilters: 'Xóa bộ lọc',
@@ -222,10 +248,12 @@ const readerVi = {
   lockedText: 'Hãy đăng nhập và bắt đầu khóa học để xem bài này.', breadcrumb: 'Đường dẫn',
   mineKicker: 'Góc của tôi', mineCount: '{n} khóa', mineEmpty: 'Bạn chưa bắt đầu khóa học nào', mineEmptyText: 'Bắt đầu một khóa miễn phí để theo dõi tiến độ tại đây.', explore: 'Khám phá khóa học',
   nextLesson: 'Tiếp theo: {title}', activeAgo: 'Hoạt động {when}', startedOn: 'Bắt đầu {when}', complete100: 'Hoàn thành',
+  free: 'Miễn phí', buy: 'Mua khóa học', purchaseRequired: 'Hãy mua khóa học để tiếp tục.', noRefund: 'Khóa học đã mua không được hoàn tiền.', buyHint: 'Mua khóa học để học tiếp và lưu tiến độ.',
+  buyLoginTitle: 'Đăng nhập để mua khóa học.', buyLoginText: 'Bạn cần đăng nhập để mua khóa học và lưu tiến độ.', buyFailed: 'Không thể tạo đơn hàng.',
 }
 type ReaderCourseCopy = typeof readerVi
 const readerEn: ReaderCourseCopy = {
-  kicker: 'Free learning', title: 'Courses', subtitle: 'Paths with chapters and lessons; preview before you start.', myCourses: 'My courses', allCourses: 'All courses',
+  kicker: 'Online learning', title: 'Courses', subtitle: 'Paths with chapters and lessons; preview before you start.', myCourses: 'My courses', allCourses: 'All courses',
   filters: 'Filters', search: 'Search courses', searchPlaceholder: 'Search courses…', clearSearch: 'Clear search', tag: 'Tag', allTags: 'All tags', level: 'Level', allLevels: 'All levels', sort: 'Sort',
   newest: 'Newest', oldest: 'Oldest', topics: 'Topics', allTopics: 'All', count: '{n} courses', list: 'Courses', loading: 'Loading courses...', loadError: 'Unable to load courses.',
   retry: 'Retry', optionsError: 'Unable to load the filters.', empty: 'No courses yet', emptyText: 'New courses will appear here.', emptyFiltered: 'No matching courses', emptyFilteredText: 'Try changing or clearing the filters.', clearFilters: 'Clear filters',
@@ -241,9 +269,95 @@ const readerEn: ReaderCourseCopy = {
   lockedText: 'Sign in and start the course to see this lesson.', breadcrumb: 'Breadcrumb',
   mineKicker: 'My corner', mineCount: '{n} courses', mineEmpty: 'You have not started any course', mineEmptyText: 'Start a free course to track your progress here.', explore: 'Explore courses',
   nextLesson: 'Next: {title}', activeAgo: 'Active {when}', startedOn: 'Started {when}', complete100: 'Completed',
+  free: 'Free', buy: 'Buy course', purchaseRequired: 'Buy this course to continue.', noRefund: 'Purchased courses are non-refundable.', buyHint: 'Buy the course to keep learning and save progress.',
+  buyLoginTitle: 'Sign in to buy this course.', buyLoginText: 'Sign in to buy the course and save your progress.', buyFailed: 'Unable to create the order.',
 }
 export function readerCourseText(language: Language) {
   const copy = language === 'vi' ? readerVi : readerEn
   return (key: keyof ReaderCourseCopy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
 }
 export type ReaderCourseText = ReturnType<typeof readerCourseText>
+
+// Orders (wireframe 2b): payment copy from the spec table plus the wireframe section 5 rows.
+const orderVi = {
+  myOrders: 'Đơn hàng của tôi', kicker: 'Góc của tôi', count: '{n} đơn', loading: 'Đang tải đơn hàng...', loadError: 'Không thể tải đơn hàng.', retry: 'Thử lại', allCourses: 'Khóa học',
+  empty: 'Bạn chưa có đơn hàng nào', emptyText: 'Đơn bạn tạo khi mua khóa học sẽ xuất hiện ở đây.', explore: 'Khám phá khóa học', notFoundBack: 'Đơn hàng của tôi',
+  PENDING: 'Chờ Admin xác nhận chuyển khoản', PAID: 'Đã nhận tiền', EXPIRED: 'Hết hạn', FAILED: 'Không còn hiệu lực', CANCELLED: 'Không còn hiệu lực',
+  reportedBadge: 'Đã báo chuyển khoản', created: 'Tạo {when}', expires: 'Hết hạn {when}', paidOn: 'Thanh toán {when}', remaining: 'Còn lại ~{n} giờ', remainingMin: 'Còn lại ~{n} phút',
+  viewOrder: 'Xem đơn', learn: 'Vào học', course: 'Khóa học', total: 'Tổng', openOrder: 'Đơn {code}',
+  transferTitle: 'Chuyển khoản ngân hàng', qrTitle: 'Quét mã VietQR', bank: 'Ngân hàng', accountNo: 'Số tài khoản', accountName: 'Chủ tài khoản', amount: 'Số tiền', content: 'Nội dung',
+  copy: 'Sao chép {what}', matchNote: 'Nhập đúng nội dung để Admin đối chiếu.', qrAlt: 'Mã VietQR đơn {code}', qrHint: 'Mở app ngân hàng, quét mã; kiểm tra số tiền.',
+  qrFailed: 'Không tải được QR; dùng thông tin chuyển khoản bên dưới.', qrReload: 'Tải lại ảnh',
+  afterTitle: 'Sau khi chuyển khoản', afterText: 'Quyền học chỉ mở khi Admin đối chiếu sao kê. Khóa học đã mua không được hoàn tiền.',
+  report: 'Tôi đã chuyển khoản', reported: 'Đã báo cho Admin lúc {time}; quyền học được mở sau khi Admin đối chiếu.', refresh: 'Làm mới trạng thái', buyAgain: 'Mua lại khóa học',
+  expiredAlert: 'Đơn đã hết hạn; liên hệ Admin nếu đã chuyển khoản.', paidAlert: 'Đã nhận tiền', invalidAlert: 'Đơn này không còn hiệu lực.', buyFailed: 'Không thể tạo đơn hàng.', reportFailed: 'Không thể báo chuyển khoản.',
+}
+type OrderCopy = typeof orderVi
+const orderEn: OrderCopy = {
+  myOrders: 'My orders', kicker: 'My corner', count: '{n} orders', loading: 'Loading orders...', loadError: 'Unable to load orders.', retry: 'Retry', allCourses: 'Courses',
+  empty: 'You have no orders yet', emptyText: 'Orders you create when buying a course will appear here.', explore: 'Explore courses', notFoundBack: 'My orders',
+  PENDING: 'Awaiting transfer confirmation', PAID: 'Payment received', EXPIRED: 'Expired', FAILED: 'No longer valid', CANCELLED: 'No longer valid',
+  reportedBadge: 'Transfer reported', created: 'Created {when}', expires: 'Expires {when}', paidOn: 'Paid {when}', remaining: '~{n} hours left', remainingMin: '~{n} minutes left',
+  viewOrder: 'View order', learn: 'Start learning', course: 'Course', total: 'Total', openOrder: 'Order {code}',
+  transferTitle: 'Bank transfer', qrTitle: 'Scan VietQR', bank: 'Bank', accountNo: 'Account number', accountName: 'Account name', amount: 'Amount', content: 'Transfer note',
+  copy: 'Copy {what}', matchNote: 'Use the exact transfer note so an admin can match it.', qrAlt: 'VietQR code for order {code}', qrHint: 'Open your banking app and scan; check the amount.',
+  qrFailed: 'QR unavailable; use the transfer details below.', qrReload: 'Reload image',
+  afterTitle: 'After you transfer', afterText: 'Access opens only after an admin verifies the bank statement. Purchased courses are non-refundable.',
+  report: 'I have transferred', reported: 'Reported to admin at {time}; access opens after the admin verifies the transfer.', refresh: 'Refresh status', buyAgain: 'Buy again',
+  expiredAlert: 'This order has expired; contact an admin if you already transferred.', paidAlert: 'Payment received', invalidAlert: 'This order is no longer valid.', buyFailed: 'Unable to create the order.', reportFailed: 'Unable to report the transfer.',
+}
+export function orderText(language: Language) {
+  const copy = language === 'vi' ? orderVi : orderEn
+  return (key: keyof OrderCopy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
+}
+
+// Admin orders, commission policy and Author revenue (Task 2c).
+const payVi = {
+  ordersTitle: 'Đơn hàng', count: '{n} đơn', loading: 'Đang tải đơn hàng...', loadError: 'Không tải được đơn hàng.', retry: 'Thử lại', filters: 'Bộ lọc', kicker: 'Thanh toán',
+  code: 'Mã đơn', codePlaceholder: 'Mã đơn đầy đủ, vd. TV000000000123', applyCode: 'Tìm mã đơn', clearCode: 'Xóa mã đơn', status: 'Trạng thái', all: 'Tất cả',
+  PENDING: 'Chờ xác nhận', PAID: 'Đã nhận tiền', EXPIRED: 'Hết hạn', FAILED: 'Không còn hiệu lực', CANCELLED: 'Không còn hiệu lực',
+  reportedFilter: 'Đã báo chuyển khoản', reconFilter: 'Cần đối chiếu', reportedAt: 'Người học đã báo chuyển khoản {time}', reportedHint: 'Cần kiểm tra sao kê trước khi xác nhận.',
+  duplicate: 'Có khoản thanh toán trùng cần đối chiếu', reconciled: 'Đã đối chiếu', received: 'Đã nhận tiền', created: 'Tạo {when}', expires: 'Hết hạn {when}', paidOn: 'Thanh toán {when}',
+  confirmBtn: 'Đối chiếu & xác nhận', viewBtn: 'Xem · Đối chiếu', empty: 'Không có đơn phù hợp', clearFilters: 'Xóa bộ lọc',
+  sheetTitle: 'Xác nhận đơn {code}', reviewTitle: 'Đối chiếu đơn {code}', due: 'Số tiền cần nhận (theo đơn)', check: 'Kiểm tra sao kê ngân hàng (mã đơn, số tiền) trước khi xác nhận.',
+  stmtAmount: 'Số tiền trên sao kê', stmtRef: 'Mã giao dịch sao kê', amountInvalid: 'Số tiền phải là số nguyên dương.', refInvalid: 'Mã giao dịch từ 1 đến 255 ký tự.',
+  review: 'Kiểm tra lại…', cancel: 'Hủy', back: 'Quay lại', close: 'Đóng', reload: 'Tải lại', confirmReceived: 'Xác nhận đã nhận tiền',
+  confirmQ: 'Xác nhận đã nhận {amount} cho đơn {code}, mã giao dịch {ref}? Hành động ghi nhận thanh toán và mở quyền học.',
+  paymentsTitle: 'Đã nhận {n} khoản', dupBlock: 'Có khoản thanh toán trùng cần đối chiếu — tiền thừa xử lý ngoài hệ thống, không hoàn tiền trong sản phẩm.', addPayment: 'Ghi thêm khoản trùng',
+  closeFlag: 'Đóng cờ đối chiếu', closeFlagQ: 'Đánh dấu đã đối chiếu {n} khoản thanh toán của đơn này?', markReconciled: 'Đánh dấu đã đối chiếu',
+  okConfirm: 'Đã ghi nhận thanh toán.', okDuplicate: 'Đã ghi nhận; cần đối chiếu khoản thanh toán trùng.', okReconciled: 'Đã đối chiếu.', confirmFailed: 'Không thể xác nhận thanh toán.', reconcileFailed: 'Không thể đóng cờ đối chiếu.',
+  commissionTitle: 'Tỷ lệ hoa hồng nền tảng', current: 'Hiện hành', platformKeeps: 'Nền tảng giữ', policy: 'Tỷ lệ hoa hồng · Hiệu lực từ {date}', policyNote: 'Đổi tỷ lệ có hiệu lực ngay cho đơn mới; đơn đã tạo giữ tỷ lệ cũ.',
+  changeTitle: 'Đổi tỷ lệ', newRate: 'Tỷ lệ mới (%)', saveRate: 'Lưu tỷ lệ', example: 'Ví dụ: khóa {price} → nền tảng giữ {platform}, tác giả nhận {author}', rateInvalid: 'Tỷ lệ không hợp lệ.',
+  rateQ: 'Đổi tỷ lệ nền tảng giữ thành {rate}% ngay bây giờ? Áp dụng cho đơn tạo từ lúc này.', changeRate: 'Đổi tỷ lệ', rateUpdated: 'Đã cập nhật tỷ lệ.', rateUnchanged: 'Tỷ lệ hiện tại không đổi.',
+  noPolicy: 'Chưa có tỷ lệ; thanh toán tạm thời không khả dụng.', rateLoadError: 'Không tải được tỷ lệ hoa hồng.', rateLoading: 'Đang tải tỷ lệ...', rateFailed: 'Không thể đổi tỷ lệ.',
+  revenueTitle: 'Doanh thu tác giả', authorSpace: 'Không gian tác giả', orders: 'Số đơn', gross: 'Tổng bán', platformShare: 'Nền tảng giữ', yourShare: 'Bạn nhận',
+  snapshotNote: 'Số liệu theo tỷ lệ tại thời điểm mỗi đơn được tạo.', itemLine: 'Giá {price} · Nền tảng giữ {rate}% ({platform}) · Bạn nhận {author}',
+  revenueEmpty: 'Chưa có doanh thu', revenueEmptyText: 'Doanh thu hiện khi có người học thanh toán khóa của bạn.', revenueLoading: 'Đang tải doanh thu...', revenueLoadError: 'Không tải được doanh thu.',
+}
+type PayCopy = typeof payVi
+const payEn: PayCopy = {
+  ordersTitle: 'Orders', count: '{n} orders', loading: 'Loading orders...', loadError: 'Unable to load orders.', retry: 'Retry', filters: 'Filters', kicker: 'Payments',
+  code: 'Order code', codePlaceholder: 'Full order code, e.g. TV000000000123', applyCode: 'Find order code', clearCode: 'Clear order code', status: 'Status', all: 'All',
+  PENDING: 'Awaiting confirmation', PAID: 'Payment received', EXPIRED: 'Expired', FAILED: 'No longer valid', CANCELLED: 'No longer valid',
+  reportedFilter: 'Transfer reported', reconFilter: 'Needs reconciliation', reportedAt: 'Buyer reported a transfer {time}', reportedHint: 'Check the bank statement before confirming.',
+  duplicate: 'Duplicate payment requires reconciliation', reconciled: 'Reconciled', received: 'Payment received', created: 'Created {when}', expires: 'Expires {when}', paidOn: 'Paid {when}',
+  confirmBtn: 'Check & confirm', viewBtn: 'View · Reconcile', empty: 'No matching orders', clearFilters: 'Clear filters',
+  sheetTitle: 'Confirm order {code}', reviewTitle: 'Reconcile order {code}', due: 'Amount due (per order)', check: 'Check the bank statement (order code, amount) before confirming.',
+  stmtAmount: 'Statement amount', stmtRef: 'Statement reference', amountInvalid: 'The amount must be a positive whole number.', refInvalid: 'The reference must be 1 to 255 characters.',
+  review: 'Review…', cancel: 'Cancel', back: 'Go back', close: 'Close', reload: 'Reload', confirmReceived: 'Confirm payment received',
+  confirmQ: 'Confirm that {amount} was received for order {code}, reference {ref}? This records the payment and unlocks the course.',
+  paymentsTitle: '{n} payments received', dupBlock: 'Duplicate payment requires reconciliation — excess money is handled outside the system; no refunds in the product.', addPayment: 'Record another duplicate payment',
+  closeFlag: 'Close reconciliation flag', closeFlagQ: 'Mark {n} payments of this order as reconciled?', markReconciled: 'Mark as reconciled',
+  okConfirm: 'Payment recorded.', okDuplicate: 'Recorded; the duplicate payment needs reconciliation.', okReconciled: 'Reconciled.', confirmFailed: 'Unable to confirm the payment.', reconcileFailed: 'Unable to close the flag.',
+  commissionTitle: 'Platform commission rate', current: 'Current', platformKeeps: 'Platform share', policy: 'Commission rate · Effective from {date}', policyNote: 'A new rate applies at once to new orders; existing orders keep their old rate.',
+  changeTitle: 'Change rate', newRate: 'New rate (%)', saveRate: 'Save rate', example: 'Example: a {price} course → platform keeps {platform}, author gets {author}', rateInvalid: 'The rate is invalid.',
+  rateQ: 'Change the platform share to {rate}% right now? It applies to orders created from this moment.', changeRate: 'Change rate', rateUpdated: 'Rate updated.', rateUnchanged: 'The current rate is unchanged.',
+  noPolicy: 'No rate is set; payment is temporarily unavailable.', rateLoadError: 'Unable to load the commission rate.', rateLoading: 'Loading rate...', rateFailed: 'Unable to change the rate.',
+  revenueTitle: 'Author revenue', authorSpace: 'Author space', orders: 'Orders', gross: 'Gross sales', platformShare: 'Platform share', yourShare: 'Your share',
+  snapshotNote: 'Figures use the rate at the time each order was created.', itemLine: 'Price {price} · Platform share {rate}% ({platform}) · Your share {author}',
+  revenueEmpty: 'No revenue yet', revenueEmptyText: 'Revenue appears when learners pay for your courses.', revenueLoading: 'Loading revenue...', revenueLoadError: 'Unable to load revenue.',
+}
+export function payAdminText(language: Language) {
+  const copy = language === 'vi' ? payVi : payEn
+  return (key: keyof PayCopy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
+}

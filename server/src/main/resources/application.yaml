@@ -82,6 +82,16 @@ ai:
     burst-per-minute: ${AI_BURST_PER_MINUTE:3}
     completed-generation-ttl: 24h
 
+# VietQR receiving account for manual transfers (backend only). Blank = payments unavailable (503).
+vietqr:
+  bank-id: ${VIETQR_BANK_ID:}
+  account-no: ${VIETQR_ACCOUNT_NO:}
+  account-name: ${VIETQR_ACCOUNT_NAME:}
+  template: ${VIETQR_TEMPLATE:compact2}
+
+order:
+  requests-per-minute: 5
+
 article:
   imports-per-hour: 60
   uploads-per-hour: 100

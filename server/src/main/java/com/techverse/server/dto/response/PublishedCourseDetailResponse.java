@@ -20,6 +20,8 @@ public record PublishedCourseDetailResponse(
         String description,
         String coverImageUrl,
         CourseLevel level,
+        long priceAmount,
+        String currency,
         ArticleTaxonomyResponse topic,
         List<ArticleTaxonomyResponse> tags,
         PublishedArticleAuthorResponse author,

@@ -12,7 +12,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.lang.reflect.*;
 import java.util.*;
 
-/** Free course contract: no money fields anywhere, no raw video URL in responses. */
+/** Course contract: money fields only in the DTOs the spec lists, no raw video URL in responses. */
 class CourseContractTest {
     static final List<Class<?>> REQUESTS =
             List.of(CourseWriteRequest.class, LessonWriteRequest.class, CourseChapterRequest.class, CourseReorderRequest.class);
@@ -21,14 +21,30 @@ class CourseContractTest {
                     ModeratorCourseDetailResponse.class, ModeratorCourseSummaryResponse.class, PublishedCourseSummaryResponse.class,
                     PublishedCourseDetailResponse.class, PublishedLessonResponse.class, CourseProgressResponse.class, MyCourseResponse.class);
 
+    static final List<Class<?>> MONEY_ALLOWED =
+            List.of(CourseWriteRequest.class, CourseResponse.class, CourseSummaryResponse.class,
+                    PublishedCourseSummaryResponse.class, PublishedCourseDetailResponse.class);
+
     @Test
-    void noPriceOrCurrencyFields() {
+    void moneyFieldsOnlyInTheAllowedDtos() {
         var all = new ArrayList<Class<?>>(REQUESTS);
         all.addAll(RESPONSES);
-        for (Class<?> type : all)
-            assertThat(fieldNames(type, new HashSet<>()))
-                    .as(type.getSimpleName())
-                    .noneMatch(n -> n.toLowerCase().contains("price") || n.toLowerCase().contains("currency"));
+        for (Class<?> type : all) {
+            boolean money = fieldNames(type, new HashSet<>()).stream().anyMatch(CourseContractTest::isMoney);
+            assertThat(money).as(type.getSimpleName()).isEqualTo(MONEY_ALLOWED.contains(type) || isNested(type));
+        }
+        for (Class<?> type : List.of(ModeratorCourseDetailResponse.class, ModeratorCourseSummaryResponse.class))
+            assertThat(fieldNames(type, new HashSet<>())).as(type.getSimpleName()).noneMatch(CourseContractTest::isMoney);
+    }
+
+    /** MyCourseResponse embeds the published card, so it carries the price too. */
+    private static boolean isNested(Class<?> type) {
+        return type == MyCourseResponse.class;
+    }
+
+    private static boolean isMoney(String n) {
+        n = n.toLowerCase();
+        return n.contains("price") || n.contains("currency") || n.contains("commission");
     }
 
     @Test
@@ -39,9 +55,9 @@ class CourseContractTest {
     }
 
     @Test
-    void unknownFieldsSuchAsPriceAreRejected() {
+    void unknownFieldsSuchAsCurrencyAreRejected() {
         var json = JsonMapper.builder().build();
-        for (String body : List.of("{\"action\":\"SAVE\",\"priceAmount\":0}", "{\"action\":\"SAVE\",\"currency\":\"VND\"}"))
+        for (String body : List.of("{\"action\":\"SAVE\",\"currency\":\"VND\"}", "{\"action\":\"SAVE\",\"commissionRateBps\":1}"))
             assertThat(catchThrowable(() -> json.readValue(body, CourseWriteRequest.class))).isNotNull();
         assertThat(catchThrowable(() -> json.readValue("{\"title\":\"x\",\"priceAmount\":0}", LessonWriteRequest.class)))
                 .isNotNull();

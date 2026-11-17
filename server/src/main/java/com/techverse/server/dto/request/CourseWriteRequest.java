@@ -10,9 +10,11 @@ import jakarta.validation.constraints.*;
 
 import lombok.Getter;
 
+import tools.jackson.databind.JsonNode;
+
 import java.util.*;
 
-/** Course metadata only; there is no price field (free course, unknown fields are rejected). */
+/** Course metadata and price; unknown fields are rejected. */
 @Getter
 @Schema(
         description =
@@ -41,6 +43,12 @@ public class CourseWriteRequest {
 
     @Size(max = 2048)
     private String coverImageUrl;
+
+    @Schema(description = "Whole VND: 0 (free) or 10000-50000000")
+    private Long priceAmount;
+
+    /** True when the JSON value is not an integer that fits a long (validated in the service). */
+    @JsonIgnore private boolean priceMalformed;
 
     @JsonIgnore private final Set<String> provided = new HashSet<>();
 
@@ -89,6 +97,13 @@ public class CourseWriteRequest {
     public void setCoverImageUrl(String v) {
         provided.add("coverImageUrl");
         coverImageUrl = v == null ? null : v.strip();
+    }
+
+    @JsonSetter("priceAmount")
+    public void setPriceAmount(JsonNode v) {
+        provided.add("priceAmount");
+        priceMalformed = v == null || !v.isIntegralNumber() || !v.canConvertToLong();
+        priceAmount = priceMalformed ? null : v.longValue();
     }
 
     @JsonAnySetter

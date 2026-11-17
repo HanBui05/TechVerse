@@ -4,12 +4,12 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { ModeratorCourseDetailPage } from './ModeratorCourseDetailPage'
 import { setAccessToken } from '../../../services/api/client'
-import type { AuthorCourse, Lesson, ModeratorCourseDetail } from '../../../types/courses'
+import type { Lesson, ModeratorCourse, ModeratorCourseDetail } from '../../../types/courses'
 
 afterEach(() => { cleanup(); setAccessToken(null); vi.unstubAllGlobals() })
 
 const item = (id: string, title: string, position: number) => ({ id, title, summary: null, position, preview: false, hasVideo: false, hasContent: true, aiAssisted: false })
-const course: AuthorCourse = {
+const course: ModeratorCourse = {
   id: 'c1', authorId: 'a1', title: 'Java cơ bản', summary: 'Tóm tắt khóa', description: '# Mô tả', level: 'BEGINNER', coverImageUrl: null, topic: { id: 'java', name: 'Java' }, tags: [],
   workflowStatus: 'PENDING', publicationStatus: 'PUBLISHED', fingerprint: 'f', hasUnpublishedChanges: true, imageIssues: [], moderationNote: null, reviewedAt: null,
   publishedAt: '2026-11-01T00:00:00Z', createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-11-08T00:00:00Z',

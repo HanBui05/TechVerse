@@ -7,19 +7,23 @@ export type LessonItem = { id: string; title: string; summary: string | null; po
 export type CourseChapter = { id: string; title: string; position: number; lessons: LessonItem[] }
 export type CourseVersion = { id: string; versionNumber: number; approvedAt: string; fingerprint: string; chapters: CourseChapter[] }
 
-export type AuthorCourse = ArticleStatus & {
+/** Course as the Moderator sees it: no price, currency or commission (ModeratorCourseResponse). */
+export type ModeratorCourse = ArticleStatus & {
   id: string; authorId: string; title: string; summary: string | null; description: string | null; level: CourseLevel; coverImageUrl: string | null
   topic: ArticleOption; tags: ArticleOption[]; fingerprint: string; hasUnpublishedChanges: boolean; chapters: CourseChapter[]
   publishedVersion: CourseVersion | null; imageIssues: ImageIssue[]; moderationNote: string | null; reviewedAt: string | null; publishedAt: string | null
   createdAt: string; updatedAt: string
 }
+/** `commissionRateBps` is the active policy, only to estimate the share after fees; the server stays the judge. */
+export type AuthorCourse = ModeratorCourse & { priceAmount: number; commissionRateBps: number }
 
-export type AuthorCourseSummary = ArticleStatus & {
+export type ModeratorCourseSummaryItem = ArticleStatus & {
   id: string; title: string; summary: string | null; coverImageUrl: string | null; level: CourseLevel; topic: ArticleOption
   hasUnpublishedChanges: boolean; publishedAt: string | null; createdAt: string; updatedAt: string
 }
+export type AuthorCourseSummary = ModeratorCourseSummaryItem & { priceAmount: number }
 
-export type CourseFields = { title: string; summary: string; description: string; level: CourseLevel; topicId: string; tagIds: string[]; coverImageUrl: string | null }
+export type CourseFields = { title: string; summary: string; description: string; level: CourseLevel; topicId: string; tagIds: string[]; coverImageUrl: string | null; priceAmount: number }
 export type CourseWrite = Partial<CourseFields> & { action: 'SAVE' | 'SUBMIT' }
 
 export type Lesson = {
@@ -36,14 +40,14 @@ export type CourseAction = 'viewLive' | 'withdraw' | 'discard' | 'hide' | 'unhid
 export type ChangeStatus = 'NEW' | 'CHANGED' | 'ARCHIVED' | 'UNCHANGED'
 export type ChangeLesson = { id: string; title: string; changeStatus: ChangeStatus }
 export type ChangeChapter = { id: string; title: string; changeStatus: ChangeStatus; lessons: ChangeLesson[] }
-export type ModeratorCourseSummary = { course: AuthorCourseSummary; author: ArticleAuthor; authorEligible: boolean }
+export type ModeratorCourseSummary = { course: ModeratorCourseSummaryItem; author: ArticleAuthor; authorEligible: boolean }
 /** `course` is the working copy; `history` holds the 5 newest entries; `changes` = working active nodes, then nodes only the live version has. */
-export type ModeratorCourseDetail = { course: AuthorCourse; author: ArticleAuthor; reviewToken: string; authorEligible: boolean; history: HistoryEntry[]; changes: ChangeChapter[] }
+export type ModeratorCourseDetail = { course: ModeratorCourse; author: ArticleAuthor; reviewToken: string; authorEligible: boolean; history: HistoryEntry[]; changes: ChangeChapter[] }
 
-// Reader shapes (PublishedCourse*Response, PublishedLessonResponse, CourseProgressResponse, MyCourseResponse): snapshot only, no money.
+// Reader shapes (PublishedCourse*Response, PublishedLessonResponse, CourseProgressResponse, MyCourseResponse): snapshot content; the price is live on the course.
 export type PublicCourseSummary = {
   id: string; title: string; summary: string | null; coverImageUrl: string | null; level: CourseLevel; topic: ArticleOption; tags: ArticleOption[]
-  author: ArticleAuthor; publishedAt: string; updatedAt: string
+  author: ArticleAuthor; publishedAt: string; updatedAt: string; priceAmount: number
 }
 export type CourseFilter = { keyword: string; topicId: string; tagId: string; level: CourseLevel | ''; sort: 'NEWEST' | 'OLDEST'; page: number }
 export type Progress = { completed: number; total: number; percent: number }
@@ -62,3 +66,22 @@ export type PublicLesson = {
   lesson: { id: string; chapterId: string; title: string; summary: string | null; content: string | null; video: { provider: string; videoId: string } | null; position: number; preview: boolean }
 }
 export type MyCourse = { course: PublicCourseSummary; progress: Progress; continueLesson: ContinueLesson | null; grantedAt: string; lastAccessedAt: string | null }
+
+// OrderResponse (Task 1b): the buyer's view; `vietQr` only while PENDING/EXPIRED and when the receiving account is configured.
+export type OrderStatus = 'PENDING' | 'PAID' | 'EXPIRED' | 'FAILED' | 'CANCELLED'
+export type VietQr = { bankId: string; accountNo: string; accountName: string; amount: number; content: string; imageUrl: string }
+export type CourseOrder = {
+  orderCode: string; courseId: string; courseTitle: string; amount: number; currency: string; status: OrderStatus
+  createdAt: string; expiresAt: string; paidAt: string | null; transferReportedAt: string | null; vietQr: VietQr | null
+}
+
+// Admin / Author payment shapes (AdminOrderResponse, CommissionPolicyResponse, AuthorRevenueResponse).
+export type AdminPayment = { reference: string; amount: number; source: string; confirmedAt: string }
+export type AdminOrder = {
+  orderCode: string; buyerId: string; buyerName: string | null; buyerEmail: string | null; courseId: string; courseTitle: string; amount: number; currency: string; status: OrderStatus
+  createdAt: string; expiresAt: string; paidAt: string | null; transferReportedAt: string | null; needsReconciliation: boolean; reconciledAt: string | null; payments: AdminPayment[]
+}
+export type AdminOrderFilter = { status?: OrderStatus; code?: string; transferReported?: boolean; needsReconciliation?: boolean; page?: number }
+export type CommissionPolicy = { id: string; rateBps: number; effectiveFrom: string }
+export type RevenueItem = { courseId: string; courseTitle: string; paidAt: string; unitPriceAmount: number; commissionRateBps: number; commissionAmount: number; authorNetAmount: number }
+export type AuthorRevenue = { totals: { itemCount: number; grossAmount: number; platformAmount: number; authorAmount: number }; items: import('./articles').Page<RevenueItem> }

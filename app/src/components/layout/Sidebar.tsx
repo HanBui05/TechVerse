@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { ArrowRight, ChevronDown, FileText, GraduationCap, Heart, PlayCircle, LogOut, Settings, UserRound, UserRoundPlus, X } from 'lucide-react'
+import { ArrowRight, ChevronDown, FileText, GraduationCap, Heart, PlayCircle, Receipt, LogOut, Settings, UserRound, UserRoundPlus, Wallet, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { navItems, settingsItems } from '../../data/navigation'
 import type { Language } from '../../types/preferences'
@@ -84,6 +84,7 @@ export function Sidebar({ language, t, authenticated, roles, profile, onLogout }
   const authorLinks = [
     { path: '/author/blogs', icon: FileText, tone: 'green', label: language === 'vi' ? 'Bài viết của tôi' : 'My articles' },
     { path: '/author/courses', icon: GraduationCap, tone: 'blue', label: language === 'vi' ? 'Khóa học' : 'Courses' },
+    { path: '/author/revenue', icon: Wallet, tone: 'green', label: language === 'vi' ? 'Doanh thu' : 'Revenue' },
   ]
   const footer = authenticated
     ? <SidebarAccount profile={profile} onLogout={onLogout} logoutLabel="Log out" />
@@ -105,6 +106,7 @@ export function Sidebar({ language, t, authenticated, roles, profile, onLogout }
       <SidebarMenu>
         <SidebarMenuItem><SidebarMenuButton asChild tooltip={language === 'vi' ? 'Bài đã lưu' : 'Saved articles'} className={activeLink}><NavLink to="/me/saved-articles" onClick={close}><Heart className={toneText.rose} data-tone="rose" /><span>{language === 'vi' ? 'Bài đã lưu' : 'Saved articles'}</span></NavLink></SidebarMenuButton></SidebarMenuItem>
         <SidebarMenuItem><SidebarMenuButton asChild tooltip={language === 'vi' ? 'Khóa học của tôi' : 'My courses'} className={activeLink}><NavLink to="/me/courses" onClick={close}><PlayCircle className={toneText.amber} data-tone="amber" /><span>{language === 'vi' ? 'Khóa học của tôi' : 'My courses'}</span></NavLink></SidebarMenuButton></SidebarMenuItem>
+        <SidebarMenuItem><SidebarMenuButton asChild tooltip={language === 'vi' ? 'Đơn hàng của tôi' : 'My orders'} className={activeLink}><NavLink to="/me/orders" onClick={close}><Receipt className={toneText.sky} data-tone="sky" /><span>{language === 'vi' ? 'Đơn hàng của tôi' : 'My orders'}</span></NavLink></SidebarMenuButton></SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>}
     {/* Collapsed group for Authors only; opens itself on any /author/* route so the active link stays visible. */}

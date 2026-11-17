@@ -95,6 +95,8 @@ public class PublishedCourseServiceImpl implements PublishedCourseService {
                 .description(v.getDescription())
                 .coverImageUrl(v.getCoverImageUrl())
                 .level(v.getLevel())
+                .priceAmount(course.getPriceAmount())
+                .currency("VND")
                 .topic(new ArticleTaxonomyResponse(v.getTopic().getId(), v.getTopic().getName()))
                 .tags(tags(List.of(v.getId())).getOrDefault(v.getId(), List.of()))
                 .author(PublishedArticleAuthorResponse.builder()
@@ -128,6 +130,7 @@ public class PublishedCourseServiceImpl implements PublishedCourseService {
                         .orElseThrow(() -> new CustomException(ErrorCode.LESSON_NOT_FOUND));
         if (!vl.isPreview() && enrollment.isEmpty()) {
             if (reader != null && !reader.canLearn(course)) throw new CustomException(ErrorCode.ACCESS_DENIED);
+            if (course.getPriceAmount() > 0) throw new CustomException(ErrorCode.COURSE_PURCHASE_REQUIRED);
             throw new CustomException(ErrorCode.LESSON_PREVIEW_ONLY);
         }
         CourseProgressResponse learning = null;
@@ -154,7 +157,10 @@ public class PublishedCourseServiceImpl implements PublishedCourseService {
         Reader reader = reader(actor);
         Course course = visible(id);
         if (!reader.canLearn(course)) throw new CustomException(ErrorCode.ACCESS_DENIED);
-        enrollments.insertFree(actor, id);
+        // A paid course never gets a FREE enrollment; a purchase (1c) creates the active row instead.
+        if (course.getPriceAmount() > 0) {
+            if (enrollments.findActive(actor, id).isEmpty()) throw new CustomException(ErrorCode.COURSE_PURCHASE_REQUIRED);
+        } else enrollments.insertFree(actor, id);
         var enrollment = enrollments.findActive(actor, id).orElseThrow();
         return learning(actor, course, tree(course), enrollment.getLastLessonId());
     }

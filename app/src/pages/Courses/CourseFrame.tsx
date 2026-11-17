@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { courseErrorText, readerCourseText, type ReaderCourseText } from '../../data/courseI18n'
 import { ApiError } from '../../services/api/client'
-import { lessonAccess, publicCourses } from '../../services/courseService'
+import { lessonAccess, orders, publicCourses } from '../../services/courseService'
 import { touch } from './courseParts'
 import type { CourseLearning, PublicChapter, Viewer } from '../../types/courses'
 import type { Language } from '../../types/preferences'
@@ -22,12 +22,19 @@ export type FrameActions = {
   start: (lessonId?: string) => Promise<void>
   /** Guest: ask to sign in, returning to `returnTo` afterwards. */
   askLogin: (returnTo: string) => void
+  /** Paid course: create (or reopen) the order and open it. Shares `starting`/`startError` with start. */
+  buy: () => Promise<void>
+  /** Signed-in Learner clicked a locked lesson of a paid course: ask before creating the order. */
+  askBuy: () => void
+  paid: boolean
   starting: boolean
   startError: string
 }
 
 type Props = {
   language: Language; authenticated: boolean; courseId: string; title: string; chapters: PublicChapter[]; viewer: Viewer; learning: CourseLearning | null
+  /** Live course price; above 0 a locked lesson asks to buy instead of starting. */
+  priceAmount?: number
   /** Lesson on screen; undefined on the overview. */
   currentLessonId?: string
   children: (actions: FrameActions) => ReactNode
@@ -46,6 +53,7 @@ function Curriculum({ t, courseId, chapters, viewer, learning, authenticated, cu
   const pick = (lessonId: string, mode: ReturnType<typeof lessonAccess>) => {
     onNavigate?.()
     if (mode === 'login') actions.askLogin(`/courses/${courseId}/lessons/${lessonId}`)
+    else if (mode === 'buy') actions.askBuy()
     else if (mode === 'start') void actions.start(lessonId)
   }
   const row = 'flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-ring'
@@ -72,7 +80,7 @@ function Curriculum({ t, courseId, chapters, viewer, learning, authenticated, cu
             <ChevronDown className={cn('mt-0.5 size-4 shrink-0 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} aria-hidden />
           </button>
           {expanded && <ul id={panel} className="flex flex-col gap-0.5 pb-1">{lessons.map(lesson => {
-            const mode = lessonAccess(lesson, viewer, authenticated)
+            const mode = lessonAccess(lesson, viewer, authenticated, actions.paid)
             const current = lesson.id === currentLessonId
             const completed = done.has(lesson.id)
             const icon = completed ? <Check className="size-4 shrink-0 text-success" aria-label={t('done')} /> : mode === 'open' ? <span className="size-4 shrink-0 rounded-full border border-muted-foreground" aria-hidden /> : <Lock className="size-4 shrink-0 text-muted-foreground" aria-label={t('lockedLesson')} />
@@ -95,19 +103,29 @@ function Curriculum({ t, courseId, chapters, viewer, learning, authenticated, cu
  * Learning frame (wireframe 2c-2/2c-5): own top bar instead of the app Sidebar, curriculum column on lg+ and a left Sheet below.
  * The start/login rules for clicking a locked lesson live here so overview and lesson page share one behaviour.
  */
-export function CourseFrame({ language, authenticated, courseId, title, chapters, viewer, learning, currentLessonId, children }: Props) {
+export function CourseFrame({ language, authenticated, courseId, title, chapters, viewer, learning, priceAmount = 0, currentLessonId, children }: Props) {
   const t = readerCourseText(language)
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(TREE_KEY) === 'collapsed')
   const [sheet, setSheet] = useState(false)
   const menuButton = useRef<HTMLButtonElement>(null)
   const [loginFor, setLoginFor] = useState<string | null>(null)
+  const [buyOpen, setBuyOpen] = useState(false)
+  const paid = priceAmount > 0
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState('')
 
   const actions: FrameActions = {
-    starting, startError,
+    starting, startError, paid,
     askLogin: setLoginFor,
+    askBuy: () => setBuyOpen(true),
+    buy: async () => {
+      if (starting) return
+      setStarting(true); setStartError('')
+      try { navigate(`/me/orders/${(await orders.create(courseId)).orderCode}`) }
+      catch (e) { setBuyOpen(false); setStartError(courseErrorText(e, language, t('buyFailed'))) }
+      finally { setStarting(false) }
+    },
     start: async lessonId => {
       if (starting) return
       setStarting(true); setStartError('')
@@ -152,10 +170,20 @@ export function CourseFrame({ language, authenticated, courseId, title, chapters
 
     <Dialog open={loginFor !== null} onOpenChange={open => { if (!open) setLoginFor(null) }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>{t('loginTitle')}</DialogTitle><DialogDescription>{t('loginText')}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{t(paid ? 'buyLoginTitle' : 'loginTitle')}</DialogTitle><DialogDescription>{t(paid ? 'buyLoginText' : 'loginText')}</DialogDescription></DialogHeader>
         <DialogFooter>
           <Button type="button" variant="outline" className={touch} onClick={() => setLoginFor(null)}>{t('cancel')}</Button>
           <Button type="button" className={touch} onClick={() => navigate('/login', { state: { returnTo: loginFor } })}>{t('login')}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={buyOpen} onOpenChange={setBuyOpen}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{t('purchaseRequired')}</DialogTitle><DialogDescription>{t('noRefund')}</DialogDescription></DialogHeader>
+        <DialogFooter>
+          <Button type="button" variant="outline" className={touch} onClick={() => setBuyOpen(false)}>{t('cancel')}</Button>
+          <Button type="button" className={touch} disabled={starting} onClick={() => void actions.buy()}>{t('buy')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

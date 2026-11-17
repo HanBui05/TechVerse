@@ -17,6 +17,8 @@ import { CoursesPage } from './pages/Courses/CoursesPage'
 import { CourseOverviewPage } from './pages/Courses/CourseOverviewPage'
 import { CourseLessonPage } from './pages/Courses/CourseLessonPage'
 import { MyCoursesPage } from './pages/Courses/MyCoursesPage'
+import { OrdersPage } from './pages/Payments/OrdersPage'
+import { OrderDetailPage } from './pages/Payments/OrderDetailPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
 import { ThemePage } from './pages/Settings/ThemePage'
 import { AuthLayout } from './components/auth/AuthLayout'
@@ -30,6 +32,9 @@ import { AdminDashboardPage } from './pages/Admin/AdminDashboardPage'
 import { AuthorApplicationsPage } from './pages/Admin/AuthorApplicationsPage'
 import { AdminUsersPage } from './pages/Admin/AdminUsersPage'
 import { TaxonomyPage } from './pages/Admin/TaxonomyPage'
+import { AdminOrdersPage } from './pages/Admin/Orders/AdminOrdersPage'
+import { AdminCommissionPage } from './pages/Admin/Commission/AdminCommissionPage'
+import { AuthorRevenuePage } from './pages/Author/Revenue/AuthorRevenuePage'
 import { AuthorApplyPage } from './pages/Author/AuthorApplyPage'
 import { AuthorBlogsPage } from './pages/Author/AuthorBlogsPage'
 import { ArticleEditorPage } from './pages/Author/ArticleEditorPage'
@@ -167,6 +172,8 @@ export default function App() {
       <Route path="/courses/:id" element={<ReaderRoute roles={roles}><CourseOverviewPage language={language} authenticated={authenticated} /></ReaderRoute>} />
       <Route path="/courses/:courseId/lessons/:lessonId" element={<ReaderRoute roles={roles}><CourseLessonPage language={language} authenticated={authenticated} /></ReaderRoute>} />
       <Route path="/me/courses" element={<AuthRoute authenticated={authenticated} returnTo="/me/courses"><ReaderRoute roles={roles}><MyCoursesPage language={language} /></ReaderRoute></AuthRoute>} />
+      <Route path="/me/orders" element={<AuthRoute authenticated={authenticated} returnTo="/me/orders"><ReaderRoute roles={roles}><OrdersPage language={language} /></ReaderRoute></AuthRoute>} />
+      <Route path="/me/orders/:orderCode" element={<AuthRoute authenticated={authenticated} returnTo={location.pathname}><ReaderRoute roles={roles}><OrderDetailPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route element={<AuthLayout t={t} />}>
         <Route path="/login" element={<LoginPage t={t} onLogin={login} />} />
         <Route path="/register" element={<RegisterPage t={t} onRegister={register} />} />
@@ -184,6 +191,9 @@ export default function App() {
       <Route path="/admin/users" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminUsersPage language={language} /></RoleRoute>} />
       <Route path="/admin/topics" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="topics" language={language} /></RoleRoute>} />
       <Route path="/admin/tags" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="tags" language={language} /></RoleRoute>} />
+      <Route path="/admin/orders" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminOrdersPage language={language} /></RoleRoute>} />
+      <Route path="/admin/commission" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminCommissionPage language={language} /></RoleRoute>} />
+      <Route path="/author/revenue" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AuthorRevenuePage language={language} /></RoleRoute>} />
       <Route path="/author/apply" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['LEARNER']}><AuthorApplyPage language={language} /></RoleRoute>} />
       <Route path="/author/blogs" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AuthorBlogsPage language={language} /></RoleRoute>} />
       {/* Same element type on both paths: after the first auto-save /new → /:id/edit keeps editor state. */}

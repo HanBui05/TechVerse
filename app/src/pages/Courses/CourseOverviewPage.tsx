@@ -15,7 +15,7 @@ import { ApiError } from '../../services/api/client'
 import { flatLessons, lessonAccess, publicCourses } from '../../services/courseService'
 import { formatDate } from '../Author/AuthorBlogsPage'
 import { CourseFrame, type FrameActions } from './CourseFrame'
-import { LEVEL_TONE, ProgressBar, touch } from './courseParts'
+import { LEVEL_TONE, PriceChip, ProgressBar, touch } from './courseParts'
 import type { PublicCourseDetail } from '../../types/courses'
 import type { Language } from '../../types/preferences'
 
@@ -57,9 +57,10 @@ export function CourseOverviewPage({ language = 'vi', authenticated = false }: {
   const TopicIcon = topicIcon(course.topic.name)
   const continueLesson = course.viewer.enrolled ? course.learning?.continueLesson : null
   const progress = course.viewer.enrolled ? course.learning?.progress : null
+  const paid = course.priceAmount > 0
   const chip = 'inline-flex items-center gap-1.5 rounded-lg px-2 py-1 font-semibold'
 
-  return <CourseFrame language={language} authenticated={authenticated} courseId={course.id} title={course.title} chapters={course.chapters} viewer={course.viewer} learning={course.learning}>
+  return <CourseFrame language={language} authenticated={authenticated} courseId={course.id} title={course.title} chapters={course.chapters} viewer={course.viewer} learning={course.learning} priceAmount={course.priceAmount}>
     {(actions: FrameActions) => <main id="lesson-content" className="tw-page mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6">
       <nav aria-label={t('breadcrumb')} className="text-sm text-muted-foreground"><Link to="/courses" className={cn('hover:text-foreground', touch)}>{t('back')}</Link> › <span className="text-foreground">{course.title}</span></nav>
 
@@ -82,15 +83,19 @@ export function CourseOverviewPage({ language = 'vi', authenticated = false }: {
             <span className="flex flex-col leading-tight"><span className="text-sm font-semibold">{course.author.fullName}</span><span className="text-[11px] tracking-wide text-muted-foreground uppercase">{t('author')}</span></span>
           </span>
           <div className="flex flex-wrap items-center gap-2 max-sm:w-full max-sm:flex-col max-sm:items-stretch">
+            <PriceChip amount={course.priceAmount} language={language} className="px-2.5 py-1 text-sm max-sm:self-start" />
             {course.viewer.enrolled
               ? continueLesson && <Button asChild className={touch}><Link to={`/courses/${course.id}/lessons/${continueLesson.id}`}><PlayCircle aria-hidden />{t('continueAt', { title: continueLesson.title })}</Link></Button>
-              : course.viewer.canStart
+              : course.viewer.canStart && paid
+                ? <Button type="button" className={touch} disabled={actions.starting} onClick={() => authenticated ? void actions.buy() : actions.askLogin(`/courses/${course.id}`)}>{t('buy')}</Button>
+                : course.viewer.canStart
                 ? <Button type="button" className={touch} disabled={actions.starting} onClick={() => authenticated ? void actions.start() : actions.askLogin(`/courses/${course.id}`)}><PlayCircle aria-hidden />{t('startLearning')}</Button>
                 : <p className="text-sm text-muted-foreground">{t('ownerNote')}</p>}
             {firstPreview && <Button asChild variant="outline" className={touch}><Link to={`/courses/${course.id}/lessons/${firstPreview.id}`}>{t('preview')}</Link></Button>}
           </div>
         </div>
         {progress && <div className="flex flex-col gap-1.5"><ProgressBar percent={progress.percent} label={t('progressLabel')} /><p className="text-xs text-muted-foreground">{t('progress', { x: progress.completed, y: progress.total, p: progress.percent })}</p></div>}
+        {paid && !course.viewer.enrolled && course.viewer.canStart && <p className="text-sm text-muted-foreground"><span aria-hidden>ⓘ </span>{t('noRefund')}</p>}
         {actions.startError && <p role="alert" className="text-sm text-danger">{actions.startError}</p>}
       </section>
 
@@ -114,7 +119,7 @@ export function CourseOverviewPage({ language = 'vi', authenticated = false }: {
                 <ChevronDown className={cn('size-4 shrink-0 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} aria-hidden />
               </button></h3>
               {expanded && <ul>{chapter.lessons.map(lesson => {
-                const mode = lessonAccess(lesson, course.viewer, authenticated)
+                const mode = lessonAccess(lesson, course.viewer, authenticated, paid)
                 const done = course.learning?.completedLessonIds.includes(lesson.id)
                 const body = <>{done ? <Check className="size-4 shrink-0 text-success" aria-label={t('done')} /> : mode === 'open' ? <PlayCircle className="size-4 shrink-0 text-muted-foreground" aria-hidden /> : <Lock className="size-4 shrink-0 text-muted-foreground" aria-label={t('lockedLesson')} />}
                   <span className="min-w-0 flex-1"><span className="block">{chapter.lessons.indexOf(lesson) + 1}. {lesson.title}</span>{lesson.summary && <span className="block text-xs text-muted-foreground">{lesson.summary}</span>}</span>
@@ -122,7 +127,7 @@ export function CourseOverviewPage({ language = 'vi', authenticated = false }: {
                 const cls = cn('flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring', touch, mode === 'locked' && 'cursor-not-allowed opacity-70')
                 return <li key={lesson.id} className="border-t border-border">{mode === 'open'
                   ? <Link to={`/courses/${course.id}/lessons/${lesson.id}`} className={cls}>{body}</Link>
-                  : <button type="button" aria-disabled={mode === 'locked'} className={cls} onClick={() => { if (mode === 'login') actions.askLogin(`/courses/${course.id}/lessons/${lesson.id}`); else if (mode === 'start') void actions.start(lesson.id) }}>{body}</button>}</li>
+                  : <button type="button" aria-disabled={mode === 'locked'} className={cls} onClick={() => { if (mode === 'login') actions.askLogin(`/courses/${course.id}/lessons/${lesson.id}`); else if (mode === 'buy') actions.askBuy(); else if (mode === 'start') void actions.start(lesson.id) }}>{body}</button>}</li>
               })}</ul>}
             </section>
           })}

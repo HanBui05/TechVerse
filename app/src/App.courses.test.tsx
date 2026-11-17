@@ -6,14 +6,14 @@ import App from './App'
 import { LoginPage } from './pages/Login/LoginPage'
 import { copy } from './data/i18n'
 import { setAccessToken } from './services/api/client'
-import { detail, json, options, page, summary } from './pages/Courses/fixtures'
+import { detail, json, options, order, page, summary } from './pages/Courses/fixtures'
 
 const fetchMock = vi.fn<typeof fetch>()
 let roles: string[] = []
 const profile = () => ({ id: 'u1', fullName: 'An', email: 'an@example.com', roles, phoneNumber: null, dateOfBirth: null, avatarUrl: null, createdAt: '', updatedAt: '' })
 function Where() { const l = useLocation(); return <output data-testid="where">{l.pathname}</output> }
 const renderAt = (path: string) => render(<MemoryRouter initialEntries={[path]}><App /><Where /></MemoryRouter>)
-const courseCalls = () => fetchMock.mock.calls.filter(([url]) => /\/api\/v1\/(courses|me\/courses)/.test(String(url)))
+const courseCalls = () => fetchMock.mock.calls.filter(([url]) => /\/api\/v1\/(courses|orders|me\/(courses|orders))/.test(String(url)))
 
 beforeEach(() => {
   localStorage.clear(); sessionStorage.clear(); setAccessToken(null)
@@ -24,6 +24,10 @@ beforeEach(() => {
     if (path.endsWith('/options')) return json(options)
     if (path === '/api/v1/courses/c1') return json(detail())
     if (path === '/api/v1/me/courses') return json(page([]))
+    if (path.startsWith('/api/v1/orders/')) return json(order)
+    if (path === '/api/v1/author/revenue') return json({ totals: { itemCount: 0, grossAmount: 0, platformAmount: 0, authorAmount: 0 }, items: page([]) })
+    if (path === '/api/v1/admin/commission-policy') return json(null)
+    if (path === '/api/v1/admin/orders') return json(page([]))
     return json(page([summary]))
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -50,11 +54,22 @@ it('sends a Guest from My courses to login, and shows the Courses and My courses
   renderAt('/courses')
   expect(await screen.findByRole('link', { name: 'Java cơ bản' })).toBeTruthy()
   expect(screen.getAllByRole('link', { name: 'Khóa học của tôi' }).length).toBeGreaterThan(0)
+  expect(screen.getAllByRole('link', { name: 'Đơn hàng của tôi' }).some(link => link.getAttribute('href') === '/me/orders')).toBe(true)
   expect(screen.getAllByRole('link', { name: 'Khóa học' }).some(link => link.getAttribute('href') === '/courses')).toBe(true)
 })
 
+it('sends a Guest from an order page to login and opens the order for a Learner', async () => {
+  renderAt('/me/orders/TV000000000123')
+  await vi.waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/login'))
+  cleanup()
+  roles = ['LEARNER']
+  localStorage.setItem('techverse-authenticated', 'true'); setAccessToken('tok')
+  renderAt('/me/orders/TV000000000123')
+  expect((await screen.findAllByText(/TV000000000123/)).length).toBeGreaterThan(0)
+})
+
 it('keeps management accounts out of the Reader course routes without calling the learning API', async () => {
-  for (const [r, home] of [[['MODERATOR'], '/moderator'], [['ADMIN'], '/admin']] as const) for (const path of ['/courses', '/courses/c1', '/courses/c1/lessons/l1', '/me/courses']) {
+  for (const [r, home] of [[['MODERATOR'], '/moderator'], [['ADMIN'], '/admin']] as const) for (const path of ['/courses', '/courses/c1', '/courses/c1/lessons/l1', '/me/courses', '/me/orders', '/me/orders/TV000000000123']) {
     roles = [...r]
     localStorage.setItem('techverse-authenticated', 'true'); setAccessToken('tok')
     fetchMock.mockClear()
@@ -86,4 +101,24 @@ it('returns a Reader to the course page they came from, but never to an unlisted
   loginAt('/courses/c1', '/moderator')
   await submitLogin()
   expect((await screen.findByTestId('where')).textContent).toBe('/moderator')
+})
+
+it('serves the payment pages only to their role: Admin orders/commission, Author revenue; others go to their profile without calling the payment API', async () => {
+  const paymentCalls = () => fetchMock.mock.calls.filter(([url]) => /\/api\/v1\/(admin\/(orders|commission-policy)|author\/revenue)/.test(String(url)))
+  const cases = [['ADMIN', '/admin/orders', 'Đơn hàng'], ['ADMIN', '/admin/commission', 'Tỷ lệ hoa hồng nền tảng'], ['AUTHOR', '/author/revenue', 'Doanh thu tác giả']] as const
+  for (const [role, path, title] of cases) {
+    roles = [role]
+    localStorage.setItem('techverse-authenticated', 'true'); setAccessToken('tok')
+    renderAt(path)
+    expect(await screen.findByRole('heading', { level: 1, name: new RegExp(title) })).toBeTruthy()
+    cleanup()
+  }
+  for (const [role, path] of [['MODERATOR', '/admin/orders'], ['MODERATOR', '/admin/commission'], ['LEARNER', '/admin/orders'], ['LEARNER', '/author/revenue'], ['MODERATOR', '/author/revenue']] as const) {
+    roles = [role]
+    fetchMock.mockClear()
+    renderAt(path)
+    await vi.waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/profile'))
+    expect(paymentCalls()).toHaveLength(0)
+    cleanup()
+  }
 })

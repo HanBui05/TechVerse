@@ -120,6 +120,8 @@ Hiện `settings.json` tắt plugin còn `settings.local.json` bật, tức plug
 5. Model mặc định: giữ Sonnet cho code thường và Opus cho spec/rủi ro cao, hay chuyển hẳn Opus? **Khuyến nghị: giữ như cũ**, riêng module `course-payment` ghi rủi ro cao (tiền, đồng thời) nên dùng Opus.
 6. Thêm job frontend vào CI (G1)? **Khuyến nghị: có.**
 
+**Trả lời (2026-11-14, người dùng giao Claude trả lời; chưa thực hiện):** 1 có; 2 có; 3 có, ghi vào `AGENTS.md`; 4 xóa, nhưng chỉ xóa khi người dùng tự làm hoặc nói rõ “xóa”; 5 giữ như cũ, `course-payment` dùng Opus; 6 có, làm thành task làn nhẹ riêng.
+
 ## 6. Xong khi
 
 - [ ] `docs/PROJECT_CONTEXT.md`: không còn câu nào ở 1.1 sai với code; mục 5, 6 đã bỏ; phần 1–3 + 7 ≤ khoảng 90 dòng. Kiểm: `grep -n "sessionStorage\|references/\|V1–V1[01]\|setup-agent-workflow" docs/PROJECT_CONTEXT.md` không còn kết quả sai.
