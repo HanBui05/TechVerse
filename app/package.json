@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@payos/payos-checkout": "^1.0.9",
     "@vitejs/plugin-react": "latest",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",

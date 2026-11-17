@@ -4,7 +4,7 @@ Trạng thái: **người dùng đã duyệt 2026-11-15** (kết luận cuối f
 
 Ký hiệu như `course-free.wireframe.md`: `[Nút]` · `(Badge)` · `▾` select · `⋯` menu phụ · `▓` Skeleton · `⟳` thử lại · `🔒` bài khóa · `⧉` nút copy. Icon thật là `lucide-react`, không emoji. Desktop 1440, mobile 390.
 
-**Ngoài màn (không vẽ, không làm):** PayOS/checkout/return/cancel, giỏ hàng, mã giảm giá, hoàn tiền, nút hủy đơn (E2), xuất CSV (E3), “đã chi trả” cho tác giả, Admin cấp/thu hồi quyền, lịch tỷ lệ tương lai, giá/doanh thu trên màn Moderator.
+**Ngoài màn (không vẽ, không làm):** PayOS/checkout/return/cancel (payOS mở lại ở **mục 8**, module `payos-checkout`; trang return/cancel riêng vẫn ngoài màn), giỏ hàng, mã giảm giá, hoàn tiền, nút hủy đơn (E2), xuất CSV (E3), “đã chi trả” cho tác giả, Admin cấp/thu hồi quyền, lịch tỷ lệ tương lai, giá/doanh thu trên màn Moderator.
 
 ## 0. Phong cách và theme
 
@@ -286,3 +286,142 @@ Copy lỗi theo mã: bảng Task 1a–1d trong spec; mã lạ dùng fallback chu
 ## Kết luận người dùng đã duyệt
 
 - **2026-11-15:** người dùng duyệt wireframe, đồng ý cả 7 câu ở mục 7, riêng câu 3 chọn phương án khác: ô số tiền xác nhận của Admin **điền sẵn** theo đơn (vẫn có bước kiểm tra lại). Task 2a–2c code theo file này + spec.
+
+---
+
+## 8. payOS checkout — cổng trước Task 2 của `payos-checkout`
+
+Trạng thái: **người dùng đã duyệt 2026-11-16** (kết luận cuối mục). Nguồn: `payos-checkout.md` Task 2 (phạm vi, copy vi/en, UI) + contract thật sau Task 1a/1b: `OrderResponse.provider` (`MANUAL`/`PAYOS`), `checkoutUrl` (chỉ PAYOS + PENDING + có link), `amountPaid` (nullable), `vietQr = null` với đơn PAYOS; `AdminOrderResponse.provider`, `amountPaid`; `POST /orders/{code}/sync` (chủ đơn, 10 lần/phút), `POST /admin/orders/{code}/sync` (ADMIN). Mục 2b–2b-4 và 4c-1/4c-2 **giữ nguyên cho đơn MANUAL**; mục này chỉ vẽ phần khác của đơn PAYOS. Không thêm chức năng ngoài spec (không polling ngoài 3 lần sau `onSuccess`, không trang return/cancel).
+
+### 8-1 Chi tiết đơn PAYOS `/me/orders/:orderCode` — desktop, PENDING có `checkoutUrl`
+
+```
+┌ Sidebar ┬──────────────────────────────────────────────────────────────────────┐
+│         │ ‹ Đơn hàng của tôi                                                   │
+│         │ Đơn TV000000000123  (Chờ thanh toán)        Tạo 10:27 · Hết hạn 10:42 │
+│         │ Khóa: Spring Boot từ A đến Z            Tổng: 350.000 ₫              │
+│         │ ┌ Thanh toán qua payOS ─────────────────────────────────────────────┐ │
+│         │ │ Quét mã bằng ứng dụng ngân hàng để thanh toán. Đơn tự cập nhật     │ │
+│         │ │ sau khi nhận tiền.                                                 │ │
+│         │ │ ┌ vùng nền trắng cố định (cả dark mode) ────────────────────────┐  │ │
+│         │ │ │                                                               │  │ │
+│         │ │ │          khung payOS nhúng (payOS tự vẽ QR, số tiền, ngân hàng)│  │ │
+│         │ │ │          rộng tối đa 480, cao tối thiểu 420                    │  │ │
+│         │ │ │                                                               │  │ │
+│         │ │ └───────────────────────────────────────────────────────────────┘  │ │
+│         │ │ ↗ Mở trang thanh toán payOS          [⟳ Kiểm tra lại]              │ │
+│         │ └────────────────────────────────────────────────────────────────────┘ │
+│         │ ⓘ Khóa học đã mua không được hoàn tiền.                              │
+└─────────┴──────────────────────────────────────────────────────────────────────┘
+```
+
+- Một card duy nhất thay cho hai card “Chuyển khoản ngân hàng” + “Quét mã VietQR” và khối “Sau khi chuyển khoản”: **không** có bảng số tài khoản, `[⧉]`, nút [Tôi đã chuyển khoản] (backend trả 409 cho đơn PAYOS).
+- Badge trạng thái PENDING của đơn PAYOS: “Chờ thanh toán” (amber), thay “Chờ Admin xác nhận” vì không có Admin trong luồng (câu hỏi 8-Q1).
+- Hạn 15 phút: cạnh “Hết hạn 10:42” có đồng hồ đếm ngược theo giây “Còn 12:34” (`tabular-nums`, tính từ `expiresAt` của API, chỉ hẹn giờ phía client, không gọi API; dưới 2 phút tô amber). Đồng hồ không đọc theo từng giây cho trình đọc màn hình (`aria-live` tắt; chỉ báo một lần “Đơn đã hết hạn” khi về 0). Về 0: dừng đồng hồ, ẩn khung + link payOS, gọi `POST …/sync` một lần rồi dựng theo kết quả (EXPIRED → 8-2 “Hết hạn”; PAID → đã trả). Hẹn giờ hủy khi rời trang/đổi đơn.
+- Link “Mở trang thanh toán payOS” luôn hiện khi có `checkoutUrl`: `<a target="_blank" rel="noopener noreferrer">` tới chính `checkoutUrl`, icon `ExternalLink`, cao ≥ 44 px.
+- Mở trang (PENDING hoặc EXPIRED, PAYOS): gọi `POST …/sync` **một lần** ở nền, không chặn dựng khung; trong lúc chờ nút [Kiểm tra lại] hiện spinner nhỏ. Lỗi của lần đồng bộ tự động này **không** hiện Alert (trang vẫn đúng với dữ liệu `GET`), trừ 429 (xem 8-2).
+- [⟳ Kiểm tra lại] = `POST …/sync` rồi dùng đơn trả về (không gọi `GET` lần nữa); đang gửi khóa nút + “Đang kiểm tra thanh toán…”.
+- `onSuccess` của khung → ẩn khung, hiện khối “Đang kiểm tra thanh toán…” (spinner, `aria-live="polite"`), gọi sync. Chưa PAID → tự sync lại sau 3, 6, 12 giây (tối đa 3 lần), xong vẫn chưa thì hiện “Chưa thấy tiền” + [Kiểm tra lại] + link payOS (khung không dựng lại để tránh trả hai lần; bấm link nếu cần trả tiếp). `onCancel`/`onExit` → chỉ dựng lại khung, không gọi API, không đổi trạng thái.
+- Đổi sang đơn khác (URL đổi): hủy khung cũ, hủy hẹn giờ tự thử của đơn cũ.
+
+### 8-2 Các trạng thái đơn PAYOS
+
+| Trạng thái | Vùng chính | Hành động |
+|---|---|---|
+| Đang tải | như 2b-4; ô khung là `▓` 480×420 | — |
+| `PENDING` + `checkoutUrl` | 8-1 | khung · link payOS · [Kiểm tra lại] |
+| `PENDING`, `checkoutUrl = null` | Alert amber “Chưa tạo được mã thanh toán; hãy thử lại.” thay chỗ khung; không link payOS | [⟳ Thử lại] → `GET /orders/{code}` (backend tự xin lại link sau 60 giây; bấm sớm có thể vẫn null, câu giữ nguyên) |
+| Đang kiểm tra (sau `onSuccess` / bấm nút) | khối spinner “Đang kiểm tra thanh toán…” thay chỗ khung | nút khóa |
+| Chưa thấy tiền (hết 3 lần tự thử) | Alert info “Chưa ghi nhận thanh toán. Nếu bạn đã chuyển, hãy bấm Kiểm tra lại sau ít phút.” | [Kiểm tra lại] · link payOS |
+| Trả thiếu (`0 < amountPaid < amount`, PENDING) | Alert amber đầu card “payOS đã nhận 200.000 ₫, còn thiếu 150.000 ₫. Hãy chuyển nốt qua mã này.” **giữ khung + link** | như PENDING |
+| `EXPIRED` | Alert amber “Đơn đã hết hạn; liên hệ Admin nếu đã chuyển khoản.” (như 2b-2); **không** dựng khung, không link (link payOS cũng hết hạn); có trả thiếu thì thêm dòng số đã nhận/còn thiếu | [Kiểm tra lại] · [Mua lại khóa học] |
+| `PAID` | như 2b-2 “Đã nhận tiền · Vào học”, hiện `paidAt`; trả thừa không báo gì với người học | [Vào học] |
+| `FAILED`/`CANCELLED` | như 2b-2 | [Mua lại khóa học] |
+| Khung lỗi (thư viện báo lỗi hoặc khung không hiện sau 10 giây) | ô khung thay bằng “Không tải được khung thanh toán. Hãy mở trang thanh toán payOS.” | link payOS (nổi bật, `variant` chính) · [Kiểm tra lại] |
+| Sync 503 `PAYMENT_PROVIDER_UNAVAILABLE` (do người bấm) | Alert rose “Cổng thanh toán tạm thời không phản hồi; hãy thử lại.”; khung giữ nguyên | [Kiểm tra lại] |
+| Sync 429 `ORDER_RATE_LIMITED` | Alert amber “Bạn thao tác quá nhanh; hãy thử lại sau.”; dừng mọi tự thử; [Kiểm tra lại] khóa 30 giây rồi mở lại | — |
+| Sync 409 `PAYMENT_STATE_INVALID` (đơn thật ra MANUAL — chỉ khi dữ liệu lệch) | tải lại đơn, dựng theo 2b | — |
+| 404 / 401 / mạng | như 2b-4 | — |
+
+- Chỉ server quyết định đã trả: mọi Alert “Đã nhận tiền” chỉ hiện khi đơn từ API là `PAID`.
+
+### 8-3 Mobile 390 — đơn PAYOS
+
+```
+┌───────────────────────────────┐
+│ ‹ Đơn hàng của tôi            │
+│ Đơn TV000000000123            │
+│ (Chờ thanh toán)              │
+│ Hết hạn 10:42                 │
+│ Spring Boot từ A đến Z        │
+│ Tổng: 350.000 ₫               │
+│ ┌ Thanh toán qua payOS ─────┐ │
+│ │ Quét mã bằng ứng dụng…    │ │
+│ │ ┌ nền trắng ────────────┐ │ │
+│ │ │ khung payOS full width│ │ │
+│ │ │ (cao tối thiểu 420)   │ │ │
+│ │ └───────────────────────┘ │ │
+│ │ [↗ Mở trang payOS       ] │ │
+│ │ [⟳ Kiểm tra lại         ] │ │
+│ └───────────────────────────┘ │
+│ ⓘ Khóa học đã mua không được  │
+│   hoàn tiền.                  │
+└───────────────────────────────┘
+```
+
+- Link payOS thành nút phụ full width (chữ đầy đủ “Mở trang thanh toán payOS”), vì trên điện thoại mở app ngân hàng từ trang payOS tiện hơn tự quét mã trên chính màn hình đó.
+- Card bỏ padding ngang thừa để khung payOS dùng đủ chiều rộng; **không cuộn ngang** ở 390. Alert trạng thái (trả thiếu, chưa có link, lỗi) nằm trên khung, full width. Hai nút xếp dọc, ≥ 44 px.
+
+### 8-4 Danh sách `/me/orders` — đơn PAYOS
+
+- Hàng giữ bố cục 2b-3; badge PENDING “Chờ thanh toán”; nút phụ đơn PENDING PAYOS: [Thanh toán ›] (thay “Xem đơn / Chuyển khoản”). Không badge “Đã báo chuyển khoản”. Không hiện nguồn thanh toán cho người học.
+
+### 8-5 Admin `/admin/orders` — đơn PAYOS (hàng + Sheet)
+
+```
+hàng:
+│▌TV000000000123 · Spring Boot…  350.000 ₫  (Chờ) (payOS)                     │
+│ Nguyễn Văn B · b@mail.com · Tạo 10:27 · Hết hạn 10:42                       │
+│ payOS đã nhận 200.000 ₫ / 350.000 ₫                    [Xem · Kiểm tra]      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ TV000000000098 · React cơ bản  200.000 ₫ (Chờ) (Chuyển khoản tay)  [Đối chiếu & xác nhận] │
+
+Sheet phải 480 (mobile toàn màn hình):
+│ Đơn TV000000000123  (payOS)                                        ✕ │
+│ Spring Boot từ A đến Z · Nguyễn Văn B                              │
+│ Số tiền theo đơn                     350.000 ₫                     │
+│ payOS đã nhận 200.000 ₫ / 350.000 ₫     ← chỉ khi amountPaid ≠ amount│
+│ ⓘ Đơn payOS không xác nhận tay; hãy bấm kiểm tra với payOS.        │
+│ (Khoản thanh toán: ref <mã link> · 350.000 ₫ · payOS · 10:35) ← khi có payments│
+│                               [Đóng]   [⟳ Kiểm tra với payOS]      │
+```
+
+- Badge nguồn trên mọi hàng và đầu Sheet: “payOS” (tone blue) / “Chuyển khoản tay” (tone slate). Không thêm bộ lọc nguồn (API không có).
+- Đơn PAYOS: **không** form số tiền/mã giao dịch, không [Kiểm tra lại…]/AlertDialog xác nhận. Nút hàng: [Xem · Kiểm tra] mở Sheet. [Kiểm tra với payOS] → `POST /admin/orders/{code}/sync`; đang gửi khóa nút; thành công: cập nhật Sheet bằng đơn trả về **và** tải lại danh sách; đơn chuyển PAID thì Alert đầu Sheet “Đã ghi nhận thanh toán.”, không đổi thì “Chưa ghi nhận thanh toán.” (tone info). Lỗi: 503 “Cổng thanh toán tạm thời không phản hồi; hãy thử lại.” · 409 `PAYMENT_STATE_INVALID` “Đơn này không thanh toán qua payOS.” + tải lại · 404/403/401 như chung.
+- “payOS đã nhận {paid} / {total}” hiện ở hàng và Sheet khi `amountPaid` có và khác `amount` (thiếu hoặc thừa); trả thừa tô amber để Admin xử lý ngoài hệ thống.
+- Đơn PAYOS `PAID` + `needsReconciliation` (học viên đã có quyền qua đơn khác): giữ chế độ “Khoản thanh toán” + [Đóng cờ đối chiếu] như 4c-2, nhưng **không** có ô ghi thêm khoản trùng (đơn payOS không ghi tay).
+- Đơn MANUAL: 4c-1/4c-2 không đổi, chỉ thêm badge “Chuyển khoản tay”.
+
+### 8-6 Copy bổ sung ngoài bảng spec
+
+| vi | en |
+|---|---|
+| Chờ thanh toán (badge đơn PAYOS PENDING) | Awaiting payment |
+| Thanh toán qua payOS (tiêu đề card) | Pay with payOS |
+| Thanh toán › (nút hàng `/me/orders`) | Pay › |
+| Xem · Kiểm tra (nút hàng Admin) | View · Check |
+| Đã ghi nhận thanh toán. / Chưa ghi nhận thanh toán. (Admin sau khi kiểm tra) | Payment recorded. / No payment recorded yet. |
+
+Các câu khác lấy nguyên bảng “Copy vi/en” của `payos-checkout.md` Task 2.
+
+### 8-7 Câu hỏi chốt cho người dùng
+
+1. **Badge đơn PAYOS chờ là “Chờ thanh toán”** (đơn MANUAL giữ “Chờ Admin xác nhận”). Khác: dùng chung một nhãn cho cả hai.
+2. ~~Không đồng hồ đếm ngược~~ → **người dùng chọn đếm ngược theo giây** (2026-11-16), xem 8-1.
+3. **Sau `onSuccess` ẩn khung** và chỉ hiện trạng thái kiểm tra + link payOS cho tới khi server báo PAID. Khác: giữ khung bên dưới trạng thái.
+4. **Mobile đưa link payOS thành nút full width** ngay dưới khung. Khác: giữ dạng link chữ như desktop.
+5. **Admin đơn PAYOS mở Sheet chỉ xem + [Kiểm tra với payOS]**, không bộ lọc nguồn.
+
+### Kết luận người dùng (mục 8)
+
+- **2026-11-16:** người dùng duyệt mục 8, đồng ý câu 1, 3, 4, 5; câu 2 đổi sang **đồng hồ đếm ngược theo giây** (8-1 đã sửa). Task 2 của `payos-checkout` code theo mục này + spec.

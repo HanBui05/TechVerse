@@ -39,6 +39,7 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
     private final CourseRepository courses;
     private final LessonRepository lessons;
     private final CourseVersionLessonRepository versionLessons;
+    private final CourseEnrollmentRepository enrollments;
     private final CourseModerationHistoryRepository histories;
     private final TopicRepository topics;
     private final TagRepository tags;
@@ -257,7 +258,39 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
         // shortcut: hasUnpublishedChanges loads each published version (N+1 per page of <=100); add a
         // published-fingerprint formula like Article if lists get slow.
         var page = courses.findAll(CourseSpecification.filter(actor, filter), PageRequest.of(filter.getPage(), filter.getSize(), sort));
-        return PageResponse.from(page, page.stream().map(CourseSummaryResponse::from).toList());
+        var counts = new HashMap<UUID, Long>();
+        if (page.hasContent())
+            enrollments.countActive(page.stream().map(Course::getId).toList())
+                    .forEach(c -> counts.put(c.getCourseId(), c.getStudents()));
+        return PageResponse.from(page, page.stream().map(c -> CourseSummaryResponse.from(c, counts.getOrDefault(c.getId(), 0L))).toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CourseStudentsResponse students(UUID actor, UUID id, String q, String progress, int page, int size) {
+        String name = q == null ? "" : q.strip();
+        String stage = progress == null ? "" : progress;
+        if (name.length() > 100 || page < 0 || size < 1 || size > 100
+                || !Set.of("", "NOT_STARTED", "IN_PROGRESS", "COMPLETED").contains(stage))
+            throw new CustomException(ErrorCode.COURSE_STUDENT_FILTER_INVALID);
+        Course course = access.owned(actor, id);
+        var version = course.getPublishedVersion();
+        // A never-published course has no enrollment: nothing to count progress against.
+        if (version == null)
+            return new CourseStudentsResponse(
+                    PageResponse.from(Page.empty(PageRequest.of(page, size)), List.<CourseStudentsResponse.Student>of()),
+                    new CourseStudentsResponse.Summary(0, 0, 0));
+        var rows = enrollments.findStudents(id, version.getId(), name, stage, PageRequest.of(page, size));
+        var summary = enrollments.summarize(id, version.getId(), "");
+        return new CourseStudentsResponse(
+                PageResponse.from(
+                        rows,
+                        rows.stream()
+                                .map(r -> new CourseStudentsResponse.Student(
+                                        r.getFullName(), r.getAvatarUrl(), r.getEnrolledAt(), r.getLastAccessedAt(),
+                                        r.getCompletedLessons(), r.getTotalLessons()))
+                                .toList()),
+                new CourseStudentsResponse.Summary(summary.getTotal(), summary.getNotStarted(), summary.getCompleted()));
     }
 
     @Override
@@ -543,9 +576,12 @@ public class AuthorCourseServiceImpl implements AuthorCourseService {
 
     private CourseResponse toResponse(Course course) {
         return CourseResponse.from(
-                course,
-                issues(course.getDescription(), Target.course(course.getAuthor().getId(), course.getId())),
-                courses.activeCommissionRateBps().orElse(0));
+                        course,
+                        issues(course.getDescription(), Target.course(course.getAuthor().getId(), course.getId())),
+                        courses.activeCommissionRateBps().orElse(0))
+                .toBuilder()
+                .studentCount(enrollments.countActive(List.of(course.getId())).stream().mapToLong(c -> c.getStudents()).sum())
+                .build();
     }
 
     private List<ArticleImageIssueResponse> issues(String text, Target target) {

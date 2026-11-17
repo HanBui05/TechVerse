@@ -2,7 +2,7 @@
 
 Mỗi module có đúng một spec `plans/<module>.md` và một nhật ký `plans/<module>.log.md`. [`PROJECT_CONTEXT.md`](../docs/PROJECT_CONTEXT.md): Codex đọc mục 1–3, 5 trước mọi task; Claude chỉ đọc khi task đụng tới. Lý do các quyết định cũ: [`DECISIONS.md`](DECISIONS.md).
 
-Module đang làm: [course-payment](course-payment.md)
+Module đang làm: [payos-checkout](payos-checkout.md)
 
 <!-- Hook SessionStart của Claude đọc đúng dòng trên (dạng `[slug](slug.md)`, “—” nếu không có) để tự nạp mục “Bắt đầu từ đây” của log. Đổi module thì sửa dòng này. -->
 
@@ -21,6 +21,8 @@ Module đang làm: [course-payment](course-payment.md)
 | Sidebar + login redirect | — (làn nhẹ, 2026-11-02) | Chờ người dùng nhận kết quả | Claude | Xong; chờ người dùng nhận. | — |
 | Course free | [spec](course-free.md) | Đang thực hiện | Claude | Mọi task đã nhận (2026-11-10), spec đã đồng bộ (2026-11-14); PR #4 đang mở, CI backend fail (kiểm 2026-11-14), chưa merge; xem log. | [log](course-free.log.md) |
 | Course payment | [spec](course-payment.md) | Hoàn tất | Claude | Task 1a–1d, 2a–2c đã nhận; spec đồng bộ 2026-11-16. Các mục chưa kiểm và lỗi test có sẵn: xem spec và log. | [log](course-payment.log.md) |
+| Author payout | [spec](author-payout.md) | Hoàn tất | Claude | Task 1a–1d, 2a–2c đã nhận; spec đồng bộ 2026-11-16. Các mục chưa kiểm và review Task 1b: xem spec và log. | [log](author-payout.log.md) |
+| PayOS checkout | [spec](payos-checkout.md) | Đang thực hiện | Claude | Task 1a, 1b đã nhận (2026-11-16), Task 2 đã nhận (2026-11-17); tiếp: đồng bộ spec cuối module; xem log. | [log](payos-checkout.log.md) |
 | Course AI tutor | [spec](course-ai-tutor.md) | Đã chốt | Claude | Spec chốt 2026-11-14 (chưa qua Codex phản biện); Task 1 làm sau Task 1a của `course-payment`. | — |
 | Exercise practice | [spec](exercise-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `course-payment` + `course-ai-tutor`, bắt đầu Task 1a. | — |
 | Interview practice | [spec](interview-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định, Admin/Moderator không vào trang; Codex phản biện một vòng); làm sau `exercise-practice`, bắt đầu Task 1a. | — |
@@ -37,6 +39,7 @@ Trạng thái hợp lệ: `Đề xuất` → `Đang lập kế hoạch` → `Ch�
 
 - **Làn đầy đủ (đổi vai 2026-11-14, D-030):** Claude viết spec theo [`_template.md`](_template.md) → Codex phản biện tối đa 2 vòng → người dùng chốt (`course-payment` do Codex viết trước đó, giữ nguyên). **Làn nhẹ:** việc cơ học, rủi ro thấp (đổi tên, di chuyển file, sửa tài liệu) — một dòng ở bảng, không spec, Claude làm, Codex review một lần. Người dùng quyết task vào làn nào.
 - **Backend trước, giao diện sau** cho chức năng mới: chỉ mở task giao diện khi toàn bộ backend của module xong (API + test đạt); thiếu endpoint thì mở task backend bổ sung trong spec, không sửa backend trong task giao diện. Chức năng đã đầy đủ: sửa giao diện trước.
+- **Cổng wireframe cho mọi giao diện (người dùng chốt 2026-11-16):** module nào có task “Đổi giao diện: Có” thì sau backend phải có `plans/<module>.wireframe.md` được người dùng duyệt rồi mới code giao diện; áp cả cho spec đã chốt trước đó ghi “không làm wireframe” (`exercise-practice`, `interview-practice`, `forum-reports`, `dashboard-stats`, `messaging`, `course-ai-tutor` nếu có giao diện).
 - Người dùng quyết định tại bốn cổng: chốt plan; bất đồng giữa các AI; chạm giới hạn vòng; nhận kết quả cuối.
 
 ## Câu hỏi mở

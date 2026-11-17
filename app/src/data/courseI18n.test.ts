@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../services/api/client'
-import { COURSE_ERROR_CODES, courseErrorText, courseText, isCourseStale, moderatorCourseErrorText, moderatorCourseText, readerCourseText, payAdminText } from './courseI18n'
+import { COURSE_ERROR_CODES, courseErrorText, courseText, isCourseStale, moderatorCourseErrorText, moderatorCourseText, readerCourseText, payAdminText, orderText } from './courseI18n'
 
 describe('courseI18n', () => {
   it.each(COURSE_ERROR_CODES)('maps %s in both languages without the backend message', code => {
@@ -110,6 +110,9 @@ describe('admin payment copy (Task 2c)', () => {
     expect(vi('PAYMENT_RECONCILIATION_NOT_REQUIRED')).toBe('Không có khoản cần đối chiếu.')
     expect(vi('PAYMENT_RECONCILIATION_STALE')).toBe('Có khoản thanh toán mới; hãy xem lại danh sách.')
     expect(vi('COMMISSION_RATE_INVALID', 400)).toBe('Tỷ lệ không hợp lệ.')
+    expect(vi('PAYOUT_ACCOUNT_INVALID', 400)).toBe('Thông tin tài khoản không hợp lệ.')
+    expect(vi('REVENUE_FILTER_INVALID', 400)).toBe('Khoảng ngày không hợp lệ.')
+    expect(courseErrorText(new ApiError('English', 400, 'PAYOUT_ACCOUNT_INVALID'), 'en', 'F')).toBe('Bank account details are invalid.')
     expect(courseErrorText(new ApiError('English', 409, 'PAYMENT_AMOUNT_MISMATCH'), 'en', 'F')).toMatch(/does not match/)
   })
 
@@ -121,5 +124,19 @@ describe('admin payment copy (Task 2c)', () => {
     expect(payAdminText('en')('policy', { date: '11/14/2026' })).toBe('Commission rate · Effective from 11/14/2026')
     expect(payAdminText('vi')('revenueTitle')).toBe('Doanh thu tác giả')
     expect(payAdminText('en')('yourShare')).toBe('Your share')
+  })
+})
+
+describe('payOS copy (payos-checkout Task 2)', () => {
+  it('maps the gateway error and keeps the spec sentences in vi/en', () => {
+    const err = new ApiError('English', 503, 'PAYMENT_PROVIDER_UNAVAILABLE')
+    expect(courseErrorText(err, 'vi', 'F')).toBe('Cổng thanh toán tạm thời không phản hồi; hãy thử lại.')
+    expect(courseErrorText(err, 'en', 'F')).toBe('The payment gateway is not responding; please try again.')
+    expect(orderText('vi')('underpaid', { paid: '200.000 ₫', remaining: '150.000 ₫' })).toBe('payOS đã nhận 200.000 ₫, còn thiếu 150.000 ₫. Hãy chuyển nốt qua mã này.')
+    expect(orderText('en')('payosOpen')).toBe('Open the payOS payment page')
+    expect(orderText('vi')('PENDING_PAYOS')).toBe('Chờ thanh toán')
+    expect(payAdminText('vi')('payosReceived', { paid: '1', total: '2' })).toBe('payOS đã nhận 1 / 2')
+    expect(payAdminText('en')('srcMANUAL')).toBe('Manual transfer')
+    expect(payAdminText('vi')('payosNoManual')).toBe('Đơn payOS không xác nhận tay; hãy bấm kiểm tra với payOS.')
   })
 })

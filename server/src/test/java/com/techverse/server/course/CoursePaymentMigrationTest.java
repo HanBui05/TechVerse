@@ -12,7 +12,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.util.UUID;
 
-/** Plain Flyway (V1–V13) against a real PostgreSQL: no Spring context. */
+/** Plain Flyway (V1 to the latest) against a real empty PostgreSQL: no Spring context. */
 @Testcontainers
 class CoursePaymentMigrationTest {
     @Container
@@ -71,6 +71,55 @@ class CoursePaymentMigrationTest {
         assertThat(updatedAt(course)).isEqualTo(created);
         jdbc.update("UPDATE courses SET title='Changed' WHERE id=?", course);
         assertThat(updatedAt(course)).isAfter(created);
+    }
+
+    @Test
+    void authorPayoutsArePositiveUniqueByReferenceAndImmutable() {
+        UUID author = jdbc.queryForObject("INSERT INTO users(full_name, email) VALUES ('A', ?) RETURNING id",
+                UUID.class, UUID.randomUUID() + "@example.com");
+        String ref = "FT" + UUID.randomUUID();
+        UUID id = payout(author, 100_000, ref);
+        assertThatThrownBy(() -> payout(author, 0, "FT" + UUID.randomUUID())).hasMessageContaining("ck_author_payouts_amount");
+        assertThatThrownBy(() -> payout(author, -1, "FT" + UUID.randomUUID())).hasMessageContaining("ck_author_payouts_amount");
+        assertThatThrownBy(() -> payout(author, 5, ref)).hasMessageContaining("uq_author_payouts_bank_reference");
+        assertThatThrownBy(() -> jdbc.update("UPDATE author_payouts SET amount = 1 WHERE id=?", id)).hasMessageContaining("immutable");
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM author_payouts WHERE id=?", id)).hasMessageContaining("immutable");
+        assertThat(jdbc.queryForObject("SELECT amount FROM author_payouts WHERE id=?", Long.class, id)).isEqualTo(100_000);
+
+        // One account per author.
+        jdbc.update("INSERT INTO author_payout_accounts(user_id, bank_id, account_no, account_name) VALUES (?,'970436','0123456','A')", author);
+        assertThatThrownBy(() -> jdbc.update(
+                "INSERT INTO author_payout_accounts(user_id, bank_id, account_no, account_name) VALUES (?,'970436','999999','B')", author))
+                .hasMessageContaining("author_payout_accounts_pkey");
+    }
+
+    @Test
+    void payosLinkIsUniqueSourceAcceptsPayosAndOrderCodesStopAtTwelveDigits() {
+        UUID buyer = jdbc.queryForObject("INSERT INTO users(full_name, email) VALUES ('B', ?) RETURNING id",
+                UUID.class, UUID.randomUUID() + "@example.com");
+        UUID first = order(buyer, "link_a");
+        assertThatThrownBy(() -> order(buyer, "link_a")).hasMessageContaining("payos_payment_link_id");
+        assertThat(jdbc.queryForMap("SELECT payos_link_requested_at, payos_amount_paid FROM orders WHERE id=?", first))
+                .containsEntry("payos_link_requested_at", null).containsEntry("payos_amount_paid", null);
+        jdbc.update("INSERT INTO payment_transactions(order_id, provider, amount, status, paid_at, confirmation_source)"
+                + " VALUES (?, 'PAYOS', 0, 'FAILED', null, 'PAYOS')", first);
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO payment_transactions(order_id, provider, amount, confirmation_source)"
+                + " VALUES (?, 'PAYOS', 0, 'BOT')", first)).hasMessageContaining("ck_payment_transactions_confirmation_source");
+
+        // A 13-digit code would not fit the payOS order number: the sequence errors instead.
+        jdbc.queryForObject("SELECT setval('order_code_seq', 999999999999)", Long.class);
+        assertThatThrownBy(() -> jdbc.queryForObject("SELECT nextval('order_code_seq')", Long.class))
+                .hasMessageContaining("maximum value");
+    }
+
+    private static UUID order(UUID buyer, String link) {
+        return jdbc.queryForObject("INSERT INTO orders(user_id, order_code, payos_payment_link_id) VALUES (?,?,?) RETURNING id",
+                UUID.class, buyer, "T" + UUID.randomUUID(), link);
+    }
+
+    private static UUID payout(UUID author, long amount, String ref) {
+        return jdbc.queryForObject("INSERT INTO author_payouts(author_id, amount, bank_reference, bank_id, account_no, account_name, created_by)"
+                + " VALUES (?,?,?,'970436','0123456789','NGUYEN VAN A',?) RETURNING id", UUID.class, author, amount, ref, author);
     }
 
     private static UUID course(long price) {

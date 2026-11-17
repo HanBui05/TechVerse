@@ -26,6 +26,8 @@ public record AdminOrderResponse(
         Instant transferReportedAt,
         boolean needsReconciliation,
         Instant reconciledAt,
+        String provider,
+        Long amountPaid,
         List<Payment> payments) {
 
     /** One confirmed transfer; more than one means a duplicate payment to reconcile. */
@@ -49,6 +51,8 @@ public record AdminOrderResponse(
                 o.getTransferReportedAt(),
                 o.isNeedsReconciliation(),
                 o.getReconciledAt(),
+                o.isPayos() ? "PAYOS" : "MANUAL",
+                o.isPayos() ? o.getPayosAmountPaid() : null,
                 payments.stream()
                         .map(t -> new Payment(t.getProviderTransactionId(), t.getAmount(), t.getConfirmationSource(), t.getConfirmedAt()))
                         .toList());

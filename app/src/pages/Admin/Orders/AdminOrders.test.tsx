@@ -12,7 +12,9 @@ afterEach(() => { cleanup(); setAccessToken(null); vi.unstubAllGlobals() })
 const base: AdminOrder = {
   orderCode: 'TV000000000123', buyerId: 'u1', buyerName: 'Nguyễn Văn B', buyerEmail: 'b@mail.com', courseId: 'c1', courseTitle: 'Spring Boot từ A đến Z', amount: 350000, currency: 'VND',
   status: 'PENDING', createdAt: '2026-11-15T03:00:00Z', expiresAt: '2026-11-16T03:00:00Z', paidAt: null, transferReportedAt: null, needsReconciliation: false, reconciledAt: null, payments: [],
+  provider: 'MANUAL', amountPaid: null,
 }
+const payosOrder: AdminOrder = { ...base, orderCode: 'TV000000000150', provider: 'PAYOS', amountPaid: 200000 }
 const dup: AdminOrder = { ...base, orderCode: 'TV000000000098', courseTitle: 'React cơ bản', status: 'PAID', paidAt: '2026-11-15T04:00:00Z', needsReconciliation: true,
   payments: [{ reference: 'ABC123', amount: 350000, source: 'MANUAL', confirmedAt: '2026-11-15T04:00:00Z' }, { reference: 'XYZ999', amount: 350000, source: 'MANUAL', confirmedAt: '2026-11-15T05:00:00Z' }] }
 
@@ -22,6 +24,54 @@ const listOf = (...items: AdminOrder[]) => json(page(items))
 const gets = (fetchMock: ReturnType<typeof stub>) => fetchMock.mock.calls.filter(([, init]) => !init?.method).map(([url]) => new URL(String(url)))
 const posts = (fetchMock: ReturnType<typeof stub>) => fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST').map(([url, init]) => ({ path: new URL(String(url)).pathname, body: JSON.parse(String(init?.body)) }))
 const show = (initial = '/admin/orders') => render(<MemoryRouter initialEntries={[initial]}><AdminOrdersPage language="vi" /></MemoryRouter>)
+
+it('labels the source of every order; a payOS order shows what payOS received and opens a check-only sheet', async () => {
+  stub(() => listOf(payosOrder, base))
+  const user = userEvent.setup()
+  show()
+  await screen.findByText(/TV000000000150/)
+  const rows = screen.getAllByRole('listitem')
+  expect(within(rows[0]).getByText('payOS')).toBeTruthy()
+  expect(within(rows[0]).getByText(/^payOS đã nhận 200\.000.₫ \/ 350\.000.₫$/)).toBeTruthy()
+  expect(within(rows[1]).getByText('Chuyển khoản tay')).toBeTruthy()
+  expect(within(rows[1]).getByRole('button', { name: 'Đối chiếu & xác nhận' })).toBeTruthy()
+  await user.click(within(rows[0]).getByRole('button', { name: 'Xem · Kiểm tra' }))
+  const sheet = await screen.findByRole('dialog', { name: /Đơn TV000000000150/ })
+  expect(within(sheet).getByText('Đơn payOS không xác nhận tay; hãy bấm kiểm tra với payOS.')).toBeTruthy()
+  expect(within(sheet).getByText(/payOS đã nhận 200\.000/)).toBeTruthy()
+  expect(within(sheet).queryByLabelText(/Số tiền trên sao kê/)).toBeNull()
+  expect(within(sheet).queryByRole('button', { name: 'Kiểm tra lại…' })).toBeNull()
+})
+
+it('checks a payOS order with the server: the sheet shows the returned order, stays open and the list reloads', async () => {
+  let synced = false
+  const fetchMock = stub((url, init) => init?.method === 'POST' ? (synced = true, json({ ...payosOrder, status: 'PAID', paidAt: '2026-11-16T03:00:00Z', amountPaid: 350000 })) : synced ? listOf() : listOf(payosOrder))
+  const user = userEvent.setup()
+  show()
+  await user.click(await screen.findByRole('button', { name: 'Xem · Kiểm tra' }))
+  const sheet = await screen.findByRole('dialog')
+  await user.click(within(sheet).getByRole('button', { name: 'Kiểm tra với payOS' }))
+  expect(await within(sheet).findByText('Đã ghi nhận thanh toán.')).toBeTruthy()
+  expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST').map(([url]) => new URL(String(url)).pathname)).toEqual(['/api/v1/admin/orders/TV000000000150/sync'])
+  await waitFor(() => expect(gets(fetchMock).length).toBe(2))
+  expect(screen.getByRole('dialog')).toBeTruthy()
+  expect(within(screen.getByRole('dialog')).getByText('Đã nhận tiền')).toBeTruthy()
+  expect(within(screen.getByRole('dialog')).queryByText(/payOS đã nhận/)).toBeNull()
+})
+
+it.each([
+  [json({ ...payosOrder }), 'Chưa ghi nhận thanh toán.'],
+  [json(null, 503, 'PAYMENT_PROVIDER_UNAVAILABLE'), 'Cổng thanh toán tạm thời không phản hồi; hãy thử lại.'],
+  [json(null, 409, 'PAYMENT_STATE_INVALID'), 'Đơn này không thanh toán qua payOS.'],
+])('reports the payOS check result in the sheet (%#)', async (reply, text) => {
+  stub((url, init) => init?.method === 'POST' ? reply.clone() : listOf(payosOrder))
+  const user = userEvent.setup()
+  show()
+  await user.click(await screen.findByRole('button', { name: 'Xem · Kiểm tra' }))
+  const sheet = await screen.findByRole('dialog')
+  await user.click(within(sheet).getByRole('button', { name: 'Kiểm tra với payOS' }))
+  expect(await within(sheet).findByText(text)).toBeTruthy()
+})
 
 it('lists pending orders by default with buyer, amount and the transfer-reported label that is not a confirmation', async () => {
   const fetchMock = stub(() => listOf({ ...base, transferReportedAt: '2026-11-15T03:50:00Z' }))

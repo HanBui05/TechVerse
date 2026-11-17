@@ -109,6 +109,19 @@ public class AuthorCourseController {
         return ok("Course deleted", null);
     }
 
+    @GetMapping("/{id}/students")
+    @PreAuthorize("hasRole('AUTHOR')")
+    @Operation(summary = "Active learners of an own course with progress; filters q (name) and progress")
+    public ApiResponse<CourseStudentsResponse> students(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String progress,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ok("Students retrieved", service.students(actor(jwt), id, q, progress, page, size));
+    }
+
     @GetMapping("/{id}/history")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Moderation/publication history, newest first; only page/size apply")

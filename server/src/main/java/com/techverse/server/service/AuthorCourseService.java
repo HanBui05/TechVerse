@@ -24,6 +24,8 @@ public interface AuthorCourseService {
 
     PageResponse<CourseSummaryResponse> list(UUID actor, ArticleFilter filter);
 
+    CourseStudentsResponse students(UUID actor, UUID id, String q, String progress, int page, int size);
+
     PageResponse<CourseModerationHistoryResponse> history(UUID actor, UUID id, int page, int size);
 
     ArticleImportResponse importFile(UUID actor, MultipartFile file);
