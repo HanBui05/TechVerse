@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`exercise-practice
 
 ## Bắt đầu từ đây (cập nhật 2026-11-17)
 
-- **Task tiếp:** Task 1b: review xong (vòng 2 approve), chờ người dùng nhận; sau đó Task 1c (AI sinh câu hỏi) · Giao diện: Không
+- **Task tiếp:** Task 1c — AI sinh câu hỏi cho tác giả (Task 1b đã nhận 2026-11-17) · Giao diện: Không
 - Spec chốt 2026-11-15; `course-payment` và `course-ai-tutor` đã merge vào `main` nên đủ điều kiện bắt đầu. Migration lấy số kế tiếp lúc code (spec ghi V14 nếu V13 đã có) — kiểm `db/migration` trước.
 - Nhánh: `feature/exercise-practice` (từ `main` sau PR #10).
 
