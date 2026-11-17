@@ -4,7 +4,7 @@
 
 - **Task tiếp:** cuối module — nhờ Codex đồng bộ spec (skill `codex-workflow` mục 3) · Giao diện: Không
 - Task 1a, 1b đã nhận (2026-11-16), Task 2 đã nhận (2026-11-17); commit cục bộ trên nhánh `feature/payos-checkout` (tách từ `feature/author-payout`).
-- payOS thật đã thử (2026-11-16): webhook + thanh toán 10.000 ₫ → PAID tự động. Còn chưa kiểm: payOS có từ chối tạo trùng số đơn không (quyết định 5 của spec; backend đã giành quyền xin link nên rủi ro thấp). Khóa dev `a1cdd5a1…` đã trả giá 350.000.
+- payOS thật đã thử (2026-11-16): webhook + thanh toán 10.000 ₫ → PAID tự động. payOS **từ chối** tạo trùng số đơn: mã `231` “Đơn thanh toán đã tồn tại” (kiểm 2026-11-17, quyết định 5 của spec đạt). Khóa dev `a1cdd5a1…` đã trả giá 350.000.
 - Task 2: kiểm thêm 2026-11-17 đạt (Sheet Admin mobile sáng/tối, khung payOS link thật chưa trả, giao dịch 2 không ngrok → PAID qua đồng bộ). Webhook payOS chưa đăng ký lại (lệnh bị chặn quyền); ngrok đã tắt.
 
 ## Quyết định người dùng chưa có trong spec
@@ -37,6 +37,8 @@
 - **Lệch khác spec/wireframe:** (1) Link payOS là nút viền (outline) ở cả desktop, không phải link chữ. (2) Bấm “Kiểm tra lại” giữ khung, chỉ hiện “Đang kiểm tra thanh toán…” cạnh nút (không thay khung để khỏi tải lại iframe). (3) Lỗi 503/khác trong chuỗi tự thử sau `onSuccess` vẫn tính là “chưa thấy tiền” và thử tiếp; chỉ 429 dừng. (4) Sheet Admin không thêm nút [Đóng] riêng (đã có ✕). (5) `ORDER_RATE_LIMITED`/`ORDER_NOT_FOUND` giữ câu cũ (khác dấu câu với bảng spec) để không đổi màn khác. (6) Khung cao cố định 520 px.
 
 ## Nhật ký phiên
+### 2026-11-17 — payOS chặn trùng số đơn
+- Người dùng chạy script (scratchpad, không trong repo) gọi thẳng `POST /v2/payment-requests` với `orderCode` = 3 (đơn đã trả) → payOS trả `code=231` “Đơn thanh toán đã tồn tại”, không tạo link. Backend hiện coi mọi mã lỗi tạo link là “tra cứu lại” (lệch 1a-3) nên đúng; nếu muốn có thể nhận diện riêng `231` sau này.
 ### 2026-11-17 — Task 2 đã nhận
 - Người dùng nhận Task 2 (2026-11-17); commit cục bộ.
 ### 2026-11-17 — Task 2 kiểm thêm + giao dịch thật 2
