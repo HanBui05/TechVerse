@@ -23,7 +23,7 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(CustomException.class)
 	ResponseEntity<ErrorResponse> handleCustomException(CustomException exception, HttpServletRequest request) {
-		return error(exception.getErrorCode(), request, null);
+		return error(exception.getErrorCode(), request, exception.getFieldErrors());
 	}
 
 	@ExceptionHandler(AuthorizationDeniedException.class)
