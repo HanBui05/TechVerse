@@ -86,6 +86,8 @@ public class SecurityConfiguration {
 						.requestMatchers(HttpMethod.GET, "/api/v1/me/saved-articles").authenticated()
 						.requestMatchers("/api/v1/moderator/courses", "/api/v1/moderator/courses/**").authenticated()
 						// Guests read course lists, details and preview lessons; a JWT, if sent, is still validated.
+						.requestMatchers(HttpMethod.POST, "/api/v1/courses/*/lessons/*/tutor:stream").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/v1/me/ai-tutor/quota").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/courses", "/api/v1/courses/**").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/courses/*/start").authenticated()
 						.requestMatchers(HttpMethod.PUT, "/api/v1/courses/*/lessons/*/completion").authenticated()

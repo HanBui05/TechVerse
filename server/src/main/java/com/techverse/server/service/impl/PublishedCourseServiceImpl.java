@@ -121,18 +121,11 @@ public class PublishedCourseServiceImpl implements PublishedCourseService {
     @Transactional
     public PublishedLessonResponse lesson(UUID actor, UUID courseId, UUID lessonId) {
         Reader reader = reader(actor);
-        Course course = visible(courseId);
-        Tree tree = tree(course);
-        tree.lesson(lessonId).orElseThrow(() -> new CustomException(ErrorCode.LESSON_NOT_FOUND));
-        var enrollment = enrollment(reader, course);
-        CourseVersionLesson vl =
-                versionLessons.findInVersion(tree.version().getId(), lessonId)
-                        .orElseThrow(() -> new CustomException(ErrorCode.LESSON_NOT_FOUND));
-        if (!vl.isPreview() && enrollment.isEmpty()) {
-            if (reader != null && !reader.canLearn(course)) throw new CustomException(ErrorCode.ACCESS_DENIED);
-            if (course.getPriceAmount() > 0) throw new CustomException(ErrorCode.COURSE_PURCHASE_REQUIRED);
-            throw new CustomException(ErrorCode.LESSON_PREVIEW_ONLY);
-        }
+        Readable r = readable(reader, courseId, lessonId);
+        Course course = r.course();
+        Tree tree = r.tree();
+        var enrollment = r.enrollment();
+        CourseVersionLesson vl = r.lesson();
         CourseProgressResponse learning = null;
         if (enrollment.isPresent()) {
             enrollments.touch(enrollment.get().getId(), lessonId);
@@ -149,6 +142,17 @@ public class PublishedCourseServiceImpl implements PublishedCourseService {
                 vl.isPreview());
         return new PublishedLessonResponse(
                 course.getId(), tree.version().getTitle(), lesson, curriculum(tree), viewer(reader, course, enrollment), learning);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TutorLesson tutorLesson(UUID actor, UUID courseId, UUID lessonId) {
+        Reader reader = reader(actor);
+        // Staff never use the tutor, even on preview lessons.
+        if (reader == null || reader.manager()) throw new CustomException(ErrorCode.ACCESS_DENIED);
+        Readable r = readable(reader, courseId, lessonId);
+        var vl = r.lesson();
+        return new TutorLesson(r.tree().version().getTitle(), vl.getTitle(), vl.getSummary(), vl.getContent());
     }
 
     @Override
@@ -219,6 +223,25 @@ public class PublishedCourseServiceImpl implements PublishedCourseService {
     }
 
     // ------------------------------------------------------------------ helpers
+
+    /** A lesson of the current snapshot the reader may open (the single read rule for GET and the tutor). */
+    private record Readable(Course course, Tree tree, Optional<CourseEnrollment> enrollment, CourseVersionLesson lesson) {}
+
+    private Readable readable(Reader reader, UUID courseId, UUID lessonId) {
+        Course course = visible(courseId);
+        Tree tree = tree(course);
+        tree.lesson(lessonId).orElseThrow(() -> new CustomException(ErrorCode.LESSON_NOT_FOUND));
+        var enrollment = enrollment(reader, course);
+        CourseVersionLesson vl =
+                versionLessons.findInVersion(tree.version().getId(), lessonId)
+                        .orElseThrow(() -> new CustomException(ErrorCode.LESSON_NOT_FOUND));
+        if (!vl.isPreview() && enrollment.isEmpty()) {
+            if (reader != null && !reader.canLearn(course)) throw new CustomException(ErrorCode.ACCESS_DENIED);
+            if (course.getPriceAmount() > 0) throw new CustomException(ErrorCode.COURSE_PURCHASE_REQUIRED);
+            throw new CustomException(ErrorCode.LESSON_PREVIEW_ONLY);
+        }
+        return new Readable(course, tree, enrollment, vl);
+    }
 
     private Reader reader(UUID actor) {
         if (actor == null) return null;

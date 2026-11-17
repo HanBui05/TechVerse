@@ -6,7 +6,12 @@ import java.util.UUID;
 public sealed interface AiStreamEvent {
     String name();
 
-    record Metadata(UUID generationId, long timeoutSeconds) implements AiStreamEvent {
+    /** {@code contextTruncated}: the tutor cut the lesson text to fit the model; drafts send false. */
+    record Metadata(UUID generationId, long timeoutSeconds, boolean contextTruncated) implements AiStreamEvent {
+        public Metadata(UUID generationId, long timeoutSeconds) {
+            this(generationId, timeoutSeconds, false);
+        }
+
         public String name() {
             return "metadata";
         }

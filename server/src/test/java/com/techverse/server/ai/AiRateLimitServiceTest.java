@@ -77,11 +77,13 @@ class AiRateLimitServiceTest {
     return new AiAssistProperties(
         Duration.ofSeconds(60),
         Map.of("SHORT", Duration.ofSeconds(90), "MEDIUM", Duration.ofSeconds(120), "LONG", Duration.ofSeconds(180)),
-        Map.of("OUTLINE", 2048, "SHORT", 4096, "MEDIUM", 8192, "LONG", 16384),
+        Map.of("OUTLINE", 2048, "SHORT", 4096, "MEDIUM", 8192, "LONG", 16384, "TUTOR", 2048),
         outlinePerDay,
         draftPerDay,
         burst,
-        Duration.ofHours(24));
+        Duration.ofHours(24),
+        20,
+        Duration.ofSeconds(60));
   }
 
   AiRateLimitService service(int outlinePerDay, int draftPerDay, int burst) {
@@ -236,5 +238,35 @@ class AiRateLimitServiceTest {
     when(broken.execute(any(RedisScript.class), anyList(), any(Object[].class)))
         .thenThrow(new RedisConnectionFailureException("down"));
     assertThat(new AiRateLimitService(broken, props(10, 10, 10), clock).refund(reservation)).isNull();
+  }
+
+  @Test
+  void tutorHasItsOwnDailyCounterButSharesTheBurst() {
+    var limits = service(10, 5, 2);
+    var first = limits.reserve(author, Kind.TUTOR);
+    assertThat(first.quota()).isEqualTo(new AiRateLimitService.Quota(20, 19));
+    assertThat(limits.peek(author, Kind.DRAFT)).isEqualTo(new AiRateLimitService.Quota(5, 5));
+    limits.reserve(author, Kind.DRAFT);
+    assertThatThrownBy(() -> limits.reserve(author, Kind.TUTOR))
+        .extracting(e -> ((CustomException) e).getErrorCode())
+        .isEqualTo(ErrorCode.AI_RATE_LIMITED);
+  }
+
+  @Test
+  void asyncTimeoutMustCoverTheTutorDeadlineToo() {
+    var longTutor =
+        new AiAssistProperties(
+            Duration.ofSeconds(60),
+            Map.of("SHORT", Duration.ofSeconds(90), "MEDIUM", Duration.ofSeconds(120), "LONG", Duration.ofSeconds(180)),
+            Map.of("OUTLINE", 2048, "SHORT", 4096, "MEDIUM", 8192, "LONG", 16384, "TUTOR", 2048),
+            10, 5, 3, Duration.ofHours(24), 20, Duration.ofSeconds(240));
+    assertThat(longTutor.longestTimeout()).isEqualTo(Duration.ofSeconds(240));
+    assertThat(props(10, 5, 3).longestTimeout()).isEqualTo(Duration.ofSeconds(180));
+    var env = new org.springframework.mock.env.MockEnvironment();
+    assertThatThrownBy(
+            () ->
+                com.techverse.server.configuration.AiAssistConfiguration.verify(
+                    env, Duration.ofSeconds(195), longTutor.longestTimeout()))
+        .isInstanceOf(IllegalStateException.class);
   }
 }

@@ -4,9 +4,9 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-ai-tutor.m
 
 ## Bắt đầu từ đây (cập nhật 2026-11-17)
 
-- **Task tiếp:** Task 1 (Backend hỏi AI theo bài) · Giao diện: Không
+- **Task tiếp:** Task 1 đã nhận (2026-11-17). Viết `course-ai-tutor.wireframe.md` cho Task 2 rồi dừng chờ duyệt · Giao diện: Có
 - Spec chốt lại 2026-11-17 sau phản biện vòng 1 (không chạy vòng 2); lịch sử ở `course-ai-tutor.review.md`.
-- Nhánh: đang ở `docs/plan-status`; tạo `feature/course-ai-tutor` từ `main` khi bắt đầu Task 1.
+- Nhánh: `feature/course-ai-tutor` (tách từ `docs/plan-status` vì spec/log chốt nằm ở đó, chưa vào `main`); Task 1 đã commit cục bộ.
 
 ## Quyết định người dùng chưa có trong spec
 
@@ -17,6 +17,14 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-ai-tutor.m
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-17 — Nhận Task 1
+- Người dùng nhận Task 1; commit cục bộ trên `feature/course-ai-tutor`.
+### 2026-11-17 — Task 1 backend
+- Code: `LessonTutorController/Service/Request`, `PublishedCourseService.tutorLesson` (tách `readable(...)` dùng chung với GET bài), `AiPromptFactory.tutor`, `Kind.TUTOR`, registry theo (người, loại), `Metadata.contextTruncated`, `longestTimeout()`, `AI_TUTOR_LESSON_NO_CONTENT`, YAML/`.env.example`.
+- Test: `./gradlew test --tests 'com.techverse.server.ai.*' --tests '…course.LessonTutorIntegrationTest' --tests '…CourseLearningIntegrationTest' --tests '…PublishedCourseIntegrationTest'` → 156 đạt, 0 lỗi (gồm test `Ai*`/`drafts:stream` cũ). Chưa chạy full backend (CI).
+- Lệch khác spec: `LessonTutorController` không dùng quota header riêng (tái dùng hằng của `AuthorAiController`); `Metadata` có thêm constructor 2 tham số (draft = false); bài có nội dung rỗng/toàn khoảng trắng cũng là `AI_TUTOR_LESSON_NO_CONTENT`; phản hồi rỗng với finish `stop` coi là `AI_PROVIDER_UNAVAILABLE` (hoàn lượt).
+- Review vòng 1 (`review`): 2 góp ý P2. Sửa: `role` lịch sử đổi sang chuỗi + `@Pattern` để trả `VALIDATION_ERROR` (test đạt lại). Từ chối: hoàn lượt khi ngắt lúc emitter chưa khởi tạo — spec định nghĩa theo “send thành công delta đầu”, cùng cơ chế `drafts:stream`; tệ nhất mất 1 lượt. Không chạy vòng 2 (sửa nhỏ, có test).
+- Ca MVC async: kiểm bằng `AiRateLimitServiceTest.asyncTimeoutMustCoverTheTutorDeadlineToo` (chưa có lớp test riêng cho `AiAssistConfiguration`).
 ### 2026-11-17 — Phản biện spec vòng 1
 - Codex ghi “Phản hồi vòng 1”; Claude kiểm từng ý trên code và trả lời (chấp nhận phần lớn; từ chối API hủy và mã HTTP riêng cho lỗi nhà cung cấp).
 - Sửa thân spec: `LESSON_PREVIEW_ONLY` thay `ACCESS_DENIED`, GET bài không tự enroll, chủ khóa/`USER_INACTIVE`/JSON hỏng/Redis hoàn lượt, slot registry theo loại, `contextTruncated` trong `metadata`, history 2.000 ký tự, token `TUTOR` 2.048, cổng wireframe Task 2, bớt ca tích hợp còn 5.

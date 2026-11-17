@@ -129,7 +129,7 @@ public class AiDraftStreamService {
         ChatModel model = chatModels.getIfAvailable();
         if (model == null) throw new CustomException(ErrorCode.AI_CONFIGURATION_INVALID);
         Duration timeout = properties.draftTimeouts().get(request.getLength().name());
-        UUID id = registry.start(actor, timeout);
+        UUID id = registry.start(actor, Kind.DRAFT, timeout);
         try {
             return new Generation(id, actor, timeout, limits.reserve(actor, Kind.DRAFT), input, model);
         } catch (RuntimeException e) {

@@ -49,7 +49,8 @@ public class AiRateLimitService {
 
     public enum Kind {
         OUTLINE,
-        DRAFT
+        DRAFT,
+        TUTOR
     }
 
     public record Quota(int limit, int remaining) {}
@@ -127,7 +128,11 @@ public class AiRateLimitService {
     }
 
     private int limit(Kind kind) {
-        return kind == Kind.OUTLINE ? properties.outlinePerDay() : properties.draftPerDay();
+        return switch (kind) {
+            case OUTLINE -> properties.outlinePerDay();
+            case DRAFT -> properties.draftPerDay();
+            case TUTOR -> properties.tutorPerDay();
+        };
     }
 
     private static int remaining(int limit, long used) {
