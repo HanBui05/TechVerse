@@ -157,6 +157,11 @@ public enum ErrorCode {
 	EXERCISE_VERSION_CONFLICT(HttpStatus.CONFLICT, "EXERCISE_VERSION_CONFLICT", "The exercise set was changed elsewhere. Reload before saving"),
 	EXERCISE_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "EXERCISE_RATE_LIMITED", "Too many requests, try again later"),
 	EXERCISE_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "EXERCISE_STORAGE_UNAVAILABLE", "Exercise service is temporarily unavailable"),
+	EXERCISE_REVIEW_STALE(HttpStatus.CONFLICT, "EXERCISE_REVIEW_STALE", "The exercise set changed after it was opened. Reload before reviewing"),
+	EXERCISE_AUTHOR_INELIGIBLE(HttpStatus.CONFLICT, "EXERCISE_AUTHOR_INELIGIBLE", "The author is no longer eligible to publish"),
+	EXERCISE_ATTEMPT_INVALID(HttpStatus.BAD_REQUEST, "EXERCISE_ATTEMPT_INVALID", "The attempt is invalid"),
+	EXERCISE_ATTEMPT_KEY_CONFLICT(HttpStatus.CONFLICT, "EXERCISE_ATTEMPT_KEY_CONFLICT", "The idempotency key was already used for another exercise set"),
+	EXERCISE_ATTEMPT_NOT_FOUND(HttpStatus.NOT_FOUND, "EXERCISE_ATTEMPT_NOT_FOUND", "Exercise attempt not found"),
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected error occurred");
 
 	private final HttpStatus status;

@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`exercise-practice
 
 ## Bắt đầu từ đây (cập nhật 2026-11-17)
 
-- **Task tiếp:** Task 1b — Moderator duyệt, khu Luyện tập và lượt làm (Task 1a đã nhận 2026-11-17) · Giao diện: Không
+- **Task tiếp:** Task 1b: review xong (vòng 2 approve), chờ người dùng nhận; sau đó Task 1c (AI sinh câu hỏi) · Giao diện: Không
 - Spec chốt 2026-11-15; `course-payment` và `course-ai-tutor` đã merge vào `main` nên đủ điều kiện bắt đầu. Migration lấy số kế tiếp lúc code (spec ghi V14 nếu V13 đã có) — kiểm `db/migration` trước.
 - Nhánh: `feature/exercise-practice` (từ `main` sau PR #10).
 
@@ -17,6 +17,13 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`exercise-practice
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-17 — Task 1b đã nhận: duyệt, khu Luyện tập, lượt làm
+- Code: `ModeratorExerciseService/Controller`, `PublishedExerciseService/Controller` (chấm điểm là `static grade` trong service), entity `ExerciseAttempt` + repo, `ExercisePracticeResponse` (DTO câu hỏi người làm tách kiểu, không có đáp án), 5 mã lỗi mới, `SecurityConfiguration`; `AuthorExerciseService.rateLimit(key, limit)` thành package-private để dùng chung.
+- Test: `./gradlew test --tests 'com.techverse.server.exercise.*'` — 48+ ca, 0 lỗi (grader/contract trong `ExerciseLifecycleTest`; `ExercisePracticeControllerTest` mới; ca moderator + practice thêm vào `AuthorExerciseIntegrationTest`).
+- Lệch khác spec: theo luật “ít class” không tạo `ExerciseGrader`, `ExerciseContractTest`, 2 lớp controller test, 2 lớp integration riêng; nộp trùng dùng `pg_advisory_xact_lock` theo (user, key) thay vì bắt UNIQUE; nộp lỗi (404/400) vẫn tính vào nhịp 20/phút; `/options` công khai trả mọi chủ đề đang hoạt động; thành công trả 200 (kể cả trả lại lượt cũ); enum sai trong body → `MALFORMED_REQUEST` (hành vi chung).
+- Review vòng 1 (2 phát hiện P2, đúng): NUL trong `note`/`reason` gây lỗi DB; `submit` chưa khóa dòng user khi kiểm tài khoản. Đã sửa (`note()` chặn NUL → `VALIDATION_ERROR`; `submit` dùng `findByIdForAuthentication` + `refresh`), thêm ca NUL; `exercise.*` đạt, 0 lỗi. Vòng 2 (adversarial, chỉ phần sửa): approve, không phát hiện.
+- Chưa làm: TDD đỏ-trước chỉ giữ cho grader (code viết trước test integration).
+
 ### 2026-11-17 — Task 1a đã nhận: schema + API tác giả
 - Migration `V19__exercise_practice.sql` (V13–V18 đã dùng). Code: `ExerciseSet/ExerciseQuestion`, `AuthorExerciseService` (validator `normalize` static, rate limit Redis, khóa dòng), `AuthorExerciseController`, `ExerciseSetRequest/Response`; `CustomException` có `fieldErrors`.
 - Test: `ExercisePracticeMigrationTest`, `ExerciseLifecycleTest` (cả validator), `AuthorExerciseControllerTest`, `AuthorExerciseIntegrationTest` + `AuthorAiControllerTest`, `DatabaseBootstrapIntegrationTest` — 51 ca, 0 lỗi.

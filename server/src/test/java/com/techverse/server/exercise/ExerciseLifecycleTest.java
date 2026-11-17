@@ -3,11 +3,15 @@ package com.techverse.server.exercise;
 import static com.techverse.server.enums.ExerciseStatus.*;
 import static org.assertj.core.api.Assertions.*;
 
+import com.techverse.server.dto.request.ExerciseSetRequest;
 import com.techverse.server.dto.request.ExerciseSetRequest.Question;
+import com.techverse.server.dto.response.ExercisePracticeResponse;
+import com.techverse.server.entity.ExerciseQuestion;
 import com.techverse.server.entity.ExerciseSet;
 import com.techverse.server.enums.*;
 import com.techverse.server.exception.*;
 import com.techverse.server.service.impl.AuthorExerciseService;
+import com.techverse.server.service.impl.PublishedExerciseService;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -208,5 +212,89 @@ class ExerciseLifecycleTest {
         var errors = errors(ExerciseType.MULTIPLE_CHOICE, List.of(okMc(), mc(" ", List.of("1", "2"), 0, "e"), okMc(), mc("q", List.of("1"), 0, "e")));
         assertThat(errors).containsKeys("questions[1].content", "questions[3].options").doesNotContainKey("questions[0].content");
         assertThat(errors(ExerciseType.MULTIPLE_CHOICE, Arrays.asList(okMc(), null))).containsKey("questions[1]");
+    }
+
+    // ------------------------------------------------------------------ grading (task 1b)
+
+    static ExerciseQuestion quizQ(int pos, int correct) {
+        var q = ExerciseQuestion.of(null, pos, "Q" + pos, null, null, List.of("a", "b", "c"), String.valueOf(correct), "Because " + correct);
+        ReflectionTestUtils.setField(q, "id", UUID.randomUUID());
+        return q;
+    }
+
+    static ExerciseQuestion cardQ(int pos) {
+        var q = ExerciseQuestion.of(null, pos, "F" + pos, null, null, null, "B" + pos, "");
+        ReflectionTestUtils.setField(q, "id", UUID.randomUUID());
+        return q;
+    }
+
+    static ExerciseSetRequest.Attempt answers(Integer duration, ExerciseSetRequest.Attempt.Answer... a) {
+        return new ExerciseSetRequest.Attempt(List.of(a), null, duration);
+    }
+
+    static ExerciseSetRequest.Attempt.Answer ans(ExerciseQuestion q, Integer index) {
+        return new ExerciseSetRequest.Attempt.Answer(q.getId(), index);
+    }
+
+    @Test
+    void gradesCorrectWrongAndBlankAndRoundsThePercentDown() {
+        var qs = List.of(quizQ(1, 1), quizQ(2, 0), quizQ(3, 2));
+        var set = set(ExerciseType.MULTIPLE_CHOICE, PUBLISHED);
+        // right, wrong, omitted (blank counts as wrong)
+        var g = PublishedExerciseService.grade(set, qs, answers(30, ans(qs.get(0), 1), ans(qs.get(1), 2)));
+        assertThat(g.correct()).isEqualTo(1);
+        assertThat(g.total()).isEqualTo(3);
+        assertThat(g.snapshot()).containsEntry("title", "Title").containsEntry("type", "MULTIPLE_CHOICE");
+        var items = (List<Map<String, Object>>) g.snapshot().get("items");
+        assertThat(items).hasSize(3);
+        assertThat(items.get(0)).containsEntry("correct", true).containsEntry("correctIndex", 1).containsEntry("selectedIndex", 1)
+                .containsKeys("questionId", "content", "options", "explanation");
+        assertThat(items.get(1)).containsEntry("correct", false).containsEntry("selectedIndex", 2);
+        assertThat(items.get(2)).containsEntry("correct", false).containsEntry("selectedIndex", null);
+        assertThat(g.snapshot()).containsEntry("durationSeconds", 30);
+        assertThat(1 * 100 / 3).isEqualTo(33);
+        // explicit null selectedIndex is a blank answer too
+        assertThat(PublishedExerciseService.grade(set, qs, answers(null, ans(qs.get(0), null))).correct()).isZero();
+    }
+
+    @Test
+    void countsRememberedFlashcardsAndTreatsMissingOnesAsNotRemembered() {
+        var qs = List.of(cardQ(1), cardQ(2), cardQ(3), cardQ(4), cardQ(5));
+        var set = set(ExerciseType.FLASHCARD, PUBLISHED);
+        var r = new ExerciseSetRequest.Attempt(null, List.of(
+                new ExerciseSetRequest.Attempt.Remembered(qs.get(0).getId(), true),
+                new ExerciseSetRequest.Attempt.Remembered(qs.get(1).getId(), false)), 0);
+        var g = PublishedExerciseService.grade(set, qs, r);
+        assertThat(g.correct()).isEqualTo(1);
+        assertThat(g.total()).isEqualTo(5);
+        var items = (List<Map<String, Object>>) g.snapshot().get("items");
+        assertThat(items.get(0)).containsEntry("remembered", true).containsEntry("front", "F1").containsEntry("back", "B1");
+        assertThat(items.get(4)).containsEntry("remembered", false);
+    }
+
+    @Test
+    void rejectsEveryMalformedAttempt() {
+        var qs = List.of(quizQ(1, 1), quizQ(2, 0), quizQ(3, 2));
+        var quiz = set(ExerciseType.MULTIPLE_CHOICE, PUBLISHED);
+        var cards = set(ExerciseType.FLASHCARD, PUBLISHED);
+        var bad = ErrorCode.EXERCISE_ATTEMPT_INVALID;
+        // question of another set, duplicate, index out of range / negative, null element, wrong shape, duration range
+        assertCode(() -> PublishedExerciseService.grade(quiz, qs, answers(0, new ExerciseSetRequest.Attempt.Answer(UUID.randomUUID(), 0))), bad);
+        assertCode(() -> PublishedExerciseService.grade(quiz, qs, answers(0, ans(qs.get(0), 0), ans(qs.get(0), 1))), bad);
+        assertCode(() -> PublishedExerciseService.grade(quiz, qs, answers(0, ans(qs.get(0), 3))), bad);
+        assertCode(() -> PublishedExerciseService.grade(quiz, qs, answers(0, ans(qs.get(0), -1))), bad);
+        assertCode(() -> PublishedExerciseService.grade(quiz, qs, new ExerciseSetRequest.Attempt(Arrays.asList((ExerciseSetRequest.Attempt.Answer) null), null, 0)), bad);
+        assertCode(() -> PublishedExerciseService.grade(quiz, qs, new ExerciseSetRequest.Attempt(null, List.of(), 0)), bad);
+        assertCode(() -> PublishedExerciseService.grade(cards, qs, answers(0)), bad);
+        assertCode(() -> PublishedExerciseService.grade(cards, qs, new ExerciseSetRequest.Attempt(null, List.of(new ExerciseSetRequest.Attempt.Remembered(qs.get(0).getId(), null)), 0)), bad);
+        assertCode(() -> PublishedExerciseService.grade(quiz, qs, answers(-1)), bad);
+        assertCode(() -> PublishedExerciseService.grade(quiz, qs, answers(86_401)), bad);
+        assertThatCode(() -> PublishedExerciseService.grade(quiz, qs, answers(86_400))).doesNotThrowAnyException();
+    }
+
+    @Test
+    void quizQuestionDtoNeverCarriesAnAnswer() {
+        var names = Arrays.stream(ExercisePracticeResponse.QuizQuestion.class.getRecordComponents()).map(c -> c.getName()).toList();
+        assertThat(names).doesNotContain("answer", "correctIndex", "explanation").doesNotContainAnyElementsOf(List.of("correct", "solution"));
     }
 }

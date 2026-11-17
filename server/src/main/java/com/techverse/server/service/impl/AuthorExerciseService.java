@@ -88,7 +88,7 @@ public class AuthorExerciseService {
     @Transactional
     public ExerciseSetResponse create(UUID actor, ExerciseSetRequest.Create r) {
         var user = access.lockWriter(actor);
-        rateLimit(actor);
+        rateLimit("exercise:rate:create:" + actor, CREATES_PER_MINUTE);
         noNul("title", r.title());
         noNul("description", r.description());
         var topic = activeTopic(r.topicId());
@@ -173,7 +173,7 @@ public class AuthorExerciseService {
     public ExerciseSetResponse copy(UUID actor, UUID id) {
         var user = access.lockWriter(actor);
         var src = lockOwned(actor, id);
-        rateLimit(actor);
+        rateLimit("exercise:rate:create:" + actor, CREATES_PER_MINUTE);
         var topic = topics.findByIdForUpdate(src.getTopic().getId()).orElseThrow();
         if (!topic.isActive()) throw new CustomException(ErrorCode.EXERCISE_TOPIC_INACTIVE);
         String title = src.getTitle();
@@ -218,12 +218,12 @@ public class AuthorExerciseService {
         return topic;
     }
 
-    /** Fixed window of 10 creates/copies per minute; an unreachable Redis never lets a request through. */
-    private void rateLimit(UUID actor) {
+    /** Fixed one-minute window; an unreachable Redis never lets a request through. Shared with practice submits. */
+    void rateLimit(String key, int limit) {
         try {
-            Long n = redis.execute(COUNTER, List.of("exercise:rate:create:" + actor));
+            Long n = redis.execute(COUNTER, List.of(key));
             if (n == null) throw new CustomException(ErrorCode.EXERCISE_STORAGE_UNAVAILABLE);
-            if (n > CREATES_PER_MINUTE) throw new CustomException(ErrorCode.EXERCISE_RATE_LIMITED);
+            if (n > limit) throw new CustomException(ErrorCode.EXERCISE_RATE_LIMITED);
         } catch (DataAccessException e) {
             throw new CustomException(ErrorCode.EXERCISE_STORAGE_UNAVAILABLE);
         }

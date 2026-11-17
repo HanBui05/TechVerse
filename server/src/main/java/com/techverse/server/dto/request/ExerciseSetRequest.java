@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
 import com.techverse.server.enums.*;
-
 import lombok.*;
 
 import java.util.List;
@@ -50,6 +49,61 @@ public final class ExerciseSetRequest {
             String explanation,
             String front,
             String back) {}
+
+    /** Moderator decisions; note/reason requirements depend on the decision, so the service checks them. */
+    public record Review(
+            @NotNull ArticleReviewDecision decision,
+            @NotNull @Pattern(regexp = "[a-f0-9]{64}") String reviewToken,
+            @Size(max = 1000) String note) {}
+
+    public record Publication(
+            @NotNull ArticlePublicationAction action,
+            @NotNull @Pattern(regexp = "[a-f0-9]{64}") String reviewToken,
+            @Size(max = 1000) String reason) {}
+
+    /** Quiz sends {@code answers}, flashcards send {@code results}; the grader rejects the wrong shape. */
+    public record Attempt(List<Answer> answers, List<Remembered> results, Integer durationSeconds) {
+        public record Answer(UUID questionId, Integer selectedIndex) {}
+
+        public record Remembered(UUID questionId, Boolean remembered) {}
+    }
+
+    @Getter
+    @Setter
+    public static class ModeratorFilter extends Filter {
+        private UUID topicId;
+    }
+
+    @Getter
+    @Setter
+    public static class PublicFilter {
+        private UUID topicId;
+        private ExerciseDifficulty difficulty;
+        private ExerciseType type;
+
+        @Size(max = 100)
+        private String keyword;
+
+        @Min(0)
+        private int page = 0;
+
+        @Min(1)
+        @Max(50)
+        private int size = 20;
+    }
+
+    @Getter
+    @Setter
+    public static class AttemptFilter {
+        private UUID exerciseSetId;
+
+        @Min(0)
+        private int page = 0;
+
+        @Min(1)
+        @Max(50)
+        private int size = 20;
+    }
 
     @Getter
     @Setter

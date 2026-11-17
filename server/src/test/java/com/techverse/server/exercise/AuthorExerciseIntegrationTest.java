@@ -39,7 +39,7 @@ class AuthorExerciseIntegrationTest extends ArticleIntegrationTestBase {
     @MockitoSpyBean AiCompletedGenerationRepository aiGenerations;
 
     UUID author, other, topic;
-    String token, otherToken, learnerToken;
+    String token, otherToken, learnerToken, modToken, adminToken;
 
     @BeforeEach
     void setup() throws Exception {
@@ -51,6 +51,10 @@ class AuthorExerciseIntegrationTest extends ArticleIntegrationTestBase {
         token = login("author@example.com");
         otherToken = login("other@example.com");
         learnerToken = login("learner@example.com");
+        staff("mod@example.com", "MODERATOR");
+        staff("admin@example.com", "ADMIN");
+        modToken = login("mod@example.com");
+        adminToken = login("admin@example.com");
         topic = jdbc.queryForObject("INSERT INTO techverse.topics(name) VALUES ('Backend') RETURNING id", UUID.class);
         redisTemplate.delete(redisTemplate.keys("exercise:rate:*"));
     }
@@ -302,6 +306,246 @@ class AuthorExerciseIntegrationTest extends ArticleIntegrationTestBase {
         assertThat(cards).isNotBlank();
     }
 
+    // ------------------------------------------------------------------ moderator (task 1b)
+
+    static final String MOD = "/api/v1/moderator/exercise-sets";
+    static final String PUB = "/api/v1/exercise-sets";
+
+    String reviewToken(String id) throws Exception {
+        return data(get(MOD + "/" + id, modToken)).path("reviewToken").asText();
+    }
+
+    ResultActions review(String id, String decision, String note, String reviewToken) throws Exception {
+        var body = new HashMap<String, Object>(Map.of("decision", decision, "reviewToken", reviewToken));
+        if (note != null) body.put("note", note);
+        return send(patch(MOD + "/" + id + "/review"), modToken, body);
+    }
+
+    ResultActions publication(String id, String action, String reason) throws Exception {
+        var body = new HashMap<String, Object>(Map.of("action", action, "reviewToken", reviewToken(id)));
+        if (reason != null) body.put("reason", reason);
+        return send(patch(MOD + "/" + id + "/publication"), modToken, body);
+    }
+
+    String pending() throws Exception {
+        String id = ready();
+        send(post(ROOT + "/" + id + "/submit"), token, Map.of()).andExpect(status().isOk());
+        return id;
+    }
+
+    String published() throws Exception {
+        String id = pending();
+        review(id, "APPROVE", null, reviewToken(id)).andExpect(status().isOk()).andExpect(jsonPath("$.data.set.status").value("PUBLISHED"));
+        return id;
+    }
+
+    @Test
+    void moderatorApprovesOrRequestsChangesWithAFreshTokenOnly() throws Exception {
+        String id = pending();
+        assertThat(data(get(MOD, modToken)).path("content")).hasSize(1);
+        assertThat(data(get(MOD, modToken)).path("content").get(0).path("authorEligible").asBoolean()).isTrue();
+        String t1 = reviewToken(id);
+        review(id, "APPROVE", null, "0".repeat(64)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXERCISE_REVIEW_STALE"));
+        review(id, "REQUEST_CHANGES", "a b", t1).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        review(id, "REQUEST_CHANGES", " ", t1).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        review(id, "REQUEST_CHANGES", "Fix Q1", t1).andExpect(status().isOk()).andExpect(jsonPath("$.data.set.status").value("CHANGES_REQUESTED"));
+        // The old token is stale even though the set is no longer pending: staleness wins over state.
+        review(id, "APPROVE", null, t1).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXERCISE_REVIEW_STALE"));
+        review(id, "APPROVE", null, reviewToken(id)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXERCISE_STATE_INVALID"));
+        send(post(ROOT + "/" + id + "/submit"), token, Map.of()).andExpect(status().isOk());
+        review(id, "APPROVE", "Good", reviewToken(id)).andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT published_at IS NOT NULL FROM techverse.exercise_sets WHERE id=?::uuid", Boolean.class, id)).isTrue();
+        // Staff without the MODERATOR role, learners and guests cannot reach the API; drafts do not exist for moderators.
+        get(MOD, adminToken).andExpect(status().isForbidden());
+        get(MOD, learnerToken).andExpect(status().isForbidden());
+        get(MOD, null).andExpect(status().isUnauthorized());
+        String draft = create();
+        get(MOD + "/" + draft, modToken).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("EXERCISE_SET_NOT_FOUND"));
+        review(draft, "APPROVE", null, "0".repeat(64)).andExpect(status().isNotFound());
+        assertThat(data(get(MOD + "?status=DRAFT", modToken)).path("content")).isEmpty();
+    }
+
+    @Test
+    void approvalRechecksAuthorTopicAndReadiness() throws Exception {
+        String a = pending(), b = pending(), c = pending();
+        jdbc.update("UPDATE techverse.author_profiles SET status='SUSPENDED' WHERE user_id=?", author);
+        review(a, "APPROVE", null, reviewToken(a)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXERCISE_AUTHOR_INELIGIBLE"));
+        assertThat(data(get(MOD, modToken)).path("content").get(0).path("authorEligible").asBoolean()).isFalse();
+        jdbc.update("UPDATE techverse.author_profiles SET status='APPROVED' WHERE user_id=?", author);
+        jdbc.update("UPDATE techverse.exercise_questions SET position=position+10 WHERE exercise_set_id=?::uuid", b);
+        jdbc.update("DELETE FROM techverse.exercise_questions WHERE exercise_set_id=?::uuid AND position>11", b);
+        review(b, "APPROVE", null, reviewToken(b)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXERCISE_NOT_READY"));
+        jdbc.update("UPDATE techverse.topics SET is_active=false WHERE id=?", topic);
+        review(c, "APPROVE", null, reviewToken(c)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXERCISE_TOPIC_INACTIVE"));
+        review(c, "REQUEST_CHANGES", "Topic is gone", reviewToken(c)).andExpect(status().isOk());
+    }
+
+    @Test
+    void hideRestoreAndRemoveReturnToTheRememberedState() throws Exception {
+        String id = published();
+        publication(id, "HIDE", null).andExpect(status().isBadRequest());
+        publication(id, "UNHIDE", "x").andExpect(status().isBadRequest());
+        publication(id, "RESTORE", null).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXERCISE_STATE_INVALID"));
+        publication(id, "HIDE", "Spam").andExpect(status().isOk()).andExpect(jsonPath("$.data.set.status").value("HIDDEN"));
+        send(patch(ROOT + "/" + id + "/visibility"), token, Map.of("action", "UNHIDE")).andExpect(status().isConflict());
+        publication(id, "RESTORE", null).andExpect(status().isOk()).andExpect(jsonPath("$.data.set.status").value("PUBLISHED"));
+        send(patch(ROOT + "/" + id + "/visibility"), token, Map.of("action", "HIDE")).andExpect(status().isOk());
+        publication(id, "HIDE", "Spam").andExpect(status().isOk());
+        publication(id, "RESTORE", "ok").andExpect(status().isOk()).andExpect(jsonPath("$.data.set.status").value("AUTHOR_HIDDEN"));
+        publication(id, "REMOVE", "Illegal").andExpect(status().isOk()).andExpect(jsonPath("$.data.set.status").value("REMOVED"));
+        publication(id, "HIDE", "again").andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXERCISE_STATE_INVALID"));
+        publication(id, "REMOVE", "again").andExpect(status().isConflict());
+        assertThat(data(get(ROOT + "/" + id, token)).path("moderationNote").asText()).isEqualTo("Illegal");
+    }
+
+    @Test
+    void twoModeratorsApprovingTogetherLeaveOneWinner() throws Exception {
+        String id = pending();
+        String t = reviewToken(id);
+        var pool = Executors.newFixedThreadPool(2);
+        var go = new CountDownLatch(1);
+        List<Future<Integer>> results = new ArrayList<>();
+        for (int i = 0; i < 2; i++)
+            results.add(pool.submit(() -> {
+                go.await();
+                return review(id, "APPROVE", null, t).andReturn().getResponse().getStatus();
+            }));
+        go.countDown();
+        var codes = new ArrayList<Integer>();
+        for (var f : results) codes.add(f.get(30, TimeUnit.SECONDS));
+        pool.shutdown();
+        assertThat(codes).containsExactlyInAnyOrder(200, 409);
+    }
+
+    // ------------------------------------------------------------------ practice (task 1b)
+
+    ResultActions submit(String id, String learner, String key, Map<String, ?> body) throws Exception {
+        var request = post(PUB + "/" + id + "/attempts");
+        if (key != null) request.header("Idempotency-Key", key);
+        return send(request, learner, body);
+    }
+
+    /** Answers question 0 correctly (index 1), question 1 wrong, question 2 left blank. */
+    Map<String, Object> quizAnswers(String id, String learner) throws Exception {
+        var qs = data(get(PUB + "/" + id + "/questions", learner)).path("questions");
+        return Map.of("answers", List.of(Map.of("questionId", qs.get(0).path("id").asText(), "selectedIndex", 1),
+                Map.of("questionId", qs.get(1).path("id").asText(), "selectedIndex", 0)), "durationSeconds", 42);
+    }
+
+    @Test
+    void guestsBrowseButQuestionsNeedLoginAndNeverShowAnswers() throws Exception {
+        String id = published();
+        assertThat(data(get(PUB, null)).path("content")).hasSize(1);
+        assertThat(data(get(PUB + "?type=FLASHCARD", null)).path("content")).isEmpty();
+        assertThat(data(get(PUB + "/options", null))).hasSize(1);
+        var intro = data(get(PUB + "/" + id, null));
+        assertThat(intro.path("questionCount").asInt()).isEqualTo(3);
+        assertThat(intro.path("viewer").path("reason").asText()).isEqualTo("LOGIN_REQUIRED");
+        assertThat(intro.has("questions")).isFalse();
+        get(PUB + "/" + id + "/questions", null).andExpect(status().isUnauthorized());
+        var body = get(PUB + "/" + id + "/questions", learnerToken).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(body).doesNotContain("correctIndex", "explanation", "Because b");
+        assertThat(data(get(PUB + "/" + id, learnerToken)).path("viewer").path("canAttempt").asBoolean()).isTrue();
+        // Owner, moderator, admin: no attempts.
+        for (String t : List.of(token, modToken, adminToken)) {
+            get(PUB + "/" + id + "/questions", t).andExpect(status().isForbidden());
+            submit(id, t, UUID.randomUUID().toString(), Map.of()).andExpect(status().isForbidden());
+        }
+        // Unpublished sets do not exist for readers.
+        get(PUB + "/" + create(), learnerToken).andExpect(status().isNotFound());
+        get(PUB + "/" + UUID.randomUUID() + "/questions", learnerToken).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void quizIsGradedByTheServerAndRetriesReturnTheStoredAttempt() throws Exception {
+        String id = published();
+        var answers = quizAnswers(id, learnerToken);
+        submit(id, learnerToken, null, answers).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        submit(id, learnerToken, "not-a-uuid", answers).andExpect(status().isBadRequest());
+        String key = UUID.randomUUID().toString();
+        var first = data(submit(id, learnerToken, key, answers).andExpect(status().isOk()));
+        assertThat(first.path("correctCount").asInt()).isEqualTo(1);
+        assertThat(first.path("totalCount").asInt()).isEqualTo(3);
+        assertThat(first.path("percent").asInt()).isEqualTo(33);
+        assertThat(first.path("items").get(0).path("correctIndex").asInt()).isEqualTo(1);
+        assertThat(first.path("items").get(0).path("explanation").asText()).isEqualTo("Because b.");
+        assertThat(data(submit(id, learnerToken, key, answers)).path("id").asText()).isEqualTo(first.path("id").asText());
+        // Same key for another set is refused; a wrong body is refused without storing anything.
+        String other = published();
+        submit(other, learnerToken, key, answers).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXERCISE_ATTEMPT_KEY_CONFLICT"));
+        submit(id, learnerToken, UUID.randomUUID().toString(), Map.of("answers", List.of(Map.of("questionId", UUID.randomUUID().toString(), "selectedIndex", 0))))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("EXERCISE_ATTEMPT_INVALID"));
+        submit(id, learnerToken, UUID.randomUUID().toString(), Map.of("results", List.of())).andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.exercise_attempts", Integer.class)).isEqualTo(1);
+        // Hidden mid-attempt: a new key gets 404, the old key still replays the result.
+        jdbc.update("UPDATE techverse.exercise_sets SET status='HIDDEN', hidden_from_status='PUBLISHED' WHERE id=?::uuid", id);
+        submit(id, learnerToken, UUID.randomUUID().toString(), answers).andExpect(status().isNotFound());
+        assertThat(data(submit(id, learnerToken, key, answers)).path("id").asText()).isEqualTo(first.path("id").asText());
+    }
+
+    @Test
+    void parallelSubmitsWithOneKeyStoreOneAttempt() throws Exception {
+        String id = published();
+        var answers = quizAnswers(id, learnerToken);
+        String key = UUID.randomUUID().toString();
+        var pool = Executors.newFixedThreadPool(4);
+        var go = new CountDownLatch(1);
+        List<Future<String>> results = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            results.add(pool.submit(() -> {
+                go.await();
+                return data(submit(id, learnerToken, key, answers).andExpect(status().isOk())).path("id").asText();
+            }));
+        go.countDown();
+        var ids = new HashSet<String>();
+        for (var f : results) ids.add(f.get(30, TimeUnit.SECONDS));
+        pool.shutdown();
+        assertThat(ids).hasSize(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.exercise_attempts", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void flashcardsCountRememberedAndHistoryStaysReadableAfterRemoval() throws Exception {
+        String id = data(send(post(ROOT), token, Map.of("title", "Cards one", "topicId", topic, "type", "FLASHCARD", "difficulty", "EASY"))).path("id").asText();
+        save(id, IntStream.range(0, 5).mapToObj(i -> Map.<String, Object>of("front", "F" + i, "back", "B" + i)).toList(), 0).andExpect(status().isOk());
+        send(post(ROOT + "/" + id + "/submit"), token, Map.of()).andExpect(status().isOk());
+        review(id, "APPROVE", null, reviewToken(id)).andExpect(status().isOk());
+        var cards = data(get(PUB + "/" + id + "/questions", learnerToken)).path("questions");
+        assertThat(cards.get(0).path("back").asText()).isEqualTo("B0");
+        var results = List.of(Map.of("questionId", cards.get(0).path("id").asText(), "remembered", true),
+                Map.of("questionId", cards.get(1).path("id").asText(), "remembered", true));
+        var attempt = data(submit(id, learnerToken, UUID.randomUUID().toString(), Map.of("results", results)).andExpect(status().isOk()));
+        assertThat(attempt.path("correctCount").asInt()).isEqualTo(2);
+        assertThat(attempt.path("percent").asInt()).isEqualTo(40);
+        submit(id, learnerToken, UUID.randomUUID().toString(), Map.of("answers", List.of())).andExpect(status().isBadRequest());
+        // Last attempt shows up in the list; history is private and survives removal of the set.
+        assertThat(data(get(PUB, learnerToken)).path("content").get(0).path("lastAttempt").path("correctCount").asInt()).isEqualTo(2);
+        publication(id, "REMOVE", "Gone").andExpect(status().isOk());
+        get(PUB + "/" + id, learnerToken).andExpect(status().isNotFound());
+        assertThat(data(get("/api/v1/me/exercise-attempts?exerciseSetId=" + id, learnerToken)).path("content")).hasSize(1);
+        var detail = data(get("/api/v1/me/exercise-attempts/" + attempt.path("id").asText(), learnerToken));
+        assertThat(detail.path("items")).hasSize(5);
+        assertThat(detail.path("items").get(0).path("back").asText()).isEqualTo("B0");
+        get("/api/v1/me/exercise-attempts/" + attempt.path("id").asText(), otherToken).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("EXERCISE_ATTEMPT_NOT_FOUND"));
+        assertThat(data(get("/api/v1/me/exercise-attempts", otherToken)).path("content")).isEmpty();
+        get("/api/v1/me/exercise-attempts", null).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void suspendedAuthorsSetsLeaveTheListAndSubmitsAreRateLimited() throws Exception {
+        String id = published();
+        var answers = quizAnswers(id, learnerToken);
+        jdbc.update("UPDATE techverse.author_profiles SET status='SUSPENDED' WHERE user_id=?", author);
+        assertThat(data(get(PUB, null)).path("content")).isEmpty();
+        submit(id, learnerToken, UUID.randomUUID().toString(), answers).andExpect(status().isNotFound());
+        jdbc.update("UPDATE techverse.author_profiles SET status='APPROVED' WHERE user_id=?", author);
+        // The refused submit above already used one of the 20 slots.
+        for (int i = 0; i < 19; i++) submit(id, learnerToken, UUID.randomUUID().toString(), answers).andExpect(status().isOk());
+        submit(id, learnerToken, UUID.randomUUID().toString(), answers).andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("EXERCISE_RATE_LIMITED"));
+    }
+
     // ------------------------------------------------------------------ http
 
     ResultActions send(MockHttpServletRequestBuilder request, String token, Map<String, ?> body) throws Exception {
@@ -327,6 +571,11 @@ class AuthorExerciseIntegrationTest extends ArticleIntegrationTestBase {
             jdbc.update("INSERT INTO techverse.author_profiles(user_id,bio,expertise,status) VALUES (?,'Bio','Java','APPROVED')", id);
         }
         return id;
+    }
+
+    void staff(String email, String role) {
+        UUID id = users.saveAndFlush(User.createLocalAccount("User " + email, email, encoder.encode("SecurePass123!"))).getId();
+        jdbc.update("INSERT INTO techverse.user_roles(user_id,role_id) SELECT ?,id FROM techverse.roles WHERE name=?", id, role);
     }
 
     String login(String email) throws Exception {

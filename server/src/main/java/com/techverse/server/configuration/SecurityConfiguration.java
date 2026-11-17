@@ -80,6 +80,11 @@ public class SecurityConfiguration {
 						.requestMatchers("/api/v1/author/courses", "/api/v1/author/courses/**").authenticated()
 						.requestMatchers("/api/v1/author/exercise-sets", "/api/v1/author/exercise-sets/**").authenticated()
 						.requestMatchers("/api/v1/author/ai/**").authenticated()
+						.requestMatchers("/api/v1/moderator/exercise-sets", "/api/v1/moderator/exercise-sets/**").authenticated()
+						// Authenticated routes first; the single-segment permitAll patterns below cannot cover them anyway.
+						.requestMatchers(HttpMethod.GET, "/api/v1/exercise-sets/*/questions", "/api/v1/me/exercise-attempts", "/api/v1/me/exercise-attempts/*").authenticated()
+						.requestMatchers(HttpMethod.POST, "/api/v1/exercise-sets/*/attempts").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/v1/exercise-sets", "/api/v1/exercise-sets/*").permitAll()
 						.requestMatchers("/api/v1/moderator/articles", "/api/v1/moderator/articles/**").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/**").authenticated()
 						.requestMatchers(HttpMethod.PUT, "/api/v1/articles/*/saved").authenticated()

@@ -16,7 +16,14 @@ public interface ExerciseSetRepository extends JpaRepository<ExerciseSet, UUID>,
     @Query("select s from ExerciseSet s where s.id=:id")
     Optional<ExerciseSet> findByIdForUpdate(@Param("id") UUID id);
 
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select s from ExerciseSet s where s.id=:id")
+    Optional<ExerciseSet> findByIdForShare(@Param("id") UUID id);
+
+    @Query("select s.author.id from ExerciseSet s where s.id=:id")
+    Optional<UUID> findAuthorIdById(@Param("id") UUID id);
+
     @Override
-    @EntityGraph(attributePaths = {"topic"})
+    @EntityGraph(attributePaths = {"topic", "author"})
     Page<ExerciseSet> findAll(Specification<ExerciseSet> spec, Pageable pageable);
 }
