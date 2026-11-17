@@ -4,9 +4,9 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`course-ai-tutor.m
 
 ## Bắt đầu từ đây (cập nhật 2026-11-17)
 
-- **Task tiếp:** Task 1 và Task 2 đã nhận (2026-11-17); module xong code, còn đồng bộ spec một lần cuối (skill `codex-workflow` mục 3) · Giao diện: Không
+- **Task tiếp:** Module hoàn tất và đã merge (2026-11-17); không còn task · Giao diện: Không
 - Spec chốt lại 2026-11-17 sau phản biện vòng 1 (không chạy vòng 2); lịch sử ở `course-ai-tutor.review.md`.
-- Nhánh: `feature/course-ai-tutor` (tách từ `docs/plan-status` vì spec/log chốt nằm ở đó, chưa vào `main`); Task 1, 2 đã commit cục bộ.
+- PR #10 đã merge vào `main` 2026-11-17, CI `test-server` đạt. Còn chưa kiểm: dark mobile, cảm ứng thật/vùng chạm 44px, lỗi/hết quota/Dừng trên giao diện thật.
 
 ## Quyết định người dùng chưa có trong spec
 

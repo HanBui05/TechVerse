@@ -93,7 +93,7 @@ Task 1 đã nhận 2026-11-17; code, test và review: xem [log](course-ai-tutor.
 - [x] `LessonTutorIntegrationTest` (DB/security thật, model giả, dùng `CourseIntegrationTestBase`), 5 ca: đã enroll hỏi được; học thử chưa enroll hỏi được; miễn phí chưa bắt đầu → 403 `LESSON_PREVIEW_ONLY` và **không** sinh enrollment; trả phí chưa mua → 403 `COURSE_PURCHASE_REQUIRED`; ADMIN → 403.
 - [x] Thời hạn MVC async kiểm cả `tutorTimeout`: `AiRateLimitServiceTest.asyncTimeoutMustCoverTheTutorDeadlineToo`.
 - [x] Regression: `CourseLearningIntegrationTest`, `PublishedCourseIntegrationTest` (hàm đọc bài đã tách) và các lớp `Ai*` gọi `AiRateLimitService`/`AiAssistProperties`/`AiPromptFactory`/`AiGenerationRegistry`/`AiStreamEvent` (gồm test `drafts:stream`) đạt.
-- [ ] Full backend do CI chạy khi mở PR (chưa kiểm — xem log).
+- [x] Full backend do CI chạy khi mở PR: `test-server` đạt trên PR #10 (merge vào `main` 2026-11-17).
 
 ## Task 2 — Giao diện “Hỏi AI về bài này”
 
