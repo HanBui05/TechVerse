@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { CourseLessonPage } from './CourseLessonPage'
@@ -169,4 +169,79 @@ it('shows the no-refund note beside Buy on a preview lesson, and a retryable err
   renderPaid(true, 'l1')
   expect(await screen.findByRole('button', { name: 'Thử lại' })).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Bắt đầu học' })).toBeNull()
+})
+
+it('offers the AI tutor to a signed-in reader and asks a Guest to sign in first', async () => {
+  const user = userEvent.setup()
+  mockApi(ok())
+  renderPage()
+  expect((await screen.findByRole('button', { name: 'Hỏi AI về bài này' })).getAttribute('aria-disabled')).toBeNull()
+  cleanup()
+  mockApi(ok())
+  renderPaid(false, 'l2')
+  await user.click(await screen.findByRole('button', { name: 'Đăng nhập để hỏi AI' }))
+  await user.click(await screen.findByRole('button', { name: 'Đăng nhập' }))
+  expect(screen.getByTestId('where').textContent).toBe('/login')
+})
+
+it('disables the AI tutor on a lesson without text and says why', async () => {
+  mockApi(ok({ lesson: { ...lessonOf('l2').lesson, content: null, video: { provider: 'YOUTUBE', videoId: 'dQw4w9WgXcQ' } } }))
+  renderPage()
+  const button = await screen.findByRole('button', { name: 'Hỏi AI về bài này' })
+  expect(button.getAttribute('aria-disabled')).toBe('true')
+  expect(screen.getByText('Bài này chưa có nội dung chữ để AI dựa vào.')).toBeTruthy()
+  await userEvent.setup().click(button)
+  expect(screen.queryByRole('dialog', { name: 'Trợ lý AI của bài học' })).toBeNull()
+})
+
+it('drops the conversation when the reader moves to another lesson', async () => {
+  const stream = () => new Response([
+    'event: metadata', 'data: {"generationId":"g","timeoutSeconds":60,"contextTruncated":false}', '',
+    'event: delta', 'data: {"text":"Trả lời"}', '',
+    'event: completed', 'data: {"generationId":"g","validated":true,"contentBytes":1,"contentSha256":"x","quotaRemaining":19}', '', '',
+  ].join('\n'), { status: 200 })
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const path = new URL(String(input)).pathname
+    if (path.endsWith('/tutor:stream')) return stream()
+    if (path.endsWith('/ai-tutor/quota')) return json({ limit: 20, remaining: 20 })
+    return path.includes('/lessons/') ? json(lessonOf(path.split('/').pop()!)) : json(detail())
+  }))
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Hỏi AI về bài này' }))
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Câu hỏi' }), { target: { value: 'Câu hỏi của tôi' } })
+  await user.click(screen.getByRole('button', { name: 'Gửi' }))
+  expect(await screen.findByText('Trả lời')).toBeTruthy()
+  await user.click(screen.getByRole('button', { name: 'Đóng' }))
+  await user.click(screen.getByRole('link', { name: 'Bài tiếp theo: Lớp và đối tượng' }))
+  await screen.findByRole('heading', { level: 1, name: 'Giới thiệu' })
+  await user.click(screen.getByRole('button', { name: 'Hỏi AI về bài này' }))
+  expect(await screen.findByText('Hỏi bất cứ điều gì bạn chưa hiểu trong bài.')).toBeTruthy()
+  expect(screen.queryByText('Câu hỏi của tôi')).toBeNull()
+})
+
+it('keeps the AI tutor conversation when the interface language changes on the same lesson, even if the refresh fails', async () => {
+  let outage = false
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const path = new URL(String(input)).pathname
+    if (path.endsWith('/tutor:stream')) return new Response(['event: delta', 'data: {"text":"Trả lời"}', '', 'event: completed', 'data: {"generationId":"g","validated":true,"contentBytes":1,"contentSha256":"x","quotaRemaining":19}', '', ''].join(String.fromCharCode(10)), { status: 200 })
+    if (path.endsWith('/ai-tutor/quota')) return json({ limit: 20, remaining: 20 })
+    if (outage) return json(null, 500)
+    return path.includes('/lessons/') ? json(lessonOf('l2')) : json(detail())
+  }))
+  const user = userEvent.setup()
+  const tree = (language: 'vi' | 'en') => <MemoryRouter initialEntries={['/courses/c1/lessons/l2']}><Routes><Route path="/courses/:courseId/lessons/:lessonId" element={<CourseLessonPage language={language} authenticated />} /></Routes></MemoryRouter>
+  const { rerender } = render(tree('vi'))
+  await user.click(await screen.findByRole('button', { name: 'Hỏi AI về bài này' }))
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Câu hỏi' }), { target: { value: 'Câu hỏi của tôi' } })
+  await user.click(screen.getByRole('button', { name: 'Gửi' }))
+  await screen.findByText('Trả lời')
+  rerender(tree('en'))
+  expect(await screen.findByRole('textbox', { name: 'Question' })).toBeTruthy()
+  expect(screen.getByText('Câu hỏi của tôi')).toBeTruthy()
+  outage = true
+  rerender(tree('vi'))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  expect(screen.getByRole('textbox', { name: 'Câu hỏi' })).toBeTruthy()
+  expect(screen.getByText('Câu hỏi của tôi')).toBeTruthy()
 })

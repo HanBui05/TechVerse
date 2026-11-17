@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setAccessToken } from './api/client'
-import { authorCourses, authorShare, changedLessonFields, courseFilter, courseSearch, embedUrl, flatLessons, lessonAccess, publicCourses, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, orders, adminOrders, commission, revenue, revenueByCourse, payoutAccount, payouts, rateBps, amountText, priceValid, payosSrc, qrSrc, videoLink, visibleChanges, vnd, youtubeId } from './courseService'
+import { lessonTutor, authorCourses, authorShare, changedLessonFields, courseFilter, courseSearch, embedUrl, flatLessons, lessonAccess, publicCourses, courseChangedFields, courseReadiness, isCourseImage, lessonChangedFields, moderatorCourses, orders, adminOrders, commission, revenue, revenueByCourse, payoutAccount, payouts, rateBps, amountText, priceValid, payosSrc, qrSrc, videoLink, visibleChanges, vnd, youtubeId } from './courseService'
 import type { AuthorCourse, ChangeChapter, Lesson, ModeratorCourseDetail } from '../types/courses'
 
 const fetchMock = vi.fn<typeof fetch>()
@@ -308,5 +308,24 @@ describe('admin payment services (Task 2c)', () => {
   it('accepts a statement amount only as a positive whole number of at most 15 digits', () => {
     expect(amountText('350000')).toBe(350000); expect(amountText(' 10000 ')).toBe(10000)
     for (const bad of ['', '0', '-5', '1.5', '1,000', 'abc', '0123', '1'.repeat(16)]) expect(amountText(bad)).toBeNull()
+  })
+})
+
+describe('lessonTutor API', () => {
+  it('posts the question to the lesson stream and hands over the preflight quota and parsed events', async () => {
+    const body = new ReadableStream<Uint8Array>({ start(c) { c.enqueue(new TextEncoder().encode(['event: metadata', 'data: {"generationId":"g","timeoutSeconds":60,"contextTruncated":true}', '', 'event: delta', 'data: {"text":"Hi"}', '', ''].join('\n'))); c.close() } })
+    fetchMock.mockResolvedValue(new Response(body, { status: 200, headers: { 'X-AI-Quota-Limit': '20', 'X-AI-Quota-Remaining': '19' } }))
+    const events: unknown[] = []; let quota: unknown
+    await lessonTutor.stream('c 1', 'l1', { question: 'Q', history: [{ role: 'USER', content: 'a' }] }, new AbortController().signal, e => events.push(e), q => { quota = q })
+    expect(call().url.pathname).toBe('/api/v1/courses/c%201/lessons/l1/tutor:stream'); expect(call().init.method).toBe('POST')
+    expect(JSON.parse(String(call().init.body))).toEqual({ question: 'Q', history: [{ role: 'USER', content: 'a' }] })
+    expect(quota).toEqual({ limit: 20, remaining: 19 })
+    expect(events).toEqual([{ type: 'metadata', generationId: 'g', timeoutSeconds: 60, contextTruncated: true }, { type: 'delta', text: 'Hi' }])
+  })
+
+  it('reads the daily allowance without reserving anything', async () => {
+    fetchMock.mockResolvedValue(ok({ limit: 20, remaining: 7 }))
+    expect(await lessonTutor.quota()).toEqual({ limit: 20, remaining: 7 })
+    expect(call().url.pathname).toBe('/api/v1/me/ai-tutor/quota'); expect(call().init.method ?? 'GET').toBe('GET')
   })
 })

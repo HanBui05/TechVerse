@@ -12,6 +12,7 @@ import { courseErrorText, readerCourseText } from '../../data/courseI18n'
 import { ApiError } from '../../services/api/client'
 import { embedUrl, flatLessons, lessonAccess, publicCourses } from '../../services/courseService'
 import { CourseFrame, type FrameActions } from './CourseFrame'
+import { LessonTutor } from './LessonTutorSheet'
 import { touch } from './courseParts'
 import type { CourseLearning, PublicChapter, PublicCourseDetail, PublicLesson, Viewer } from '../../types/courses'
 import type { Language } from '../../types/preferences'
@@ -46,9 +47,11 @@ export function CourseLessonPage({ language = 'vi', authenticated = false }: { l
       const result = await publicCourses.lesson(courseId, lessonId)
       const amount = result.viewer.enrolled ? 0 : (await publicCourses.detail(courseId)).priceAmount
       if (request !== latest.current) return
-      setData(result); setLearning(result.learning); setPrice(amount)
+      setData(result); setLearning(result.learning); setPrice(amount); setFailure(null)
     } catch (e) {
       if (request !== latest.current) return
+      // An in-place refresh keeps the lesson (and the AI conversation) on a transient failure; losing access still shows the card.
+      if (quiet && !(e instanceof ApiError && (e.status === 403 || e.status === 404))) return
       const text = courseErrorText(e, language, t('loadError'))
       if (e instanceof ApiError && (e.code === 'LESSON_PREVIEW_ONLY' || e.code === 'COURSE_PURCHASE_REQUIRED')) {
         // The locked card still shows the curriculum, taken from the overview.
@@ -62,7 +65,9 @@ export function CourseLessonPage({ language = 'vi', authenticated = false }: { l
       } else setFailure({ kind: e instanceof ApiError && e.status === 404 ? 'missing' : 'error', text: e instanceof ApiError && e.status === 404 ? t('notFound') : text })
     }
   }, [courseId, lessonId, key, language]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { void load() }, [load])
+  // A language switch only re-reads the same lesson in place, so the AI tutor conversation (mounted with the lesson) survives it.
+  const loadedFor = useRef('')
+  useEffect(() => { const id = `${courseId}|${lessonId}|${key}`; void load(loadedFor.current === id); loadedFor.current = id }, [load]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // The TOC reads the ids MarkdownContent gave the headings, so TOC and anchors share one slug pass.
   useEffect(() => {
@@ -132,7 +137,8 @@ export function CourseLessonPage({ language = 'vi', authenticated = false }: { l
     {actions => <div className="mx-auto flex w-full max-w-6xl gap-8 px-4 py-6 pb-24 sm:px-6 md:pb-6">
       <main id="lesson-content" className="flex min-w-0 max-w-3xl flex-1 flex-col gap-5">
         <nav aria-label={t('breadcrumb')} className="text-sm text-muted-foreground"><Link to={`/courses/${courseId}`} className={cn('hover:text-foreground', touch)}>{data.courseTitle}</Link>{chapter && <> › {chapter.title}</>}</nav>
-        <div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{lesson.title}</h1>{lesson.preview && !viewer.enrolled && <Badge tone="sky">{t('preview')}</Badge>}</div>
+        <div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{lesson.title}</h1>{lesson.preview && !viewer.enrolled && <Badge tone="sky">{t('preview')}</Badge>}
+          <LessonTutor key={lesson.id} courseId={courseId} lessonId={lesson.id} language={language} authenticated={authenticated} hasText={!!lesson.content?.trim()} askLogin={() => actions.askLogin(`/courses/${courseId}/lessons/${lesson.id}`)} /></div>
         {lesson.summary && <p className="text-muted-foreground">{lesson.summary}</p>}
         {video && <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border bg-muted">
           <iframe src={video} title={t('video', { title: lesson.title })} className="size-full" loading="lazy" sandbox="allow-scripts allow-same-origin allow-presentation" referrerPolicy="strict-origin-when-cross-origin"

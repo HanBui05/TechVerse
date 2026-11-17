@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../services/api/client'
-import { COURSE_ERROR_CODES, courseErrorText, courseText, isCourseStale, moderatorCourseErrorText, moderatorCourseText, readerCourseText, payAdminText, orderText } from './courseI18n'
+import { COURSE_ERROR_CODES, courseErrorText, courseText, isCourseStale, moderatorCourseErrorText, moderatorCourseText, readerCourseText, tutorError, tutorText, payAdminText, orderText } from './courseI18n'
 
 describe('courseI18n', () => {
   it.each(COURSE_ERROR_CODES)('maps %s in both languages without the backend message', code => {
@@ -138,5 +138,34 @@ describe('payOS copy (payos-checkout Task 2)', () => {
     expect(payAdminText('vi')('payosReceived', { paid: '1', total: '2' })).toBe('payOS đã nhận 1 / 2')
     expect(payAdminText('en')('srcMANUAL')).toBe('Manual transfer')
     expect(payAdminText('vi')('payosNoManual')).toBe('Đơn payOS không xác nhận tay; hãy bấm kiểm tra với payOS.')
+  })
+})
+
+describe('tutor copy', () => {
+  const api = (status: number, code?: string) => new ApiError('English', status, code)
+  it.each([
+    ['AI_PROVIDER_UNAVAILABLE', 'Dịch vụ AI đang gián đoạn. Hãy thử lại.', true], ['AI_PROVIDER_REQUEST_REJECTED', 'Dịch vụ AI đang gián đoạn. Hãy thử lại.', true],
+    ['AI_PROVIDER_AUTH_FAILED', 'Dịch vụ AI đang gián đoạn. Hãy thử lại.', true], ['AI_PROVIDER_RATE_LIMITED', 'Dịch vụ AI đang gián đoạn. Hãy thử lại.', true],
+    ['AI_TIMEOUT', 'AI phản hồi quá lâu. Hãy thử lại.', true], ['AI_OUTPUT_TRUNCATED', 'Câu trả lời bị cắt. Hãy hỏi cụ thể hơn.', false],
+    ['AI_RATE_LIMITED', 'Bạn hỏi quá nhanh, hãy thử lại sau ít phút.', true], ['AI_GENERATION_IN_PROGRESS', 'AI đang trả lời câu trước.', true],
+    ['AI_STORAGE_UNAVAILABLE', 'Trợ lý AI tạm thời không khả dụng.', true], ['AI_CONFIGURATION_INVALID', 'Trợ lý AI chưa sẵn sàng.', false],
+    ['AI_TUTOR_LESSON_NO_CONTENT', 'Bài này chưa có nội dung chữ để AI dựa vào.', false], ['AI_QUOTA_EXCEEDED', 'Bạn đã dùng hết lượt hỏi AI hôm nay.', false],
+    ['COURSE_PURCHASE_REQUIRED', 'Hãy mua khóa học để tiếp tục.', false], ['LESSON_PREVIEW_ONLY', 'Hãy bắt đầu học khóa này để hỏi AI về bài.', false],
+    ['VALIDATION_ERROR', 'Không gửi được câu hỏi. Hãy tải lại trang.', false], ['MALFORMED_REQUEST', 'Không gửi được câu hỏi. Hãy tải lại trang.', false],
+    ['COURSE_NOT_FOUND', 'Không tìm thấy khóa học hoặc bài học.', false], ['LESSON_NOT_FOUND', 'Không tìm thấy khóa học hoặc bài học.', false],
+    ['ACCESS_DENIED', 'Bạn không có quyền.', false], ['USER_INACTIVE', 'Bạn không có quyền.', false], ['SOMETHING_NEW', 'Dịch vụ AI đang gián đoạn. Hãy thử lại.', true],
+  ])('maps %s (SSE code or HTTP error) to vi copy and the retry flag', (code, text, retry) => {
+    expect(tutorError(code, 'vi')).toMatchObject({ text, retry })
+    expect(tutorError(api(code.startsWith('AI_') || code.endsWith('REQUIRED') ? 429 : 403, code), 'vi')).toMatchObject({ text, retry })
+  })
+  it('asks a signed-out reader to log in, and treats a dropped connection as a retryable outage', () => {
+    expect(tutorError(api(401), 'vi')).toMatchObject({ text: 'Đăng nhập để hỏi AI.', retry: false, login: true })
+    expect(tutorError(new TypeError('fetch failed'), 'en')).toMatchObject({ text: 'The AI service is temporarily unavailable. Try again.', retry: true })
+  })
+  it('has every key in vi and en', () => {
+    const keys = ['open', 'title', 'notice', 'empty', 'placeholder', 'send', 'stop', 'retry', 'quota', 'quotaOut', 'noText', 'login', 'cut', 'inputError', 'ai', 'close', 'newMessages', 'question'] as const
+    for (const key of keys) { expect(tutorText('vi')(key)).not.toBe(''); expect(tutorText('en')(key)).not.toBe('') }
+    expect(tutorText('vi')('quota', { remaining: 19, limit: 20 })).toBe('Còn 19/20 câu hôm nay')
+    expect(tutorText('en')('quota', { remaining: 19, limit: 20 })).toBe('19/20 questions left today')
   })
 })

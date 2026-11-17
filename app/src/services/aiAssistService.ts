@@ -68,6 +68,20 @@ export function outlineErrors(outline: OutlineDraft) {
 
 export const draftBytes =(body: AiDraftRequest) => new TextEncoder().encode(JSON.stringify(body)).length
 
+/** Uses fetch (POST + bearer), not EventSource. `onOpen` gets the preflight quota; resolves when the body ends — the caller checks for a terminal event. */
+export async function streamPost(path: string, body: unknown, signal: AbortSignal, onEvent: (event: AiStreamEvent) => void, onOpen?: (quota: AiQuota | null) => void) {
+  const response = await requestRaw(path, { method: 'POST', body: JSON.stringify(body), signal })
+  if (!response.ok || !response.body) await unwrap(response)
+  onOpen?.(quotaOf(response.headers))
+  const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader()
+  const push = parseSse(onEvent)
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    push(value)
+  }
+}
+
 export const aiAssist = {
   /** Today's allowance per kind; reserves nothing. */
   quota: () => request<{ outline: AiQuota; draft: AiQuota }>(`${base}/quota`),
@@ -75,19 +89,7 @@ export const aiAssist = {
     const response = await requestRaw(`${base}/outlines`, { method: 'POST', body: JSON.stringify(body) })
     return { outline: await unwrap<AiOutline>(response), quota: quotaOf(response.headers) }
   },
-  /** Uses fetch (POST + bearer), not EventSource. `onOpen` gets the preflight quota; resolves when the body ends — the caller checks for a terminal event. */
-  streamDraft: async (body: AiDraftRequest, signal: AbortSignal, onEvent: (event: AiStreamEvent) => void, onOpen?: (quota: AiQuota | null) => void) => {
-    const response = await requestRaw(`${base}/drafts:stream`, { method: 'POST', body: JSON.stringify(body), signal })
-    if (!response.ok || !response.body) await unwrap(response)
-    onOpen?.(quotaOf(response.headers))
-    const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader()
-    const push = parseSse(onEvent)
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      push(value)
-    }
-  },
+  streamDraft: (body: AiDraftRequest, signal: AbortSignal, onEvent: (event: AiStreamEvent) => void, onOpen?: (quota: AiQuota | null) => void) => streamPost(`${base}/drafts:stream`, body, signal, onEvent, onOpen),
   /** Best-effort; `keepalive` lets the DELETE outlive a closing tab (pagehide). */
   cancel: (generationId: string, keepalive = false) =>
     requestRaw(`${base}/generations/${generationId}`, { method: 'DELETE', keepalive }).then(r => unwrap<{ generationId: string; status: string }>(r)),

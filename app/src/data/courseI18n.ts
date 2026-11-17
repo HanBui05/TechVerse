@@ -293,6 +293,48 @@ export function readerCourseText(language: Language) {
 }
 export type ReaderCourseText = ReturnType<typeof readerCourseText>
 
+// Lesson AI tutor sheet (course-ai-tutor wireframe): copy from the spec table, keyed by outcome rather than by backend code.
+const tutorVi = {
+  open: 'Hỏi AI về bài này', title: 'Trợ lý AI của bài học', notice: 'AI chỉ dựa trên nội dung chữ của bài này và có thể trả lời sai. Hãy đối chiếu với bài học.',
+  empty: 'Hỏi bất cứ điều gì bạn chưa hiểu trong bài.', placeholder: 'Nhập câu hỏi của bạn…', send: 'Gửi', stop: 'Dừng', retry: 'Thử lại', quota: 'Còn {remaining}/{limit} câu hôm nay',
+  quotaOut: 'Bạn đã dùng hết lượt hỏi AI hôm nay.', noText: 'Bài này chưa có nội dung chữ để AI dựa vào.', login: 'Đăng nhập để hỏi AI', cut: 'Bài học dài nên AI chỉ đọc phần đầu.',
+  busy: 'AI đang trả lời câu trước.', rateLimited: 'Bạn hỏi quá nhanh, hãy thử lại sau ít phút.', unavailable: 'Dịch vụ AI đang gián đoạn. Hãy thử lại.', timeout: 'AI phản hồi quá lâu. Hãy thử lại.',
+  truncated: 'Câu trả lời bị cắt. Hãy hỏi cụ thể hơn.', notReady: 'Trợ lý AI chưa sẵn sàng.', storage: 'Trợ lý AI tạm thời không khả dụng.', purchase: 'Hãy mua khóa học để tiếp tục.',
+  previewOnly: 'Hãy bắt đầu học khóa này để hỏi AI về bài.', inputError: 'Hãy nhập câu hỏi (tối đa 500 ký tự).', invalid: 'Không gửi được câu hỏi. Hãy tải lại trang.', denied: 'Bạn không có quyền.',
+  notFound: 'Không tìm thấy khóa học hoặc bài học.', signIn: 'Đăng nhập để hỏi AI.', ai: 'AI', close: 'Đóng', newMessages: 'Tin mới', question: 'Câu hỏi', count: '{n}/500',
+}
+type TutorCopy = typeof tutorVi
+const tutorEn: TutorCopy = {
+  open: 'Ask AI about this lesson', title: 'Lesson AI assistant', notice: 'The AI only uses this lesson\'s text and can be wrong. Check against the lesson.',
+  empty: 'Ask about anything unclear in this lesson.', placeholder: 'Type your question…', send: 'Send', stop: 'Stop', retry: 'Retry', quota: '{remaining}/{limit} questions left today',
+  quotaOut: 'You have used all AI questions for today.', noText: 'This lesson has no text for the AI to use.', login: 'Sign in to ask AI', cut: 'This lesson is long, so the AI only read the first part.',
+  busy: 'The AI is still answering the previous question.', rateLimited: 'Too many questions; try again shortly.', unavailable: 'The AI service is temporarily unavailable. Try again.', timeout: 'The AI took too long. Try again.',
+  truncated: 'The answer was cut off. Try a more specific question.', notReady: 'The AI assistant is not ready.', storage: 'The AI assistant is temporarily unavailable.', purchase: 'Buy this course to continue.',
+  previewOnly: 'Start this course to ask AI about this lesson.', inputError: 'Enter a question (up to 500 characters).', invalid: 'The question could not be sent. Reload the page.', denied: 'You do not have permission.',
+  notFound: 'Course or lesson not found.', signIn: 'Sign in to ask AI.', ai: 'AI', close: 'Close', newMessages: 'New messages', question: 'Question', count: '{n}/500',
+}
+export function tutorText(language: Language) {
+  const copy = language === 'vi' ? tutorVi : tutorEn
+  return (key: keyof TutorCopy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
+}
+
+const tutorKeys: Record<string, keyof TutorCopy> = {
+  AI_PROVIDER_UNAVAILABLE: 'unavailable', AI_PROVIDER_REQUEST_REJECTED: 'unavailable', AI_PROVIDER_AUTH_FAILED: 'unavailable', AI_PROVIDER_RATE_LIMITED: 'unavailable',
+  AI_TIMEOUT: 'timeout', AI_OUTPUT_TRUNCATED: 'truncated', AI_RATE_LIMITED: 'rateLimited', AI_GENERATION_IN_PROGRESS: 'busy', AI_STORAGE_UNAVAILABLE: 'storage',
+  AI_CONFIGURATION_INVALID: 'notReady', AI_TUTOR_LESSON_NO_CONTENT: 'noText', AI_QUOTA_EXCEEDED: 'quotaOut', COURSE_PURCHASE_REQUIRED: 'purchase', LESSON_PREVIEW_ONLY: 'previewOnly',
+  VALIDATION_ERROR: 'invalid', MALFORMED_REQUEST: 'invalid', COURSE_NOT_FOUND: 'notFound', LESSON_NOT_FOUND: 'notFound', ACCESS_DENIED: 'denied', USER_INACTIVE: 'denied',
+}
+const tutorFinal = new Set<keyof TutorCopy>(['truncated', 'notReady', 'noText', 'quotaOut', 'purchase', 'previewOnly', 'invalid', 'denied', 'notFound'])
+
+/** Copy + “Retry allowed” for an SSE `error` code or an HTTP failure before the stream opened; 401 asks to sign in, anything unknown (or a dropped connection) is a retryable outage. */
+export function tutorError(error: unknown, language: Language) {
+  const t = tutorText(language)
+  if (error instanceof ApiError && error.status === 401) return { text: t('signIn'), retry: false, login: true }
+  const code = typeof error === 'string' ? error : error instanceof ApiError ? error.code ?? '' : ''
+  const key = tutorKeys[code] ?? 'unavailable'
+  return { text: t(key), retry: !tutorFinal.has(key), login: false }
+}
+
 // Orders (wireframe 2b): payment copy from the spec table plus the wireframe section 5 rows.
 const orderVi = {
   myOrders: 'Đơn hàng của tôi', kicker: 'Góc của tôi', count: '{n} đơn', loading: 'Đang tải đơn hàng...', loadError: 'Không thể tải đơn hàng.', retry: 'Thử lại', allCourses: 'Khóa học',
