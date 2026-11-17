@@ -4,19 +4,27 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`exercise-practice
 
 ## Bắt đầu từ đây (cập nhật 2026-11-17)
 
-- **Task tiếp:** Task 1c — AI sinh câu hỏi cho tác giả (Task 1b đã nhận 2026-11-17) · Giao diện: Không
+- **Task tiếp:** Cổng wireframe — viết `plans/exercise-practice.wireframe.md` (desktop + mobile, đủ trạng thái rỗng/lỗi/chờ), dừng chờ duyệt, rồi Task 2a (Task 1c đã nhận 2026-11-17) · Giao diện: Có
 - Spec chốt 2026-11-15; `course-payment` và `course-ai-tutor` đã merge vào `main` nên đủ điều kiện bắt đầu. Migration lấy số kế tiếp lúc code (spec ghi V14 nếu V13 đã có) — kiểm `db/migration` trước.
 - Nhánh: `feature/exercise-practice` (từ `main` sau PR #10).
 
 ## Quyết định người dùng chưa có trong spec
 
-- (không có)
+- **2026-11-17:** body `POST …/ai/questions` thêm `version` bắt buộc (≥ 0); lệch version → 409 `EXERCISE_VERSION_CONFLICT`, hoàn lượt (không gọi model nếu lệch ngay từ đầu). Task 2a phải gửi `version` đang giữ và dùng `version` trả về cho lần `PUT questions` sau.
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-17 — Task 1c đã nhận: AI sinh câu hỏi
+- Code: `ExerciseAiService` (+ `POST /author/exercise-sets/{id}/ai/questions` trong `AuthorExerciseController`), `AuthorExerciseService.aiContext/markAiAssisted/aiUsable`, `AiPromptFactory.exercise*`, `Kind.EXERCISE`, `AiAssistProperties` (+`exercisePerDay`, `exerciseTimeout`, token `EXERCISE`), `AiQuotaResponse.exercise`, YAML + `.env.example`; handler `QuotaAwareException` chuyển từ `AuthorAiController` sang `GlobalExceptionHandler` để dùng chung header quota.
+- Test: `./gradlew test --tests 'exercise.*' --tests 'ai.*'` — 204 ca, 0 lỗi (`ExerciseAiServiceTest` 11 ca mới, `AiPromptFactoryTest`, `AuthorExerciseControllerTest`, 3 ca mới ở `AuthorExerciseIntegrationTest`; 1 ca đỏ do tôi viết sai 409 đã sửa, chạy lại đạt).
+- Lệch khác spec: spec ghi 409 cho `EXERCISE_QUESTIONS_INVALID` (vượt 50 câu) nhưng mã này đã là 400 từ 1a → giữ 400; theo luật “ít class” không tạo `ExerciseQuestionValidator` riêng (dùng `normalize` + `checkContent`); phản hồi thêm `version` mới; chỉ sửa lại (repair) khi JSON sai schema, câu không đạt kiểm lưu thì bị loại; chưa viết test đỏ-trước (code viết trước test).
+- Review vòng 1 (2 phát hiện, đúng): version trả về có thể che thay đổi đồng thời; chấp nhận câu không đủ 4 lựa chọn. Đã sửa: `AiContext.version` + `markAiAssisted(..., expectedVersion)` dùng `ensureVersion` dưới khóa (lệch → `EXERCISE_VERSION_CONFLICT`, hoàn lượt); `aiUsable` loại câu trắc nghiệm không đúng 4 lựa chọn (thêm ca 2 và 5 lựa chọn, ca version lệch). `exercise.*` + `ai.*` — 204 ca, 0 lỗi.
+- Review vòng 2 (1 phát hiện cao, đúng; người dùng đồng ý 2026-11-17, đã sửa: `AiQuestions.version`, `aiContext(..., clientVersion)` kiểm dưới khóa, thêm ca tab cũ ở `AuthorExerciseIntegrationTest`; `exercise.*` + `ai.*` — 205 ca, 0 lỗi): `version` trả về vẫn cho tab A giữ bản cũ gọi AI sau khi tab B lưu, rồi PUT đè. Khuyến nghị: thêm `version` bắt buộc vào body AI, kiểm dưới khóa lúc lấy ngữ cảnh và lúc đặt cờ (lệch → 409 `EXERCISE_VERSION_CONFLICT`, hoàn lượt). 
+- Chưa kiểm: gọi model thật; hai request AI đồng thời chỉ kiểm bằng unit test (registry trong bộ nhớ).
+
 ### 2026-11-17 — Task 1b đã nhận: duyệt, khu Luyện tập, lượt làm
 - Code: `ModeratorExerciseService/Controller`, `PublishedExerciseService/Controller` (chấm điểm là `static grade` trong service), entity `ExerciseAttempt` + repo, `ExercisePracticeResponse` (DTO câu hỏi người làm tách kiểu, không có đáp án), 5 mã lỗi mới, `SecurityConfiguration`; `AuthorExerciseService.rateLimit(key, limit)` thành package-private để dùng chung.
 - Test: `./gradlew test --tests 'com.techverse.server.exercise.*'` — 48+ ca, 0 lỗi (grader/contract trong `ExerciseLifecycleTest`; `ExercisePracticeControllerTest` mới; ca moderator + practice thêm vào `AuthorExerciseIntegrationTest`).

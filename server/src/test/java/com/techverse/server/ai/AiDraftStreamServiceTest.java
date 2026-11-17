@@ -548,7 +548,7 @@ class AiDraftStreamServiceTest {
         "SHORT", Duration.ofMillis(200), "MEDIUM", Duration.ofSeconds(120), "LONG", Duration.ofSeconds(180)));
     var base = AiRateLimitServiceTest.props(10, 5, 3);
     var props = new com.techverse.server.properties.AiAssistProperties(
-        base.outlineTimeout(), shortDeadline, base.maxCompletionTokens(), 10, 5, 3, base.completedGenerationTtl(), 20, Duration.ofSeconds(60));
+        base.outlineTimeout(), shortDeadline, base.maxCompletionTokens(), 10, 5, 3, base.completedGenerationTtl(), 20, Duration.ofSeconds(60), 10, Duration.ofSeconds(60));
     ReflectionTestUtils.setField(service, "properties", props);
     provider = Flux.concat(Flux.just(chunk("## JWT giải quyết vấn đề gì?\n", null)), Flux.never());
 

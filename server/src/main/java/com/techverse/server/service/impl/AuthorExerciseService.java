@@ -120,12 +120,7 @@ public class AuthorExerciseService {
         set.ensureVersion(r.version());
         activeTopic(set.getTopic().getId());
         var clean = normalize(set.getType(), r.questions());
-        for (var q : clean) {
-            for (String text : new String[] {q.content(), q.explanation(), q.front(), q.back()}) checkMarkdown(text);
-            // PostgreSQL text/jsonb cannot hold NUL.
-            for (String text : new String[] {q.codeSnippet(), q.codeLanguage()}) if (hasNul(text)) throw new CustomException(ErrorCode.EXERCISE_CONTENT_INVALID);
-            if (q.options() != null) for (String o : q.options()) if (hasNul(o)) throw new CustomException(ErrorCode.EXERCISE_CONTENT_INVALID);
-        }
+        clean.forEach(this::checkContent);
         questions.deleteBySet(set.getId());
         boolean card = set.getType() == ExerciseType.FLASHCARD;
         int position = 1;
@@ -136,6 +131,59 @@ public class AuthorExerciseService {
                             String.valueOf(q.correctIndex()), q.explanation()));
         set.bump();
         return flushed(set);
+    }
+
+    // ------------------------------------------------------------------ AI question suggestions (1c)
+
+    /** Plain copy of what the model may see; no entity crosses the provider call. */
+    public record AiContext(ExerciseType type, String title, String description, String topic,
+            ExerciseDifficulty difficulty, List<String> existing, int version) {}
+
+    /** Run inside a transaction: owner, Author eligibility, editable state, the 50-question cap and the client's version. */
+    public AiContext aiContext(UUID actor, UUID id, int adding, int clientVersion) {
+        var set = editableForAi(actor, id, adding);
+        set.ensureVersion(clientVersion);
+        var existing = questions.findByExerciseSetIdOrderByPositionAsc(set.getId()).stream()
+                .map(q -> q.getContent().length() > 200 ? q.getContent().substring(0, 200) : q.getContent()).toList();
+        return new AiContext(set.getType(), set.getTitle(), set.getDescription(), set.getTopic().getName(),
+                set.getDifficulty(), existing, set.getVersion());
+    }
+
+    /** Run inside a transaction after the model answered: re-check everything (the set must still be at {@code expectedVersion}), then flag it. Returns the new version. */
+    public int markAiAssisted(UUID actor, UUID id, int adding, int expectedVersion) {
+        var set = editableForAi(actor, id, adding);
+        set.ensureVersion(expectedVersion);
+        set.markAiAssisted();
+        sets.flush();
+        return set.getVersion();
+    }
+
+    /** The cleaned question when it passes the same checks as {@code PUT questions}, else null. */
+    public Question aiUsable(ExerciseType type, Question q) {
+        try {
+            var clean = normalize(type, List.of(q)).get(0);
+            checkContent(clean);
+            // The AI contract is exactly four options (the save rules allow 2 to 6).
+            return type == ExerciseType.MULTIPLE_CHOICE && clean.options().size() != 4 ? null : clean;
+        } catch (CustomException e) {
+            return null;
+        }
+    }
+
+    private ExerciseSet editableForAi(UUID actor, UUID id, int adding) {
+        access.lockWriter(actor);
+        var set = lockOwned(actor, id);
+        set.ensureEditable();
+        if (questions.countByExerciseSetId(set.getId()) + adding > MAX_QUESTIONS)
+            throw new CustomException(ErrorCode.EXERCISE_QUESTIONS_INVALID, Map.of("questions", "At most " + MAX_QUESTIONS + " questions"));
+        return set;
+    }
+
+    private void checkContent(Question q) {
+        for (String text : new String[] {q.content(), q.explanation(), q.front(), q.back()}) checkMarkdown(text);
+        // PostgreSQL text/jsonb cannot hold NUL.
+        for (String text : new String[] {q.codeSnippet(), q.codeLanguage()}) if (hasNul(text)) throw new CustomException(ErrorCode.EXERCISE_CONTENT_INVALID);
+        if (q.options() != null) for (String o : q.options()) if (hasNul(o)) throw new CustomException(ErrorCode.EXERCISE_CONTENT_INVALID);
     }
 
     @Transactional

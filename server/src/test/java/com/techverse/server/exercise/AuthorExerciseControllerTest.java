@@ -8,7 +8,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.techverse.server.controller.AuthorExerciseController;
 import com.techverse.server.exception.*;
+import com.techverse.server.service.impl.AiRateLimitService.Quota;
 import com.techverse.server.service.impl.AuthorExerciseService;
+import com.techverse.server.service.impl.ExerciseAiService;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +39,7 @@ class AuthorExerciseControllerTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
     @MockitoBean AuthorExerciseService service;
+    @MockitoBean ExerciseAiService ai;
 
     final UUID actor = UUID.randomUUID();
     final UUID id = UUID.randomUUID();
@@ -92,6 +95,27 @@ class AuthorExerciseControllerTest {
         call(post(ROOT), create("title", "Java basics"), "ROLE_LEARNER").andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
         mvc.perform(post(ROOT).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void aiQuestionsValidateTheBodyAndReturnQuotaHeaders() throws Exception {
+        String url = ROOT + "/" + id + "/ai/questions";
+        for (var bad : List.of(Map.of("version", 0, "instruction", "x"), Map.of("version", 0, "count", 0), Map.of("version", 0, "count", 11),
+                Map.of("count", 3), Map.of("version", -1, "count", 3),
+                Map.of("version", 0, "count", 3, "instruction", "x".repeat(501)), Map.of("version", 0, "count", 3, "sourceText", "x".repeat(8001))))
+            call(post(url), bad, "ROLE_AUTHOR").andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        call(post(url), Map.of("version", 0, "count", 3), "ROLE_LEARNER").andExpect(status().isForbidden());
+
+        when(ai.suggest(eq(actor), eq(id), any()))
+                .thenReturn(new ExerciseAiService.Result(new ExerciseAiService.Suggestions(List.of(), 3, 4), new Quota(10, 9)));
+        call(post(url), Map.of("version", 0, "count", 3, "sourceText", "x".repeat(8000)), "ROLE_AUTHOR").andExpect(status().isOk())
+                .andExpect(header().string("X-AI-Quota-Limit", "10")).andExpect(header().string("X-AI-Quota-Remaining", "9"))
+                .andExpect(jsonPath("$.data.version").value(4));
+
+        when(ai.suggest(eq(actor), eq(id), any()))
+                .thenThrow(new com.techverse.server.service.AuthorAiService.QuotaAwareException(ErrorCode.AI_OUTPUT_INVALID, new Quota(10, 10)));
+        call(post(url), Map.of("version", 0, "count", 3), "ROLE_AUTHOR").andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.code").value("AI_OUTPUT_INVALID")).andExpect(header().string("X-AI-Quota-Remaining", "10"));
     }
 
     @Test

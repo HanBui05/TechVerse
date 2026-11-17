@@ -408,8 +408,9 @@ class AiOutlineServiceTest {
   void quotaChecksTheAuthorThenReadsBothAllowancesWithoutReserving() {
     when(limits.peek(actor, Kind.OUTLINE)).thenReturn(new AiRateLimitService.Quota(10, 7));
     when(limits.peek(actor, Kind.DRAFT)).thenReturn(new AiRateLimitService.Quota(5, 5));
+    when(limits.peek(actor, Kind.EXERCISE)).thenReturn(new AiRateLimitService.Quota(10, 10));
     assertThat(service(null).quota(actor))
-        .isEqualTo(new AiQuotaResponse(new AiRateLimitService.Quota(10, 7), new AiRateLimitService.Quota(5, 5)));
+        .isEqualTo(new AiQuotaResponse(new AiRateLimitService.Quota(10, 7), new AiRateLimitService.Quota(5, 5), new AiRateLimitService.Quota(10, 10)));
     verify(access).lockWriter(actor);
     verify(limits, never()).reserve(any(), any());
   }

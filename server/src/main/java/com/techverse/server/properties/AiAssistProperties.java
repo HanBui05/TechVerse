@@ -18,7 +18,9 @@ public record AiAssistProperties(
         int burstPerMinute,
         Duration completedGenerationTtl,
         int tutorPerDay,
-        Duration tutorTimeout) {
+        Duration tutorTimeout,
+        int exercisePerDay,
+        Duration exerciseTimeout) {
     static final List<String> LENGTHS = List.of("SHORT", "MEDIUM", "LONG");
 
     public AiAssistProperties {
@@ -28,7 +30,8 @@ public record AiAssistProperties(
             positive("ai.assist.draft-timeouts." + length, draftTimeouts == null ? null : draftTimeouts.get(length));
         }
         positive("ai.assist.tutor-timeout", tutorTimeout);
-        for (String kind : List.of("OUTLINE", "SHORT", "MEDIUM", "LONG", "TUTOR")) {
+        positive("ai.assist.exercise-timeout", exerciseTimeout);
+        for (String kind : List.of("OUTLINE", "SHORT", "MEDIUM", "LONG", "TUTOR", "EXERCISE")) {
             Integer tokens = maxCompletionTokens == null ? null : maxCompletionTokens.get(kind);
             if (tokens == null || tokens < 512 || tokens > 65536)
                 throw new IllegalArgumentException(
@@ -37,6 +40,7 @@ public record AiAssistProperties(
         positive("ai.assist.outline-per-day", outlinePerDay);
         positive("ai.assist.draft-per-day", draftPerDay);
         positive("ai.assist.tutor-per-day", tutorPerDay);
+        positive("ai.assist.exercise-per-day", exercisePerDay);
         positive("ai.assist.burst-per-minute", burstPerMinute);
         draftTimeouts = Map.copyOf(draftTimeouts);
         maxCompletionTokens = Map.copyOf(maxCompletionTokens);
@@ -50,9 +54,13 @@ public record AiAssistProperties(
         return maxCompletionTokens.get("TUTOR");
     }
 
+    public int exerciseTokens() {
+        return maxCompletionTokens.get("EXERCISE");
+    }
+
     /** Longest deadline of any AI kind; the MVC async timeout must exceed it. */
     public Duration longestTimeout() {
-        return Stream.concat(LENGTHS.stream().map(draftTimeouts::get), Stream.of(outlineTimeout, tutorTimeout))
+        return Stream.concat(LENGTHS.stream().map(draftTimeouts::get), Stream.of(outlineTimeout, tutorTimeout, exerciseTimeout))
                 .max(Duration::compareTo)
                 .orElseThrow();
     }

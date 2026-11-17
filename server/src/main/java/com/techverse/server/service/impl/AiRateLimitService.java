@@ -50,7 +50,8 @@ public class AiRateLimitService {
     public enum Kind {
         OUTLINE,
         DRAFT,
-        TUTOR
+        TUTOR,
+        EXERCISE
     }
 
     public record Quota(int limit, int remaining) {}
@@ -132,6 +133,7 @@ public class AiRateLimitService {
             case OUTLINE -> properties.outlinePerDay();
             case DRAFT -> properties.draftPerDay();
             case TUTOR -> properties.tutorPerDay();
+            case EXERCISE -> properties.exercisePerDay();
         };
     }
 

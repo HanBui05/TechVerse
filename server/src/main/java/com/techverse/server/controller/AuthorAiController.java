@@ -6,8 +6,6 @@ import com.techverse.server.dto.response.AiGenerationStatusResponse;
 import com.techverse.server.dto.response.AiOutlineResponse;
 import com.techverse.server.dto.response.AiQuotaResponse;
 import com.techverse.server.dto.response.ApiResponse;
-import com.techverse.server.exception.ErrorCode;
-import com.techverse.server.exception.ErrorResponse;
 import com.techverse.server.service.AuthorAiService;
 import com.techverse.server.service.impl.AiDraftStreamService;
 
@@ -34,7 +32,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.nio.charset.StandardCharsets;
 
-import java.time.Instant;
 import java.util.UUID;
 
 @RestController
@@ -121,24 +118,5 @@ public class AuthorAiController {
                 .message("AI generation cancellation processed")
                 .data(new AiGenerationStatusResponse(generationId, result.name()))
                 .build();
-    }
-
-    /** Same envelope as GlobalExceptionHandler, plus the allowance left after the refund. */
-    @ExceptionHandler(AuthorAiService.QuotaAwareException.class)
-    ResponseEntity<ErrorResponse> quotaAwareFailure(
-            AuthorAiService.QuotaAwareException e, HttpServletRequest request) {
-        ErrorCode code = e.getErrorCode();
-        return ResponseEntity.status(code.getStatus())
-                .header(QUOTA_LIMIT, String.valueOf(e.getQuota().limit()))
-                .header(QUOTA_REMAINING, String.valueOf(e.getQuota().remaining()))
-                .body(
-                        ErrorResponse.builder()
-                                .status(code.getStatus().value())
-                                .code(code.getCode())
-                                .message(code.getMessage())
-                                .error(code.getStatus().getReasonPhrase())
-                                .timestamp(Instant.now())
-                                .path(request.getRequestURI())
-                                .build());
     }
 }

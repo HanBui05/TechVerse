@@ -584,4 +584,87 @@ class AuthorExerciseIntegrationTest extends ArticleIntegrationTestBase {
                 .andExpect(status().isOk()).andReturn();
         return mapper.readTree(r.getResponse().getContentAsString()).at("/data/accessToken").asText();
     }
+
+    // ------------------------------------------------------------------ AI questions (1c)
+
+    static final String AI_QUIZ = "{\"questions\":[{\"content\":\"JWT gồm mấy phần?\",\"codeSnippet\":\"\",\"codeLanguage\":\"\","
+            + "\"options\":[\"1\",\"2\",\"3\",\"4\"],\"correctIndex\":2,\"explanation\":\"Header, payload, signature.\"}]}";
+
+    void modelReplies(String json) {
+        org.mockito.Mockito.when(chatModel.getDefaultOptions())
+                .thenReturn(org.springframework.ai.openai.OpenAiChatOptions.builder().model("m").build());
+        org.mockito.Mockito.when(chatModel.call(org.mockito.ArgumentMatchers.any(org.springframework.ai.chat.prompt.Prompt.class)))
+                .thenReturn(new org.springframework.ai.chat.model.ChatResponse(List.of(new org.springframework.ai.chat.model.Generation(
+                        new org.springframework.ai.chat.messages.AssistantMessage(json),
+                        org.springframework.ai.chat.metadata.ChatGenerationMetadata.builder().finishReason("STOP").build()))));
+    }
+
+    String aiUrl(String id) {
+        return ROOT + "/" + id + "/ai/questions";
+    }
+
+    @Test
+    void aiQuestionsNeedTheOwnerAnEditableSetAndRoomForMoreQuestions() throws Exception {
+        String id = ready();
+        send(post(aiUrl(id)), otherToken, Map.of("version", 0, "count", 2)).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("EXERCISE_SET_NOT_FOUND"));
+        send(post(aiUrl(id)), learnerToken, Map.of("version", 0, "count", 2)).andExpect(status().isForbidden());
+        send(post(aiUrl(id)), null, Map.of("version", 0, "count", 2)).andExpect(status().isUnauthorized());
+        send(post(aiUrl(id)), token, Map.of("version", 0, "count", 0)).andExpect(status().isBadRequest());
+        save(id, questions(50), version(id)).andExpect(status().isOk());
+        send(post(aiUrl(id)), token, Map.of("version", version(id), "count", 1)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("EXERCISE_QUESTIONS_INVALID"));
+        send(post(ROOT + "/" + id + "/submit"), token, Map.of()).andExpect(status().isOk());
+        send(post(aiUrl(id)), token, Map.of("version", version(id), "count", 1)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("EXERCISE_NOT_EDITABLE"));
+        org.mockito.Mockito.verify(chatModel, org.mockito.Mockito.never()).call(org.mockito.ArgumentMatchers.any(org.springframework.ai.chat.prompt.Prompt.class));
+    }
+
+    @Test
+    void aiQuestionsAreProposedWithoutSavingAndFlagTheSet() throws Exception {
+        String id = ready();
+        int before = version(id);
+        modelReplies(AI_QUIZ);
+        var res = send(post(aiUrl(id)), token, Map.of("version", before, "count", 2, "instruction", "JWT", "sourceText", "JWT là chuẩn token."))
+                .andExpect(status().isOk()).andExpect(header().string("X-AI-Quota-Limit", "10"))
+                .andExpect(header().string("X-AI-Quota-Remaining", "9"));
+        var body = data(res);
+        assertThat(body.path("questions")).hasSize(1);
+        assertThat(body.path("requested").asInt()).isEqualTo(2);
+        assertThat(body.path("version").asInt()).isEqualTo(before + 1);
+        var set = data(get(ROOT + "/" + id, token));
+        assertThat(set.path("aiAssisted").asBoolean()).isTrue();
+        assertThat(set.path("questions")).hasSize(3);
+        assertThat(set.path("version").asInt()).isEqualTo(before + 1);
+    }
+
+    @Test
+    void aiQuestionsFromAStaleTabAreRejectedAndRefunded() throws Exception {
+        String id = ready();
+        int stale = version(id);
+        save(id, questions(4), stale).andExpect(status().isOk());
+        modelReplies(AI_QUIZ);
+        send(post(aiUrl(id)), token, Map.of("version", stale, "count", 1)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("EXERCISE_VERSION_CONFLICT"));
+        org.mockito.Mockito.verify(chatModel, org.mockito.Mockito.never()).call(org.mockito.ArgumentMatchers.any(org.springframework.ai.chat.prompt.Prompt.class));
+        assertThat(data(get("/api/v1/author/ai/quota", token)).path("exercise").path("remaining").asInt()).isEqualTo(10);
+        assertThat(data(get(ROOT + "/" + id, token)).path("aiAssisted").asBoolean()).isFalse();
+    }
+
+    @Test
+    void aiQuestionsStopWhenTheDayIsUsedUpAndTheQuotaApiListsExercise() throws Exception {
+        String id = ready();
+        var quota = data(get("/api/v1/author/ai/quota", token));
+        assertThat(quota.path("exercise").path("limit").asInt()).isEqualTo(10);
+        assertThat(quota.path("exercise").path("remaining").asInt()).isEqualTo(10);
+        assertThat(quota.path("outline").path("limit").asInt()).isPositive();
+        assertThat(quota.path("draft").path("limit").asInt()).isPositive();
+
+        String day = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE);
+        redisTemplate.opsForValue().set("ai:quota:exercise:" + author + ":" + day, "10");
+        send(post(aiUrl(id)), token, Map.of("version", version(id), "count", 1)).andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("AI_QUOTA_EXCEEDED"));
+        assertThat(data(get("/api/v1/author/ai/quota", token)).path("exercise").path("remaining").asInt()).isZero();
+        assertThat(data(get(ROOT + "/" + id, token)).path("aiAssisted").asBoolean()).isFalse();
+    }
 }

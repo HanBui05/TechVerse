@@ -3,6 +3,7 @@ package com.techverse.server.controller;
 import com.techverse.server.dto.request.*;
 import com.techverse.server.dto.response.*;
 import com.techverse.server.service.impl.AuthorExerciseService;
+import com.techverse.server.service.impl.ExerciseAiService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +28,7 @@ import java.util.UUID;
 @Tag(name = "Author Exercises", description = "Own quiz and flashcard sets: metadata, questions, submission")
 public class AuthorExerciseController {
     private final AuthorExerciseService service;
+    private final ExerciseAiService ai;
 
     @GetMapping("/options")
     @PreAuthorize("hasRole('AUTHOR')")
@@ -73,6 +75,19 @@ public class AuthorExerciseController {
     public ApiResponse<ExerciseSetResponse> questions(
             @AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody ExerciseSetRequest.Questions request) {
         return ok("Questions saved", service.replaceQuestions(actor(jwt), id, request));
+    }
+
+    @PostMapping("/{id}/ai/questions")
+    @PreAuthorize("hasRole('AUTHOR')")
+    @Operation(summary = "Propose questions with AI; saves nothing but the ai_assisted flag")
+    public ResponseEntity<ApiResponse<ExerciseAiService.Suggestions>> aiQuestions(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody ExerciseSetRequest.AiQuestions request) {
+        var result = ai.suggest(actor(jwt), id, request);
+        return ResponseEntity.ok()
+                .header(AuthorAiController.QUOTA_LIMIT, String.valueOf(result.quota().limit()))
+                .header(AuthorAiController.QUOTA_REMAINING, String.valueOf(result.quota().remaining()))
+                .body(ApiResponse.<ExerciseAiService.Suggestions>builder()
+                        .status(200).message("AI questions proposed").data(result.body()).build());
     }
 
     @PostMapping("/{id}/submit")

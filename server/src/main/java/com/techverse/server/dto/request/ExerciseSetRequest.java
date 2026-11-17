@@ -37,6 +37,13 @@ public final class ExerciseSetRequest {
         }
     }
 
+    /** AI suggestions: optional hints, how many to propose, and the set version the client holds. */
+    public record AiQuestions(
+            @NotNull @Min(0) Integer version,
+            @Size(max = 500) String instruction,
+            @Size(max = 8000) String sourceText,
+            @NotNull @Min(1) @Max(10) Integer count) {}
+
     public record Questions(@NotNull @Min(0) Integer version, @NotNull @Valid List<Question> questions) {}
 
     /** Quiz uses content/options/correctIndex/explanation; card uses front/back/explanation. */
