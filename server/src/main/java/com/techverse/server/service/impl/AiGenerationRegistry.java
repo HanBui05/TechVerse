@@ -2,6 +2,7 @@ package com.techverse.server.service.impl;
 
 import com.techverse.server.exception.CustomException;
 import com.techverse.server.exception.ErrorCode;
+import com.techverse.server.service.impl.AiRateLimitService.Kind;
 
 import org.springframework.stereotype.Component;
 
@@ -14,7 +15,7 @@ import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
 /**
- * Running draft streams, one per Author. A finished entry stays as a tombstone until
+ * Running AI streams, one per Author and kind (DRAFT, TUTOR). A finished entry stays as a tombstone until
  * start + timeout + 10 minutes so a late DELETE is answered idempotently.
  *
  * <p>shortcut: in-memory, single instance only; multi-instance needs sticky routing or a Redis
@@ -31,12 +32,14 @@ public class AiGenerationRegistry {
 
     private static final class Entry {
         final UUID author;
+        final Kind kind;
         final Instant expiresAt;
         boolean running = true;
         BooleanSupplier canceller = () -> false;
 
-        Entry(UUID author, Instant expiresAt) {
+        Entry(UUID author, Kind kind, Instant expiresAt) {
             this.author = author;
+            this.kind = kind;
             this.expiresAt = expiresAt;
         }
     }
@@ -48,13 +51,13 @@ public class AiGenerationRegistry {
         this.clock = clock;
     }
 
-    /** Throws AI_GENERATION_IN_PROGRESS when the Author already has a running stream. */
-    public synchronized UUID start(UUID author, Duration timeout) {
+    /** Throws AI_GENERATION_IN_PROGRESS when the Author already has a running stream of this kind. */
+    public synchronized UUID start(UUID author, Kind kind, Duration timeout) {
         purge();
-        if (entries.values().stream().anyMatch(e -> e.running && e.author.equals(author)))
+        if (entries.values().stream().anyMatch(e -> e.running && e.kind == kind && e.author.equals(author)))
             throw new CustomException(ErrorCode.AI_GENERATION_IN_PROGRESS);
         UUID id = UUID.randomUUID();
-        entries.put(id, new Entry(author, clock.instant().plus(timeout).plus(TOMBSTONE_GRACE)));
+        entries.put(id, new Entry(author, kind, clock.instant().plus(timeout).plus(TOMBSTONE_GRACE)));
         return id;
     }
 

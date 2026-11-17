@@ -25,7 +25,7 @@ public class AiAssistConfiguration {
         verify(
                 environment,
                 environment.getProperty("spring.mvc.async.request-timeout", Duration.class),
-                properties.longestDraftTimeout());
+                properties.longestTimeout());
     }
 
     @Bean
@@ -45,14 +45,14 @@ public class AiAssistConfiguration {
     }
 
     /** Messages name properties only, never their values. */
-    public static void verify(Environment environment, Duration asyncTimeout, Duration longestDraft) {
+    public static void verify(Environment environment, Duration asyncTimeout, Duration longestTimeout) {
         if ("openai".equals(environment.getProperty("spring.ai.model.chat"))
                 && !StringUtils.hasText(environment.getProperty("spring.ai.openai.api-key")))
             throw new IllegalStateException(
                     "AI_MODEL_CHAT=openai requires AI_API_KEY (spring.ai.openai.api-key) to be set");
-        if (asyncTimeout == null || asyncTimeout.compareTo(longestDraft) <= 0)
+        if (asyncTimeout == null || asyncTimeout.compareTo(longestTimeout) <= 0)
             throw new IllegalStateException(
                     "spring.mvc.async.request-timeout must be longer than the longest"
-                            + " ai.assist.draft-timeouts value");
+                            + " ai.assist timeout (outline, draft or tutor)");
     }
 }

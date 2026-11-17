@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /** TechVerse AI policy (deadlines, token caps, quotas). Invalid values fail startup by name. */
 @ConfigurationProperties(prefix = "ai.assist")
@@ -15,7 +16,9 @@ public record AiAssistProperties(
         int outlinePerDay,
         int draftPerDay,
         int burstPerMinute,
-        Duration completedGenerationTtl) {
+        Duration completedGenerationTtl,
+        int tutorPerDay,
+        Duration tutorTimeout) {
     static final List<String> LENGTHS = List.of("SHORT", "MEDIUM", "LONG");
 
     public AiAssistProperties {
@@ -24,7 +27,8 @@ public record AiAssistProperties(
         for (String length : LENGTHS) {
             positive("ai.assist.draft-timeouts." + length, draftTimeouts == null ? null : draftTimeouts.get(length));
         }
-        for (String kind : List.of("OUTLINE", "SHORT", "MEDIUM", "LONG")) {
+        positive("ai.assist.tutor-timeout", tutorTimeout);
+        for (String kind : List.of("OUTLINE", "SHORT", "MEDIUM", "LONG", "TUTOR")) {
             Integer tokens = maxCompletionTokens == null ? null : maxCompletionTokens.get(kind);
             if (tokens == null || tokens < 512 || tokens > 65536)
                 throw new IllegalArgumentException(
@@ -32,6 +36,7 @@ public record AiAssistProperties(
         }
         positive("ai.assist.outline-per-day", outlinePerDay);
         positive("ai.assist.draft-per-day", draftPerDay);
+        positive("ai.assist.tutor-per-day", tutorPerDay);
         positive("ai.assist.burst-per-minute", burstPerMinute);
         draftTimeouts = Map.copyOf(draftTimeouts);
         maxCompletionTokens = Map.copyOf(maxCompletionTokens);
@@ -41,8 +46,15 @@ public record AiAssistProperties(
         return maxCompletionTokens.get("OUTLINE");
     }
 
-    public Duration longestDraftTimeout() {
-        return LENGTHS.stream().map(draftTimeouts::get).max(Duration::compareTo).orElseThrow();
+    public int tutorTokens() {
+        return maxCompletionTokens.get("TUTOR");
+    }
+
+    /** Longest deadline of any AI kind; the MVC async timeout must exceed it. */
+    public Duration longestTimeout() {
+        return Stream.concat(LENGTHS.stream().map(draftTimeouts::get), Stream.of(outlineTimeout, tutorTimeout))
+                .max(Duration::compareTo)
+                .orElseThrow();
     }
 
     private static void positive(String name, Duration value) {

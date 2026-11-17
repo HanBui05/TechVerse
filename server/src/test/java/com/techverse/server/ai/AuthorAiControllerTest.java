@@ -312,7 +312,7 @@ class AuthorAiControllerTest {
         .andReturn();
     String id = generationId.toString();
     assertThat(text(done)).isEqualTo(
-        "event:metadata\ndata:{\"generationId\":\"" + id + "\",\"timeoutSeconds\":120}\n\n"
+        "event:metadata\ndata:{\"generationId\":\"" + id + "\",\"timeoutSeconds\":120,\"contextTruncated\":false}\n\n"
             + "event:delta\ndata:{\"text\":\"## Mục \\\"một\\\"\\n\\ndata: giả\\n\"}\n\n"
             + "event:completed\ndata:{\"generationId\":\"" + id
             + "\",\"validated\":true,\"contentBytes\":42,\"contentSha256\":\"ab\",\"quotaRemaining\":4}\n\n");

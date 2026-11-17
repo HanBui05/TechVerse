@@ -17,6 +17,11 @@ public interface PublishedCourseService {
 
     PublishedLessonResponse lesson(UUID actor, UUID courseId, UUID lessonId);
 
+    /** Snapshot text the AI tutor may use; same access rule as {@link #lesson} but never enrolls or touches progress. */
+    TutorLesson tutorLesson(UUID actor, UUID courseId, UUID lessonId);
+
+    record TutorLesson(String courseTitle, String title, String summary, String content) {}
+
     CourseProgressResponse start(UUID actor, UUID id);
 
     CourseProgressResponse completion(UUID actor, UUID courseId, UUID lessonId, boolean completed);

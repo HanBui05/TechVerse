@@ -1,4 +1,6 @@
 import { request } from './api/client'
+import { streamPost } from './aiAssistService'
+import type { AiQuota, AiStreamEvent } from '../types/aiAssist'
 import type { ArticleOption, AuthorArticleFilter, HistoryEntry, ImageIssue, ModeratorArticleFilter, Page } from '../types/articles'
 import type { Language } from '../types/preferences'
 import type { CourseStudents, StudentProgress, AdminOrder, AdminOrderFilter, AdminPayout, AdminRevenue, AuthorBalance, PayoutRecord, AuthorCourse, AuthorPayout, AuthorRevenue, PayoutAccountForm, PayoutAccountView, RevenueCourseRow, RevenueFilter, CommissionPolicy, CourseFilter, CourseOrder, CourseLearning, CourseLevel, MyCourse, PublicChapter, PublicCourseDetail, PublicCourseSummary, PublicLesson, Viewer, AuthorCourseSummary, ChangeChapter, CourseFields, CourseWrite, Lesson, LessonFields, LessonWrite, ModeratorCourseDetail, ModeratorCourseSummary } from '../types/courses'
@@ -150,6 +152,14 @@ export const publicCourses = {
   start: (id: string) => request<CourseLearning>(`${publicBase}/${encodeURIComponent(id)}/start`, { method: 'POST' }),
   complete: (id: string, lessonId: string, done: boolean) => request<CourseLearning>(`${publicBase}/${encodeURIComponent(id)}/lessons/${encodeURIComponent(lessonId)}/completion`, { method: done ? 'PUT' : 'DELETE' }),
   mine: (page: number) => request<Page<MyCourse>>(`/api/v1/me/courses?${query({ page, size: COURSE_PAGE_SIZE })}`),
+}
+
+export type TutorRequest = { question: string; history: { role: 'USER' | 'ASSISTANT'; content: string }[] }
+/** Lesson AI tutor: one question plus up to six earlier turns; the server stores nothing. */
+export const lessonTutor = {
+  quota: () => request<AiQuota>('/api/v1/me/ai-tutor/quota'),
+  stream: (courseId: string, lessonId: string, body: TutorRequest, signal: AbortSignal, onEvent: (event: AiStreamEvent) => void, onOpen?: (quota: AiQuota | null) => void) =>
+    streamPost(`${publicBase}/${encodeURIComponent(courseId)}/lessons/${encodeURIComponent(lessonId)}/tutor:stream`, body, signal, onEvent, onOpen),
 }
 
 const LEVELS: string[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED']

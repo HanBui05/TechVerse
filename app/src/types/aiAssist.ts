@@ -10,7 +10,7 @@ export type AiOutline = { title: string; summary: string; topicId: string; tagId
 export type AiDraftRequest = AiInput & { title: string; summary: string; sections: AiSection[] } & ({ targetType?: 'ARTICLE'; topicId: string; tagIds: string[] } | { targetType: 'LESSON'; courseId: string })
 
 export type AiStreamEvent =
-  | { type: 'metadata'; generationId: string; timeoutSeconds: number }
+  | { type: 'metadata'; generationId: string; timeoutSeconds: number; contextTruncated?: boolean }
   | { type: 'delta'; text: string }
   | { type: 'completed'; generationId: string; validated: boolean; contentBytes: number; contentSha256: string; quotaRemaining: number | null }
   | { type: 'cancelled'; generationId: string; reason: string; quotaRemaining: number | null }
