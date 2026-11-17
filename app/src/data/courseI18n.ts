@@ -19,7 +19,7 @@ export const COURSE_ERROR_CODES = [
   'COURSE_PRICE_INVALID', 'COURSE_PRICE_TYPE_LOCKED', 'COURSE_PURCHASE_REQUIRED', 'ORDER_INVALID', 'ORDER_COURSE_UNAVAILABLE', 'ORDER_ALREADY_ENROLLED', 'PAYMENT_UNAVAILABLE',
   'ORDER_RATE_LIMITED', 'ORDER_NOT_FOUND', 'ORDER_TRANSFER_REPORT_NOT_ALLOWED', 'AUTH_ACCESS_TOKEN_REQUIRED', 'AUTH_INVALID_ACCESS_TOKEN',
   'PAYMENT_INVALID', 'PAYMENT_AMOUNT_MISMATCH', 'PAYMENT_STATE_INVALID', 'PAYMENT_REFERENCE_CONFLICT', 'PAYMENT_RECONCILIATION_NOT_REQUIRED', 'PAYMENT_RECONCILIATION_STALE', 'COMMISSION_RATE_INVALID',
-  'COURSE_STUDENT_FILTER_INVALID', 'PAYOUT_ACCOUNT_INVALID', 'REVENUE_FILTER_INVALID', 'PAYOUT_INVALID', 'PAYOUT_REFERENCE_CONFLICT', 'PAYOUT_EXCEEDS_BALANCE', 'USER_NOT_FOUND',
+  'PAYMENT_PROVIDER_UNAVAILABLE', 'COURSE_STUDENT_FILTER_INVALID', 'PAYOUT_ACCOUNT_INVALID', 'REVENUE_FILTER_INVALID', 'PAYOUT_INVALID', 'PAYOUT_REFERENCE_CONFLICT', 'PAYOUT_EXCEEDS_BALANCE', 'USER_NOT_FOUND',
 ] as const
 
 const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
@@ -77,6 +77,7 @@ const errors: Record<(typeof COURSE_ERROR_CODES)[number], Copy> = {
   PAYMENT_RECONCILIATION_NOT_REQUIRED: { vi: 'Không có khoản cần đối chiếu.', en: 'Nothing needs reconciling.' },
   PAYMENT_RECONCILIATION_STALE: { vi: 'Có khoản thanh toán mới; hãy xem lại danh sách.', en: 'A new payment arrived; review the list again.' },
   COMMISSION_RATE_INVALID: { vi: 'Tỷ lệ không hợp lệ.', en: 'The rate is invalid.' },
+  PAYMENT_PROVIDER_UNAVAILABLE: { vi: 'Cổng thanh toán tạm thời không phản hồi; hãy thử lại.', en: 'The payment gateway is not responding; please try again.' },
   COURSE_STUDENT_FILTER_INVALID: { vi: 'Bộ lọc không hợp lệ.', en: 'The filters are invalid.' },
   PAYOUT_ACCOUNT_INVALID: { vi: 'Thông tin tài khoản không hợp lệ.', en: 'Bank account details are invalid.' },
   REVENUE_FILTER_INVALID: { vi: 'Khoảng ngày không hợp lệ.', en: 'The date range is invalid.' },
@@ -305,6 +306,11 @@ const orderVi = {
   afterTitle: 'Sau khi chuyển khoản', afterText: 'Quyền học chỉ mở khi Admin đối chiếu sao kê. Khóa học đã mua không được hoàn tiền.',
   report: 'Tôi đã chuyển khoản', reported: 'Đã báo cho Admin lúc {time}; quyền học được mở sau khi Admin đối chiếu.', refresh: 'Làm mới trạng thái', buyAgain: 'Mua lại khóa học',
   expiredAlert: 'Đơn đã hết hạn; liên hệ Admin nếu đã chuyển khoản.', paidAlert: 'Đã nhận tiền', invalidAlert: 'Đơn này không còn hiệu lực.', buyFailed: 'Không thể tạo đơn hàng.', reportFailed: 'Không thể báo chuyển khoản.',
+  PENDING_PAYOS: 'Chờ thanh toán', payosTitle: 'Thanh toán qua payOS', payosHint: 'Quét mã bằng ứng dụng ngân hàng để thanh toán. Đơn tự cập nhật sau khi nhận tiền.',
+  payosOpen: 'Mở trang thanh toán payOS', payosFrame: 'Khung thanh toán payOS', checking: 'Đang kiểm tra thanh toán…', checkAgain: 'Kiểm tra lại', pay: 'Thanh toán',
+  unseen: 'Chưa ghi nhận thanh toán. Nếu bạn đã chuyển, hãy bấm Kiểm tra lại sau ít phút.', underpaid: 'payOS đã nhận {paid}, còn thiếu {remaining}. Hãy chuyển nốt qua mã này.',
+  underpaidShort: 'payOS đã nhận {paid}, còn thiếu {remaining}.', noLink: 'Chưa tạo được mã thanh toán; hãy thử lại.', frameFailed: 'Không tải được khung thanh toán. Hãy mở trang thanh toán payOS.',
+  countdown: 'Còn {time}', expiredNow: 'Đơn đã hết hạn', notPayos: 'Đơn này không thanh toán qua payOS.', checkFailed: 'Không thể kiểm tra thanh toán.', noRefund: 'Khóa học đã mua không được hoàn tiền.',
 }
 type OrderCopy = typeof orderVi
 const orderEn: OrderCopy = {
@@ -319,6 +325,11 @@ const orderEn: OrderCopy = {
   afterTitle: 'After you transfer', afterText: 'Access opens only after an admin verifies the bank statement. Purchased courses are non-refundable.',
   report: 'I have transferred', reported: 'Reported to admin at {time}; access opens after the admin verifies the transfer.', refresh: 'Refresh status', buyAgain: 'Buy again',
   expiredAlert: 'This order has expired; contact an admin if you already transferred.', paidAlert: 'Payment received', invalidAlert: 'This order is no longer valid.', buyFailed: 'Unable to create the order.', reportFailed: 'Unable to report the transfer.',
+  PENDING_PAYOS: 'Awaiting payment', payosTitle: 'Pay with payOS', payosHint: 'Scan the code with your banking app. The order updates once the payment arrives.',
+  payosOpen: 'Open the payOS payment page', payosFrame: 'payOS payment frame', checking: 'Checking your payment…', checkAgain: 'Check again', pay: 'Pay',
+  unseen: 'No payment found yet. If you have paid, check again in a few minutes.', underpaid: 'payOS received {paid}; {remaining} is still due. Pay the rest with this code.',
+  underpaidShort: 'payOS received {paid}; {remaining} is still due.', noLink: 'Could not create the payment code; please try again.', frameFailed: 'The payment frame failed to load. Open the payOS payment page instead.',
+  countdown: '{time} left', expiredNow: 'The order has expired', notPayos: 'This order is not paid through payOS.', checkFailed: 'Unable to check the payment.', noRefund: 'Purchased courses are non-refundable.',
 }
 export function orderText(language: Language) {
   const copy = language === 'vi' ? orderVi : orderEn
@@ -361,6 +372,8 @@ const payVi = {
   holderCheck: 'Đối chiếu tên chủ tài khoản app ngân hàng hiện ra với tên bên dưới trước khi chuyển.', reference: 'Mã sao kê', referenceHint: '1–255 ký tự, lấy từ sao kê ngân hàng.', recordBtn: 'Ghi nhận đã chuyển',
   recordQ: 'Ghi nhận đã chuyển {amount} cho {name}? Không sửa được sau khi ghi.', recordOk: 'Đã ghi nhận khoản chi.', recordFailed: 'Không ghi nhận được khoản chi.',
   accountChanged: 'Tác giả đã đổi tài khoản sau khi bạn mở; khoản chi ghi theo tài khoản bạn đã chuyển.', authorHistory: 'Lịch sử chi của tác giả này', recordedBy: 'Ghi bởi: {name}', historyLine: '{bank} {no} · {holder}',
+  srcPAYOS: 'payOS', srcMANUAL: 'Chuyển khoản tay', viewCheck: 'Xem · Kiểm tra', orderTitle: 'Đơn {code}', payosCheck: 'Kiểm tra với payOS', payosNoManual: 'Đơn payOS không xác nhận tay; hãy bấm kiểm tra với payOS.',
+  payosReceived: 'payOS đã nhận {paid} / {total}', payosNone: 'Chưa ghi nhận thanh toán.', notPayos: 'Đơn này không thanh toán qua payOS.', checkFailed: 'Không thể kiểm tra với payOS.',
 }
 type PayCopy = typeof payVi
 const payEn: PayCopy = {
@@ -398,6 +411,8 @@ const payEn: PayCopy = {
   holderCheck: 'Check that the account holder shown by your banking app matches the name below before transferring.', reference: 'Bank reference', referenceHint: '1–255 characters, from the bank statement.', recordBtn: 'Record as transferred',
   recordQ: 'Record {amount} paid to {name}? This cannot be edited.', recordOk: 'Payout recorded.', recordFailed: 'Unable to record the payout.',
   accountChanged: 'The author changed their account after you opened this; the payout is recorded against the account you paid.', authorHistory: "This author's payouts", recordedBy: 'Recorded by: {name}', historyLine: '{bank} {no} · {holder}',
+  srcPAYOS: 'payOS', srcMANUAL: 'Manual transfer', viewCheck: 'View · Check', orderTitle: 'Order {code}', payosCheck: 'Check with payOS', payosNoManual: 'payOS orders cannot be confirmed manually; check with payOS instead.',
+  payosReceived: 'payOS received {paid} of {total}', payosNone: 'No payment recorded yet.', notPayos: 'This order is not paid through payOS.', checkFailed: 'Unable to check with payOS.',
 }
 export function payAdminText(language: Language) {
   const copy = language === 'vi' ? payVi : payEn

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, Receipt, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Receipt, RefreshCw } from 'lucide-react'
 import { cn } from 'cn'
 import { Badge } from '@/components/ui/badge'
 import type { BadgeTone } from '@/components/ui/badge'
@@ -18,6 +18,8 @@ import type { Language } from '../../types/preferences'
 
 /** Wireframe section 0: PENDING amber, PAID green, EXPIRED slate, FAILED/CANCELLED rose. */
 export const ORDER_TONE: Record<OrderStatus, BadgeTone> = { PENDING: 'amber', PAID: 'green', EXPIRED: 'slate', FAILED: 'rose', CANCELLED: 'rose' }
+/** A pending payOS order waits for the buyer, not for an admin (wireframe 8-1). */
+export const statusKey = (order: CourseOrder) => order.status === 'PENDING' && order.provider === 'PAYOS' ? 'PENDING_PAYOS' as const : order.status
 
 /** “My orders” (wireframe 2b-3): newest first from the backend; each row opens the order, PAID rows also go straight to the course. */
 export function OrdersPage({ language = 'vi' }: { language?: Language }) {
@@ -64,7 +66,7 @@ export function OrdersPage({ language = 'vi' }: { language?: Language }) {
               <div className="flex min-w-0 flex-col gap-2">
                 <h2 className="text-base font-bold leading-snug [overflow-wrap:anywhere]"><Link to={`/me/orders/${item.orderCode}`} className={cn('inline-flex items-center hover:text-accent-text focus-visible:outline-2 focus-visible:outline-ring', touch)}><span className="tabular-nums">{item.orderCode}</span> · {item.courseTitle}</Link></h2>
                 <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <Badge tone={ORDER_TONE[item.status]}>{t(item.status)}</Badge>
+                  <Badge tone={ORDER_TONE[item.status]}>{t(statusKey(item))}</Badge>
                   {item.transferReportedAt && <Badge tone="sky">{t('reportedBadge')}</Badge>}
                   <span className="font-semibold tabular-nums text-foreground">{vnd(item.amount, language)}</span>
                   <span>{t('created', { when: formatDate(item.createdAt, language) })}{item.status !== 'PAID' && ` · ${t('expires', { when: formatDate(item.expiresAt, language) })}`}</span>
@@ -72,7 +74,7 @@ export function OrdersPage({ language = 'vi' }: { language?: Language }) {
               </div>
               {item.status === 'PAID'
                 ? <Button asChild className={cn('max-sm:w-full', touch)}><Link to={`/courses/${item.courseId}`}>{t('learn')}</Link></Button>
-                : <Button asChild variant="outline" className={cn('max-sm:w-full', touch)}><Link to={`/me/orders/${item.orderCode}`}>{t('viewOrder')}</Link></Button>}
+                : <Button asChild variant="outline" className={cn('max-sm:w-full', touch)}><Link to={`/me/orders/${item.orderCode}`}>{statusKey(item) === 'PENDING_PAYOS' ? <>{t('pay')}<ChevronRight aria-hidden /></> : t('viewOrder')}</Link></Button>}
             </li>)}</ul>}
 
     {data && !error && <Pagination language={language} page={page} totalPages={data.totalPages} loading={loading} onPageChange={next => setParams(next > 0 ? { page: String(next) } : {})} />}

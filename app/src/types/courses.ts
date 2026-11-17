@@ -73,9 +73,12 @@ export type MyCourse = { course: PublicCourseSummary; progress: Progress; contin
 // OrderResponse (Task 1b): the buyer's view; `vietQr` only while PENDING/EXPIRED and when the receiving account is configured.
 export type OrderStatus = 'PENDING' | 'PAID' | 'EXPIRED' | 'FAILED' | 'CANCELLED'
 export type VietQr = { bankId: string; accountNo: string; accountName: string; amount: number; content: string; imageUrl: string }
+// payOS checkout: `checkoutUrl` only for a PAYOS order still PENDING with a link; `amountPaid` = what payOS reported (may differ from `amount`).
+export type PaymentProvider = 'MANUAL' | 'PAYOS'
 export type CourseOrder = {
   orderCode: string; courseId: string; courseTitle: string; amount: number; currency: string; status: OrderStatus
   createdAt: string; expiresAt: string; paidAt: string | null; transferReportedAt: string | null; vietQr: VietQr | null
+  provider: PaymentProvider; checkoutUrl: string | null; amountPaid: number | null
 }
 
 // Admin / Author payment shapes (AdminOrderResponse, CommissionPolicyResponse, AuthorRevenueResponse).
@@ -83,6 +86,7 @@ export type AdminPayment = { reference: string; amount: number; source: string; 
 export type AdminOrder = {
   orderCode: string; buyerId: string; buyerName: string | null; buyerEmail: string | null; courseId: string; courseTitle: string; amount: number; currency: string; status: OrderStatus
   createdAt: string; expiresAt: string; paidAt: string | null; transferReportedAt: string | null; needsReconciliation: boolean; reconciledAt: string | null; payments: AdminPayment[]
+  provider: PaymentProvider; amountPaid: number | null
 }
 export type AdminOrderFilter = { status?: OrderStatus; code?: string; transferReported?: boolean; needsReconciliation?: boolean; page?: number }
 export type CommissionPolicy = { id: string; rateBps: number; effectiveFrom: string }
