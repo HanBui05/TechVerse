@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { ArrowRight, ChevronDown, FileText, GraduationCap, Heart, PlayCircle, Receipt, LogOut, Settings, UserRound, UserRoundPlus, Wallet, X } from 'lucide-react'
+import { ArrowRight, BookCheck, ChevronDown, FileText, GraduationCap, Heart, PlayCircle, Receipt, LogOut, Settings, UserRound, UserRoundPlus, Wallet, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { navItems, settingsItems } from '../../data/navigation'
 import type { Language } from '../../types/preferences'
@@ -84,6 +84,7 @@ export function Sidebar({ language, t, authenticated, roles, profile, onLogout }
   const authorLinks = [
     { path: '/author/blogs', icon: FileText, tone: 'green', label: language === 'vi' ? 'Bài viết của tôi' : 'My articles' },
     { path: '/author/courses', icon: GraduationCap, tone: 'blue', label: language === 'vi' ? 'Khóa học' : 'Courses' },
+    { path: '/author/exercises', icon: BookCheck, tone: 'violet', label: language === 'vi' ? 'Bài tập' : 'Exercises' },
     { path: '/author/revenue', icon: Wallet, tone: 'green', label: language === 'vi' ? 'Doanh thu' : 'Revenue' },
   ]
   const footer = authenticated

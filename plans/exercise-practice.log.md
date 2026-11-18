@@ -4,7 +4,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`exercise-practice
 
 ## Bắt đầu từ đây (cập nhật 2026-11-17)
 
-- **Task tiếp:** Task 2a — giao diện tác giả, theo `plans/exercise-practice.wireframe.md` (đã duyệt 2026-11-17) · Giao diện: Có
+- **Task tiếp:** Task 2b — Moderator + khu Luyện tập (đọc wireframe mục 4–8) · Giao diện: Có
+- Task 1a, 1b, 1c, 2a đã nhận (2026-11-18 cho 2a). Chưa kiểm 2a: vùng chạm 44px, AI thật thành công, gửi/rút/ẩn trên backend thật.
 - Spec chốt 2026-11-15; `course-payment` và `course-ai-tutor` đã merge vào `main` nên đủ điều kiện bắt đầu. Migration lấy số kế tiếp lúc code (spec ghi V14 nếu V13 đã có) — kiểm `db/migration` trước.
 - Nhánh: `feature/exercise-practice` (từ `main` sau PR #10).
 
@@ -19,6 +20,14 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`exercise-practice
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-18 — Task 2a đã nhận: giao diện tác giả
+- Code: `types/exercises.ts`, `services/exerciseService.ts` (API + validation + ma trận nút), `data/exerciseI18n.ts`, `pages/Author/Exercises/{AuthorExercisesPage,ExerciseEditorPage}.tsx` (hộp soạn câu, xem trước, panel AI nằm cùng file trình soạn), 3 route trong `App.tsx`, mục “Bài tập” ở sidebar Tác giả; `aiAssist.quota` thêm `exercise`, export `unwrap`.
+- Test: `vitest run` Exercises/* + `exerciseService` + `exerciseI18n` + `Sidebar` + `aiAssist*` — 94 ca (1 ca đỏ do assert sai của tôi, đã sửa); `App.auth.test.tsx` 125 ca đạt; `npm run build` đạt.
+- Lệch khác spec/wireframe: thanh hành động dính ĐẦU trang cả mobile (wireframe ghi đáy); mobile không có menu `…` cho Xóa (nút xếp hàng, vẫn 44px); không có dải “tác giả bị đình chỉ” (list API không báo trạng thái; thao tác ghi bị 403 hiện “Bạn không có quyền.”); `fieldErrors` của server không ánh xạ theo câu (client đã chặn trước; lỗi server hiện chung); client chỉ chặn ảnh Markdown và NUL, HTML thô để server (`EXERCISE_CONTENT_INVALID`); copy mới tự đặt trong `exerciseI18n`; code viết trước test (chưa đỏ-trước).
+- Review vòng 1 (4 phát hiện): P1 sửa trong lúc lưu bị ghi đè → đúng, khóa vùng soạn bằng `fieldset disabled={busy}`; P2 PATCH ok/PUT lỗi gây xung đột version giả → đúng, cập nhật version + metadata đã lưu ngay sau PATCH (thêm test); P2 AI tự lưu trước khi gọi → từ chối, đúng quyết định 2026-11-17/wireframe mục 3 (“đang có thay đổi chưa lưu thì lưu trước”); P2 kiểm bằng mắt chưa làm → ghi nhận, cần backend + đăng nhập tác giả. Sau sửa: Exercises 23 ca đạt, build đạt.
+- Review vòng 2 (1 phát hiện cao, đúng): panel AI vẫn thêm câu trong lúc lưu → mất câu. Đã sửa: nút “Thêm câu đã chọn” khóa khi đang lưu (+ test trì hoãn PATCH). Exercises 24 ca đạt, build đạt.
+- Kiểm bằng mắt 2026-11-18 (Playwright MCP, backend thật, `bao.author`): dark desktop `/author/exercises` rỗng, `/new` (tạo thật → `/edit`), hộp soạn câu (lỗi dưới ô), lưu `PUT` thật rồi tải lại còn nguyên 1 câu, xóa thật; light desktop `/edit` (card/viền đúng token, không cuộn ngang); 390px `/edit` + sheet AI + danh sách: không cuộn ngang, không tràn chữ. AI thật trả 502 `AI_PROVIDER_REQUEST_REJECTED` (cấu hình nhà cung cấp dev), UI hiện đúng câu lỗi, giữ lượt 10/10.
+- Chưa kiểm: vùng chạm 44px (Playwright không bật cảm ứng, nút đo 32px ở chuột), AI sinh câu thành công với model thật, gửi duyệt/rút/ẩn/hiện trên backend thật, danh sách có nhiều trạng thái.
 ### 2026-11-17 — Cổng wireframe: viết xong, chờ duyệt
 - Viết `plans/exercise-practice.wireframe.md`: danh sách + trình soạn tác giả (hai loại, panel AI, chỉ đọc, xung đột version), màn Moderator (không ô số liệu), khu Luyện tập (danh sách, giới thiệu, làm trắc nghiệm, flashcard, kết quả, lịch sử); desktop/mobile + rỗng/lỗi/chờ, bảng lỗi theo mã 1a–1c.
 - Chi tiết ngoài spec ghi “(copy mới)” hoặc nêu ở mục 9 để người dùng bỏ/giữ. Chỉ tài liệu, không có test/build.

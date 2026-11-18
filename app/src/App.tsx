@@ -44,6 +44,8 @@ import { AiArticlePage } from './pages/Author/AiArticlePage'
 import { AuthorCoursesPage } from './pages/Author/Courses/AuthorCoursesPage'
 import { CourseEditorPage } from './pages/Author/Courses/CourseEditorPage'
 import { CourseStudentsPage } from './pages/Author/Courses/CourseStudentsPage'
+import { AuthorExercisesPage } from './pages/Author/Exercises/AuthorExercisesPage'
+import { ExerciseEditorPage } from './pages/Author/Exercises/ExerciseEditorPage'
 import { ModeratorDashboardPage } from './pages/Moderator/ModeratorDashboardPage'
 import { ModeratorArticlesPage } from './pages/Moderator/ModeratorArticlesPage'
 import { ModeratorArticleDetailPage } from './pages/Moderator/ModeratorArticleDetailPage'
@@ -209,6 +211,9 @@ export default function App() {
       {/* Same element type on both paths: after the first create /new → /:id/edit keeps editor state. */}
       <Route path="/author/courses/new" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><CourseEditorPage language={language} /></RoleRoute>} />
       <Route path="/author/courses/:id/students" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><CourseStudentsPage language={language} /></RoleRoute>} />
+      <Route path="/author/exercises" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AuthorExercisesPage language={language} /></RoleRoute>} />
+      <Route path="/author/exercises/new" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><ExerciseEditorPage language={language} /></RoleRoute>} />
+      <Route path="/author/exercises/:id/edit" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><ExerciseEditorPage language={language} /></RoleRoute>} />
       <Route path="/author/courses/:id/edit" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><CourseEditorPage language={language} /></RoleRoute>} />
       <Route path="/settings/theme" element={<ThemePage theme={theme} setTheme={setTheme} t={t} />} />
       <Route path="/settings/language" element={<LanguagePage language={language} setLanguage={setLanguage} t={t} />} />

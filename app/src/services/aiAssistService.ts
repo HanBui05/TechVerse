@@ -14,7 +14,7 @@ export function quotaOf(headers: Headers): AiQuota | null {
 }
 
 // Refusals carry the quota too (e.g. AI_QUOTA_EXCEEDED), so the page can show 0/limit.
-async function unwrap<T>(response: Response): Promise<T> {
+export async function unwrap<T>(response: Response): Promise<T> {
   try { return await readEnvelope<T>(response) }
   catch (e) { if (e instanceof ApiError) Object.assign(e, { quota: quotaOf(response.headers) }); throw e }
 }
@@ -84,7 +84,7 @@ export async function streamPost(path: string, body: unknown, signal: AbortSigna
 
 export const aiAssist = {
   /** Today's allowance per kind; reserves nothing. */
-  quota: () => request<{ outline: AiQuota; draft: AiQuota }>(`${base}/quota`),
+  quota: () => request<{ outline: AiQuota; draft: AiQuota; exercise: AiQuota }>(`${base}/quota`),
   outline: async (body: AiOutlineRequest) => {
     const response = await requestRaw(`${base}/outlines`, { method: 'POST', body: JSON.stringify(body) })
     return { outline: await unwrap<AiOutline>(response), quota: quotaOf(response.headers) }
