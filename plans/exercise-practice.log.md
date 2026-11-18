@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`exercise-practice
 
 ## Bắt đầu từ đây (cập nhật 2026-11-17)
 
-- **Task tiếp:** Task 2b — Moderator + khu Luyện tập (đọc wireframe mục 4–8) · Giao diện: Có
+- **Task tiếp:** Task 2c — khu Luyện tập của người học (wireframe mục 6–8) · Giao diện: Có. Task 2b đã nhận (2026-11-18); chưa kiểm cảm ứng 44px và thao tác ghi thật.
 - Task 1a, 1b, 1c, 2a đã nhận (2026-11-18 cho 2a). Chưa kiểm 2a: vùng chạm 44px, AI thật thành công, gửi/rút/ẩn trên backend thật.
 - Spec chốt 2026-11-15; `course-payment` và `course-ai-tutor` đã merge vào `main` nên đủ điều kiện bắt đầu. Migration lấy số kế tiếp lúc code (spec ghi V14 nếu V13 đã có) — kiểm `db/migration` trước.
 - Nhánh: `feature/exercise-practice` (từ `main` sau PR #10).
@@ -20,6 +20,15 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`exercise-practice
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-18 — Task 2b đã nhận (2026-11-18): giao diện Moderator
+- Code: `pages/Moderator/Exercises/{ModeratorExercisesPage,ModeratorExerciseDetailPage}.tsx`, `moderatorExercises` + `moderatorExerciseActions` trong `exerciseService.ts`, copy/mã lỗi Moderator trong `exerciseI18n.ts`, 2 route `/moderator/exercises[/:id]`, mục “Kiểm duyệt bài tập” ở `ModeratorSidebar`.
+- Test: `vitest run` Moderator/Exercises (17 ca) + Sidebar + exerciseService + data — 236 ca đạt; `npm run build` đạt. Test viết trước, đỏ vì thiếu module.
+- Lệch khác spec/wireframe: spec/log ghi 2b gộp “khu Luyện tập” nhưng spec tách thành 2c → chỉ làm Moderator; token lệch đóng hộp thoại và hiện dải cảnh báo + Tải lại, khóa nút tới khi tải lại; lọc chủ đề lấy từ `/exercise-sets/options` công khai; hiện “Cập nhật lúc” (API không có “gửi lúc”); không có thanh `ArticleStats`; lỗi `EXERCISE_STATE_INVALID` cũng khóa + tải lại.
+- Review vòng 1 (3 phát hiện P2): 404 khi duyệt bộ vừa bị rút → đúng, chuyển sang “Không tìm thấy” + Về danh sách; đoạn code chứa dòng ``` làm vỡ khối Markdown → đúng, rào dài hơn mọi chuỗi backtick (thêm 2 test); kiểm bằng mắt chưa làm → ghi nhận. Sau sửa: `vitest run src/pages/Moderator/Exercises` 19 ca đạt, `npm run build` đạt.
+- Review vòng 2 (1 phát hiện trung, đúng): nhãn ngôn ngữ chèn thẳng vào dòng mở rào có thể phá fence → chỉ nhận nhãn khớp `[\w+#.-]{1,50}`, ngược lại bỏ nhãn (thêm 1 test). Sau sửa: Moderator/Exercises 20 ca đạt, build đạt. Không chạy vòng 3.
+- Kiểm bằng mắt 2026-11-18 (Playwright MCP, backend thật, `moderator@techverse.test`, bộ mẫu chờ duyệt tạo bằng API bởi `bao.author`): light desktop `/moderator/exercises` (lọc, hàng, sidebar có mục mới) + `/:id` (3 câu, đáp án đúng có chữ + biểu tượng, khối code SQL); dark desktop `/:id` (token card/viền/đáp án đúng đúng); hộp thoại “Yêu cầu sửa” để trống → lỗi lý do, focus trong hộp; 390px danh sách + chi tiết: không cuộn ngang, thanh hành động cố định đáy, nút Duyệt/Yêu cầu sửa 44px. Không bấm Duyệt/Ẩn/Gỡ thật (giữ bộ mẫu).
+- Lệch khác wireframe: thanh hành động nằm đầu trang desktop (wireframe ghi dính đáy), mobile dính đáy; mobile không có menu `⋯` khi chỉ có ≤ 2 nút.
+- Chưa kiểm: vùng chạm 44px trên cảm ứng thật (Playwright MCP không bật `pointer: coarse`, chip trạng thái đo 32px ở chuột), danh sách nhiều trạng thái, thao tác ghi thật (duyệt/ẩn/gỡ), token lệch giữa hai Moderator. Bộ mẫu “Kiểm tra giao diện Moderator” còn ở DB dev (PENDING).
 ### 2026-11-18 — Task 2a đã nhận: giao diện tác giả
 - Code: `types/exercises.ts`, `services/exerciseService.ts` (API + validation + ma trận nút), `data/exerciseI18n.ts`, `pages/Author/Exercises/{AuthorExercisesPage,ExerciseEditorPage}.tsx` (hộp soạn câu, xem trước, panel AI nằm cùng file trình soạn), 3 route trong `App.tsx`, mục “Bài tập” ở sidebar Tác giả; `aiAssist.quota` thêm `exercise`, export `unwrap`.
 - Test: `vitest run` Exercises/* + `exerciseService` + `exerciseI18n` + `Sidebar` + `aiAssist*` — 94 ca (1 ca đỏ do assert sai của tôi, đã sửa); `App.auth.test.tsx` 125 ca đạt; `npm run build` đạt.

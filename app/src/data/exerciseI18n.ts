@@ -101,3 +101,46 @@ export function exerciseText(language: Language) {
   const copy = language === 'vi' ? vi : en
   return (key: keyof ExerciseCopy, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
 }
+
+// Moderator screens (wireframe 4–5, table 1b). The backend message is English, so the UI translates by code.
+const MODERATOR_ERRORS: Record<string, Copy> = {
+  EXERCISE_REVIEW_STALE: { vi: 'Bộ bài tập đã thay đổi. Hãy tải lại trước khi duyệt.', en: 'This set has changed. Reload before reviewing.' },
+  EXERCISE_AUTHOR_INELIGIBLE: { vi: 'Tác giả không còn đủ điều kiện.', en: 'The author is no longer eligible.' },
+  EXERCISE_NOT_READY: { vi: 'Bộ bài tập chưa đủ điều kiện.', en: 'This set is not ready.' },
+}
+export const isExerciseStale = (error: unknown) => error instanceof ApiError && ['EXERCISE_REVIEW_STALE', 'EXERCISE_STATE_INVALID'].includes(error.code ?? '')
+export function moderatorExerciseErrorText(error: unknown, language: Language, fallback: string) {
+  const copy = error instanceof ApiError && MODERATOR_ERRORS[error.code ?? '']
+  return copy ? copy[language] : exerciseErrorText(error, language, fallback)
+}
+
+const moderatorVi = {
+  menu: 'Bài tập', title: 'Duyệt bài tập', subtitle: 'Duyệt bộ bài tập tác giả gửi lên và quản lý bộ đã công khai.', refresh: 'Làm mới', filters: 'Bộ lọc', search: 'Tìm kiếm', searchPlaceholder: 'Tìm theo tiêu đề…',
+  status: 'Trạng thái', type: 'Loại', topic: 'Chủ đề', all: 'Tất cả', allTopics: 'Tất cả chủ đề', list: 'Danh sách bộ bài tập', count: '{n} bộ', loading: 'Đang tải…', retry: 'Thử lại', loadError: 'Dịch vụ đang gián đoạn. Hãy thử lại.',
+  empty: 'Không có bộ bài tập nào.', noMatch: 'Không có bộ nào khớp bộ lọc.', clearFilters: 'Xóa lọc', questions: '{n} câu', cards: '{n} thẻ', submitted: 'Cập nhật {date}', aiUsed: 'Có dùng AI', ineligible: 'Tác giả không còn đủ điều kiện',
+  moderator: 'Kiểm duyệt', back: 'Bài tập', breadcrumb: 'Đường dẫn', author: 'Tác giả', topicLabel: 'Chủ đề', previousNote: 'Ghi chú lần duyệt trước', correctAnswer: 'Đáp án đúng', explanation: 'Giải thích', front: 'Mặt trước', backFace: 'Mặt sau',
+  questionN: 'Câu {n}', cardN: 'Thẻ {n}', noQuestions: 'Bộ này chưa có câu hỏi.', actions: 'Hành động', notFound: 'Không tìm thấy bộ bài tập.', toList: 'Về danh sách', reload: 'Tải lại', staleBanner: 'Bộ bài tập đã thay đổi. Hãy tải lại trước khi duyệt.', stateInvalid: 'Không thực hiện được ở trạng thái hiện tại.',
+  APPROVE: 'Duyệt', REQUEST_CHANGES: 'Yêu cầu sửa', HIDE: 'Ẩn', RESTORE: 'Khôi phục', REMOVE: 'Gỡ', more: 'Thêm hành động', cancel: 'Hủy',
+  APPROVE_title: 'Duyệt bộ bài tập này?', APPROVE_text: 'Bộ sẽ được công khai ở khu Luyện tập.', REQUEST_CHANGES_title: 'Yêu cầu tác giả sửa?', REQUEST_CHANGES_text: 'Bộ được trả về để tác giả chỉnh sửa và gửi lại.',
+  HIDE_title: 'Ẩn bộ bài tập này?', HIDE_text: 'Bộ sẽ không còn hiện ở khu Luyện tập; có thể khôi phục sau.', RESTORE_title: 'Khôi phục bộ bài tập?', RESTORE_text: 'Bộ trở về trạng thái trước khi bị ẩn.',
+  REMOVE_title: 'Gỡ bộ bài tập này?', REMOVE_text: 'Gỡ không hoàn tác được.',
+  noteOptional: 'Ghi chú (tùy chọn, tối đa 1.000 ký tự)', reasonRequired: 'Lý do (bắt buộc)', noteMissing: 'Hãy ghi lý do (tối đa 1.000 ký tự).',
+  APPROVE_done: 'Đã duyệt bộ bài tập.', REQUEST_CHANGES_done: 'Đã yêu cầu tác giả sửa.', HIDE_done: 'Đã ẩn bộ bài tập.', RESTORE_done: 'Đã khôi phục bộ bài tập.', REMOVE_done: 'Đã gỡ bộ bài tập.',
+}
+const moderatorEn: typeof moderatorVi = {
+  menu: 'Exercises', title: 'Review exercises', subtitle: 'Review submitted exercise sets and manage published ones.', refresh: 'Refresh', filters: 'Filters', search: 'Search', searchPlaceholder: 'Search by title…',
+  status: 'Status', type: 'Type', topic: 'Topic', all: 'All', allTopics: 'All topics', list: 'Exercise sets', count: '{n} sets', loading: 'Loading…', retry: 'Retry', loadError: 'The service is temporarily unavailable. Try again.',
+  empty: 'No exercise sets.', noMatch: 'No sets match the filters.', clearFilters: 'Clear filters', questions: '{n} questions', cards: '{n} cards', submitted: 'Updated {date}', aiUsed: 'AI-assisted', ineligible: 'Author is no longer eligible',
+  moderator: 'Moderation', back: 'Exercises', breadcrumb: 'Breadcrumb', author: 'Author', topicLabel: 'Topic', previousNote: 'Note from the previous review', correctAnswer: 'Correct answer', explanation: 'Explanation', front: 'Front', backFace: 'Back',
+  questionN: 'Question {n}', cardN: 'Card {n}', noQuestions: 'This set has no questions yet.', actions: 'Actions', notFound: 'Exercise set not found.', toList: 'Back to the list', reload: 'Reload', staleBanner: 'This set has changed. Reload before reviewing.', stateInvalid: 'This cannot be done in the current state.',
+  APPROVE: 'Approve', REQUEST_CHANGES: 'Request changes', HIDE: 'Hide', RESTORE: 'Restore', REMOVE: 'Remove', more: 'More actions', cancel: 'Cancel',
+  APPROVE_title: 'Approve this exercise set?', APPROVE_text: 'It will be published in the Practice area.', REQUEST_CHANGES_title: 'Ask the author for changes?', REQUEST_CHANGES_text: 'The set goes back to the author to edit and resubmit.',
+  HIDE_title: 'Hide this exercise set?', HIDE_text: 'It will no longer show in the Practice area; you can restore it later.', RESTORE_title: 'Restore this exercise set?', RESTORE_text: 'The set returns to the state it had before it was hidden.',
+  REMOVE_title: 'Remove this exercise set?', REMOVE_text: 'Removal cannot be undone.',
+  noteOptional: 'Note (optional, up to 1,000 characters)', reasonRequired: 'Reason (required)', noteMissing: 'Enter a reason (up to 1,000 characters).',
+  APPROVE_done: 'Exercise set approved.', REQUEST_CHANGES_done: 'Changes requested.', HIDE_done: 'Exercise set hidden.', RESTORE_done: 'Exercise set restored.', REMOVE_done: 'Exercise set removed.',
+}
+export function moderatorExerciseText(language: Language) {
+  const copy = language === 'vi' ? moderatorVi : moderatorEn
+  return (key: keyof typeof moderatorVi, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
+}

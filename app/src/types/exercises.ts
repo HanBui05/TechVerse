@@ -1,4 +1,4 @@
-import type { ArticleOption } from './articles'
+import type { ArticleAuthor, ArticleOption } from './articles'
 
 // Contract of /api/v1/author/exercise-sets (server/.../dto/{request,response}/ExerciseSet*.java, ExerciseAiService.Suggestions).
 export type ExerciseType = 'MULTIPLE_CHOICE' | 'FLASHCARD'
@@ -19,3 +19,9 @@ export type ExerciseFilter = { page: number; size: number; status?: ExerciseStat
 export type ExerciseInfo = { title: string; description: string; topicId: string; difficulty: ExerciseDifficulty; type: ExerciseType }
 export type AiQuestionsRequest = { version: number; instruction: string; sourceText: string; count: number }
 export type AiSuggestions = { questions: ExerciseQuestion[]; requested: number; version: number }
+
+// Moderator shapes (ExercisePracticeResponse.Moderated): `set.questions` only comes with the detail.
+export type ModeratorExerciseSummary = { set: ExerciseSummary; author: ArticleAuthor; authorEligible: boolean; reviewToken: string }
+export type ModeratorExerciseDetail = Omit<ModeratorExerciseSummary, 'set'> & { set: ExerciseSet }
+export type ModeratorExerciseFilter = { page: number; size: number; status: ExerciseStatus | ''; type?: ExerciseType | ''; topicId?: string; keyword?: string }
+export type ExerciseModeration = 'APPROVE' | 'REQUEST_CHANGES' | 'HIDE' | 'RESTORE' | 'REMOVE'

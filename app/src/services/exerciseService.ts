@@ -2,7 +2,7 @@ import { request, requestRaw } from './api/client'
 import { quotaOf, unwrap } from './aiAssistService'
 import type { AiQuota } from '../types/aiAssist'
 import type { ArticleOption, Page } from '../types/articles'
-import type { AiQuestionsRequest, AiSuggestions, ExerciseFilter, ExerciseInfo, ExerciseQuestion, ExerciseSet, ExerciseStatus, ExerciseSummary, ExerciseType } from '../types/exercises'
+import type { AiQuestionsRequest, AiSuggestions, ExerciseFilter, ExerciseInfo, ExerciseModeration, ExerciseQuestion, ExerciseSet, ExerciseStatus, ExerciseSummary, ExerciseType, ModeratorExerciseDetail, ModeratorExerciseFilter, ModeratorExerciseSummary } from '../types/exercises'
 
 const base = '/api/v1/author/exercise-sets'
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
@@ -104,4 +104,25 @@ export function exerciseActions({ status, publishedAt }: { status: ExerciseStatu
       : status === 'PUBLISHED' ? ['copy', 'hide']
         : status === 'AUTHOR_HIDDEN' ? ['copy', 'unhide'] : ['copy']
   return { primary: editable ? 'edit' : 'view', actions, readOnly: !editable }
+}
+
+const moderatorBase = '/api/v1/moderator/exercise-sets'
+// Topic filter source: the public options endpoint (active topics), since author options need the AUTHOR role.
+export const moderatorExercises = {
+  list: (filter: ModeratorExerciseFilter) => request<Page<ModeratorExerciseSummary>>(`${moderatorBase}?${query(filter)}`),
+  options: () => request<ArticleOption[]>('/api/v1/exercise-sets/options'),
+  detail: (id: string) => request<ModeratorExerciseDetail>(`${moderatorBase}/${id}`),
+  review: (id: string, decision: 'APPROVE' | 'REQUEST_CHANGES', reviewToken: string, note: string) =>
+    request<ModeratorExerciseDetail>(`${moderatorBase}/${id}/review`, json('PATCH', { decision, reviewToken, note: note.trim() || undefined })),
+  publication: (id: string, action: 'HIDE' | 'RESTORE' | 'REMOVE', reviewToken: string, reason: string) =>
+    request<ModeratorExerciseDetail>(`${moderatorBase}/${id}/publication`, json('PATCH', { action, reviewToken, reason: reason.trim() || undefined })),
+}
+
+export const MODERATION_NOTE_MAX = 1000
+export const MODERATION_NOTE_REQUIRED: ExerciseModeration[] = ['REQUEST_CHANGES', 'HIDE', 'REMOVE']
+/** Wireframe 5 table: pending → review; published/author-hidden → hide or remove; moderator-hidden → restore or remove; others read-only. */
+export function moderatorExerciseActions(status: ExerciseStatus): ExerciseModeration[] {
+  return status === 'PENDING' ? ['REQUEST_CHANGES', 'APPROVE']
+    : status === 'PUBLISHED' || status === 'AUTHOR_HIDDEN' ? ['HIDE', 'REMOVE']
+      : status === 'HIDDEN' ? ['RESTORE', 'REMOVE'] : []
 }

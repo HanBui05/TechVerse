@@ -93,6 +93,11 @@ it('lists only routable entries in the admin sidebar and keeps the moderator lin
   for (const name of ['Trang chủ', 'Hồ sơ tác giả', 'Quản lý người dùng', 'Chủ đề', 'Thẻ', 'Đơn hàng', 'Hoa hồng', 'Doanh thu', 'Chi trả tác giả', 'Kiểm duyệt bài viết']) expect(screen.queryByRole('link', { name })).not.toBeNull()
 })
 
+it('links the moderator sidebar to the exercise review queue', () => {
+  render(<Shell><ModeratorSidebar language="vi" profile={profile} onLogout={props.onLogout} /></Shell>)
+  expect(screen.getByRole('link', { name: 'Kiểm duyệt bài tập' }).getAttribute('href')).toBe('/moderator/exercises')
+})
+
 // Management accounts are redirected away from Reader routes, so neither staff sidebar links back to them.
 it.each([
   ['admin', <AdminSidebar language="vi" profile={profile} onLogout={props.onLogout} isModerator />],
