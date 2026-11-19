@@ -2,7 +2,7 @@ import { request, requestRaw } from './api/client'
 import { quotaOf, unwrap } from './aiAssistService'
 import type { AiQuota } from '../types/aiAssist'
 import type { ArticleOption, Page } from '../types/articles'
-import type { AiQuestionsRequest, AiSuggestions, ExerciseFilter, ExerciseInfo, ExerciseModeration, ExerciseQuestion, ExerciseSet, ExerciseStatus, ExerciseSummary, ExerciseType, ModeratorExerciseDetail, ModeratorExerciseFilter, ModeratorExerciseSummary } from '../types/exercises'
+import type { AiQuestionsRequest, AiSuggestions, ExerciseFilter, ExerciseInfo, ExerciseModeration, ExerciseQuestion, ExerciseSet, ExerciseStatus, ExerciseSummary, ExerciseType, ModeratorExerciseDetail, ModeratorExerciseFilter, ModeratorExerciseSummary, AttemptBody, AttemptItem, PracticeAttempt, PracticeFilter, PracticeQuestions, PracticeSet, QuizItem } from '../types/exercises'
 
 const base = '/api/v1/author/exercise-sets'
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
@@ -126,3 +126,55 @@ export function moderatorExerciseActions(status: ExerciseStatus): ExerciseModera
     : status === 'PUBLISHED' || status === 'AUTHOR_HIDDEN' ? ['HIDE', 'REMOVE']
       : status === 'HIDDEN' ? ['RESTORE', 'REMOVE'] : []
 }
+
+// ---- Practice (learner) ----
+export const PRACTICE_PAGE_SIZE = 9
+const DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD']
+const TYPES = ['MULTIPLE_CHOICE', 'FLASHCARD']
+/** `/practice` query → filter; unknown enums and malformed pages fall back to the defaults (never a raw 400). */
+export function practiceFilter(params: URLSearchParams): PracticeFilter {
+  const page = Number(params.get('page'))
+  const difficulty = params.get('difficulty') ?? ''
+  const type = params.get('type') ?? ''
+  return {
+    topicId: params.get('topicId') ?? '', keyword: (params.get('keyword') ?? '').trim().slice(0, 100), page: Number.isInteger(page) && page > 0 ? page : 0,
+    difficulty: DIFFICULTIES.includes(difficulty) ? difficulty as PracticeFilter['difficulty'] : '', type: TYPES.includes(type) ? type as PracticeFilter['type'] : '',
+  }
+}
+export function practiceSearch({ keyword, topicId, difficulty, type, page }: PracticeFilter) {
+  const params = new URLSearchParams()
+  if (keyword.trim()) params.set('keyword', keyword.trim())
+  if (topicId) params.set('topicId', topicId)
+  if (difficulty) params.set('difficulty', difficulty)
+  if (type) params.set('type', type)
+  if (page > 0) params.set('page', String(page))
+  return params
+}
+
+const publicBase = '/api/v1/exercise-sets'
+export const practice = {
+  list: (filter: PracticeFilter) => request<Page<PracticeSet>>(`${publicBase}?${query({ ...filter, size: PRACTICE_PAGE_SIZE })}`),
+  options: () => request<ArticleOption[]>(`${publicBase}/options`),
+  detail: (id: string) => request<PracticeSet>(`${publicBase}/${id}`),
+  questions: (id: string) => request<PracticeQuestions>(`${publicBase}/${id}/questions`),
+  /** The same key must be reused when a failed submit is retried; the server then returns the stored attempt. */
+  submit: (id: string, body: AttemptBody, key: string) => request<PracticeAttempt>(`${publicBase}/${id}/attempts`, { ...json('POST', body), headers: { 'Idempotency-Key': key } }),
+  history: (page: number, exerciseSetId = '') => request<Page<PracticeAttempt>>(`/api/v1/me/exercise-attempts?${query({ page, size: 20, exerciseSetId })}`),
+  attempt: (id: string) => request<PracticeAttempt>(`/api/v1/me/exercise-attempts/${id}`),
+}
+
+export const unansweredCount = (ids: string[], answers: Record<string, number | null>) => ids.filter(id => answers[id] == null).length
+
+/** Quiz: every question with its pick or null; flashcards: every card, unmarked = not remembered (server rule). */
+export function attemptBody(type: ExerciseType, ids: string[], marks: Record<string, number | boolean | null>, durationSeconds: number): AttemptBody {
+  return type === 'FLASHCARD'
+    ? { results: ids.map(questionId => ({ questionId, remembered: marks[questionId] === true })), durationSeconds }
+    : { answers: ids.map(questionId => ({ questionId, selectedIndex: typeof marks[questionId] === 'number' ? marks[questionId] as number : null })), durationSeconds }
+}
+
+export const wrongItems = (items: AttemptItem[]) => items.filter(item => 'correct' in item && !item.correct)
+export const isQuizItem = (item: AttemptItem): item is QuizItem => 'correct' in item
+
+// The fence is longer than any backtick run inside the code, so the snippet cannot close it early.
+export const fenced = (code: string, language: string | null) => { const fence = '`'.repeat(Math.max(3, ...(code.match(/`+/g) ?? []).map(run => run.length + 1))); const label = /^[\w+#.-]{1,50}$/.test(language ?? '') ? language : ''
+  return `${fence}${label}\n${code}\n${fence}` }

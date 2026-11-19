@@ -2,10 +2,10 @@
 
 Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`exercise-practice.md`](exercise-practice.md). Ba mục đầu và “Nhật ký phiên” được hook SessionStart tự nạp sau `/clear`; giữ chúng ngắn.
 
-## Bắt đầu từ đây (cập nhật 2026-11-17)
+## Bắt đầu từ đây (cập nhật 2026-11-20)
 
-- **Task tiếp:** Task 2c — khu Luyện tập của người học (wireframe mục 6–8) · Giao diện: Có. Task 2b đã nhận (2026-11-18); chưa kiểm cảm ứng 44px và thao tác ghi thật.
-- Task 1a, 1b, 1c, 2a đã nhận (2026-11-18 cho 2a). Chưa kiểm 2a: vùng chạm 44px, AI thật thành công, gửi/rút/ẩn trên backend thật.
+- **Task tiếp:** bước cuối module — nhờ Codex đồng bộ spec theo log (skill `codex-workflow` mục 3), rồi báo người dùng · Giao diện: Không. Mọi task 1a–2c đã nhận.
+- Task 1a–2c đã nhận (2c: 2026-11-20). Chưa kiểm: vùng chạm 44px trên cảm ứng thật (2a/2b/2c), AI sinh câu thật thành công, gửi/rút/ẩn/duyệt thao tác ghi thật trên backend, light trang làm bài + dark mobile kết quả (2c). Bộ mẫu còn ở DB dev.
 - Spec chốt 2026-11-15; `course-payment` và `course-ai-tutor` đã merge vào `main` nên đủ điều kiện bắt đầu. Migration lấy số kế tiếp lúc code (spec ghi V14 nếu V13 đã có) — kiểm `db/migration` trước.
 - Nhánh: `feature/exercise-practice` (từ `main` sau PR #10).
 
@@ -20,6 +20,15 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`exercise-practice
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-18 — Task 2c: khu Luyện tập của người học đã nhận (2026-11-20)
+- Code: `pages/Practice/{PracticeListPage,PracticeIntroPage,PracticeAttemptPage,PracticeResult,PracticeHistoryPage(+ReviewPage)}.tsx`, `practice` + `attemptBody`/`unansweredCount`/`practiceFilter`/`fenced` trong `exerciseService.ts` (`fenced` dời từ trang Moderator), types, `practiceText`/`practiceErrorKind` trong `exerciseI18n.ts`, 5 route trong `App.tsx` (attempt/history/review bọc `AuthRoute`), mục “Luyện tập” trong `navigation.ts`.
+- Test (viết trước, đỏ vì thiếu module): `vitest run` Practice (25 ca) + `App.practice.test.tsx` + Sidebar + StaffPreferences + exerciseService + exerciseI18n + Moderator/Exercises + ui/{sidebar,labels,focus} + Author/Exercises — đạt; `npm run build` đạt. Có sẵn, ngoài phạm vi: `App.courses.test.tsx` ca “serves the payment pages…” quá 5 giây (cả khi stash thay đổi của tôi), đạt với `--testTimeout=30000`.
+- Lệch khác spec/wireframe: flashcard không xoay 3D (hiện một mặt, fade `motion-safe`); không có bộ lọc “Bộ bài tập” ở lịch sử; tiêu đề bộ lấy từ `GET /exercise-sets/{id}` song song với câu hỏi (endpoint câu hỏi không trả tiêu đề); phím tắt chặn khi focus ở input/nút/radio; lịch sử phân trang bằng state, không qua URL; thanh nút mobile dính đáy gộp Câu trước/Danh sách câu/Câu sau/Nộp bài trong một thanh.
+- Review vòng 1 (3 P2): khóa nộp bị xóa khi sửa đáp án sau lỗi chưa rõ kết quả → đúng, đóng băng đáp án (radio, phím tắt, nút thẻ) sau lỗi `retry` để nộp lại cùng khóa chỉ trả lượt đã lưu; radio bằng phím mũi tên chỉ có `onChange` rỗng → đúng, chọn trong `onChange`, `onClick` chỉ để bỏ chọn; kiểm bằng mắt chưa làm → ghi nhận. Sau sửa: Practice + App.practice 30 ca đạt, build đạt.
+- Review vòng 2 (`adversarial-review`, phần sửa): approve, không có phát hiện đáng kể.
+- Kiểm bằng mắt 2026-11-19 (Playwright MCP, backend thật, `lan.author@techverse.test`, người dùng cho phép tự đăng nhập; bộ trắc nghiệm + flashcard mẫu do `bao.author` tạo, duyệt bằng API): dark desktop `/practice` (lọc, 2 thẻ, sidebar có “Luyện tập”), `/practice/:id`, làm bài (phím `1`, `→`, `2`, hộp xác nhận “Còn 1 câu chưa trả lời”), kết quả có Đúng/Sai/Bỏ trống bằng chữ + biểu tượng, khối code SQL; light desktop `/me/practice` + xem lại lượt (token card/viền, focus vào tiêu đề kết quả); 390px light flashcard (lật thẻ, nút Chưa nhớ/Đã nhớ 56px, thanh dưới dính đáy, tổng kết 3/5 + thẻ chưa nhớ) và 390px dark trắc nghiệm (radio 46px, sheet “Danh sách câu” ô 44px); không cuộn ngang, chữ không tràn.
+- Lỗi bắt được khi kiểm: kết quả đánh “Câu 2/3/4” vì server đánh `position` từ 1 còn code cộng 1 → đánh số theo thứ tự trong snapshot (giữ nguyên số khi lọc “Chỉ câu sai/bỏ trống”), thêm 1 test. Sau sửa: Practice + App.practice + Sidebar + service + i18n + Moderator/Exercises 100 ca đạt, build đạt. Sửa nhỏ này không chạy lại review.
+- Chưa kiểm: vùng chạm 44px trên cảm ứng thật (Playwright MCP không bật `pointer: coarse`; nút thanh dưới đo 36px ở chuột, có `pointer-coarse:min-h-11`), light desktop trang làm bài/dark mobile kết quả, danh sách nhiều trang, AI không liên quan. Bộ mẫu còn ở DB dev (PUBLISHED) cùng một lượt làm của `lan.author` mỗi bộ.
 ### 2026-11-18 — Task 2b đã nhận (2026-11-18): giao diện Moderator
 - Code: `pages/Moderator/Exercises/{ModeratorExercisesPage,ModeratorExerciseDetailPage}.tsx`, `moderatorExercises` + `moderatorExerciseActions` trong `exerciseService.ts`, copy/mã lỗi Moderator trong `exerciseI18n.ts`, 2 route `/moderator/exercises[/:id]`, mục “Kiểm duyệt bài tập” ở `ModeratorSidebar`.
 - Test: `vitest run` Moderator/Exercises (17 ca) + Sidebar + exerciseService + data — 236 ca đạt; `npm run build` đạt. Test viết trước, đỏ vì thiếu module.

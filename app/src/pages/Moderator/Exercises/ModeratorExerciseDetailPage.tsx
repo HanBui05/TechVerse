@@ -17,7 +17,7 @@ import { MarkdownContent } from '../../../components/MarkdownContent'
 import { UserAvatar } from '../../../components/UserAvatar'
 import { ApiError } from '../../../services/api/client'
 import { difficultyLabel, isExerciseStale, moderatorExerciseErrorText, moderatorExerciseText, statusLabel, typeLabel } from '../../../data/exerciseI18n'
-import { MODERATION_NOTE_MAX, MODERATION_NOTE_REQUIRED, moderatorExerciseActions, moderatorExercises } from '../../../services/exerciseService'
+import { MODERATION_NOTE_MAX, MODERATION_NOTE_REQUIRED, fenced, moderatorExerciseActions, moderatorExercises } from '../../../services/exerciseService'
 import type { ExerciseModeration, ModeratorExerciseDetail } from '../../../types/exercises'
 import type { Language } from '../../../types/preferences'
 import { fieldLabel } from '../../Author/AuthorBlogsPage'
@@ -28,9 +28,6 @@ const crumb = 'pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse
 const ICONS: Record<ExerciseModeration, typeof CheckCircle2> = { APPROVE: CheckCircle2, REQUEST_CHANGES: PencilLine, HIDE: EyeOff, RESTORE: RotateCcw, REMOVE: Ban }
 const VARIANT: Record<ExerciseModeration, 'default' | 'outline' | 'destructive'> = { APPROVE: 'default', REQUEST_CHANGES: 'outline', HIDE: 'outline', RESTORE: 'default', REMOVE: 'destructive' }
 
-// The fence is longer than any backtick run inside the code, so the snippet cannot close it early.
-const fenced = (code: string, language: string | null) => { const fence = '`'.repeat(Math.max(3, ...(code.match(/`+/g) ?? []).map(run => run.length + 1))); const label = /^[\w+#.-]{1,50}$/.test(language ?? '') ? language : ''
-  return `${fence}${label}\n${code}\n${fence}` }
 
 export function ModeratorExerciseDetailPage({ language = 'vi' }: { language?: Language } = {}) {
   const { id = '' } = useParams()

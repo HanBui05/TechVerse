@@ -144,3 +144,74 @@ export function moderatorExerciseText(language: Language) {
   const copy = language === 'vi' ? moderatorVi : moderatorEn
   return (key: keyof typeof moderatorVi, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
 }
+
+// Learner screens (wireframe 6–8, table 1b). Unlike the author table, EXERCISE_SET_NOT_FOUND here means “gone”, and a lost network counts as retryable.
+const PRACTICE_ERRORS: Record<string, Copy> = {
+  EXERCISE_SET_NOT_FOUND: { vi: 'Bộ bài tập không còn khả dụng.', en: 'This exercise set is no longer available.' },
+  AUTH_ACCESS_TOKEN_REQUIRED: { vi: 'Đăng nhập để làm bài.', en: 'Sign in to practice.' },
+  AUTH_INVALID_ACCESS_TOKEN: { vi: 'Đăng nhập để làm bài.', en: 'Sign in to practice.' },
+  ACCESS_DENIED: { vi: 'Bạn không có quyền làm bộ bài tập này.', en: 'You do not have permission to take this exercise set.' },
+  EXERCISE_ATTEMPT_INVALID: { vi: 'Bài làm không hợp lệ. Hãy tải lại và làm lại.', en: 'This attempt is not valid. Reload and start again.' },
+  EXERCISE_ATTEMPT_KEY_CONFLICT: { vi: 'Yêu cầu trùng. Hãy làm lại.', en: 'Duplicate request. Please start again.' },
+  EXERCISE_RATE_LIMITED: tooFast,
+  EXERCISE_STORAGE_UNAVAILABLE: unavailable,
+  EXERCISE_ATTEMPT_NOT_FOUND: { vi: 'Không tìm thấy lượt làm.', en: 'Attempt not found.' },
+}
+export function practiceErrorText(error: unknown, language: Language, fallback: string) {
+  const code = error instanceof ApiError ? error.code ?? '' : ''
+  const copy = PRACTICE_ERRORS[code] ?? (error instanceof ApiError && error.status >= 500 ? unavailable : null)
+  return copy ? copy[language] : fallback
+}
+
+export type PracticeErrorKind = 'gone' | 'login' | 'forbidden' | 'restart' | 'retry' | 'attemptNotFound'
+/** What the screen does next: `retry` keeps the answers and resubmits with the same Idempotency-Key; `restart` drops them. */
+export function practiceErrorKind(error: unknown): PracticeErrorKind {
+  const code = error instanceof ApiError ? error.code ?? '' : ''
+  if (code === 'EXERCISE_SET_NOT_FOUND') return 'gone'
+  if (code === 'AUTH_ACCESS_TOKEN_REQUIRED' || code === 'AUTH_INVALID_ACCESS_TOKEN') return 'login'
+  if (code === 'ACCESS_DENIED') return 'forbidden'
+  if (code === 'EXERCISE_ATTEMPT_INVALID' || code === 'EXERCISE_ATTEMPT_KEY_CONFLICT') return 'restart'
+  if (code === 'EXERCISE_ATTEMPT_NOT_FOUND') return 'attemptNotFound'
+  return 'retry'
+}
+
+const practiceVi = {
+  title: 'Luyện tập', subtitle: 'Làm trắc nghiệm và ôn flashcard theo chủ đề.', history: 'Lịch sử luyện tập', filters: 'Bộ lọc', search: 'Tìm kiếm', searchPlaceholder: 'Tìm bộ bài tập…', clearSearch: 'Xóa từ khóa',
+  topic: 'Chủ đề', allTopics: 'Tất cả chủ đề', difficulty: 'Độ khó', allDifficulties: 'Mọi độ khó', type: 'Loại', allTypes: 'Mọi loại', list: 'Danh sách bộ bài tập', count: '{n} bộ',
+  loading: 'Đang tải…', loadError: 'Dịch vụ đang gián đoạn. Hãy thử lại.', retry: 'Thử lại', optionsError: 'Không tải được danh sách chủ đề.',
+  empty: 'Chưa có bộ bài tập nào.', noMatch: 'Không có bộ nào khớp bộ lọc.', clearFilters: 'Xóa lọc',
+  questions: '{n} câu', cards: '{n} thẻ', by: 'Tác giả: {name}', lastQuiz: 'Lần gần nhất: {correct}/{total} ({percent}%) · {date}', lastCards: 'Lần gần nhất: đã nhớ {correct}/{total} · {date}',
+  // Intro
+  back: 'Luyện tập', start: 'Bắt đầu', signIn: 'Đăng nhập để làm bài', owner: 'Bạn không thể làm bộ bài tập của chính mình.', gone: 'Bộ bài tập không còn khả dụng.', toList: 'Về danh sách', last: 'Lần gần nhất của bạn', viewAttempt: 'Xem lại',
+  // Attempt
+  progress: 'Câu {n}/{total}', cardProgress: 'Thẻ {n}/{total}', progressLabel: 'Tiến độ', questionList: 'Danh sách câu', questionState: 'Câu {n}, {state}', answered: 'đã trả lời', unanswered: 'chưa trả lời', current: 'đang xem',
+  prev: 'Câu trước', next: 'Câu sau', submit: 'Nộp bài', submitting: 'Đang nộp…', confirm: 'Còn {n} câu chưa trả lời. Vẫn nộp?', keepGoing: 'Làm tiếp', submitAnyway: 'Nộp', leave: 'Bài làm chưa nộp sẽ bị mất. Rời trang?', stay: 'Ở lại', leaveNow: 'Rời trang',
+  optionLabel: 'Đáp án', flip: 'Lật thẻ', flipped: 'Mặt sau', front: 'Mặt trước', back2: 'Mặt sau', remembered: 'Đã nhớ', notYet: 'Chưa nhớ', prevCard: 'Thẻ trước', resubmit: 'Nộp lại', submitError: 'Không nộp được bài.', attemptAgain: 'Làm lại',
+  questionsError: 'Không tải được câu hỏi.',
+  // Result
+  result: 'Bạn đúng {correct}/{total} câu ({percent}%)', cardResult: 'Đã nhớ {correct}/{total} thẻ', reviewAgain: 'Ôn lại', all: 'Tất cả', onlyWrong: 'Chỉ câu sai/bỏ trống', filter: 'Lọc câu',
+  yourAnswer: 'Bạn chọn', correctAnswer: 'Đáp án đúng', explanation: 'Giải thích', blank: 'Bỏ trống', right: 'Đúng', wrong: 'Sai', notRemembered: 'Thẻ chưa nhớ', allRemembered: 'Bạn đã nhớ tất cả thẻ.', allRight: 'Không có câu sai hay bỏ trống.',
+  questionN: 'Câu {n}', cardN: 'Thẻ {n}', setGone: 'Bộ bài tập không còn khả dụng.',
+  // History
+  historyTitle: 'Lịch sử luyện tập', historyEmpty: 'Chưa có lượt làm nào.', toPractice: 'Đến khu Luyện tập', backHistory: 'Lịch sử', attemptNotFound: 'Không tìm thấy lượt làm.', toHistory: 'Về lịch sử', minutes: '{n} phút', seconds: '{n} giây', scoreCards: 'Đã nhớ {correct}/{total}', scoreQuiz: '{correct}/{total} ({percent}%)', openAttempt: 'Xem lượt làm',
+}
+const practiceEn: typeof practiceVi = {
+  title: 'Practice', subtitle: 'Take quizzes and review flashcards by topic.', history: 'Practice history', filters: 'Filters', search: 'Search', searchPlaceholder: 'Search exercise sets…', clearSearch: 'Clear search',
+  topic: 'Topic', allTopics: 'All topics', difficulty: 'Difficulty', allDifficulties: 'Any difficulty', type: 'Type', allTypes: 'Any type', list: 'Exercise sets', count: '{n} sets',
+  loading: 'Loading…', loadError: 'The service is temporarily unavailable. Try again.', retry: 'Retry', optionsError: 'Could not load the topics.',
+  empty: 'There are no exercise sets yet.', noMatch: 'No sets match the filters.', clearFilters: 'Clear filters',
+  questions: '{n} questions', cards: '{n} cards', by: 'By {name}', lastQuiz: 'Last time: {correct}/{total} ({percent}%) · {date}', lastCards: 'Last time: remembered {correct}/{total} · {date}',
+  back: 'Practice', start: 'Start', signIn: 'Sign in to practice', owner: 'You cannot attempt your own exercise set.', gone: 'This exercise set is no longer available.', toList: 'Back to the list', last: 'Your last attempt', viewAttempt: 'Review',
+  progress: 'Question {n}/{total}', cardProgress: 'Card {n}/{total}', progressLabel: 'Progress', questionList: 'Question list', questionState: 'Question {n}, {state}', answered: 'answered', unanswered: 'unanswered', current: 'current',
+  prev: 'Previous', next: 'Next', submit: 'Submit', submitting: 'Submitting…', confirm: '{n} questions unanswered. Submit anyway?', keepGoing: 'Keep going', submitAnyway: 'Submit', leave: 'Your unsubmitted answers will be lost. Leave?', stay: 'Stay', leaveNow: 'Leave',
+  optionLabel: 'Answer', flip: 'Flip', flipped: 'Back', front: 'Front', back2: 'Back', remembered: 'Got it', notYet: 'Not yet', prevCard: 'Previous card', resubmit: 'Submit again', submitError: 'Could not submit.', attemptAgain: 'Try again',
+  questionsError: 'Could not load the questions.',
+  result: 'You got {correct}/{total} correct ({percent}%)', cardResult: 'Remembered {correct}/{total} cards', reviewAgain: 'Review again', all: 'All', onlyWrong: 'Wrong or blank only', filter: 'Filter questions',
+  yourAnswer: 'Your answer', correctAnswer: 'Correct answer', explanation: 'Explanation', blank: 'Unanswered', right: 'Correct', wrong: 'Wrong', notRemembered: 'Cards not remembered', allRemembered: 'You remembered every card.', allRight: 'No wrong or blank questions.',
+  questionN: 'Question {n}', cardN: 'Card {n}', setGone: 'This exercise set is no longer available.',
+  historyTitle: 'Practice history', historyEmpty: 'No attempts yet.', toPractice: 'Go to Practice', backHistory: 'History', attemptNotFound: 'Attempt not found.', toHistory: 'Back to history', minutes: '{n} min', seconds: '{n} s', scoreCards: 'Remembered {correct}/{total}', scoreQuiz: '{correct}/{total} ({percent}%)', openAttempt: 'Open attempt',
+}
+export function practiceText(language: Language) {
+  const copy = language === 'vi' ? practiceVi : practiceEn
+  return (key: keyof typeof practiceVi, values: Record<string, string | number> = {}) => copy[key].replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''))
+}

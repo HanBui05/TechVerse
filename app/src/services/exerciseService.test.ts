@@ -79,3 +79,37 @@ it('offers each status only the actions the backend accepts', () => {
   expect(at('HIDDEN').actions).toEqual(['copy'])
   expect(at('REMOVED').actions).toEqual(['copy'])
 })
+
+// ---- Practice (learner) ----
+import { attemptBody, practiceFilter, practiceSearch, unansweredCount, wrongItems } from './exerciseService'
+import type { AttemptItem } from '../types/exercises'
+
+it('reads /practice filters and drops unknown enums and bad pages', () => {
+  expect(practiceFilter(new URLSearchParams('difficulty=HARD&type=FLASHCARD&topicId=t1&keyword= sql &page=2'))).toEqual({ topicId: 't1', difficulty: 'HARD', type: 'FLASHCARD', keyword: 'sql', page: 2 })
+  expect(practiceFilter(new URLSearchParams('difficulty=X&type=CODE_BUG_FINDING&page=-1'))).toEqual({ topicId: '', difficulty: '', type: '', keyword: '', page: 0 })
+})
+
+it('writes only non-default filter params', () => {
+  expect(practiceSearch({ topicId: '', difficulty: '', type: '', keyword: '', page: 0 }).toString()).toBe('')
+  expect(practiceSearch({ topicId: 't1', difficulty: 'EASY', type: 'MULTIPLE_CHOICE', keyword: ' go ', page: 1 }).toString()).toBe('keyword=go&topicId=t1&difficulty=EASY&type=MULTIPLE_CHOICE&page=1')
+})
+
+it('counts unanswered quiz questions (null or missing)', () => {
+  const ids = ['a', 'b', 'c']
+  expect(unansweredCount(ids, { a: 0, b: null })).toBe(2)
+  expect(unansweredCount(ids, { a: 0, b: 1, c: 2 })).toBe(0)
+})
+
+it('builds the quiz payload with every question, null for blank, and the duration', () => {
+  expect(attemptBody('MULTIPLE_CHOICE', ['a', 'b'], { a: 2 }, 61)).toEqual({ answers: [{ questionId: 'a', selectedIndex: 2 }, { questionId: 'b', selectedIndex: null }], durationSeconds: 61 })
+})
+
+it('builds the flashcard payload where unmarked cards count as not remembered', () => {
+  expect(attemptBody('FLASHCARD', ['a', 'b'], { a: true }, 5)).toEqual({ results: [{ questionId: 'a', remembered: true }, { questionId: 'b', remembered: false }], durationSeconds: 5 })
+})
+
+it('keeps only wrong or blank quiz items for the quick filter', () => {
+  const item = (correct: boolean, selectedIndex: number | null) => ({ questionId: String(Math.random()), position: 0, content: 'q', codeSnippet: null, codeLanguage: null, options: ['x', 'y'], correctIndex: 0, selectedIndex, correct, explanation: '' }) as AttemptItem
+  const items = [item(true, 0), item(false, 1), item(false, null)]
+  expect(wrongItems(items)).toEqual([items[1], items[2]])
+})

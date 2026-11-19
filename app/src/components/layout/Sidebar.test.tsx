@@ -173,6 +173,13 @@ it('gives each main menu icon its own colour tone', () => {
   expect(new Set(tones.slice(0, 4)).size).toBe(4)
 })
 
+it('lists “Luyện tập” in the main menu and marks it active on its pages', () => {
+  render(<Shell route="/practice/s1"><Sidebar {...props} profile={profile} /></Shell>)
+  const link = screen.getByRole('link', { name: 'Luyện tập' })
+  expect(link.getAttribute('href')).toBe('/practice')
+  expect(link.getAttribute('aria-current')).toBe('page')
+})
+
 it('marks the current route as active', () => {
   render(<Shell route="/blogs"><Sidebar {...props} profile={profile} /></Shell>)
   expect(screen.getByRole('link', { name: 'Bài viết' }).getAttribute('aria-current')).toBe('page')

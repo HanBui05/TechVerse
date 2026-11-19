@@ -17,6 +17,10 @@ import { CoursesPage } from './pages/Courses/CoursesPage'
 import { CourseOverviewPage } from './pages/Courses/CourseOverviewPage'
 import { CourseLessonPage } from './pages/Courses/CourseLessonPage'
 import { MyCoursesPage } from './pages/Courses/MyCoursesPage'
+import { PracticeListPage } from './pages/Practice/PracticeListPage'
+import { PracticeIntroPage } from './pages/Practice/PracticeIntroPage'
+import { PracticeAttemptPage } from './pages/Practice/PracticeAttemptPage'
+import { PracticeAttemptReviewPage, PracticeHistoryPage } from './pages/Practice/PracticeHistoryPage'
 import { OrdersPage } from './pages/Payments/OrdersPage'
 import { OrderDetailPage } from './pages/Payments/OrderDetailPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
@@ -179,6 +183,11 @@ export default function App() {
       <Route path="/courses/:id" element={<ReaderRoute roles={roles}><CourseOverviewPage language={language} authenticated={authenticated} /></ReaderRoute>} />
       <Route path="/courses/:courseId/lessons/:lessonId" element={<ReaderRoute roles={roles}><CourseLessonPage language={language} authenticated={authenticated} /></ReaderRoute>} />
       <Route path="/me/courses" element={<AuthRoute authenticated={authenticated} returnTo="/me/courses"><ReaderRoute roles={roles}><MyCoursesPage language={language} /></ReaderRoute></AuthRoute>} />
+      <Route path="/practice" element={<ReaderRoute roles={roles}><PracticeListPage language={language} authenticated={authenticated} /></ReaderRoute>} />
+      <Route path="/practice/:id" element={<ReaderRoute roles={roles}><PracticeIntroPage language={language} authenticated={authenticated} /></ReaderRoute>} />
+      <Route path="/practice/:id/attempt" element={<AuthRoute authenticated={authenticated} returnTo={location.pathname}><ReaderRoute roles={roles}><PracticeAttemptPage language={language} /></ReaderRoute></AuthRoute>} />
+      <Route path="/me/practice" element={<AuthRoute authenticated={authenticated} returnTo="/me/practice"><ReaderRoute roles={roles}><PracticeHistoryPage language={language} /></ReaderRoute></AuthRoute>} />
+      <Route path="/me/practice/:attemptId" element={<AuthRoute authenticated={authenticated} returnTo={location.pathname}><ReaderRoute roles={roles}><PracticeAttemptReviewPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route path="/me/orders" element={<AuthRoute authenticated={authenticated} returnTo="/me/orders"><ReaderRoute roles={roles}><OrdersPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route path="/me/orders/:orderCode" element={<AuthRoute authenticated={authenticated} returnTo={location.pathname}><ReaderRoute roles={roles}><OrderDetailPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route element={<AuthLayout t={t} />}>
