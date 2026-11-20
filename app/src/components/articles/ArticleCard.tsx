@@ -36,17 +36,18 @@ export function ArticleCard({ article, from, language = 'vi', canSave = true, sa
   const tone = toneFor(article.topic.name)
   const Icon = topicIcon(article.topic.name)
   const extraTags = article.tags.length - 3
-  return <article className="group flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-sm transition duration-300 hover:-translate-y-1 hover:border-accent-text/40 hover:shadow-xl motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-    <Link to={to} state={state} tabIndex={-1} aria-hidden className="relative block aspect-[16/10] overflow-hidden border-b border-border">
+  return <article className="group flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border/85 bg-card text-card-foreground shadow-[0_2px_10px_-2px_rgba(0,0,0,0.06)] transition duration-300 hover:-translate-y-1 hover:border-accent-text/45 hover:shadow-xl dark:bg-linear-to-b dark:from-white/[0.025] dark:to-transparent dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_8px_24px_-6px_rgba(0,0,0,0.5)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+    <Link to={to} state={state} tabIndex={-1} aria-hidden className="relative block aspect-[16/10] overflow-hidden border-b border-border/70">
       {article.coverImageUrl
         ? <img src={article.coverImageUrl} alt="" loading="lazy" className="size-full object-cover transition duration-500 group-hover:scale-105 motion-reduce:transition-none" />
         : <span className={cn('relative flex size-full flex-col items-center justify-center gap-3 overflow-hidden', TONE_TILE[tone])}>
+            <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.12),transparent_70%)]" />
             <Icon className="absolute -top-4 -left-4 size-24 rotate-12 opacity-10" aria-hidden />
             <Hash className="absolute -right-3 -bottom-5 size-28 -rotate-12 opacity-10" aria-hidden />
-            <span className="flex size-16 items-center justify-center rounded-2xl border border-current/30 bg-card/60 shadow-sm transition duration-500 group-hover:scale-110 group-hover:rotate-3 motion-reduce:transition-none"><Icon className="size-8" aria-hidden /></span>
-            <span className="max-w-[80%] truncate text-sm font-semibold">{article.topic.name}</span>
+            <span className="relative flex size-16 items-center justify-center rounded-2xl border border-current/25 bg-card/75 shadow-md backdrop-blur-xs transition duration-500 group-hover:scale-110 group-hover:rotate-3 motion-reduce:transition-none"><Icon className="size-8" aria-hidden /></span>
+            <span className="relative max-w-[80%] truncate text-xs font-bold tracking-wide uppercase opacity-90">{article.topic.name}</span>
           </span>}
-      <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm backdrop-blur">
+      <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full border border-border/80 bg-card/90 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm backdrop-blur-md">
         <Clock3 className="size-3.5 text-tone-sky-fg" aria-hidden />{t('minutes', { n: article.readingMinutes })}
       </span>
     </Link>

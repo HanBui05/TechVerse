@@ -85,28 +85,28 @@ export function ModeratorCoursesPage({ language = 'vi' }: { language?: Language 
 
     <ArticleStats stats={stats} language={language} label={t('stats')} active={filters} onSelect={filter => setFilter(filter)} />
 
-    <Card className="gap-0 rounded-2xl py-0">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
-        <h2 className="inline-flex items-center gap-2 text-base font-semibold"><span aria-hidden className="flex size-8 items-center justify-center rounded-lg border border-tone-sky-border bg-tone-sky-bg text-tone-sky-fg"><SlidersHorizontal className="size-4" /></span>{t('filters')}</h2>
-        {data && <Badge tone="blue" aria-live="polite">{t('count', { n: data.totalElements })}</Badge>}
+    <Card className="gap-4 rounded-2xl p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+        <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground"><SlidersHorizontal className="size-4 text-accent-text" aria-hidden />{t('filters')}</h2>
+        {data && <Badge tone="blue" aria-live="polite" className="px-3 py-1 font-semibold">{t('count', { n: data.totalElements })}</Badge>}
       </div>
-      <div className="flex flex-col gap-4 p-6">
-        <div className="grid gap-4 md:grid-cols-12">
-          <div className="flex flex-col gap-2 md:col-span-4">
+      <div className="flex flex-col gap-3.5">
+        <div className="grid gap-3.5 md:grid-cols-12">
+          <div className="flex flex-col gap-1.5 md:col-span-4">
             <Label htmlFor="course-moderator-search" className={fieldLabel}>{t('search')}</Label>
-            <div className="relative"><Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="course-moderator-search" type="search" maxLength={255} className={`pl-9 ${touch}`} placeholder={t('searchPlaceholder')} value={keyword} onChange={e => setKeyword(e.target.value)} /></div>
+            <div className="relative"><Search aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-accent-text" />
+              <Input id="course-moderator-search" type="search" maxLength={255} className={`h-10 rounded-xl bg-background/60 pl-10 ${touch}`} placeholder={t('searchPlaceholder')} value={keyword} onChange={e => setKeyword(e.target.value)} /></div>
           </div>
-          {([['topicId', 'topic', 'allTopics', options.topics], ['tagId', 'tag', 'allTags', options.tags]] as const).map(([key, label, all, list]) => <div key={key} className="flex flex-col gap-2 md:col-span-2">
+          {([['topicId', 'topic', 'allTopics', options.topics], ['tagId', 'tag', 'allTags', options.tags]] as const).map(([key, label, all, list]) => <div key={key} className="flex flex-col gap-1.5 md:col-span-2">
             <Label htmlFor={`course-moderator-${key}`} className={fieldLabel}>{t(label)}</Label>
-            <NativeSelect id={`course-moderator-${key}`} className={touch} value={filters[key]} onChange={e => setFilter({ [key]: e.target.value })}>
+            <NativeSelect id={`course-moderator-${key}`} className={`h-10 rounded-xl bg-background/60 ${touch}`} value={filters[key]} onChange={e => setFilter({ [key]: e.target.value })}>
               <NativeSelectOption value="">{t(all)}</NativeSelectOption>
               {list.map(o => <NativeSelectOption key={o.id} value={o.id}>{o.name}</NativeSelectOption>)}
             </NativeSelect>
           </div>)}
-          <div className="flex flex-col gap-2 md:col-span-4">
+          <div className="flex flex-col gap-1.5 md:col-span-4">
             <Label htmlFor="course-moderator-sort" className={fieldLabel}>{t('sort')}</Label>
-            <NativeSelect id="course-moderator-sort" className={touch} value={filters.sort} onChange={e => setFilter({ sort: e.target.value })}>
+            <NativeSelect id="course-moderator-sort" className={`h-10 rounded-xl bg-background/60 ${touch}`} value={filters.sort} onChange={e => setFilter({ sort: e.target.value })}>
               {(Object.keys(SORTS) as (keyof typeof SORTS)[]).map(key => <NativeSelectOption key={key} value={SORTS[key]}>{t(key)}</NativeSelectOption>)}
             </NativeSelect>
           </div>
@@ -114,10 +114,14 @@ export function ModeratorCoursesPage({ language = 'vi' }: { language?: Language 
         {optionsError && <p className="flex flex-wrap items-center gap-2 text-sm text-danger"><span>{t('optionsError')}</span><Button size="sm" variant="outline" className={touch} onClick={loadOptions}><RefreshCw />{t('retry')}</Button></p>}
         {([['workflowFilter', 'workflowStatus', WORKFLOWS, moderatorWorkflowLabel], ['publicationFilter', 'publicationStatus', PUBLICATIONS, moderatorPublicationLabel]] as const).map(([label, key, values, labels]) => <div key={key} className="flex items-center gap-2 max-sm:flex-col max-sm:items-start">
           <span className={`${fieldLabel} w-24 shrink-0`}>{t(label)}</span>
-          <div role="group" aria-label={t(label)} className="flex gap-2 max-sm:w-full max-sm:overflow-x-auto max-sm:pb-1 sm:flex-wrap">
-            {(['', ...values] as string[]).map(value => <Button key={value || 'all'} size="sm" variant={filters[key] === value ? 'default' : 'outline'} className={`shrink-0 rounded-full ${touch}`} aria-pressed={filters[key] === value} onClick={() => setFilter({ [key]: value })}>
-              {value ? (labels as Record<string, { vi: string; en: string }>)[value][language] : t('all')}
-            </Button>)}
+          <div role="group" aria-label={t(label)} className="flex items-center gap-1 rounded-xl border border-border/70 bg-background/60 p-1 max-sm:w-full max-sm:overflow-x-auto sm:flex-wrap">
+            {(['', ...values] as string[]).map(value => {
+              const selected = filters[key] === value
+              return <button key={value || 'all'} type="button" aria-pressed={selected} onClick={() => setFilter({ [key]: value })}
+                className={`inline-flex h-8 shrink-0 cursor-pointer items-center rounded-lg px-3 text-xs font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring ${touch} ${selected ? 'bg-card text-foreground shadow-xs ring-1 ring-border/80' : 'text-muted-foreground hover:text-foreground'}`}>
+                {value ? (labels as Record<string, { vi: string; en: string }>)[value][language] : t('all')}
+              </button>
+            })}
           </div>
         </div>)}
       </div>

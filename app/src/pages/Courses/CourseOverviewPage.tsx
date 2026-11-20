@@ -64,26 +64,27 @@ export function CourseOverviewPage({ language = 'vi', authenticated = false }: {
     {(actions: FrameActions) => <main id="lesson-content" className="tw-page mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6">
       <nav aria-label={t('breadcrumb')} className="text-sm text-muted-foreground"><Link to="/courses" className={cn('hover:text-foreground', touch)}>{t('back')}</Link> › <span className="text-foreground">{course.title}</span></nav>
 
-      <section aria-labelledby="course-title" className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-        <ul className="flex flex-wrap gap-2">
+      <section aria-labelledby="course-title" className="relative flex flex-col gap-4 overflow-hidden rounded-2xl border border-border/85 bg-linear-to-br from-card via-card to-tone-blue-bg/15 p-5 shadow-sm sm:p-7 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_8px_24px_-6px_rgba(0,0,0,0.45)]">
+        <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 size-56 rounded-full bg-primary/10 blur-3xl" />
+        <ul className="relative flex flex-wrap gap-2">
           <li><Badge tone={LEVEL_TONE[course.level]} className={chip}>{t(course.level)}</Badge></li>
           <li><Badge tone="blue" className={chip}><Layers aria-hidden />{t('chapters', { n: course.chapterCount })}</Badge></li>
           <li><Badge tone="purple" className={chip}><ListChecks aria-hidden />{t('lessons', { n: course.lessonCount })}</Badge></li>
           <li><Badge tone="slate" className={chip}><CalendarDays aria-hidden /><time dateTime={course.updatedAt}>{t('updated', { date: formatDate(course.updatedAt, language) })}</time></Badge></li>
         </ul>
-        <ul className="flex flex-wrap gap-1.5">
-          <li><Badge tone={tone} className="rounded-lg px-2 py-1 font-semibold"><TopicIcon aria-hidden />{course.topic.name}</Badge></li>
-          {course.tags.map(tag => <li key={tag.id}><Badge tone={toneFor(tag.name)} className="rounded-lg px-2 py-1"><Hash aria-hidden />{tag.name}</Badge></li>)}
+        <ul className="relative flex flex-wrap gap-1.5">
+          <li><Badge tone={tone} className="rounded-lg px-2.5 py-1 font-semibold"><TopicIcon aria-hidden />{course.topic.name}</Badge></li>
+          {course.tags.map(tag => <li key={tag.id}><Badge tone={toneFor(tag.name)} className="rounded-lg px-2.5 py-1"><Hash aria-hidden />{tag.name}</Badge></li>)}
         </ul>
-        <h1 id="course-title" className="text-2xl font-bold tracking-tight sm:text-3xl">{course.title}</h1>
-        {course.summary && <p className="line-clamp-3 text-base text-muted-foreground">{course.summary}</p>}
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 id="course-title" className="relative text-2xl font-extrabold tracking-tight sm:text-3xl">{course.title}</h1>
+        {course.summary && <p className="relative line-clamp-3 text-base leading-relaxed text-muted-foreground">{course.summary}</p>}
+        <div className="relative flex flex-wrap items-center justify-between gap-4 border-t border-border/60 pt-4">
           <span className="flex items-center gap-2.5">
-            <UserAvatar name={course.author.fullName} url={course.author.avatarUrl} className="size-9 text-xs" />
+            <UserAvatar name={course.author.fullName} url={course.author.avatarUrl} className="size-10 text-xs ring-2 ring-accent-text/25 ring-offset-2 ring-offset-card" />
             <span className="flex flex-col leading-tight"><span className="text-sm font-semibold">{course.author.fullName}</span><span className="text-[11px] tracking-wide text-muted-foreground uppercase">{t('author')}</span></span>
           </span>
-          <div className="flex flex-wrap items-center gap-2 max-sm:w-full max-sm:flex-col max-sm:items-stretch">
-            <PriceChip amount={course.priceAmount} language={language} className="px-2.5 py-1 text-sm max-sm:self-start" />
+          <div className="flex flex-wrap items-center gap-2.5 max-sm:w-full max-sm:flex-col max-sm:items-stretch">
+            <PriceChip amount={course.priceAmount} language={language} className="px-3 py-1 text-sm max-sm:self-start" />
             {course.viewer.enrolled
               ? continueLesson && <Button asChild className={touch}><Link to={`/courses/${course.id}/lessons/${continueLesson.id}`}><PlayCircle aria-hidden />{t('continueAt', { title: continueLesson.title })}</Link></Button>
               : course.viewer.canStart && paid
@@ -94,26 +95,26 @@ export function CourseOverviewPage({ language = 'vi', authenticated = false }: {
             {firstPreview && <Button asChild variant="outline" className={touch}><Link to={`/courses/${course.id}/lessons/${firstPreview.id}`}>{t('preview')}</Link></Button>}
           </div>
         </div>
-        {progress && <div className="flex flex-col gap-1.5"><ProgressBar percent={progress.percent} label={t('progressLabel')} /><p className="text-xs text-muted-foreground">{t('progress', { x: progress.completed, y: progress.total, p: progress.percent })}</p></div>}
+        {progress && <div className="relative flex flex-col gap-1.5 rounded-xl border border-border/60 bg-background/40 p-3.5"><ProgressBar percent={progress.percent} label={t('progressLabel')} /><p className="text-xs font-medium text-muted-foreground">{t('progress', { x: progress.completed, y: progress.total, p: progress.percent })}</p></div>}
         {paid && !course.viewer.enrolled && course.viewer.canStart && <p className="text-sm text-muted-foreground"><span aria-hidden>ⓘ </span>{t('noRefund')}</p>}
         {actions.startError && <p role="alert" className="text-sm text-danger">{actions.startError}</p>}
       </section>
 
-      {course.coverImageUrl && <img src={course.coverImageUrl} alt="" className="aspect-video w-full rounded-2xl border border-border object-cover" />}
-      {course.description && <section aria-labelledby="course-intro" className="flex flex-col gap-3"><h2 id="course-intro" className="text-xl font-bold">{t('introTitle')}</h2><MarkdownContent content={course.description} language={language} /></section>}
+      {course.coverImageUrl && <img src={course.coverImageUrl} alt="" className="aspect-video w-full rounded-2xl border border-border/80 object-cover shadow-md" />}
+      {course.description && <section aria-labelledby="course-intro" className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs sm:p-6"><h2 id="course-intro" className="text-xl font-bold">{t('introTitle')}</h2><MarkdownContent content={course.description} language={language} /></section>}
 
       <section aria-labelledby="course-content" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="course-content" className="text-xl font-bold">{t('content')} <span className="text-sm font-normal text-muted-foreground">({t('chapters', { n: course.chapterCount })} · {t('lessons', { n: course.lessonCount })})</span></h2>
           <Button type="button" variant="outline" size="sm" className={touch} onClick={() => setOpen(allOpen ? new Set() : new Set(course.chapters.map(chapter => chapter.id)))}>{allOpen ? t('collapseAll') : t('expandAll')}</Button>
         </div>
-        <div className="overflow-hidden rounded-2xl border border-border">
+        <div className="overflow-hidden rounded-2xl border border-border/85 bg-card shadow-sm">
           {course.chapters.map(chapter => {
             const expanded = open.has(chapter.id)
             const stat = course.learning?.chapters.find(item => item.chapterId === chapter.id)
-            return <section key={chapter.id} className="border-b border-border last:border-b-0">
+            return <section key={chapter.id} className="border-b border-border/75 last:border-b-0">
               <h3><button type="button" aria-expanded={expanded} onClick={() => setOpen(prev => { const next = new Set(prev); if (!next.delete(chapter.id)) next.add(chapter.id); return next })}
-                className={cn('flex w-full items-center gap-3 bg-muted/40 px-4 py-3 text-left text-sm font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring', touch)}>
+                className={cn('flex w-full cursor-pointer items-center gap-3 bg-muted/35 px-5 py-3.5 text-left text-sm font-semibold transition-colors hover:bg-muted/70 focus-visible:outline-2 focus-visible:outline-ring', touch)}>
                 <span className="min-w-0 flex-1"><span className="text-xs tracking-wide text-muted-foreground uppercase">{t('chapterN', { n: course.chapters.indexOf(chapter) + 1 })} · </span>{chapter.title}</span>
                 {stat && <span className="text-xs font-normal text-muted-foreground">{t('chapterProgress', { x: stat.completed, y: stat.total })}</span>}
                 <ChevronDown className={cn('size-4 shrink-0 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} aria-hidden />

@@ -1,5 +1,7 @@
 package com.techverse.server.exception;
 
+import com.techverse.server.controller.AuthorAiController;
+import com.techverse.server.service.AuthorAiService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -23,7 +25,17 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(CustomException.class)
 	ResponseEntity<ErrorResponse> handleCustomException(CustomException exception, HttpServletRequest request) {
-		return error(exception.getErrorCode(), request, null);
+		return error(exception.getErrorCode(), request, exception.getFieldErrors());
+	}
+
+	/** Same envelope, plus the AI allowance left after the refund (author AI endpoints). */
+	@ExceptionHandler(AuthorAiService.QuotaAwareException.class)
+	ResponseEntity<ErrorResponse> handleQuotaAware(AuthorAiService.QuotaAwareException exception, HttpServletRequest request) {
+		var response = error(exception.getErrorCode(), request, exception.getFieldErrors());
+		return ResponseEntity.status(response.getStatusCode())
+				.header(AuthorAiController.QUOTA_LIMIT, String.valueOf(exception.getQuota().limit()))
+				.header(AuthorAiController.QUOTA_REMAINING, String.valueOf(exception.getQuota().remaining()))
+				.body(response.getBody());
 	}
 
 	@ExceptionHandler(AuthorizationDeniedException.class)

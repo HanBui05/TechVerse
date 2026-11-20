@@ -12,7 +12,11 @@
 @layer base {
   *, ::before, ::after { border-color: var(--border); }
   html { font-family: var(--font-sans); font-synthesis: none; color: var(--foreground); background: var(--background); -webkit-tap-highlight-color: transparent; }
-  body { min-width: 320px; background: var(--background); transition: background-color .28s ease, color .28s ease; }
+  body {
+    min-width: 320px;
+    background-color: var(--background);
+    transition: background-color .28s ease, color .28s ease;
+  }
 }
 
 /* Dark is the default (no attribute); light is data-theme='light'. No dark class on <html>. */

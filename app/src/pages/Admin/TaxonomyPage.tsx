@@ -65,51 +65,61 @@ export function TaxonomyPage({ kind, language = 'vi' }: { kind: 'topics' | 'tags
   // Runs only after the AlertDialog is confirmed; same endpoint and payload as the old window.confirm flow.
   const toggle = async () => { if (!selected) return; setLoading(true); setError(''); setMessage(''); try { const item = await request<Item>(`${base}/${selected.id}/status`, { method: 'PATCH', body: JSON.stringify({ active: !selected.active }) }); setSelected(item); await load(); void loadStats(); setMessage(vi ? `${item.active ? 'Đã kích hoạt' : 'Đã ẩn'} ${one}: ${item.name}` : `${item.active ? 'Activated' : 'Hid'} ${one}: ${item.name}`) } catch (e) { setError(adminErrorText(e, language, t("Không thể cập nhật"))) } finally { setLoading(false) } }
   const toggleWord = (item: Item | null) => item?.active ? (vi ? 'Ngừng hoạt động' : 'Deactivate') : (vi ? 'Kích hoạt' : 'Activate')
-  const filter = (id: string, text: string, value: string, onChange: (value: string) => void, options: [string, string][]) => <div className="flex flex-col gap-2">
+  const filter = (id: string, text: string, value: string, onChange: (value: string) => void, options: [string, string][]) => <div className="flex flex-col gap-1.5">
     <Label htmlFor={id} className={fieldLabel}>{text}</Label>
-    <NativeSelect id={id} className="pointer-coarse:min-h-11" value={value} onChange={e => { onChange(e.target.value); setPage(0) }}>{options.map(([v, option]) => <NativeSelectOption key={v} value={v}>{option}</NativeSelectOption>)}</NativeSelect>
+    <NativeSelect id={id} className="h-10 rounded-xl bg-background/60 pointer-coarse:min-h-11" value={value} onChange={e => { onChange(e.target.value); setPage(0) }}>{options.map(([v, option]) => <NativeSelectOption key={v} value={v}>{option}</NativeSelectOption>)}</NativeSelect>
   </div>
   const errorText = error && <p role="alert" className="rounded-lg border border-border bg-tone-rose-bg px-4 py-3 text-sm text-danger">{error}</p>
   const createButton = <Button onClick={create}><Plus />{t("Tạo mới")}</Button>
-  const statCards: [keyof Stats, string, ComponentType<{ className?: string }>, string, string][] = [
-    ['total', vi ? `Tổng ${one}` : (kind === 'topics' ? 'Total topics' : 'Total tags'), Layers, 'text-foreground', 'border-tone-blue-border bg-tone-blue-bg text-tone-blue-fg'],
-    ['active', vi ? 'Đang hoạt động' : 'Active', CheckCircle2, 'text-tone-green-fg', 'border-tone-green-border bg-tone-green-bg text-tone-green-fg'],
-    ['hidden', vi ? 'Đang ẩn' : 'Hidden', EyeOff, 'text-tone-amber-fg', 'border-tone-amber-border bg-tone-amber-bg text-tone-amber-fg'],
+  const statCards: [keyof Stats, string, ComponentType<{ className?: string }>][] = [
+    ['total', vi ? `Tổng ${one}` : (kind === 'topics' ? 'Total topics' : 'Total tags'), Layers],
+    ['active', vi ? 'Đang hoạt động' : 'Active', CheckCircle2],
+    ['hidden', vi ? 'Đang ẩn' : 'Hidden', EyeOff],
   ]
-  const statusChips: [string, string][] = [['', t("Tất cả")], ['true', t("Hoạt động")], ['false', t("Ẩn")]]
+  const statusChips: [string, string][] = [
+    ['', t("Tất cả")],
+    ['true', t("Hoạt động")],
+    ['false', t("Ẩn")],
+  ]
 
-  return <main className="tw-page mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 lg:px-8">
-    <header className="flex flex-wrap items-start justify-between gap-4">
+  return <main className="tw-page mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 py-8 lg:px-8">
+    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold sm:text-3xl">{title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
         <p className="text-sm text-muted-foreground">{vi ? `Tạo, chỉnh sửa và bật tắt ${one} dùng để phân loại bài viết.` : `Create, edit and switch on or off the ${one}s used to organise articles.`}</p>
       </div>
       {createButton}
     </header>
 
-    <dl className="m-0 grid grid-cols-3 gap-3 sm:gap-4">
-      {statCards.map(([key, label, StatIcon, number, tile]) => <div key={key} className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5">
-        <div className="flex min-w-0 flex-col gap-2">
+    <dl className="m-0 grid grid-cols-3 gap-4">
+      {statCards.map(([key, label, StatIcon]) => <div key={key} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card p-5 text-card-foreground">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <dt className={fieldLabel}>{label}</dt>
-          <dd className={`m-0 text-2xl font-bold tabular-nums sm:text-3xl ${number}`}>{stats ? stats[key].toLocaleString(vi ? 'vi-VN' : 'en-US') : '—'}</dd>
+          <dd className="m-0 text-2xl font-semibold tracking-tight text-foreground tabular-nums">{stats ? stats[key].toLocaleString(vi ? 'vi-VN' : 'en-US') : '—'}</dd>
         </div>
-        <span aria-hidden className={`hidden size-11 shrink-0 items-center justify-center rounded-xl border sm:flex ${tile}`}><StatIcon className="size-5" /></span>
+        <StatIcon className="hidden size-4 shrink-0 text-muted-foreground sm:block" aria-hidden />
       </div>)}
     </dl>
 
-    <Card className="gap-0 rounded-2xl py-0">
-      <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-4">
-        <span className="inline-flex items-center gap-2 font-semibold"><span aria-hidden className="flex size-8 items-center justify-center rounded-lg border border-tone-sky-border bg-tone-sky-bg text-tone-sky-fg"><SlidersHorizontal className="size-4" /></span>{vi ? 'Bộ lọc' : 'Filters'}</span>
-        <div role="group" aria-label={t("Trạng thái")} className="flex flex-wrap gap-2">
-          {statusChips.map(([value, text]) => <Button key={value} size="sm" variant={active === value ? 'default' : 'outline'} className="rounded-full" aria-pressed={active === value} onClick={() => { setActive(value); setPage(0) }}>{text}</Button>)}
+    <Card className="gap-4 rounded-xl p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3.5">
+        <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase"><SlidersHorizontal className="size-3.5 text-muted-foreground" aria-hidden />{vi ? 'Bộ lọc' : 'Filters'}</span>
+        <div role="group" aria-label={t("Trạng thái")} className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
+          {statusChips.map(([value, text]) => {
+            const activeChip = active === value
+            return <button key={value} type="button" aria-pressed={activeChip} onClick={() => { setActive(value); setPage(0) }}
+              className={`inline-flex h-7 cursor-pointer items-center rounded-md px-3 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-11 ${activeChip ? 'bg-card text-foreground shadow-2xs' : 'text-muted-foreground hover:text-foreground'}`}>
+              {text}
+            </button>
+          })}
         </div>
       </div>
-      <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4 [&_[data-slot=native-select-wrapper]]:w-full">
-        <form className="flex flex-col gap-2 sm:col-span-2" onSubmit={e => { e.preventDefault(); setPage(0); setQuery(keyword.trim()) }}>
+      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4 [&_[data-slot=native-select-wrapper]]:w-full">
+        <form className="flex flex-col gap-1.5 sm:col-span-2" onSubmit={e => { e.preventDefault(); setPage(0); setQuery(keyword.trim()) }}>
           <Label htmlFor={`${kind}-search`} className={fieldLabel}>{t("Tìm kiếm")}</Label>
           <div className="relative">
-            <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input id={`${kind}-search`} type="search" className="pl-9 pointer-coarse:min-h-11" maxLength={100} placeholder={vi ? `Nhập tên ${one}…` : `Search ${one}s…`} value={keyword} onChange={e => setKeyword(e.target.value)} />
+            <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input id={`${kind}-search`} type="search" className="h-9 rounded-lg bg-background/60 pl-10 pointer-coarse:min-h-11" maxLength={100} placeholder={vi ? `Nhập tên ${one}…` : `Search ${one}s…`} value={keyword} onChange={e => setKeyword(e.target.value)} />
           </div>
         </form>
         {filter(`${kind}-sort`, t("Sắp xếp"), sortBy, setSortBy, [['CREATED_AT', t("Ngày tạo")], ['UPDATED_AT', t("Ngày cập nhật")], ['NAME', t("Tên")]])}
@@ -178,8 +188,8 @@ export function TaxonomyPage({ kind, language = 'vi' }: { kind: 'topics' | 'tags
               const found = suggestIcons(icons, iconQuery, name)
               return found.length
                 ? <><p aria-live="polite" className="text-xs text-muted-foreground">{vi ? `${found.length} logo · gõ để tìm trong ${icons.size.toLocaleString('vi-VN')} logo` : `${found.length} logos · type to search ${icons.size.toLocaleString('en-US')} logos`}</p><div className="grid max-h-64 grid-cols-4 gap-2 overflow-y-auto p-0.5 sm:grid-cols-6">{found.map(option => <Button key={option.slug} type="button" variant={icon === option.slug ? 'default' : 'outline'} title={option.title} aria-label={option.title} aria-pressed={icon === option.slug} className="h-12 pointer-coarse:min-h-12" onClick={() => setIcon(option.slug)}>
-                    <TopicIcon icon={option.slug} name={option.title} icons={icons} className="size-8 border-0 bg-transparent" />
-                  </Button>)}</div></>
+                  <TopicIcon icon={option.slug} name={option.title} icons={icons} className="size-8 border-0 bg-transparent" />
+                </Button>)}</div></>
                 : <p className="text-xs text-muted-foreground">{vi ? 'Không có logo khớp. Thử từ khóa khác.' : 'No matching logo. Try another keyword.'}</p>
             })()}
           </fieldset>}

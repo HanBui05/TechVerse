@@ -136,26 +136,28 @@ export function CourseLessonPage({ language = 'vi', authenticated = false }: { l
   return <CourseFrame language={language} authenticated={authenticated} courseId={courseId} title={data.courseTitle} chapters={data.chapters} viewer={viewer} learning={learning} priceAmount={price} currentLessonId={lesson.id}>
     {actions => <div className="mx-auto flex w-full max-w-6xl gap-8 px-4 py-6 pb-24 sm:px-6 md:pb-6">
       <main id="lesson-content" className="flex min-w-0 max-w-3xl flex-1 flex-col gap-5">
-        <nav aria-label={t('breadcrumb')} className="text-sm text-muted-foreground"><Link to={`/courses/${courseId}`} className={cn('hover:text-foreground', touch)}>{data.courseTitle}</Link>{chapter && <> › {chapter.title}</>}</nav>
-        <div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{lesson.title}</h1>{lesson.preview && !viewer.enrolled && <Badge tone="sky">{t('preview')}</Badge>}
-          <LessonTutor key={lesson.id} courseId={courseId} lessonId={lesson.id} language={language} authenticated={authenticated} hasText={!!lesson.content?.trim()} askLogin={() => actions.askLogin(`/courses/${courseId}/lessons/${lesson.id}`)} /></div>
-        {lesson.summary && <p className="text-muted-foreground">{lesson.summary}</p>}
-        {video && <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border bg-muted">
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-5 shadow-xs sm:p-6">
+          <nav aria-label={t('breadcrumb')} className="text-xs font-medium text-muted-foreground"><Link to={`/courses/${courseId}`} className={cn('hover:text-foreground', touch)}>{data.courseTitle}</Link>{chapter && <> › <span className="text-foreground/90">{chapter.title}</span></>}</nav>
+          <div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{lesson.title}</h1>{lesson.preview && !viewer.enrolled && <Badge tone="sky">{t('preview')}</Badge>}
+            <LessonTutor key={lesson.id} courseId={courseId} lessonId={lesson.id} language={language} authenticated={authenticated} hasText={!!lesson.content?.trim()} askLogin={() => actions.askLogin(`/courses/${courseId}/lessons/${lesson.id}`)} /></div>
+          {lesson.summary && <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">{lesson.summary}</p>}
+        </div>
+        {video && <div className="aspect-video w-full overflow-hidden rounded-2xl border border-border/85 bg-muted shadow-lg">
           <iframe src={video} title={t('video', { title: lesson.title })} className="size-full" loading="lazy" sandbox="allow-scripts allow-same-origin allow-presentation" referrerPolicy="strict-origin-when-cross-origin"
             allow="accelerometer; encrypted-media; picture-in-picture" allowFullScreen />
         </div>}
-        {headings.length > 0 && <details className="rounded-xl border border-border xl:hidden"><summary className={cn('flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-semibold', touch)}><ListTree className="size-4" aria-hidden />{t('toc')}</summary><nav aria-label={t('toc')} className="px-2 pb-2">{toc}</nav></details>}
-        {lesson.content && <div ref={body} className="[&>div]:text-base [&>div]:leading-[1.85]"><MarkdownContent content={lesson.content} anchors language={language} /></div>}
+        {headings.length > 0 && <details className="rounded-xl border border-border/80 bg-card/70 xl:hidden"><summary className={cn('flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm font-semibold', touch)}><ListTree className="size-4 text-accent-text" aria-hidden />{t('toc')}</summary><nav aria-label={t('toc')} className="px-2 pb-2.5">{toc}</nav></details>}
+        {lesson.content && <div ref={body} className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs sm:p-7 [&>div]:text-base [&>div]:leading-[1.85]"><MarkdownContent content={lesson.content} anchors language={language} /></div>}
 
-        {!viewer.enrolled && <div className="flex flex-col items-start gap-2 rounded-xl border border-border bg-muted/40 p-4"><p className="text-sm">{t(price > 0 ? 'buyHint' : 'previewHint')}</p>
+        {!viewer.enrolled && <div className="flex flex-col items-start gap-2.5 rounded-2xl border border-tone-blue-border/60 bg-tone-blue-bg/35 p-5 shadow-2xs"><p className="text-sm font-medium">{t(price > 0 ? 'buyHint' : 'previewHint')}</p>
           {price > 0 && <p className="text-xs text-muted-foreground">{t('noRefund')}</p>}
           {viewer.canStart && (authenticated
             ? <Button type="button" className={touch} disabled={actions.starting} onClick={() => void (price > 0 ? actions.buy() : actions.start())}>{t(price > 0 ? 'buy' : 'startLearning')}</Button>
             : <Button type="button" className={touch} onClick={() => actions.askLogin(`/courses/${courseId}/lessons/${lesson.id}`)}>{t('login')}</Button>)}
           {actions.startError && <p role="alert" className="text-sm text-danger">{actions.startError}</p>}</div>}
 
-        <div className="flex flex-col gap-2 border-t border-border pt-4">
-          <div className="max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-20 max-md:border-t max-md:border-border max-md:bg-background max-md:p-2 flex items-center justify-between gap-2">
+        <div className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+          <div className="max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-20 max-md:border-t max-md:border-border max-md:bg-background/95 max-md:p-2.5 max-md:backdrop-blur-md flex items-center justify-between gap-2">
             {step(prev, 'prev', actions) ?? <span />}
             {viewer.enrolled && <Button type="button" variant={completed ? 'outline' : 'default'} className={cn('max-md:flex-1', touch)} disabled={saving} onClick={() => void toggle()}>
               {completed && <Check aria-hidden />}{t(completed ? 'uncomplete' : 'complete')}</Button>}
@@ -163,10 +165,10 @@ export function CourseLessonPage({ language = 'vi', authenticated = false }: { l
           </div>
           {completionError && <p role="alert" className="text-sm text-danger">{completionError}</p>}
           <p role="status" aria-live="polite" className="sr-only">{status}</p>
-          {progress && viewer.enrolled && <p className="text-xs text-muted-foreground">{t('progress', { x: progress.completed, y: progress.total, p: progress.percent })}</p>}
+          {progress && viewer.enrolled && <p className="text-center text-xs text-muted-foreground">{t('progress', { x: progress.completed, y: progress.total, p: progress.percent })}</p>}
         </div>
       </main>
-      {headings.length > 0 && <aside className="sticky top-20 hidden h-fit max-h-[calc(100svh-6rem)] w-64 shrink-0 overflow-y-auto xl:block"><h2 className="mb-2 text-sm font-semibold">{t('tocTitle')}</h2><nav aria-label={t('tocTitle')}>{toc}</nav></aside>}
+      {headings.length > 0 && <aside className="sticky top-20 hidden h-fit max-h-[calc(100svh-6rem)] w-64 shrink-0 overflow-y-auto rounded-2xl border border-border/80 bg-card p-4 shadow-xs xl:block"><h2 className="mb-2.5 flex items-center gap-2 text-sm font-semibold"><ListTree className="size-4 text-accent-text" aria-hidden />{t('tocTitle')}</h2><nav aria-label={t('tocTitle')}>{toc}</nav></aside>}
       <BackToTopButton label={language === 'vi' ? 'Lên đầu trang' : 'Back to top'} />
     </div>}
   </CourseFrame>

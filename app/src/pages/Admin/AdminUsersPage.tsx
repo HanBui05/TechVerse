@@ -55,55 +55,65 @@ export function AdminUsersPage({ language = 'vi' }: { language?: Language } = {}
   const refresh = () => { void load(); void loadStats() }
   const question = (count: number, nextActive: boolean) => vi ? `${nextActive ? 'Mở khóa' : 'Khóa'} ${count} tài khoản đã chọn?` : `${nextActive ? 'Unlock' : 'Lock'} ${count} selected accounts?`
   const date = (value?: string | null) => value ? new Date(value).toLocaleDateString(vi ? 'vi-VN' : 'en-US') : '—'
-  const statusBadge = (user: User) => <Badge tone={statusTone(user.active ? 'ACTIVE' : 'LOCKED')}>{user.active ? t("Hoạt động") : t("Đã khóa")}</Badge>
+  const statusBadge = (user: User) => <Badge tone={statusTone(user.active ? 'ACTIVE' : 'LOCKED')}><span aria-hidden className="size-1.5 rounded-full bg-current" />{user.active ? t("Hoạt động") : t("Đã khóa")}</Badge>
   const roleBadges = (roles: string[]) => roles.map(value => <Badge key={value} tone={toneFor(value)}>{statusLabel(value, 'role', language)}</Badge>)
   const lockOne = (user: User) => setPending({ userIds: [user.id], nextActive: !user.active, title: user.active ? t("Khóa tài khoản") : t("Mở khóa tài khoản") })
-  const filter = (id: string, label: string, value: string, onChange: (value: string) => void, options: [string, string][]) => <div className="flex flex-col gap-2">
+  const filter = (id: string, label: string, value: string, onChange: (value: string) => void, options: [string, string][]) => <div className="flex flex-col gap-1.5">
     <Label htmlFor={id} className={fieldLabel}>{label}</Label>
-    <NativeSelect id={id} className="pointer-coarse:min-h-11" value={value} onChange={e => { onChange(e.target.value); setPage(0) }}>{options.map(([v, text]) => <NativeSelectOption key={v} value={v}>{text}</NativeSelectOption>)}</NativeSelect>
+    <NativeSelect id={id} className="h-10 rounded-xl bg-background/60 pointer-coarse:min-h-11" value={value} onChange={e => { onChange(e.target.value); setPage(0) }}>{options.map(([v, text]) => <NativeSelectOption key={v} value={v}>{text}</NativeSelectOption>)}</NativeSelect>
   </div>
   const all: [string, string] = ['', t("Tất cả")]
   const errorText = error && <p role="alert" className="rounded-lg border border-border bg-tone-rose-bg px-4 py-3 text-sm text-danger">{error}</p>
-  const statCards: [keyof Stats, string, ComponentType<{ className?: string }>, string, string][] = [
-    ['total', t("Tổng người dùng"), Users, 'text-foreground', 'border-tone-blue-border bg-tone-blue-bg text-tone-blue-fg'],
-    ['active', vi ? 'Đang hoạt động' : 'Active', CheckCircle2, 'text-tone-green-fg', 'border-tone-green-border bg-tone-green-bg text-tone-green-fg'],
-    ['locked', t("Đã khóa"), Lock, 'text-tone-rose-fg', 'border-tone-rose-border bg-tone-rose-bg text-tone-rose-fg'],
-    ['authors', vi ? 'Tác giả' : 'Authors', PenLine, 'text-tone-amber-fg', 'border-tone-amber-border bg-tone-amber-bg text-tone-amber-fg'],
+  const statCards: [keyof Stats, string, ComponentType<{ className?: string }>][] = [
+    ['total', t("Tổng người dùng"), Users],
+    ['active', vi ? 'Đang hoạt động' : 'Active', CheckCircle2],
+    ['locked', t("Đã khóa"), Lock],
+    ['authors', vi ? 'Tác giả' : 'Authors', PenLine],
   ]
-  const statusChips: [string, string][] = [['', t("Tất cả")], ['true', t("Hoạt động")], ['false', t("Đã khóa")]]
+  const statusChips: [string, string][] = [
+    ['', t("Tất cả")],
+    ['true', t("Hoạt động")],
+    ['false', t("Đã khóa")],
+  ]
 
-  return <main className="tw-page mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 pb-28 lg:px-8">
-    <header className="flex flex-wrap items-start justify-between gap-4">
+  return <main className="tw-page mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 py-8 pb-28 lg:px-8">
+    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold sm:text-3xl">{t("Quản lý người dùng")}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t("Quản lý người dùng")}</h1>
         <p className="text-sm text-muted-foreground">{vi ? 'Tìm kiếm, lọc và khóa hoặc mở khóa tài khoản trong hệ thống.' : 'Search, filter and lock or unlock accounts across the platform.'}</p>
       </div>
-      <Button variant="outline" onClick={refresh} disabled={loading}><RefreshCw className={loading ? 'animate-spin motion-reduce:animate-none' : ''} />{vi ? 'Làm mới' : 'Refresh'}</Button>
+      <Button variant="outline" size="sm" onClick={refresh} disabled={loading}><RefreshCw className={loading ? 'animate-spin motion-reduce:animate-none' : ''} />{vi ? 'Làm mới' : 'Refresh'}</Button>
     </header>
 
-    <dl className="m-0 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-      {statCards.map(([key, label, Icon, number, tile]) => <div key={key} className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5">
-        <div className="flex min-w-0 flex-col gap-2">
+    <dl className="m-0 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {statCards.map(([key, label, Icon]) => <div key={key} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card p-5 text-card-foreground">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <dt className={fieldLabel}>{label}</dt>
-          <dd className={`m-0 text-2xl font-bold tabular-nums sm:text-3xl ${number}`}>{stats ? stats[key].toLocaleString(vi ? 'vi-VN' : 'en-US') : '—'}</dd>
+          <dd className="m-0 text-2xl font-semibold tracking-tight text-foreground tabular-nums">{stats ? stats[key].toLocaleString(vi ? 'vi-VN' : 'en-US') : '—'}</dd>
         </div>
-        <span aria-hidden className={`hidden size-11 shrink-0 items-center justify-center rounded-xl border sm:flex ${tile}`}><Icon className="size-5" /></span>
+        <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
       </div>)}
     </dl>
 
-    <Card className="gap-0 rounded-2xl py-0">
-      <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-4">
-        <span className="inline-flex items-center gap-2 font-semibold"><span aria-hidden className="flex size-8 items-center justify-center rounded-lg border border-tone-sky-border bg-tone-sky-bg text-tone-sky-fg"><SlidersHorizontal className="size-4" /></span>{vi ? 'Bộ lọc' : 'Filters'}</span>
-        <div role="group" aria-label={t("Tài khoản")} className="flex flex-wrap gap-2">
-          {statusChips.map(([value, text]) => <Button key={value} size="sm" variant={active === value ? 'default' : 'outline'} className="rounded-full" aria-pressed={active === value} onClick={() => { setActive(value); setPage(0) }}>{text}</Button>)}
+    <Card className="gap-4 rounded-xl p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3.5">
+        <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase"><SlidersHorizontal className="size-3.5 text-muted-foreground" aria-hidden />{vi ? 'Bộ lọc' : 'Filters'}</span>
+        <div role="group" aria-label={t("Tài khoản")} className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
+          {statusChips.map(([value, text]) => {
+            const activeChip = active === value
+            return <button key={value} type="button" aria-pressed={activeChip} onClick={() => { setActive(value); setPage(0) }}
+              className={`inline-flex h-7 cursor-pointer items-center rounded-md px-3 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-11 ${activeChip ? 'bg-card text-foreground shadow-2xs' : 'text-muted-foreground hover:text-foreground'}`}>
+              {text}
+            </button>
+          })}
         </div>
       </div>
-      <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-6 [&_[data-slot=native-select-wrapper]]:w-full">
-        <form className="flex flex-col gap-2 sm:col-span-2" onSubmit={e => { e.preventDefault(); setPage(0); setQuery(keyword.trim()) }}>
+      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-6 [&_[data-slot=native-select-wrapper]]:w-full">
+        <form className="flex flex-col gap-1.5 sm:col-span-2" onSubmit={e => { e.preventDefault(); setPage(0); setQuery(keyword.trim()) }}>
           <Label htmlFor="admin-user-search" className={fieldLabel}>{t("Tìm theo tên hoặc email")}</Label>
           <div className="relative">
-            <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input id="admin-user-search" type="search" className="pl-9 pointer-coarse:min-h-11" maxLength={100} placeholder={vi ? 'Nhập tên hoặc email…' : 'Name or email…'} value={keyword} onChange={e => setKeyword(e.target.value)} />
+            <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input id="admin-user-search" type="search" className="h-9 rounded-lg bg-background/60 pl-10 pointer-coarse:min-h-11" maxLength={100} placeholder={vi ? 'Nhập tên hoặc email…' : 'Name or email…'} value={keyword} onChange={e => setKeyword(e.target.value)} />
           </div>
         </form>
         {filter('admin-user-role', t("Role"), role, setRole, [all, ...['LEARNER', 'AUTHOR', 'MODERATOR', 'ADMIN'].map(v => [v, statusLabel(v, 'role', language)] as [string, string])])}
@@ -116,20 +126,20 @@ export function AdminUsersPage({ language = 'vi' }: { language?: Language } = {}
     {!selected && errorText}
 
     <Card className="gap-0 overflow-hidden rounded-2xl py-0">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-6 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/75 px-6 py-4">
         <div className="flex flex-col gap-0.5">
-          <h2 className="text-base font-bold">{t("Danh sách người dùng")}</h2>
+          <h2 className="text-base font-bold tracking-tight">{t("Danh sách người dùng")}</h2>
           <p className="text-xs text-muted-foreground">{vi ? 'Chọn một người dùng để xem chi tiết, hoặc chọn nhiều để khóa hàng loạt.' : 'Open a user for details, or select several to lock them at once.'}</p>
         </div>
         <div className="flex items-center gap-3">
-          {total !== null && <Badge tone="blue" aria-live="polite">{vi ? `${total} kết quả` : `${total} ${total === 1 ? 'result' : 'results'}`}</Badge>}
+          {total !== null && <Badge tone="blue" aria-live="polite" className="px-3 py-1 font-semibold">{vi ? `${total} kết quả` : `${total} ${total === 1 ? 'result' : 'results'}`}</Badge>}
           <label className="flex items-center gap-2 text-sm text-muted-foreground pointer-coarse:min-h-11">
             <Checkbox checked={users.length > 0 && ids.length === users.length} disabled={!users.length} onCheckedChange={checked => setIds(checked === true ? users.map(u => u.id) : [])} />
             {t("Chọn trang này")}
           </label>
         </div>
       </div>
-      <div aria-hidden className={`hidden border-b border-border bg-muted/40 px-6 py-3 ${columns} ${fieldLabel}`}>
+      <div aria-hidden className={`hidden border-b border-border/70 bg-background/40 px-6 py-3 ${columns} ${fieldLabel}`}>
         <span /><span>{vi ? 'Người dùng' : 'User'}</span><span>Email</span><span>{t("Trạng thái")}</span><span>{t("Role")}</span><span>{t("Ngày tạo")}</span><span className="text-right">{vi ? 'Thao tác' : 'Actions'}</span>
       </div>
       {loading && !users.length

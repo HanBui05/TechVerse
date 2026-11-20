@@ -1,10 +1,11 @@
-import { FileText, GraduationCap, House, Languages, Settings, Sun } from 'lucide-react'
+import { Dumbbell, FileText, GraduationCap, House, Languages, Settings, Sun } from 'lucide-react'
 
 // `tone` picks a token colour for the menu icon (see `.nav-icon[data-tone]` in sidebar.css).
 export const navItems = [
   { label: { vi: 'Trang chủ', en: 'Home' }, path: '/', icon: House, tone: 'blue' },
   { label: { vi: 'Bài viết', en: 'Articles' }, path: '/blogs', icon: FileText, tone: 'green' },
   { label: { vi: 'Khóa học', en: 'Courses' }, path: '/courses', icon: GraduationCap, tone: 'cyan' },
+  { label: { vi: 'Luyện tập', en: 'Practice' }, path: '/practice', icon: Dumbbell, tone: 'amber' },
 ]
 
 export const settingsItems = [

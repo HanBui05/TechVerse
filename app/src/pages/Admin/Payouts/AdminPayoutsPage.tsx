@@ -46,16 +46,17 @@ export function AdminPayoutsPage({ language = 'vi' }: { language?: Language }) {
   const goPage = (next: number) => setParams(prev => { const p = new URLSearchParams(prev); if (next > 0) p.set('page', String(next)); else p.delete('page'); return p })
   const skeleton = <div role="status" aria-label={t('owedLoading')} className="flex flex-col gap-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}</div>
 
-  return <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-    <header className="flex flex-col gap-2">
-      <Badge tone="sky" className="self-start font-semibold"><Banknote aria-hidden />{t('kicker')}</Badge>
-      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('payoutsTitle')}</h1>
+  return <main className="tw-page mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
+      <div className="flex flex-col gap-1">
+        <span className={fieldLabel}>{t('kicker')}</span>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t('payoutsTitle')}</h1>
+      </div>
+      <div role="tablist" aria-label={t('payoutsTitle')} className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
+        {(['owed', 'history'] as const).map(key => <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => go(key === 'owed' ? {} : { tab: key })}
+          className={cn('inline-flex h-8 cursor-pointer items-center rounded-md px-3.5 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring', touch, tab === key ? 'bg-card text-foreground shadow-2xs' : 'text-muted-foreground hover:text-foreground')}>{t(key === 'owed' ? 'tabOwed' : 'tabHistory')}</button>)}
+      </div>
     </header>
-
-    <div role="tablist" aria-label={t('payoutsTitle')} className="flex gap-1 border-b border-border">
-      {(['owed', 'history'] as const).map(key => <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => go(key === 'owed' ? {} : { tab: key })}
-        className={cn('-mb-px border-b-2 px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring', touch, tab === key ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>{t(key === 'owed' ? 'tabOwed' : 'tabHistory')}</button>)}
-    </div>
 
     {notice && <p role="status" className="rounded-lg border border-border bg-tone-green-bg px-4 py-3 text-sm text-tone-green-fg">{notice}</p>}
     {warning && <div role="alert" className="flex items-center gap-2 rounded-lg border border-border bg-tone-amber-bg px-4 py-3 text-sm text-tone-amber-fg"><TriangleAlert className="size-4 shrink-0" aria-hidden />{warning}</div>}

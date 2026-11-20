@@ -113,13 +113,15 @@ class LessonTutorServiceTest {
     return new AiAssistProperties(
         Duration.ofSeconds(60),
         Map.of("SHORT", Duration.ofSeconds(90), "MEDIUM", Duration.ofSeconds(120), "LONG", Duration.ofSeconds(180)),
-        Map.of("OUTLINE", 2048, "SHORT", 4096, "MEDIUM", 8192, "LONG", 16384, "TUTOR", 2048),
+        Map.of("OUTLINE", 2048, "SHORT", 4096, "MEDIUM", 8192, "LONG", 16384, "TUTOR", 2048, "EXERCISE", 4096),
         10,
         5,
         3,
         Duration.ofHours(24),
         20,
-        tutorTimeout);
+        tutorTimeout,
+        10,
+        Duration.ofSeconds(60));
   }
 
   @BeforeEach

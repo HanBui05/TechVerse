@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { ArrowRight, ChevronDown, FileText, GraduationCap, Heart, PlayCircle, Receipt, LogOut, Settings, UserRound, UserRoundPlus, Wallet, X } from 'lucide-react'
+import { ArrowRight, BookCheck, ChevronDown, FileText, GraduationCap, Heart, PlayCircle, Receipt, LogOut, Settings, UserRound, UserRoundPlus, Wallet, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { navItems, settingsItems } from '../../data/navigation'
 import type { Language } from '../../types/preferences'
@@ -16,9 +16,10 @@ import {
 } from '@/components/ui/sidebar'
 
 // NavLink sets aria-current on the active route; style it instead of re-matching paths.
-export const activeLink = 'aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-semibold aria-[current=page]:text-accent-text'
-// Icons keep their tone on hover/active; `!` beats SidebarMenuSubButton's `[&>svg]:text-*`.
-export const toneText: Record<string, string> = { blue: 'text-info!', green: 'text-success!', violet: 'text-violet!', amber: 'text-warning!', rose: 'text-tone-rose-fg!', cyan: 'text-tone-cyan-fg!' }
+export const activeLink = 'aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-semibold aria-[current=page]:text-foreground'
+// Clean monochrome icons in the sidebar; `data-tone` is preserved on SVGs for semantic hooks.
+const cleanIcon = 'text-muted-foreground transition-colors group-hover/menu-button:text-foreground'
+export const toneText: Record<string, string> = { blue: cleanIcon, green: cleanIcon, violet: cleanIcon, amber: cleanIcon, rose: cleanIcon, cyan: cleanIcon, sky: cleanIcon }
 
 // Collapse state (desktop) and the mobile sheet live in the SidebarProvider that App controls.
 export function useSidebarNav() {
@@ -67,9 +68,9 @@ export function SettingsMenu({ label, links, className, icon: Icon = Settings, t
 }
 
 export function SidebarAccount({ profile, onLogout, logoutLabel }: { profile: UserProfile | null; onLogout: () => void; logoutLabel: string }) {
-  return <div className="flex min-w-0 items-center gap-2 group-data-[collapsible=icon]:flex-col">
+  return <div className="flex min-w-0 items-center gap-2 rounded-xl border border-sidebar-border/80 bg-card/60 p-1.5 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0">
     <AccountIdentity profile={profile} />
-    <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" onClick={onLogout} aria-label={logoutLabel}><LogOut /></Button>
+    <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground hover:text-foreground" onClick={onLogout} aria-label={logoutLabel}><LogOut /></Button>
   </div>
 }
 
@@ -84,6 +85,7 @@ export function Sidebar({ language, t, authenticated, roles, profile, onLogout }
   const authorLinks = [
     { path: '/author/blogs', icon: FileText, tone: 'green', label: language === 'vi' ? 'Bài viết của tôi' : 'My articles' },
     { path: '/author/courses', icon: GraduationCap, tone: 'blue', label: language === 'vi' ? 'Khóa học' : 'Courses' },
+    { path: '/author/exercises', icon: BookCheck, tone: 'violet', label: language === 'vi' ? 'Bài tập' : 'Exercises' },
     { path: '/author/revenue', icon: Wallet, tone: 'green', label: language === 'vi' ? 'Doanh thu' : 'Revenue' },
   ]
   const footer = authenticated

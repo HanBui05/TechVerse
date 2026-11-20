@@ -16,10 +16,10 @@ export function SettingsLayout({ title, description, children }: { title: string
 // Selectable option card shared by the theme and language pages; aria-pressed carries the selected state.
 export function PreferenceOption({ selected, onSelect, icon, title, description }: { selected: boolean; onSelect: () => void; icon: ReactNode; title: ReactNode; description: string }) {
   return <button type="button" aria-pressed={selected} onClick={onSelect}
-    className={cn('relative flex items-center gap-4 rounded-2xl border border-border bg-card p-5 text-left text-card-foreground shadow-sm transition-colors outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring pointer-coarse:min-h-11',
-      selected && 'border-primary')}>
-    <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted text-xl" aria-hidden="true">{icon}</span>
+    className={cn('relative flex cursor-pointer items-center gap-4 rounded-2xl border border-border/85 bg-card p-5 text-left text-card-foreground shadow-sm transition-all duration-200 outline-none hover:-translate-y-0.5 hover:border-accent-text/40 hover:bg-accent/50 hover:shadow-md focus-visible:ring-[3px] focus-visible:ring-ring pointer-coarse:min-h-11',
+      selected && 'border-primary bg-primary/5 ring-1 ring-primary/30')}>
+    <span className={cn('flex size-12 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-muted text-xl transition-colors', selected && 'border-primary/40 bg-primary/15 text-accent-text')} aria-hidden="true">{icon}</span>
     <span className="flex min-w-0 flex-col gap-1"><strong className="text-sm font-semibold">{title}</strong><small className="text-xs text-muted-foreground">{description}</small></span>
-    {selected && <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden="true"><Check size={12} /></span>}
+    {selected && <span className="absolute top-3.5 right-3.5 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs" aria-hidden="true"><Check size={12} /></span>}
   </button>
 }

@@ -2,7 +2,7 @@
 
 Mỗi module có đúng một spec `plans/<module>.md` và một nhật ký `plans/<module>.log.md`. [`PROJECT_CONTEXT.md`](../docs/PROJECT_CONTEXT.md): Codex đọc mục 1–3, 5 trước mọi task; Claude chỉ đọc khi task đụng tới. Lý do các quyết định cũ: [`DECISIONS.md`](DECISIONS.md).
 
-Module đang làm: [course-ai-tutor](course-ai-tutor.md)
+Module đang làm: [exercise-practice](exercise-practice.md)
 
 <!-- Hook SessionStart của Claude đọc đúng dòng trên (dạng `[slug](slug.md)`, “—” nếu không có) để tự nạp mục “Bắt đầu từ đây” của log. Đổi module thì sửa dòng này. -->
 
@@ -23,8 +23,8 @@ Module đang làm: [course-ai-tutor](course-ai-tutor.md)
 | Course payment | [spec](course-payment.md) | Hoàn tất | Claude | Task 1a–1d, 2a–2c đã nhận; spec đồng bộ 2026-11-16. Các mục chưa kiểm và lỗi test có sẵn: xem spec và log. | [log](course-payment.log.md) |
 | Author payout | [spec](author-payout.md) | Hoàn tất | Claude | Task 1a–1d, 2a–2c đã nhận; spec đồng bộ 2026-11-16. Các mục chưa kiểm và review Task 1b: xem spec và log. | [log](author-payout.log.md) |
 | PayOS checkout | [spec](payos-checkout.md) | Hoàn tất | Claude | Task 1a, 1b và 2 đã nhận; spec đã đồng bộ 2026-11-17. Các mục chưa kiểm: xem spec và log. | [log](payos-checkout.log.md) |
-| Course AI tutor | [spec](course-ai-tutor.md) | Hoàn tất | Claude | Task 1 (Backend) và Task 2 (Giao diện) đã nhận, spec đồng bộ 2026-11-17. Các mục chưa kiểm: xem spec và log. | [log](course-ai-tutor.log.md) |
-| Exercise practice | [spec](exercise-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `course-payment` + `course-ai-tutor`, bắt đầu Task 1a. | — |
+| Course AI tutor | [spec](course-ai-tutor.md) | Hoàn tất | Claude | Task 1 (Backend) và Task 2 (Giao diện) đã nhận, spec đồng bộ 2026-11-17; PR #10 đã merge vào `main` 2026-11-17, CI đạt. Các mục chưa kiểm: xem spec và log. | [log](course-ai-tutor.log.md) |
+| Exercise practice | [spec](exercise-practice.md) | Đang thực hiện | Claude | Spec chốt 2026-11-15; nhánh `feature/exercise-practice` mở 2026-11-17; Task 1a, 1b, 1c đã nhận (2026-11-17), wireframe duyệt 2026-11-17, Task 2a đã nhận (2026-11-18); Task 2b đã nhận (2026-11-18); Task 2c đã nhận (2026-11-20); tiếp: đồng bộ spec cuối module; xem log. | [log](exercise-practice.log.md) |
 | Interview practice | [spec](interview-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định, Admin/Moderator không vào trang; Codex phản biện một vòng); làm sau `exercise-practice`, bắt đầu Task 1a. | — |
 | Forum & reports | [spec](forum-reports.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (7 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `interview-practice`, bắt đầu Task 1a. | — |
 | Dashboard stats | [spec](dashboard-stats.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau cùng, khi các module nguồn đã code. | — |

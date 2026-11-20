@@ -17,6 +17,10 @@ import { CoursesPage } from './pages/Courses/CoursesPage'
 import { CourseOverviewPage } from './pages/Courses/CourseOverviewPage'
 import { CourseLessonPage } from './pages/Courses/CourseLessonPage'
 import { MyCoursesPage } from './pages/Courses/MyCoursesPage'
+import { PracticeListPage } from './pages/Practice/PracticeListPage'
+import { PracticeIntroPage } from './pages/Practice/PracticeIntroPage'
+import { PracticeAttemptPage } from './pages/Practice/PracticeAttemptPage'
+import { PracticeAttemptReviewPage, PracticeHistoryPage } from './pages/Practice/PracticeHistoryPage'
 import { OrdersPage } from './pages/Payments/OrdersPage'
 import { OrderDetailPage } from './pages/Payments/OrderDetailPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
@@ -44,11 +48,15 @@ import { AiArticlePage } from './pages/Author/AiArticlePage'
 import { AuthorCoursesPage } from './pages/Author/Courses/AuthorCoursesPage'
 import { CourseEditorPage } from './pages/Author/Courses/CourseEditorPage'
 import { CourseStudentsPage } from './pages/Author/Courses/CourseStudentsPage'
+import { AuthorExercisesPage } from './pages/Author/Exercises/AuthorExercisesPage'
+import { ExerciseEditorPage } from './pages/Author/Exercises/ExerciseEditorPage'
 import { ModeratorDashboardPage } from './pages/Moderator/ModeratorDashboardPage'
 import { ModeratorArticlesPage } from './pages/Moderator/ModeratorArticlesPage'
 import { ModeratorArticleDetailPage } from './pages/Moderator/ModeratorArticleDetailPage'
 import { ModeratorCoursesPage } from './pages/Moderator/Courses/ModeratorCoursesPage'
 import { ModeratorCourseDetailPage } from './pages/Moderator/Courses/ModeratorCourseDetailPage'
+import { ModeratorExercisesPage } from './pages/Moderator/Exercises/ModeratorExercisesPage'
+import { ModeratorExerciseDetailPage } from './pages/Moderator/Exercises/ModeratorExerciseDetailPage'
 import type { Language, Theme } from './types/preferences'
 import { login as loginWithApi, logout as logoutFromApi, logoutAll as logoutAllFromApi, restoreSession, type GoogleSession } from './services/authService'
 import { setAccessToken } from './services/api/client'
@@ -175,6 +183,11 @@ export default function App() {
       <Route path="/courses/:id" element={<ReaderRoute roles={roles}><CourseOverviewPage language={language} authenticated={authenticated} /></ReaderRoute>} />
       <Route path="/courses/:courseId/lessons/:lessonId" element={<ReaderRoute roles={roles}><CourseLessonPage language={language} authenticated={authenticated} /></ReaderRoute>} />
       <Route path="/me/courses" element={<AuthRoute authenticated={authenticated} returnTo="/me/courses"><ReaderRoute roles={roles}><MyCoursesPage language={language} /></ReaderRoute></AuthRoute>} />
+      <Route path="/practice" element={<ReaderRoute roles={roles}><PracticeListPage language={language} authenticated={authenticated} /></ReaderRoute>} />
+      <Route path="/practice/:id" element={<ReaderRoute roles={roles}><PracticeIntroPage language={language} authenticated={authenticated} /></ReaderRoute>} />
+      <Route path="/practice/:id/attempt" element={<AuthRoute authenticated={authenticated} returnTo={location.pathname}><ReaderRoute roles={roles}><PracticeAttemptPage language={language} /></ReaderRoute></AuthRoute>} />
+      <Route path="/me/practice" element={<AuthRoute authenticated={authenticated} returnTo="/me/practice"><ReaderRoute roles={roles}><PracticeHistoryPage language={language} /></ReaderRoute></AuthRoute>} />
+      <Route path="/me/practice/:attemptId" element={<AuthRoute authenticated={authenticated} returnTo={location.pathname}><ReaderRoute roles={roles}><PracticeAttemptReviewPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route path="/me/orders" element={<AuthRoute authenticated={authenticated} returnTo="/me/orders"><ReaderRoute roles={roles}><OrdersPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route path="/me/orders/:orderCode" element={<AuthRoute authenticated={authenticated} returnTo={location.pathname}><ReaderRoute roles={roles}><OrderDetailPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route element={<AuthLayout t={t} />}>
@@ -190,6 +203,8 @@ export default function App() {
       <Route path="/moderator/articles/:id" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorArticleDetailPage language={language} /></RoleRoute>} />
       <Route path="/moderator/courses" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorCoursesPage language={language} /></RoleRoute>} />
       <Route path="/moderator/courses/:id" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorCourseDetailPage language={language} /></RoleRoute>} />
+      <Route path="/moderator/exercises" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorExercisesPage language={language} /></RoleRoute>} />
+      <Route path="/moderator/exercises/:id" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorExerciseDetailPage language={language} /></RoleRoute>} />
       <Route path="/admin/author-applications" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AuthorApplicationsPage language={language} /></RoleRoute>} />
       <Route path="/admin/users" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminUsersPage language={language} /></RoleRoute>} />
       <Route path="/admin/topics" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="topics" language={language} /></RoleRoute>} />
@@ -209,6 +224,9 @@ export default function App() {
       {/* Same element type on both paths: after the first create /new → /:id/edit keeps editor state. */}
       <Route path="/author/courses/new" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><CourseEditorPage language={language} /></RoleRoute>} />
       <Route path="/author/courses/:id/students" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><CourseStudentsPage language={language} /></RoleRoute>} />
+      <Route path="/author/exercises" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><AuthorExercisesPage language={language} /></RoleRoute>} />
+      <Route path="/author/exercises/new" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><ExerciseEditorPage language={language} /></RoleRoute>} />
+      <Route path="/author/exercises/:id/edit" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><ExerciseEditorPage language={language} /></RoleRoute>} />
       <Route path="/author/courses/:id/edit" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['AUTHOR']}><CourseEditorPage language={language} /></RoleRoute>} />
       <Route path="/settings/theme" element={<ThemePage theme={theme} setTheme={setTheme} t={t} />} />
       <Route path="/settings/language" element={<LanguagePage language={language} setLanguage={setLanguage} t={t} />} />

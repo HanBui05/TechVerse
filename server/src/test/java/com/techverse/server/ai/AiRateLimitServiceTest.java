@@ -77,12 +77,14 @@ class AiRateLimitServiceTest {
     return new AiAssistProperties(
         Duration.ofSeconds(60),
         Map.of("SHORT", Duration.ofSeconds(90), "MEDIUM", Duration.ofSeconds(120), "LONG", Duration.ofSeconds(180)),
-        Map.of("OUTLINE", 2048, "SHORT", 4096, "MEDIUM", 8192, "LONG", 16384, "TUTOR", 2048),
+        Map.of("OUTLINE", 2048, "SHORT", 4096, "MEDIUM", 8192, "LONG", 16384, "TUTOR", 2048, "EXERCISE", 4096),
         outlinePerDay,
         draftPerDay,
         burst,
         Duration.ofHours(24),
         20,
+        Duration.ofSeconds(60),
+        10,
         Duration.ofSeconds(60));
   }
 
@@ -258,8 +260,8 @@ class AiRateLimitServiceTest {
         new AiAssistProperties(
             Duration.ofSeconds(60),
             Map.of("SHORT", Duration.ofSeconds(90), "MEDIUM", Duration.ofSeconds(120), "LONG", Duration.ofSeconds(180)),
-            Map.of("OUTLINE", 2048, "SHORT", 4096, "MEDIUM", 8192, "LONG", 16384, "TUTOR", 2048),
-            10, 5, 3, Duration.ofHours(24), 20, Duration.ofSeconds(240));
+            Map.of("OUTLINE", 2048, "SHORT", 4096, "MEDIUM", 8192, "LONG", 16384, "TUTOR", 2048, "EXERCISE", 4096),
+            10, 5, 3, Duration.ofHours(24), 20, Duration.ofSeconds(240), 10, Duration.ofSeconds(60));
     assertThat(longTutor.longestTimeout()).isEqualTo(Duration.ofSeconds(240));
     assertThat(props(10, 5, 3).longestTimeout()).isEqualTo(Duration.ofSeconds(180));
     var env = new org.springframework.mock.env.MockEnvironment();

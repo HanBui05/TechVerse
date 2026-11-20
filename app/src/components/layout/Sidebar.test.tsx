@@ -67,6 +67,7 @@ it('groups the Author links under a collapsed “Tác giả” menu, opens it on
   fireEvent.click(toggle)
   expect(screen.getByRole('link', { name: 'Bài viết của tôi' }).getAttribute('href')).toBe('/author/blogs')
   expect(hrefs()).toContain('/author/courses')
+  expect(screen.getByRole('link', { name: 'Bài tập' }).getAttribute('href')).toBe('/author/exercises')
   expect(screen.getByRole('link', { name: 'Doanh thu' }).getAttribute('href')).toBe('/author/revenue')
   cleanup()
   render(<Shell route="/author/courses"><Sidebar {...props} profile={profile} /></Shell>)
@@ -90,6 +91,11 @@ it('lists only routable entries in the admin sidebar and keeps the moderator lin
   render(<Shell><AdminSidebar language="vi" profile={profile} onLogout={props.onLogout} isModerator /></Shell>)
   expect(hrefs().filter(href => deadAdminPaths.test(href))).toEqual([])
   for (const name of ['Trang chủ', 'Hồ sơ tác giả', 'Quản lý người dùng', 'Chủ đề', 'Thẻ', 'Đơn hàng', 'Hoa hồng', 'Doanh thu', 'Chi trả tác giả', 'Kiểm duyệt bài viết']) expect(screen.queryByRole('link', { name })).not.toBeNull()
+})
+
+it('links the moderator sidebar to the exercise review queue', () => {
+  render(<Shell><ModeratorSidebar language="vi" profile={profile} onLogout={props.onLogout} /></Shell>)
+  expect(screen.getByRole('link', { name: 'Kiểm duyệt bài tập' }).getAttribute('href')).toBe('/moderator/exercises')
 })
 
 // Management accounts are redirected away from Reader routes, so neither staff sidebar links back to them.
@@ -165,6 +171,13 @@ it('gives each main menu icon its own colour tone', () => {
   expect(tones.length).toBeGreaterThanOrEqual(4)
   // The main group (Home, Articles, Courses, Author) keeps distinct tones; later groups may reuse one.
   expect(new Set(tones.slice(0, 4)).size).toBe(4)
+})
+
+it('lists “Luyện tập” in the main menu and marks it active on its pages', () => {
+  render(<Shell route="/practice/s1"><Sidebar {...props} profile={profile} /></Shell>)
+  const link = screen.getByRole('link', { name: 'Luyện tập' })
+  expect(link.getAttribute('href')).toBe('/practice')
+  expect(link.getAttribute('aria-current')).toBe('page')
 })
 
 it('marks the current route as active', () => {

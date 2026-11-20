@@ -146,6 +146,22 @@ public enum ErrorCode {
 	AI_TUTOR_LESSON_NO_CONTENT(HttpStatus.CONFLICT, "AI_TUTOR_LESSON_NO_CONTENT", "This lesson has no text for the AI to use"),
 	AI_GENERATION_NOT_FOUND(HttpStatus.NOT_FOUND, "AI_GENERATION_NOT_FOUND", "The generation no longer exists"),
 	AI_GENERATION_INVALID(HttpStatus.CONFLICT, "AI_GENERATION_INVALID", "The AI generation cannot be used for this article"),
+	EXERCISE_SET_NOT_FOUND(HttpStatus.NOT_FOUND, "EXERCISE_SET_NOT_FOUND", "Exercise set not found"),
+	EXERCISE_TOPIC_INACTIVE(HttpStatus.CONFLICT, "EXERCISE_TOPIC_INACTIVE", "The topic is inactive"),
+	EXERCISE_QUESTIONS_INVALID(HttpStatus.BAD_REQUEST, "EXERCISE_QUESTIONS_INVALID", "Some questions are invalid"),
+	EXERCISE_CONTENT_INVALID(HttpStatus.BAD_REQUEST, "EXERCISE_CONTENT_INVALID", "Content contains unsupported formatting"),
+	EXERCISE_NOT_EDITABLE(HttpStatus.CONFLICT, "EXERCISE_NOT_EDITABLE", "The current state does not allow editing"),
+	EXERCISE_NOT_READY(HttpStatus.CONFLICT, "EXERCISE_NOT_READY", "The exercise set is not ready to be submitted"),
+	EXERCISE_STATE_INVALID(HttpStatus.CONFLICT, "EXERCISE_STATE_INVALID", "The action is not allowed in the current state"),
+	EXERCISE_NOT_DELETABLE(HttpStatus.CONFLICT, "EXERCISE_NOT_DELETABLE", "Published or pending exercise sets cannot be deleted"),
+	EXERCISE_VERSION_CONFLICT(HttpStatus.CONFLICT, "EXERCISE_VERSION_CONFLICT", "The exercise set was changed elsewhere. Reload before saving"),
+	EXERCISE_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "EXERCISE_RATE_LIMITED", "Too many requests, try again later"),
+	EXERCISE_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "EXERCISE_STORAGE_UNAVAILABLE", "Exercise service is temporarily unavailable"),
+	EXERCISE_REVIEW_STALE(HttpStatus.CONFLICT, "EXERCISE_REVIEW_STALE", "The exercise set changed after it was opened. Reload before reviewing"),
+	EXERCISE_AUTHOR_INELIGIBLE(HttpStatus.CONFLICT, "EXERCISE_AUTHOR_INELIGIBLE", "The author is no longer eligible to publish"),
+	EXERCISE_ATTEMPT_INVALID(HttpStatus.BAD_REQUEST, "EXERCISE_ATTEMPT_INVALID", "The attempt is invalid"),
+	EXERCISE_ATTEMPT_KEY_CONFLICT(HttpStatus.CONFLICT, "EXERCISE_ATTEMPT_KEY_CONFLICT", "The idempotency key was already used for another exercise set"),
+	EXERCISE_ATTEMPT_NOT_FOUND(HttpStatus.NOT_FOUND, "EXERCISE_ATTEMPT_NOT_FOUND", "Exercise attempt not found"),
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected error occurred");
 
 	private final HttpStatus status;
