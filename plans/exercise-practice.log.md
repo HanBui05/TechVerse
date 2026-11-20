@@ -4,23 +4,21 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`exercise-practice
 
 ## Bắt đầu từ đây (cập nhật 2026-11-20)
 
-- **Task tiếp:** bước cuối module — nhờ Codex đồng bộ spec theo log (skill `codex-workflow` mục 3), rồi báo người dùng · Giao diện: Không. Mọi task 1a–2c đã nhận.
-- Việc dở (2026-11-20): 3 thay đổi chưa commit (sửa schema AI strict, card kết quả AI, màn kết quả Practice + nới rộng); Codex review vòng 1 sạch (2026-11-20); chờ người dùng xác nhận bo góc. Backend phải Stop → Run lại để nhận bản sửa schema AI.
-- Task 1a–2c đã nhận (2c: 2026-11-20). Chưa kiểm: vùng chạm 44px trên cảm ứng thật (2a/2b/2c), AI sinh câu thật thành công (đã sửa lỗi 400 schema 2026-11-20, chưa thử lại thật), gửi/rút/ẩn/duyệt thao tác ghi thật trên backend, light trang làm bài + dark mobile kết quả (2c). Bộ mẫu còn ở DB dev.
-- Spec chốt 2026-11-15; `course-payment` và `course-ai-tutor` đã merge vào `main` nên đủ điều kiện bắt đầu. Migration lấy số kế tiếp lúc code (spec ghi V14 nếu V13 đã có) — kiểm `db/migration` trước.
-- Nhánh: `feature/exercise-practice` (từ `main` sau PR #10).
+- **Task tiếp:** module `exercise-practice` đã hoàn tất (PR #11 merge vào `main`, spec đồng bộ 2026-11-20); module kế tiếp theo `PLAN.md`: `interview-practice` Task 1a · Giao diện: Không.
+- Chưa kiểm: vùng chạm 44px trên cảm ứng thật (2a/2b/2c), dark mobile kết quả (2c), thao tác ghi thật gửi/rút/ẩn/duyệt trên backend. AI sinh câu thật đã được người dùng thử và ổn (2026-11-20). Bo góc kết quả (`rounded-2xl`/`xl`) giữ nguyên.
+- Nhánh docs đồng bộ spec: `docs/exercise-practice-spec-sync` (từ `main` sau PR #11). Bộ mẫu còn ở DB dev.
 
 ## Quyết định người dùng chưa có trong spec
 
-- **2026-11-17:** body `POST …/ai/questions` thêm `version` bắt buộc (≥ 0); lệch version → 409 `EXERCISE_VERSION_CONFLICT`, hoàn lượt (không gọi model nếu lệch ngay từ đầu). Task 2a phải gửi `version` đang giữ và dùng `version` trả về cho lần `PUT questions` sau.
-
-- **2026-11-17:** duyệt wireframe, cả 5 câu mục 9 theo khuyến nghị: một nút Lưu ghi cả thông tin + câu hỏi; sắp xếp bằng ↑↓; không lưu bài làm dở; giữ các chi tiết nhỏ ngoài spec (lọc câu sai, thẻ trước, copy mới); không ô số liệu Moderator.
+(không có)
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-20 — Codex đồng bộ spec
+- Codex: đã đưa quyết định version AI và wireframe được duyệt vào spec.
 ### 2026-11-20 — Người dùng tự đổi toàn bộ UI; mình chỉ xem lại
 - Người dùng đổi tokens/card/button/badge và nhiều trang (37+ file ngoài task); mình không sửa gì. Kiểm bằng mắt light 1440px (Playwright, `lan.author`): Practice list/lịch sử/xem lại đẹp hơn bản cũ. Lỗi thấy ở bản của họ: `tokens.css` đặt `--sidebar: #0b101b` cố định nhưng khối `data-theme='light'` không ghi đè → chữ sidebar gần như vô hình ở light; có thanh cuộn ngang ở đáy sidebar. Đã sửa (người dùng đồng ý): `tokens.css` thêm `--sidebar`/`--sidebar-border` cho light, `ui/sidebar.tsx` `SidebarContent` `overflow-y-auto overflow-x-hidden`; tokens + sidebar tests 90 ca + build đạt, chụp lại light: chữ sidebar hiện rõ, hết thanh cuộn ngang. Sau đó người dùng tiếp tục tự sửa UI ngoài task (Sidebar, UserAvatar, trang Admin… +14 file); mình không đụng, không thuộc module. Codex `review` vòng 1 (diff chưa commit, gồm cả UI người dùng sửa): không có phát hiện, không cần vòng 2. Người dùng thử AI thật: ổn. Đã commit 4 lượt (fix AI schema, card AI + kết quả, docs, style UI), push `feature/exercise-practice`, tạo PR #11 vào `main` (merge commit); chờ người dùng merge. Còn lại sau merge: đồng bộ spec cuối module qua Codex. Chưa xem dark/mobile/trang làm bài.
 ### 2026-11-20 — Làm sinh động màn kết quả/xem lại lượt làm (người dùng giao thẳng)
