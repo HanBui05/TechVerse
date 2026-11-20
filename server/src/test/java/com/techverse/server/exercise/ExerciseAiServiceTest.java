@@ -133,6 +133,18 @@ class ExerciseAiServiceTest {
         return ((CustomException) e.actual()).getErrorCode();
     }
 
+    /** Groq rejects strict schemas where `format` sits on a non-string (Spring AI emits int32 for Integer): 400 AI_PROVIDER_REQUEST_REJECTED. */
+    @Test
+    void strictSchemaCarriesNoNumericFormat() {
+        givenSet(ExerciseType.MULTIPLE_CHOICE);
+        reply(QUIZ_OK);
+        service(model).suggest(actor, setId, request);
+        var prompt = prompts.get(0);
+        var schema = ((OpenAiChatOptions) prompt.getOptions()).getResponseFormat().getJsonSchema();
+        assertThat(schema).contains("correctIndex").doesNotContain("\"format\"");
+        assertThat(prompt.getInstructions().get(1).getText()).doesNotContain("int32");
+    }
+
     @Test
     void quizSuggestionsFlagTheSetAndCarryTheContextAsData() {
         givenSet(ExerciseType.MULTIPLE_CHOICE);

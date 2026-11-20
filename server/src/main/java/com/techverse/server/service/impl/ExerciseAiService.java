@@ -117,7 +117,8 @@ public class ExerciseAiService {
     /** The call and its one repair share a single deadline and a single reserved use. */
     private <O, I> List<Question> generate(ChatModel model, ExerciseInput in, Instant deadline, Class<O> out,
             Function<O, List<I>> items, Function<I, Question> map) {
-        String schema = new BeanOutputConverter<>(out).getJsonSchema();
+        // Groq's strict mode rejects `format` on non-strings (Spring AI adds int32 to Integer): 400 AI_PROVIDER_REQUEST_REJECTED.
+        String schema = new BeanOutputConverter<>(out).getJsonSchema().replaceAll(",?\\s*\"format\"\\s*:\\s*\"(?:int32|int64|float|double)\"", "");
         var format = ResponseFormat.builder().type(ResponseFormat.Type.JSON_SCHEMA).jsonSchema(schema).strict(true).build();
         String text = call(model, prompts.exercise(in, schema, options(model, format, deadline)));
         var parsed = parse(text, out, items);
