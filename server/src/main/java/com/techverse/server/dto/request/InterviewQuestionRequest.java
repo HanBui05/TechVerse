@@ -46,6 +46,46 @@ public final class InterviewQuestionRequest {
 
     public record Visibility(@NotNull @Pattern(regexp = "HIDE|UNHIDE") String action) {}
 
+    // Enums as patterned strings so a bad value is a field error, not a malformed body.
+    public record Review(
+            @NotNull @Pattern(regexp = "APPROVE|REQUEST_CHANGES") String decision,
+            @NotNull @Pattern(regexp = "[a-f0-9]{64}") String reviewToken,
+            @Size(max = 1000) String note) {}
+
+    public record Publication(
+            @NotNull @Pattern(regexp = "HIDE|RESTORE|REMOVE") String action,
+            @NotNull @Pattern(regexp = "[a-f0-9]{64}") String reviewToken,
+            @Size(max = 1000) String reason) {}
+
+    /** Learner stamps: a missing field is kept, {@code false} clears it. */
+    public record Mark(Boolean reviewed, Boolean saved) {
+        @AssertTrue(message = "Send reviewed or saved")
+        public boolean isAnyField() {
+            return reviewed != null || saved != null;
+        }
+    }
+
+    public enum MarkFilter { SAVED, REVIEWED }
+
+    @Getter
+    @Setter
+    public static class PublicFilter {
+        private UUID topicId;
+        private InterviewLevel level;
+        private MarkFilter mark;
+
+        @Size(max = 100)
+        private String keyword;
+
+        @Min(0)
+        private int page = 0;
+
+        @Min(1)
+        @Max(50)
+        private int size = 20;
+    }
+
+    /** Author list filter; the moderator list uses it too. */
     @Getter
     @Setter
     public static class Filter {

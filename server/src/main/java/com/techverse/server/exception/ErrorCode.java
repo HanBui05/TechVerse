@@ -171,6 +171,8 @@ public enum ErrorCode {
 	INTERVIEW_VERSION_CONFLICT(HttpStatus.CONFLICT, "INTERVIEW_VERSION_CONFLICT", "The interview question was changed elsewhere. Reload before saving"),
 	INTERVIEW_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "INTERVIEW_RATE_LIMITED", "Too many requests, try again later"),
 	INTERVIEW_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "INTERVIEW_STORAGE_UNAVAILABLE", "Interview service is temporarily unavailable"),
+	INTERVIEW_REVIEW_STALE(HttpStatus.CONFLICT, "INTERVIEW_REVIEW_STALE", "The interview question changed after it was opened. Reload before reviewing"),
+	INTERVIEW_AUTHOR_INELIGIBLE(HttpStatus.CONFLICT, "INTERVIEW_AUTHOR_INELIGIBLE", "The author is no longer eligible to publish"),
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected error occurred");
 
 	private final HttpStatus status;

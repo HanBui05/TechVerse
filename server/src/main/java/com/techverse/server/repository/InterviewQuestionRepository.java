@@ -16,7 +16,10 @@ public interface InterviewQuestionRepository extends JpaRepository<InterviewQues
     @Query("select q from InterviewQuestion q where q.id=:id")
     Optional<InterviewQuestion> findByIdForUpdate(@Param("id") UUID id);
 
+    @Query("select q.author.id from InterviewQuestion q where q.id=:id")
+    Optional<UUID> findAuthorIdById(@Param("id") UUID id);
+
     @Override
-    @EntityGraph(attributePaths = {"topic"})
+    @EntityGraph(attributePaths = {"topic", "author"})
     Page<InterviewQuestion> findAll(Specification<InterviewQuestion> spec, Pageable pageable);
 }
