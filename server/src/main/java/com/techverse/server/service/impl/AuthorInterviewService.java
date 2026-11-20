@@ -149,6 +149,57 @@ public class AuthorInterviewService {
         questions.flush();
     }
 
+    // ------------------------------------------------------------------ AI drafts (1c)
+
+    /** Plain copy of what the model may see; no entity crosses the provider call. */
+    public record AiContext(String topic, List<String> existing) {}
+
+    /** One generated question; also the model's output item shape. */
+    public record AiDraft(String question, String sampleAnswer, String hint) {}
+
+    static final int AI_EXISTING = 20;
+
+    /** Author eligibility, the active topic and the Author's 20 newest questions in it (to avoid duplicates). */
+    @Transactional
+    public AiContext aiContext(UUID actor, UUID topicId) {
+        access.lockWriter(actor);
+        var topic = activeTopic(topicId);
+        Specification<InterviewQuestion> mine = (root, q, cb) ->
+                cb.and(cb.equal(root.get("author").get("id"), actor), cb.equal(root.get("topic").get("id"), topicId));
+        var existing = questions.findAll(mine, PageRequest.of(0, AI_EXISTING, Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by("id"))))
+                .map(InterviewQuestion::getQuestion).toList();
+        return new AiContext(topic.getName(), existing);
+    }
+
+    /** The cleaned draft when it passes the same checks as {@code create}, else null. */
+    public AiDraft aiUsable(AiDraft d) {
+        if (d == null || d.question() == null || d.sampleAnswer() == null) return null;
+        String question = d.question().strip(), answer = d.sampleAnswer().strip();
+        String hint = d.hint() == null || d.hint().isBlank() ? null : d.hint().strip();
+        if (question.length() < 10 || question.length() > 1000 || answer.length() < 20 || answer.length() > 5000
+                || (hint != null && hint.length() > 500)) return null;
+        try {
+            checkContent(question, answer, hint);
+        } catch (CustomException e) {
+            return null;
+        }
+        return new AiDraft(question, answer, hint);
+    }
+
+    /** After the model answered: re-check the Author and the topic, then save every draft in this one transaction. */
+    @Transactional
+    public List<InterviewQuestionResponse> saveAiDrafts(UUID actor, UUID topicId, InterviewLevel level, List<AiDraft> drafts) {
+        var user = access.lockWriter(actor);
+        var topic = activeTopic(topicId);
+        var saved = drafts.stream().map(d -> {
+            var q = InterviewQuestion.create(user, topic, level, d.question(), d.sampleAnswer(), d.hint());
+            q.markAiAssisted();
+            return questions.save(q);
+        }).toList();
+        questions.flush();
+        return saved.stream().map(InterviewQuestionResponse::of).toList();
+    }
+
     /** Markdown rules for every content field: article checks (raw HTML, unsafe links, NUL) and no image node. */
     public void checkContent(String... texts) {
         for (String text : texts) {
@@ -182,6 +233,8 @@ public class AuthorInterviewService {
     private Topic activeTopic(UUID id) {
         var topic = topics.findByIdForUpdate(id)
                 .orElseThrow(() -> new CustomException(ErrorCode.VALIDATION_ERROR, Map.of("topicId", "Topic not found")));
+        // OSIV: the AI flow loaded this topic in an earlier transaction; read the locked row fresh.
+        em.refresh(topic);
         if (!topic.isActive()) throw new CustomException(ErrorCode.INTERVIEW_TOPIC_INACTIVE);
         return topic;
     }

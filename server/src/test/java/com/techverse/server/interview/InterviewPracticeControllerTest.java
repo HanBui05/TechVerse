@@ -42,6 +42,7 @@ class InterviewPracticeControllerTest {
     @Autowired ObjectMapper mapper;
     @MockitoBean ModeratorInterviewService moderator;
     @MockitoBean PublishedInterviewService practice;
+    @MockitoBean com.techverse.server.service.impl.InterviewAiService ai;
 
     final UUID actor = UUID.randomUUID();
     final UUID id = UUID.randomUUID();

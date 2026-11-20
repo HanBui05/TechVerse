@@ -51,7 +51,9 @@ public class AiRateLimitService {
         OUTLINE,
         DRAFT,
         TUTOR,
-        EXERCISE
+        EXERCISE,
+        INTERVIEW_DRAFT,
+        INTERVIEW_FEEDBACK
     }
 
     public record Quota(int limit, int remaining) {}
@@ -134,6 +136,8 @@ public class AiRateLimitService {
             case DRAFT -> properties.draftPerDay();
             case TUTOR -> properties.tutorPerDay();
             case EXERCISE -> properties.exercisePerDay();
+            case INTERVIEW_DRAFT -> properties.interviewDraftPerDay();
+            case INTERVIEW_FEEDBACK -> properties.interviewFeedbackPerDay();
         };
     }
 

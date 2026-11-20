@@ -3,6 +3,7 @@ package com.techverse.server.controller;
 import com.techverse.server.dto.request.InterviewQuestionRequest;
 import com.techverse.server.dto.response.*;
 import com.techverse.server.service.impl.AuthorInterviewService;
+import com.techverse.server.service.impl.InterviewAiService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +28,19 @@ import java.util.UUID;
 @Tag(name = "Author Interview Questions", description = "Own interview questions: content, submission, visibility")
 public class AuthorInterviewController {
     private final AuthorInterviewService service;
+    private final InterviewAiService ai;
+
+    @PostMapping("/ai/drafts")
+    @PreAuthorize("hasRole('AUTHOR')")
+    @Operation(summary = "Generate 1-5 questions with AI and save the usable ones as flagged DRAFTs")
+    public ResponseEntity<ApiResponse<InterviewAiService.Drafts>> aiDrafts(
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody InterviewQuestionRequest.AiDrafts request) {
+        var result = ai.draft(actor(jwt), request);
+        return ResponseEntity.ok()
+                .header(AuthorAiController.QUOTA_LIMIT, String.valueOf(result.quota().limit()))
+                .header(AuthorAiController.QUOTA_REMAINING, String.valueOf(result.quota().remaining()))
+                .body(ok("AI interview questions created", result.body()));
+    }
 
     @GetMapping("/options")
     @PreAuthorize("hasRole('AUTHOR')")

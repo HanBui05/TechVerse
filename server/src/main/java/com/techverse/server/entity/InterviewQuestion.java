@@ -90,6 +90,11 @@ public class InterviewQuestion extends BaseEntity {
         return c;
     }
 
+    /** One-way: set only by the server when the content came from the AI. */
+    public void markAiAssisted() {
+        aiAssisted = true;
+    }
+
     // ------------------------------------------------------------------ content
 
     public void ensureEditable() {

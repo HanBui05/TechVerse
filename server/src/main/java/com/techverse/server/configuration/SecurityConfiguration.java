@@ -89,6 +89,8 @@ public class SecurityConfiguration {
 						.requestMatchers("/api/v1/moderator/interview-questions", "/api/v1/moderator/interview-questions/**").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/interview-questions/*/answer").authenticated()
 						.requestMatchers(HttpMethod.PUT, "/api/v1/interview-questions/*/mark").authenticated()
+						.requestMatchers(HttpMethod.POST, "/api/v1/interview-questions/*/feedback").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/v1/me/interview-feedback/quota").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/interview-questions", "/api/v1/interview-questions/*").permitAll()
 						.requestMatchers("/api/v1/moderator/articles", "/api/v1/moderator/articles/**").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/**").authenticated()

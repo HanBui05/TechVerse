@@ -4,9 +4,10 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`interview-practic
 
 ## Bắt đầu từ đây (cập nhật 2026-11-20)
 
-- **Task tiếp:** Task 1c — AI: sinh câu hỏi cho tác giả và nhận xét câu trả lời · Giao diện: Không.
-- Task 1a, 1b đã nhận (2026-11-20).
-- Nhánh `feature/interview-practice` (cắt từ `docs/exercise-practice-spec-sync`, gồm `main` sau PR #11 + commit đồng bộ spec bài tập). Task 1a, 1b đã commit cục bộ, chưa push.
+- **Task tiếp:** Cổng wireframe — viết `plans/interview-practice.wireframe.md` (desktop + mobile, đủ trạng thái), chờ duyệt trước Task 2a · Giao diện: Có
+- Task 1a, 1b, 1c đã nhận (2026-11-20).
+- Chưa kiểm của 1c: prompt chưa thử với Groq thật.
+- Nhánh `feature/interview-practice` (cắt từ `docs/exercise-practice-spec-sync`, gồm `main` sau PR #11 + commit đồng bộ spec bài tập). Task 1a, 1b, 1c đã commit cục bộ, chưa push.
 
 ## Quyết định người dùng chưa có trong spec
 
@@ -17,6 +18,12 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`interview-practic
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-20 — Task 1c: AI sinh câu hỏi và nhận xét câu trả lời
+- Code: `InterviewAiService` (hai luồng, chỗ giữ `Kind.DRAFT` dùng chung, hoàn lượt một lần), `AuthorInterviewService.aiContext/aiUsable/saveAiDrafts`, `PublishedInterviewService.feedbackContext` (+ `reader` public cho quota), `InterviewQuestion.markAiAssisted`, `AiPromptFactory` hai prompt, `Kind.INTERVIEW_DRAFT/FEEDBACK`, `AiQuotaResponse.interviewDraft`, `AiAssistProperties` (+2 giới hạn ngày, `interview-timeout`, khóa token `INTERVIEW_DRAFT` 8192/`INTERVIEW_FEEDBACK` 2048), YAML, `.env.example`, `SecurityConfiguration`; `PublishedInterviewController` đổi gốc sang `/api/v1` để chứa `/me/interview-feedback/quota`.
+- Lệch khác spec: `count` là `BigDecimal` + `@Digits` (1.5 → 400, như `version` ở 1a); cả sai định dạng lẫn “không câu nào đạt”/nhận xét sai luật đều được sửa một lần rồi mới 422; lấy `count` câu đầu rồi mới kiểm.
+- Test (TDD, đỏ do thiếu lớp/hàm → xanh): `./gradlew test --tests 'com.techverse.server.interview.*' --tests 'com.techverse.server.ai.*' --tests '…ExerciseAiServiceTest'` đều đạt: interview 52 (AiService 14 mới, AuthorIntegration 9, PracticeIntegration 10), ai 142, ExerciseAi 12. Ca tích hợp mới viết cùng lúc với unit nên lần đỏ là lỗi biên dịch, không thấy riêng 403/404. Full backend để CI.
+- Codex `review` vòng 1: 1 P2 (đúng) — OSIV giữ `Topic` nạp ở `aiContext`, nên lần kiểm lại trước khi lưu đọc trạng thái cũ. Sửa: `activeTopic` gọi `em.refresh` sau khi khóa; thêm ca tích hợp ngừng chủ đề trong lúc model chạy (đỏ 200 → xanh 409, hoàn lượt). `interview.*` 53/53 đạt.
+- Codex `adversarial-review` vòng 2 (chỉ phần sửa): approve, không có phát hiện. Người dùng nhận Task 1c (2026-11-20), commit cục bộ.
 ### 2026-11-20 — Task 1b: Moderator duyệt, trang công khai, đánh dấu
 - Code: `ModeratorInterviewService`/`Controller`, `PublishedInterviewService`/`Controller`, `InterviewQuestionMarkRepository` (upsert một câu `ON CONFLICT`), DTO `Review`/`Publication`/`Mark`/`PublicFilter` + `Moderated`/`Published`/`Viewer`/`Answer`, `INTERVIEW_REVIEW_STALE`/`INTERVIEW_AUTHOR_INELIGIBLE`, `SecurityConfiguration`; `findAll` nạp thêm `author`.
 - Test (TDD, đỏ 403 do route chưa có → xanh): `./gradlew test --tests 'com.techverse.server.interview.*'` 36/36 đạt (PracticeController 4, PracticeIntegration 9, AuthorIntegration 8, AuthorController 6, Lifecycle 6, Content 2, Migration 1). Full backend để CI.

@@ -83,6 +83,16 @@ public class PublishedInterviewService {
         return viewers(actor, List.of(id)).get(id);
     }
 
+    /** What the feedback model sees; the sample answer goes to the model only, never back to the learner. */
+    public record FeedbackContext(String topic, InterviewLevel level, String question, String sampleAnswer) {}
+
+    @Transactional(readOnly = true)
+    public FeedbackContext feedbackContext(UUID actor, UUID id) {
+        reader(actor);
+        var q = visibleQuestion(id);
+        return new FeedbackContext(q.getTopic().getName(), q.getLevel(), q.getQuestion(), q.getSampleAnswer());
+    }
+
     // ------------------------------------------------------------------ helpers
 
     /** Published, author active and not suspended (same rule as articles, courses and exercise sets). */
@@ -103,7 +113,8 @@ public class PublishedInterviewService {
     }
 
     /** Guests pass; a locked account is rejected on every route it calls with its token. */
-    private void reader(UUID actor) {
+    @Transactional(readOnly = true)
+    public void reader(UUID actor) {
         if (actor == null) return;
         var user = users.findById(actor).orElseThrow(() -> new CustomException(ErrorCode.INVALID_ACCESS_TOKEN));
         if (!user.isActive()) throw new CustomException(ErrorCode.ACCESS_DENIED);

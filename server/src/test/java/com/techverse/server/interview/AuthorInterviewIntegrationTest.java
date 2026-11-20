@@ -255,6 +255,82 @@ class AuthorInterviewIntegrationTest extends ArticleIntegrationTestBase {
         assertThat(data(get(ROOT + "?size=5", token)).path("totalElements").asInt()).isEqualTo(20);
     }
 
+    // ------------------------------------------------------------------ AI drafts (1c)
+
+    static final String AI = ROOT + "/ai/drafts";
+
+    void stubModel(String json) {
+        org.mockito.Mockito.when(chatModel.getDefaultOptions()).thenReturn(org.springframework.ai.openai.OpenAiChatOptions.builder().model("m").build());
+        org.mockito.Mockito.when(chatModel.call(org.mockito.ArgumentMatchers.any(org.springframework.ai.chat.prompt.Prompt.class)))
+                .thenReturn(new org.springframework.ai.chat.model.ChatResponse(List.of(new org.springframework.ai.chat.model.Generation(
+                        new org.springframework.ai.chat.messages.AssistantMessage(json),
+                        org.springframework.ai.chat.metadata.ChatGenerationMetadata.builder().finishReason("STOP").build()))));
+    }
+
+    @Test
+    void aiDraftsAreSavedAsFlaggedDraftsAndCountAgainstTheAuthorQuota() throws Exception {
+        redisTemplate.delete(redisTemplate.keys("ai:*"));
+        stubModel("""
+                {"questions":[{"question":"What does the JIT compiler do?","sampleAnswer":"It compiles hot bytecode to native code at runtime.","hint":""},
+                {"question":"Bad","sampleAnswer":"too short","hint":""}]}""");
+        var ai = Map.of("topicId", topic, "level", "HARD", "instruction", "focus on JIT", "count", 2);
+        var r = send(post(AI), token, ai).andExpect(status().isOk())
+                .andExpect(header().string("X-AI-Quota-Remaining", "9")).andReturn();
+        var body = mapper.readTree(r.getResponse().getContentAsString()).path("data");
+        assertThat(body.path("requested").asInt()).isEqualTo(2);
+        assertThat(body.path("questions")).hasSize(1);
+        var q = body.path("questions").get(0);
+        assertThat(q.path("status").asText()).isEqualTo("DRAFT");
+        assertThat(q.path("aiAssisted").asBoolean()).isTrue();
+        assertThat(q.path("level").asText()).isEqualTo("HARD");
+        assertThat(q.path("hint").isNull()).isTrue();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.interview_questions WHERE ai_assisted AND author_id=?", Integer.class, author)).isEqualTo(1);
+
+        var quota = data(get("/api/v1/author/ai/quota", token).andExpect(status().isOk()));
+        assertThat(quota.path("interviewDraft").path("limit").asInt()).isEqualTo(10);
+        assertThat(quota.path("interviewDraft").path("remaining").asInt()).isEqualTo(9);
+        assertThat(quota.path("outline").path("remaining").asInt()).isEqualTo(10);
+        assertThat(quota.has("draft")).isTrue();
+        assertThat(quota.has("exercise")).isTrue();
+
+        send(post(AI), learnerToken, ai).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        send(post(AI), null, ai).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("AUTH_ACCESS_TOKEN_REQUIRED"));
+        var bad = new HashMap<String, Object>(ai);
+        bad.put("count", 6);
+        send(post(AI), token, bad).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        bad.put("count", 1.5);
+        send(post(AI), token, bad).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        bad.put("count", 1);
+        bad.put("sourceText", "s".repeat(8001));
+        send(post(AI), token, bad).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        jdbc.update("UPDATE techverse.author_profiles SET status='SUSPENDED' WHERE user_id=?", author);
+        send(post(AI), token, ai).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        jdbc.update("UPDATE techverse.author_profiles SET status='APPROVED' WHERE user_id=?", author);
+
+        String day = redisTemplate.keys("ai:quota:interview_draft:*").iterator().next();
+        redisTemplate.opsForValue().set(day, "10");
+        send(post(AI), token, ai).andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.code").value("AI_QUOTA_EXCEEDED"));
+        org.mockito.Mockito.verify(chatModel, org.mockito.Mockito.times(1)).call(org.mockito.ArgumentMatchers.any(org.springframework.ai.chat.prompt.Prompt.class));
+    }
+
+    @Test
+    void aTopicStoppedWhileTheModelWorksSavesNothingAndRefunds() throws Exception {
+        redisTemplate.delete(redisTemplate.keys("ai:*"));
+        stubModel("{\"questions\":[]}");
+        org.mockito.Mockito.when(chatModel.call(org.mockito.ArgumentMatchers.any(org.springframework.ai.chat.prompt.Prompt.class))).thenAnswer(i -> {
+            jdbc.update("UPDATE techverse.topics SET is_active=false WHERE id=?", topic);
+            return new org.springframework.ai.chat.model.ChatResponse(List.of(new org.springframework.ai.chat.model.Generation(
+                    new org.springframework.ai.chat.messages.AssistantMessage(
+                            "{\"questions\":[{\"question\":\"What does the JIT compiler do?\",\"sampleAnswer\":\"It compiles hot bytecode to native code.\",\"hint\":\"\"}]}"),
+                    org.springframework.ai.chat.metadata.ChatGenerationMetadata.builder().finishReason("STOP").build())));
+        });
+        send(post(AI), token, Map.of("topicId", topic, "level", "EASY", "count", 1)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("INTERVIEW_TOPIC_INACTIVE"))
+                .andExpect(header().string("X-AI-Quota-Remaining", "10"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.interview_questions", Integer.class)).isZero();
+    }
+
     // ------------------------------------------------------------------ http
 
     ResultActions send(MockHttpServletRequestBuilder request, String token, Map<String, ?> body) throws Exception {

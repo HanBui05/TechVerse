@@ -284,6 +284,45 @@ class InterviewPracticeIntegrationTest extends ArticleIntegrationTestBase {
         }
     }
 
+    // ------------------------------------------------------------------ AI feedback (1c)
+
+    static final String FEEDBACK_QUOTA = "/api/v1/me/interview-feedback/quota";
+
+    @Test
+    void aiFeedbackNeedsLoginSpendsOneUseAndNeverEchoesTheSampleAnswer() throws Exception {
+        redisTemplate.delete(redisTemplate.keys("ai:*"));
+        org.mockito.Mockito.when(chatModel.getDefaultOptions()).thenReturn(org.springframework.ai.openai.OpenAiChatOptions.builder().model("m").build());
+        org.mockito.Mockito.when(chatModel.call(org.mockito.ArgumentMatchers.any(org.springframework.ai.chat.prompt.Prompt.class)))
+                .thenReturn(new org.springframework.ai.chat.model.ChatResponse(List.of(new org.springframework.ai.chat.model.Generation(
+                        new org.springframework.ai.chat.messages.AssistantMessage(
+                                "{\"verdict\":\"GOOD\",\"strengths\":[\"Mentions bytecode\"],\"missing\":[],\"advice\":\"Add an example.\"}"),
+                        org.springframework.ai.chat.metadata.ChatGenerationMetadata.builder().finishReason("STOP").build()))));
+        String id = published();
+        String path = PUB + "/" + id + "/feedback";
+
+        send(post(path), null, Map.of("answer", "It runs bytecode")).andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_TOKEN_REQUIRED"));
+        get(FEEDBACK_QUOTA, null).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("AUTH_ACCESS_TOKEN_REQUIRED"));
+        send(post(path), learnerToken, Map.of("answer", "   ")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        var r = send(post(path), learnerToken, Map.of("answer", "It runs bytecode")).andExpect(status().isOk())
+                .andExpect(header().string("X-AI-Quota-Limit", "20")).andExpect(header().string("X-AI-Quota-Remaining", "19"))
+                .andExpect(jsonPath("$.data.verdict").value("GOOD"))
+                .andExpect(jsonPath("$.data.strengths[0]").value("Mentions bytecode"))
+                .andExpect(jsonPath("$.data.advice").value("Add an example.")).andReturn();
+        assertThat(r.getResponse().getContentAsString()).doesNotContain("sampleAnswer").doesNotContain("virtual machine");
+        assertThat(data(get(FEEDBACK_QUOTA, learnerToken).andExpect(status().isOk())).path("remaining").asInt()).isEqualTo(19);
+
+        jdbc.update("UPDATE techverse.interview_questions SET status='HIDDEN', hidden_from_status='PUBLISHED' WHERE id=?::uuid", id);
+        send(post(path), learnerToken, Map.of("answer", "It runs bytecode")).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("INTERVIEW_QUESTION_NOT_FOUND"));
+        assertThat(data(get(FEEDBACK_QUOTA, learnerToken)).path("remaining").asInt()).isEqualTo(19);
+        org.mockito.Mockito.verify(chatModel, org.mockito.Mockito.times(1)).call(org.mockito.ArgumentMatchers.any(org.springframework.ai.chat.prompt.Prompt.class));
+
+        jdbc.update("UPDATE techverse.users SET is_active=false WHERE id=?", learner);
+        get(FEEDBACK_QUOTA, learnerToken).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
     // ------------------------------------------------------------------ fixtures
 
     String draft() throws Exception {

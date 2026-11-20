@@ -44,6 +44,20 @@ public final class InterviewQuestionRequest {
         }
     }
 
+    /** AI drafts; {@code count} is a decimal so 1.5 is refused, not truncated. */
+    public record AiDrafts(
+            @NotNull @Pattern(regexp = UUID_PATTERN) String topicId,
+            @NotNull @Pattern(regexp = "EASY|MEDIUM|HARD") String level,
+            @Size(max = 500) String instruction,
+            @Size(max = 8000) String sourceText,
+            @NotNull @Digits(integer = 1, fraction = 0) @Min(1) @Max(5) BigDecimal count) {}
+
+    public record Feedback(@NotNull @Size(min = 1, max = 4000) String answer) {
+        public Feedback {
+            answer = strip(answer);
+        }
+    }
+
     public record Visibility(@NotNull @Pattern(regexp = "HIDE|UNHIDE") String action) {}
 
     // Enums as patterned strings so a bad value is a field error, not a malformed body.

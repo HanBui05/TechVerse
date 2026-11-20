@@ -38,6 +38,7 @@ class AuthorInterviewControllerTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
     @MockitoBean AuthorInterviewService service;
+    @MockitoBean com.techverse.server.service.impl.InterviewAiService ai;
 
     final UUID actor = UUID.randomUUID();
     final UUID id = UUID.randomUUID();
