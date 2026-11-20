@@ -2,13 +2,12 @@
 
 Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`interview-practice.md`](interview-practice.md). Ba mục đầu và “Nhật ký phiên” được hook SessionStart tự nạp sau `/clear`; giữ chúng ngắn.
 
-## Bắt đầu từ đây (cập nhật 2026-11-20)
+## Bắt đầu từ đây (cập nhật 2026-11-21)
 
-- **Task tiếp:** Hết task của module; còn đồng bộ spec một lần (skill `codex-workflow` mục 3) rồi PR khi người dùng yêu cầu · Giao diện: Không
-- Task 1a, 1b, 1c đã nhận (2026-11-20); Task 2a, 2b (UI do Gemini làm, Claude review + sửa) đã nhận (2026-11-21).
-- Đã kiểm bằng mắt desktop light + mobile dark (2026-11-21); chưa kiểm desktop dark, mobile light, hộp thoại AI tác giả trên trình duyệt. DB dev có 3 câu `[Dev]` do Claude tạo để kiểm.
-- Chưa kiểm của 1c: prompt chưa thử với Groq thật.
-- Nhánh `feature/interview-practice` (cắt từ `docs/exercise-practice-spec-sync`, gồm `main` sau PR #11 + commit đồng bộ spec bài tập). Mọi task đã commit cục bộ, chưa push.
+- **Task tiếp:** Chờ CI + người dùng merge PR #13 (Create a merge commit) · Giao diện: Không
+- Task 1a–1c (2026-11-20), 2a–2b (2026-11-21) đã nhận; spec đồng bộ 2026-11-21 (Codex).
+- Chưa kiểm: desktop dark, mobile light, hộp thoại AI tác giả trên trình duyệt; prompt mới qua app sau khi khởi động lại backend (đã thử bằng script gọi thẳng Groq).
+- Nhánh `feature/interview-practice` đã push, PR #13 → `main` (đã merge `origin/main` sau PR #12). 3 câu `[Dev]` trong DB dev đã xóa.
 
 ## Quyết định người dùng chưa có trong spec
 
