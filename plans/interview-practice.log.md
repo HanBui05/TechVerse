@@ -16,6 +16,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`interview-practic
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-21 — CI PR #13
+- CI lần 1: 862 test, 1 lỗi `AuthorExerciseIntegrationTest.aiQuestionsAreProposedWithoutSavingAndFlagTheSet` (422): bản giả `ChatModel` trả một nội dung cho cả bước kiểm chéo. File chứa NUL nên lúc tìm caller grep bỏ qua. Sửa `modelReplies` nhận nhiều phản hồi theo thứ tự; lớp chạy lại 27/27 đạt. Ghi luật `grep -rna` vào `backend.md`.
 - 2026-11-21 — Codex: đã đưa quyết định bỏ cổng wireframe và quy trình Gemini/Claude, siết AI phỏng vấn và thay đổi AI bài tập vào spec.
 ### 2026-11-21 — Bài tập: bước AI kiểm chéo
 - Người dùng chọn phương án 1. `ExerciseAiService.verified`: gọi lần hai temperature 0 với `EXERCISE_VERIFY_SYSTEM` (thẩm định, nghi ngờ thì `ok=false`), chỉ giữ index được xác nhận, sót index = loại, đọc lỗi/không còn câu → `AI_OUTPUT_INVALID` + hoàn lượt; cùng một lượt và một deadline. `exercise-timeout` mặc định 60s → 90s (YAML + `.env.example`).

@@ -44,5 +44,7 @@ Luật Spring AI/SSE ở `backend-ai.md` (tự nạp khi đụng file `*Ai*`, `a
 
 ## Môi trường
 
+- Tìm caller trong test: vài file test chứa ký tự NUL (vd. `AuthorExerciseIntegrationTest`) nên `grep` coi là nhị phân và công cụ Grep bỏ qua; dùng `grep -rna`. Đổi số lần gọi `ChatModel` của một service AI thì sửa cả bản giả trong test tích hợp của module đó.
+
 - Cần đọc source thư viện: tải `<artifact>-sources.jar` từ Maven Central vào scratchpad, giải nén, ghi kết luận vào rule vùng hoặc log; không đọc lại.
 - Chạy Gradle và `scripts/verify.sh` bằng Git Bash (không dùng WSL shim). Test tích hợp cần Docker daemon đang chạy (`docker info`).
