@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { Link, UNSAFE_DataRouterContext, useBlocker, useNavigate, useParams } from 'react-router-dom'
-import { AlertTriangle, ArrowDown, ArrowLeft, ArrowUp, Eye, Info, Plus, RefreshCw, Save, Send, Sparkles, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowDown, ArrowLeft, ArrowUp, Check, Eye, Info, Plus, RefreshCw, Save, Send, Sparkles, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -137,18 +137,17 @@ function PreviewDialog({ language, questions, onClose }: { language: Language; q
   </Dialog>
 }
 
-type AiPanelProps = { language: Language; setId: string; saving: boolean; type: ExerciseType; total: number; ensureSaved: () => Promise<boolean>; version: () => number; onVersion: (version: number) => void; onAdd: (questions: ExerciseQuestion[]) => void; onConflict: () => void }
+type AiPanelProps = { language: Language; setId: string; ensureSaved: () => Promise<boolean>; version: () => number; onVersion: (version: number) => void; onBusy: (count: number | null) => void; onResult: (questions: ExerciseQuestion[]) => void; onConflict: () => void }
+type Suggestion = { q: ExerciseQuestion; on: boolean }
 
-/** “Tạo câu hỏi bằng AI”: suggestions are never saved by the server; they join the list being edited only through “Thêm câu đã chọn”. */
-function AiPanel({ language, setId, saving, type, total, ensureSaved, version, onVersion, onAdd, onConflict }: AiPanelProps) {
+/** “Tạo câu hỏi bằng AI” form: it only asks. Suggestions are never saved by the server; they show in `AiResults` and join the list being edited through “Thêm câu đã chọn”. */
+function AiPanel({ language, setId, ensureSaved, version, onVersion, onBusy, onResult, onConflict }: AiPanelProps) {
   const t = exerciseText(language)
   const [form, setForm] = useState({ instruction: '', sourceText: '', count: 5 })
   const [quota, setQuota] = useState<AiQuota | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
-  const [suggestions, setSuggestions] = useState<{ q: ExerciseQuestion; on: boolean }[]>([])
-  const [editing, setEditing] = useState<number | null>(null)
   useEffect(() => { void aiAssist.quota().then(q => setQuota(q.exercise ?? null), () => {}) }, [])
   const problems = {
     instruction: form.instruction.length > 500 ? t('instructionLength') : '',
@@ -161,21 +160,17 @@ function AiPanel({ language, setId, saving, type, total, ensureSaved, version, o
     setBusy(true); setError(''); setInfo('')
     try {
       if (!await ensureSaved()) return
+      onBusy(form.count)
       const { suggestions: result, quota: next } = await authorExercises.suggest(setId, { version: version(), ...form })
       onVersion(result.version)
       if (next) setQuota(next)
-      setSuggestions(old => [...old, ...result.questions.map(q => ({ q, on: true }))])
+      onResult(result.questions)
       setInfo(t('aiResult', { n: result.questions.length, count: result.requested }))
     } catch (e) {
       if (quotaOfError(e)) setQuota(quotaOfError(e))
       if (isExerciseConflict(e)) onConflict()
       else setError(exerciseErrorText(e, language, t('loadError')))
-    } finally { setBusy(false) }
-  }
-  const selected = suggestions.filter(s => s.on)
-  const add = () => {
-    if (total + selected.length > MAX_QUESTIONS) { setError(t('tooMany')); return }
-    onAdd(selected.map(s => s.q)); setSuggestions(suggestions.filter(s => !s.on)); setError(''); setInfo(t('added', { n: selected.length }))
+    } finally { setBusy(false); onBusy(null) }
   }
   const field = (key: 'instruction' | 'sourceText', label: string, rows: number) => <div className="flex flex-col gap-2">
     <Label htmlFor={`ai-${key}`} className={fieldLabel}>{label}</Label>
@@ -195,26 +190,74 @@ function AiPanel({ language, setId, saving, type, total, ensureSaved, version, o
       <Problem id="ai-count-error" text={problems.count} />
     </div>
     {quota && <p className="text-xs text-muted-foreground">{out ? t('quotaOut') : t('quotaLeft', { remaining: quota.remaining, limit: quota.limit ?? '∞' })}</p>}
-    <Button type="button" className={touch} disabled={busy || out} onClick={() => void generate()}><Sparkles />{busy ? t('generating') : t('generate')}</Button>
+    <Button type="button" className={touch} disabled={busy || out} onClick={() => void generate()}><Sparkles className={busy ? 'motion-safe:animate-pulse' : undefined} />{busy ? t('generating') : t('generate')}</Button>
     {error && <p role="alert" className="rounded-lg border border-border bg-tone-rose-bg px-3 py-2 text-sm text-danger">{error}</p>}
     {info && <p role="status" className="text-sm text-muted-foreground">{info}</p>}
-    {suggestions.length > 0 && <div className="flex flex-col gap-2">
-      <ul className="m-0 flex list-none flex-col gap-2 p-0">
-        {suggestions.map((s, i) => <li key={i} className="flex items-start gap-2 rounded-lg border border-border p-3">
-          <input type="checkbox" className={`mt-1 size-4 ${touch}`} checked={s.on} aria-label={t('pick', { title: t('suggestion', { n: i + 1 }) })} onChange={e => setSuggestions(suggestions.map((x, j) => j === i ? { ...x, on: e.target.checked } : x))} />
-          <span className="flex min-w-0 flex-1 flex-col gap-1 text-sm"><span className="font-medium">{t('suggestion', { n: i + 1 })}</span><span className="line-clamp-2 text-muted-foreground [overflow-wrap:anywhere]">{plain(s.q)}</span></span>
-          <Button type="button" size="sm" variant="outline" className={touch} onClick={() => setEditing(i)}>{t('editSuggestion')}</Button>
-        </li>)}
-      </ul>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" variant="outline" className={touch} onClick={() => setSuggestions(suggestions.map(s => ({ ...s, on: true })))}>{t('selectAll')}</Button>
-        <Button type="button" size="sm" variant="outline" className={touch} onClick={() => setSuggestions(suggestions.map(s => ({ ...s, on: false })))}>{t('clearAll')}</Button>
-        <Button type="button" size="sm" className={touch} disabled={!selected.length || saving} onClick={add}>{t('addSelected')} ({selected.length})</Button>
-      </div>
+  </div>
+}
+
+/** Full-width card in the main column: a shimmering placeholder while the model works, then every suggestion in full to read before adding. */
+function AiResults({ language, type, total, saving, count, suggestions, onChange, onAdd }: { language: Language; type: ExerciseType; total: number; saving: boolean; count: number | null; suggestions: Suggestion[]; onChange: (next: Suggestion[]) => void; onAdd: (questions: ExerciseQuestion[]) => void }) {
+  const t = exerciseText(language)
+  const [editing, setEditing] = useState<number | null>(null)
+  const [problem, setProblem] = useState('')
+  const [note, setNote] = useState('')
+  const selected = suggestions.filter(s => s.on)
+  const add = () => {
+    if (total + selected.length > MAX_QUESTIONS) { setProblem(t('tooMany')); return }
+    onAdd(selected.map(s => s.q)); onChange(suggestions.filter(s => !s.on)); setProblem(''); setNote(t('added', { n: selected.length }))
+  }
+  if (count !== null) return <Card role="status" aria-live="polite" className="gap-5 rounded-2xl border-primary/40 p-6 shadow-sm">
+    <div className="flex items-center gap-3">
+      <span className="relative flex size-11 shrink-0 items-center justify-center rounded-full bg-tone-purple-bg text-tone-purple-fg">
+        <span aria-hidden className="absolute inset-0 rounded-full bg-tone-purple-bg motion-safe:animate-ping" /><Sparkles aria-hidden className="relative size-5 motion-safe:animate-pulse" />
+      </span>
+      <div className="flex flex-col gap-0.5"><h2 className="text-base font-bold">{t('aiWorking', { count })}</h2><p className="text-sm text-muted-foreground">{t('aiWorkingHint')}</p></div>
+    </div>
+    <div aria-hidden className="flex flex-col gap-3">{Array.from({ length: Math.min(count, 3) }, (_, i) => <div key={i} className="flex flex-col gap-2 rounded-xl border border-border p-4" style={{ animationDelay: `${i * 150}ms` }}>
+      <Skeleton className="h-4 w-1/4" style={{ animationDelay: `${i * 150}ms` }} /><Skeleton className="h-4 w-4/5" style={{ animationDelay: `${i * 150}ms` }} /><Skeleton className="h-4 w-3/5" style={{ animationDelay: `${i * 150}ms` }} /></div>)}</div>
+  </Card>
+  if (!suggestions.length && !note) return null
+  return <Card className="gap-5 rounded-2xl p-6 shadow-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
+    <div className="flex flex-col gap-1">
+      <h2 className="flex items-center gap-2 text-base font-bold"><Sparkles aria-hidden className="size-4 text-tone-purple-fg" />{t('aiSuggestions', { n: suggestions.length })}</h2>
+      <p className="text-sm text-muted-foreground">{t('aiHint')}</p>
+    </div>
+    {note && <p role="status" className="text-sm text-muted-foreground">{note}</p>}
+    <ul className="m-0 flex list-none flex-col gap-4 p-0">
+      {suggestions.map((s, i) => <li key={i} className="flex items-start gap-3 rounded-xl border border-border p-4">
+        <input type="checkbox" className={`mt-1 size-4 ${touch}`} checked={s.on} aria-label={t('pick', { title: t('suggestion', { n: i + 1 }) })} onChange={e => onChange(suggestions.map((x, j) => j === i ? { ...x, on: e.target.checked } : x))} />
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className={fieldLabel}>{t('suggestion', { n: i + 1 })}</span>
+            <Button type="button" size="sm" variant="outline" className={touch} onClick={() => setEditing(i)}>{t('editSuggestion')}</Button>
+          </div>
+          {s.q.front !== null
+            ? <div className="grid gap-3 sm:grid-cols-2">
+                <div><p className="text-xs font-semibold text-muted-foreground">{t('faceFront')}</p><p className="text-sm [overflow-wrap:anywhere]">{s.q.front}</p></div>
+                <div><p className="text-xs font-semibold text-muted-foreground">{t('faceBack')}</p><p className="text-sm [overflow-wrap:anywhere]">{s.q.back}</p></div>
+              </div>
+            : <>
+                <p className="text-sm font-medium [overflow-wrap:anywhere]">{s.q.content}</p>
+                {s.q.codeSnippet && <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-xs"><code>{s.q.codeSnippet}</code></pre>}
+                <ol className="m-0 flex list-none flex-col gap-1.5 p-0">{(s.q.options ?? []).map((option, k) => <li key={k} className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${k === s.q.correctIndex ? 'border-tone-green-border bg-tone-green-bg text-tone-green-fg' : 'border-border'}`}>
+                  <span className="font-semibold">{String.fromCharCode(65 + k)}.</span><span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{option}</span>
+                  {k === s.q.correctIndex && <span className="flex shrink-0 items-center gap-1 text-xs font-semibold"><Check aria-hidden className="size-3.5" />{t('showAnswer')}</span>}
+                </li>)}</ol>
+              </>}
+          {s.q.explanation && <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]"><span className="font-semibold text-foreground">{t('explanation')}: </span>{s.q.explanation}</p>}
+        </div>
+      </li>)}
+    </ul>
+    {problem && <p role="alert" className="rounded-lg border border-border bg-tone-rose-bg px-3 py-2 text-sm text-danger">{problem}</p>}
+    {suggestions.length > 0 && <div className="flex flex-wrap gap-2">
+      <Button type="button" size="sm" variant="outline" className={touch} onClick={() => onChange(suggestions.map(s => ({ ...s, on: true })))}>{t('selectAll')}</Button>
+      <Button type="button" size="sm" variant="outline" className={touch} onClick={() => onChange(suggestions.map(s => ({ ...s, on: false })))}>{t('clearAll')}</Button>
+      <Button type="button" size="sm" className={touch} disabled={!selected.length || saving} onClick={add}>{t('addSelected')} ({selected.length})</Button>
     </div>}
     {editing !== null && <QuestionDialog language={language} type={type} number={editing + 1} initial={suggestions[editing].q} onClose={() => setEditing(null)}
-      onDone={q => { setSuggestions(suggestions.map((s, j) => j === editing ? { ...s, q } : s)); setEditing(null) }} />}
-  </div>
+      onDone={q => { onChange(suggestions.map((s, j) => j === editing ? { ...s, q } : s)); setEditing(null) }} />}
+  </Card>
 }
 
 /** `/author/exercises/new` creates the metadata only; `/:id/edit` edits metadata + questions with one Save (PATCH then PUT, each with the fresh `version`). */
@@ -238,6 +281,8 @@ export function ExerciseEditorPage({ language = 'vi' }: { language?: Language } 
   const [confirm, setConfirm] = useState<'submit' | 'withdraw' | null>(null)
   const [conflict, setConflict] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
+  const [aiBusy, setAiBusy] = useState<number | null>(null)
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const saved = useRef(sigOf(NEW_INFO, []))
   const current = useRef(saved.current)
   const version = useRef(0)
@@ -314,8 +359,10 @@ export function ExerciseEditorPage({ language = 'vi' }: { language?: Language } 
   const submit = async () => { if (!dirty || await save()) setConfirm('submit') }
   const move = (i: number, by: -1 | 1) => setQuestions(q => { const next = [...q];[next[i], next[i + by]] = [next[i + by], next[i]]; return next })
   const commit = (q: ExerciseQuestion) => { if (editing) setQuestions(old => editing.index === null ? [...old, q] : old.map((x, i) => i === editing.index ? q : x)); setEditing(null) }
-  const ai = set && !readOnly && <AiPanel language={language} setId={set.id} saving={busy} type={info.type} total={questions.length} ensureSaved={() => save()} version={() => version.current}
-    onVersion={v => { version.current = v; setSet(s => s && { ...s, version: v, aiAssisted: true }) }} onAdd={more => setQuestions(old => [...old, ...more])} onConflict={() => setConflict(true)} />
+  const ai = set && !readOnly && <AiPanel language={language} setId={set.id} ensureSaved={() => save()} version={() => version.current} onBusy={setAiBusy}
+    onVersion={v => { version.current = v; setSet(s => s && { ...s, version: v, aiAssisted: true }) }} onConflict={() => setConflict(true)}
+    onResult={more => { setSuggestions(old => [...old, ...more.map(q => ({ q, on: true }))]); setAiOpen(false) }} />
+  const aiResults = set && !readOnly && <AiResults language={language} type={info.type} total={questions.length} saving={busy} count={aiBusy} suggestions={suggestions} onChange={setSuggestions} onAdd={more => setQuestions(old => [...old, ...more])} />
 
   if (load === 'loading') return <main aria-busy="true" aria-label={t('loading')} className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-8"><Skeleton className="h-8 w-72" /><Skeleton className="h-64 w-full" /></main>
   if (load !== 'ready') return <main className="mx-auto flex w-full max-w-3xl flex-col items-center gap-4 px-4 py-16 text-center">
@@ -407,6 +454,7 @@ export function ExerciseEditorPage({ language = 'vi' }: { language?: Language } 
           </ol>
           {!readOnly && <Button type="button" variant="outline" className={`self-start ${touch}`} disabled={questions.length >= MAX_QUESTIONS} onClick={() => setEditing({ index: null, q: emptyQuestion(info.type) })}><Plus />{t(card ? 'addCard' : 'addQuestion')}</Button>}
         </Card>}
+        {aiResults}
       </fieldset>
       {ai && !isMobile && <aside aria-label={t('ai')}><Card className="gap-4 rounded-2xl p-6"><h2 className="flex items-center gap-2 text-base font-bold"><Sparkles aria-hidden className="size-4" />{t('ai')}</h2>{ai}</Card></aside>}
     </div>

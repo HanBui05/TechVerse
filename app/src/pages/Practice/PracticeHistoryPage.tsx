@@ -11,13 +11,12 @@ import { practiceErrorKind, practiceErrorText, practiceText, typeLabel } from '.
 import { practice } from '../../services/exerciseService'
 import { formatDate } from '../Author/AuthorBlogsPage'
 import { touch } from '../Courses/courseParts'
-import { PracticeResult } from './PracticeResult'
+import { PracticeResult, duration } from './PracticeResult'
 import type { Page } from '../../types/articles'
 import type { PracticeAttempt } from '../../types/exercises'
 import type { Language } from '../../types/preferences'
 
 const score = (a: PracticeAttempt, t: ReturnType<typeof practiceText>) => t(a.type === 'FLASHCARD' ? 'scoreCards' : 'scoreQuiz', { correct: a.correctCount, total: a.totalCount, percent: a.percent })
-const duration = (seconds: number, t: ReturnType<typeof practiceText>) => seconds < 60 ? t('seconds', { n: seconds }) : t('minutes', { n: Math.round(seconds / 60) })
 
 /** `/me/practice` (wireframe 6f): my attempts, newest first; each row opens the stored review. */
 export function PracticeHistoryPage({ language = 'vi' }: { language?: Language }) {
@@ -34,8 +33,11 @@ export function PracticeHistoryPage({ language = 'vi' }: { language?: Language }
   }, [pageIndex, language]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { void load() }, [load])
 
-  return <main className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-8 sm:px-6 lg:px-8">
-    <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('historyTitle')}</h1>
+  return <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-8 sm:px-6 lg:px-8">
+    <header className="relative flex flex-wrap items-center gap-4 overflow-hidden rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-tone-blue-bg/20 p-6 shadow-sm">
+      <span aria-hidden className="hidden size-12 shrink-0 items-center justify-center rounded-2xl border border-tone-blue-border bg-tone-blue-bg text-tone-blue-fg shadow-2xs sm:flex"><History className="size-6" /></span>
+      <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t('historyTitle')}</h1>
+    </header>
     {error
       ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-tone-rose-bg px-4 py-3 text-sm text-danger">
           <span>{error}</span><Button type="button" variant="outline" size="sm" className={touch} onClick={() => void load()}><RefreshCw aria-hidden />{t('retry')}</Button></div>
@@ -44,13 +46,13 @@ export function PracticeHistoryPage({ language = 'vi' }: { language?: Language }
         : data && !data.content.length
           ? <EmptyState icon={History} title={t('historyEmpty')} action={<Button asChild variant="outline" className={touch}><Link to="/practice">{t('toPractice')}</Link></Button>} />
           : data && <ul aria-label={t('historyTitle')} aria-busy={loading} className="flex list-none flex-col gap-3">{data.content.map(attempt => <li key={attempt.id}>
-              <Link to={`/me/practice/${attempt.id}`} className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-ring">
-                <Card className="flex-row items-center justify-between gap-3 rounded-2xl p-4 shadow-sm transition hover:shadow-md motion-reduce:transition-none">
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <span className="flex flex-wrap items-center gap-2"><span className="font-bold [overflow-wrap:anywhere]">{attempt.title}</span><Badge tone={attempt.type === 'FLASHCARD' ? 'purple' : 'blue'}>{typeLabel[attempt.type][language]}</Badge></span>
+              <Link to={`/me/practice/${attempt.id}`} className="group block rounded-2xl focus-visible:outline-2 focus-visible:outline-ring">
+                <Card className="flex-row items-center justify-between gap-3 rounded-2xl p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-accent-text/40 hover:shadow-md motion-reduce:transition-none">
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <span className="flex flex-wrap items-center gap-2"><span className="font-bold transition-colors group-hover:text-accent-text [overflow-wrap:anywhere]">{attempt.title}</span><Badge tone={attempt.type === 'FLASHCARD' ? 'purple' : 'blue'}>{typeLabel[attempt.type][language]}</Badge></span>
                     <span className="text-sm text-muted-foreground">{score(attempt, t)} · {duration(attempt.durationSeconds, t)} · {formatDate(attempt.completedAt, language, true)}</span>
                   </div>
-                  <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+                  <ChevronRight className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent-text" aria-hidden />
                 </Card>
               </Link></li>)}</ul>}
     {data && !error && <Pagination language={language} page={pageIndex} totalPages={data.totalPages} loading={loading} onPageChange={setPageIndex} />}
@@ -78,7 +80,7 @@ export function PracticeAttemptReviewPage({ language = 'vi' }: { language?: Lang
   }, [attemptId, run, language]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const back = <Link to="/me/practice" className="text-sm text-muted-foreground hover:text-foreground">‹ {t('backHistory')}</Link>
-  return <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-8 pb-28 sm:px-6 lg:px-8">
+  return <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-8 pb-28 sm:px-6 lg:px-8">
     {state === 'loading' && <div role="status" aria-label={t('loading')} className="flex flex-col gap-3"><Skeleton className="h-8 w-1/2" /><Skeleton className="h-40 w-full rounded-2xl" /></div>}
     {state === 'missing' && <div role="status" className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-12 text-center"><p className="text-base font-bold">{t('attemptNotFound')}</p><Button asChild variant="outline" className={touch}><Link to="/me/practice">{t('toHistory')}</Link></Button></div>}
     {state === 'error' && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-tone-rose-bg px-4 py-3 text-sm text-danger"><span>{error}</span><Button type="button" variant="outline" size="sm" className={touch} onClick={() => setRun(r => r + 1)}><RefreshCw aria-hidden />{t('retry')}</Button></div>}

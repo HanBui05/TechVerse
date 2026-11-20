@@ -124,7 +124,7 @@ export function PracticeAttemptPage({ language = 'vi' }: { language?: Language }
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
 
-  const shell = (body: ReactNode) => <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6 pb-32 sm:px-6 lg:pb-8">{body}</main>
+  const shell = (body: ReactNode) => <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6 pb-32 sm:px-6 lg:pb-8">{body}</main>
   const notice = (text: string, link: ReactNode = <Button asChild variant="outline" className={touch}><Link to="/practice">{t('toList')}</Link></Button>) =>
     shell(<div role="status" className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-12 text-center"><p className="text-base font-bold">{text}</p>{link}</div>)
 
@@ -153,9 +153,9 @@ export function PracticeAttemptPage({ language = 'vi' }: { language?: Language }
       : <Button type="button" size="sm" variant="outline" className={touch} onClick={() => void submit(marks)}><RefreshCw aria-hidden />{t(problem.rate ? 'resubmit' : 'retry')}</Button>}
   </div>
 
-  const header = <header className="flex flex-col gap-2">
-    <Link to="/practice" className="text-sm text-muted-foreground hover:text-foreground">‹ {t('back')}</Link>
-    <div className="flex items-baseline justify-between gap-3"><h1 className="text-xl font-bold tracking-tight sm:text-2xl">{title}</h1><span className="text-sm tabular-nums text-muted-foreground">{percent}%</span></div>
+  const header = <header className="flex flex-col gap-2.5 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
+    <Link to="/practice" className="inline-flex items-center gap-1 self-start text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">‹ {t('back')}</Link>
+    <div className="flex items-baseline justify-between gap-3"><h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">{title}</h1><span className="rounded-md bg-primary/12 px-2.5 py-0.5 text-sm font-bold tabular-nums text-accent-text">{percent}%</span></div>
     <ProgressBar percent={percent} label={t('progressLabel')} />
   </header>
 
@@ -164,14 +164,15 @@ export function PracticeAttemptPage({ language = 'vi' }: { language?: Language }
     return shell(<>
       {header}
       {dataRouter && <LeaveGuard dirty={dirty} language={language} />}
-      <h2 ref={questionHeading} tabIndex={-1} className="text-sm font-semibold outline-none">{t('cardProgress', { n: index + 1, total })}</h2>
-      <Card className="min-h-48 cursor-pointer justify-center gap-3 rounded-2xl p-6 shadow-sm motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200" key={`${c.id}-${flipped}`} onClick={() => setFlipped(f => !f)}>
-        <p className="text-xs font-semibold text-muted-foreground">{flipped ? t('back2') : t('front')}</p>
-        <div aria-live="polite"><MarkdownContent content={flipped ? c.back : c.front} language={language} />
-          {flipped && c.explanation && <div className="mt-3 border-t border-border pt-3 text-sm"><p className="font-semibold">{t('explanation')}</p><MarkdownContent content={c.explanation} language={language} /></div>}</div>
+      <h2 ref={questionHeading} tabIndex={-1} className="text-sm font-semibold text-muted-foreground outline-none">{t('cardProgress', { n: index + 1, total })}</h2>
+      <Card className="relative min-h-56 cursor-pointer justify-center gap-3 overflow-hidden rounded-2xl border-border/85 bg-linear-to-br from-card via-card to-tone-purple-bg/20 p-6 shadow-md transition hover:border-tone-purple-border sm:p-8 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200" key={`${c.id}-${flipped}`} onClick={() => setFlipped(f => !f)}>
+        <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 size-44 rounded-full bg-tone-purple-fg/10 blur-3xl" />
+        <p className="inline-flex self-start rounded-md border border-tone-purple-border/70 bg-tone-purple-bg/60 px-2.5 py-0.5 text-xs font-bold tracking-wide text-tone-purple-fg uppercase">{flipped ? t('back2') : t('front')}</p>
+        <div aria-live="polite" className="text-base leading-relaxed"><MarkdownContent content={flipped ? c.back : c.front} language={language} />
+          {flipped && c.explanation && <div className="mt-4 rounded-xl border border-border/70 bg-background/50 p-4 text-sm"><p className="mb-1 font-bold text-accent-text">{t('explanation')}</p><MarkdownContent content={c.explanation} language={language} /></div>}</div>
       </Card>
       {failure}
-      <div className="flex flex-col gap-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:border-t max-lg:border-border max-lg:bg-background max-lg:p-3 max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="flex flex-col gap-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:border-t max-lg:border-border max-lg:bg-background/95 max-lg:p-3 max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-lg:backdrop-blur-md">
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button type="button" variant="outline" className={cn(touch, 'max-lg:h-14')} aria-pressed={flipped} disabled={busy} onClick={() => setFlipped(f => !f)}>{t('flip')}</Button>
         </div>
@@ -189,33 +190,33 @@ export function PracticeAttemptPage({ language = 'vi' }: { language?: Language }
   const grid = <ol className="grid list-none grid-cols-5 gap-2">{questions.map((item, i) => {
     const done = answered(item.id)
     return <li key={item.id}><button type="button" disabled={busy} aria-current={i === index ? 'step' : undefined} aria-label={t('questionState', { n: i + 1, state: t(done ? 'answered' : 'unanswered') })} onClick={() => go(i)}
-      className={cn('flex size-11 cursor-pointer items-center justify-center gap-0.5 rounded-lg border text-sm font-semibold focus-visible:outline-2 focus-visible:outline-ring', i === index ? 'border-primary ring-2 ring-primary' : 'border-border', done ? 'bg-tone-green-bg text-tone-green-fg' : 'bg-card text-muted-foreground')}>
+      className={cn('flex size-11 cursor-pointer items-center justify-center gap-0.5 rounded-xl border text-sm font-bold transition-all focus-visible:outline-2 focus-visible:outline-ring', i === index ? 'border-primary ring-2 ring-primary' : 'border-border/80 hover:border-accent-text/40', done ? 'bg-tone-green-bg text-tone-green-fg' : 'bg-background/60 text-muted-foreground')}>
       {i + 1}{done && <Check className="size-3" aria-hidden />}</button></li>
   })}</ol>
 
   return shell(<>
     {header}
     {dataRouter && <LeaveGuard dirty={dirty} language={language} />}
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_15rem]">
-      <Card className="gap-4 rounded-2xl p-5 shadow-sm">
-        <h2 ref={questionHeading} tabIndex={-1} className="text-sm font-semibold text-muted-foreground outline-none">{t('progress', { n: index + 1, total })}</h2>
-        <MarkdownContent content={q.content} language={language} />
+    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_16.5rem]">
+      <Card className="gap-5 rounded-2xl p-5 shadow-sm sm:p-6">
+        <h2 ref={questionHeading} tabIndex={-1} className="inline-flex self-start rounded-lg border border-tone-blue-border/70 bg-tone-blue-bg/60 px-3 py-1 text-xs font-bold tracking-wide text-tone-blue-fg uppercase outline-none">{t('progress', { n: index + 1, total })}</h2>
+        <div className="text-base leading-relaxed font-medium"><MarkdownContent content={q.content} language={language} /></div>
         {q.codeSnippet && <MarkdownContent content={fenced(q.codeSnippet, q.codeLanguage)} language={language} />}
-        <div role="radiogroup" aria-label={t('optionLabel')} className="flex flex-col gap-2">{q.options.map((option, i) => {
+        <div role="radiogroup" aria-label={t('optionLabel')} className="flex flex-col gap-2.5">{q.options.map((option, i) => {
           const checked = marks[q.id] === i
-          return <label key={i} className={cn('flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-sm', checked ? 'border-primary bg-tone-blue-bg' : 'border-border bg-card hover:bg-muted/50', (busy || frozen) && 'cursor-not-allowed opacity-70')}>
+          return <label key={i} className={cn('flex min-h-12 cursor-pointer items-start gap-3.5 rounded-xl border px-4 py-3.5 text-sm transition-all', checked ? 'border-primary bg-tone-blue-bg/75 font-medium shadow-2xs ring-1 ring-primary/30' : 'border-border/85 bg-background/45 hover:border-accent-text/35 hover:bg-muted/50', (busy || frozen) && 'cursor-not-allowed opacity-70')}>
             <input type="radio" name={q.id} className="mt-0.5 size-4 accent-primary" checked={checked} disabled={busy || frozen} onChange={() => choose(q.id, i)} onClick={() => { if (checked) choose(q.id, null) }} />
-            <span>{letter(i)}. {option}</span></label>
+            <span className="leading-relaxed">{letter(i)}. {option}</span></label>
         })}</div>
         {failure}
-        <div className="flex flex-wrap items-center justify-between gap-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-10 max-lg:border-t max-lg:border-border max-lg:bg-background max-lg:p-3 max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-4 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-10 max-lg:border-t max-lg:border-border max-lg:bg-background/95 max-lg:p-3 max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-lg:backdrop-blur-md">
           <Button type="button" variant="outline" className={touch} disabled={busy || index === 0} onClick={() => go(index - 1)}><ChevronLeft aria-hidden />{t('prev')}</Button>
           <Button type="button" variant="outline" className={cn(touch, 'lg:hidden')} onClick={() => setListOpen(true)}><ListChecks aria-hidden />{t('questionList')}</Button>
           <Button type="button" variant="outline" className={touch} disabled={busy || index === total - 1} onClick={() => go(index + 1)}>{t('next')}<ChevronRight aria-hidden /></Button>
           <Button type="button" className={cn(touch, 'max-lg:w-full lg:ml-auto')} disabled={busy} onClick={askSubmit}>{busy ? t('submitting') : t('submit')}</Button>
         </div>
       </Card>
-      <aside aria-label={t('questionList')} className="hidden flex-col gap-3 lg:flex"><h2 className="text-sm font-semibold">{t('questionList')}</h2>{grid}</aside>
+      <aside aria-label={t('questionList')} className="hidden flex-col gap-3 rounded-2xl border border-border/85 bg-card p-4 shadow-sm lg:sticky lg:top-6 lg:flex"><h2 className="text-sm font-bold">{t('questionList')}</h2>{grid}</aside>
     </div>
     <Sheet open={listOpen} onOpenChange={setListOpen}><SheetContent side="bottom"><SheetHeader><SheetTitle>{t('questionList')}</SheetTitle></SheetHeader><div className="p-4">{grid}</div></SheetContent></Sheet>
     <AlertDialog open={confirming} onOpenChange={setConfirming}>

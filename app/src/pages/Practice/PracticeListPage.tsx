@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Dumbbell, History, RefreshCw, Search, X } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Dumbbell, History, Layers, ListChecks, RefreshCw, Search, X } from 'lucide-react'
 import { cn } from 'cn'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -20,7 +20,7 @@ import type { ExerciseDifficulty, PracticeAttempt, PracticeFilter, PracticeSet }
 import type { Language } from '../../types/preferences'
 
 export const DIFFICULTY_TONE: Record<ExerciseDifficulty, 'green' | 'amber' | 'rose'> = { EASY: 'green', MEDIUM: 'amber', HARD: 'rose' }
-const GRID = 'grid list-none gap-4 sm:grid-cols-2 xl:grid-cols-3'
+const GRID = 'grid list-none gap-5 sm:grid-cols-2 xl:grid-cols-3'
 
 /** One line about my last attempt, from the stored score (quiz: n/total (p%), cards: remembered n/total). */
 export function lastAttemptLine(attempt: PracticeAttempt, language: Language) {
@@ -31,16 +31,37 @@ export function lastAttemptLine(attempt: PracticeAttempt, language: Language) {
 
 function PracticeCard({ set, language }: { set: PracticeSet; language: Language }) {
   const t = practiceText(language)
-  return <Link to={`/practice/${set.id}`} className="flex min-w-0 flex-1 rounded-2xl focus-visible:outline-2 focus-visible:outline-ring">
-    <Card className="w-full gap-2 rounded-2xl p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none">
-      <h2 className="text-base font-bold [overflow-wrap:anywhere]">{set.title}</h2>
-      <div className="flex flex-wrap gap-1.5">
-        <Badge tone={set.type === 'FLASHCARD' ? 'purple' : 'blue'}>{typeLabel[set.type][language]}</Badge>
-        <Badge tone={DIFFICULTY_TONE[set.difficulty]}>{difficultyLabel[set.difficulty][language]}</Badge>
+  const isCard = set.type === 'FLASHCARD'
+  const TypeIcon = isCard ? Layers : ListChecks
+  return <Link to={`/practice/${set.id}`} className="group flex min-w-0 flex-1 rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
+    <Card className="flex w-full flex-col justify-between gap-4 rounded-xl p-5 transition-colors hover:bg-muted/30">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-2.5">
+          <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary/60 text-foreground">
+            <TypeIcon className="size-4.5" />
+          </span>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <Badge tone={isCard ? 'purple' : 'blue'}>{typeLabel[set.type][language]}</Badge>
+            <Badge tone={DIFFICULTY_TONE[set.difficulty]}>{difficultyLabel[set.difficulty][language]}</Badge>
+          </div>
+        </div>
+
+        <h2 className="text-base font-semibold leading-snug tracking-tight text-foreground [overflow-wrap:anywhere]">{set.title}</h2>
+
+        <p className="text-xs text-muted-foreground">
+          {t(isCard ? 'cards' : 'questions', { n: set.questionCount })} · {set.topic.name}
+        </p>
+
+        {set.lastAttempt && <p className="flex items-center gap-1.5 rounded-lg border border-border bg-background/50 px-3 py-2 text-xs font-medium text-foreground">
+          <CheckCircle2 className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="truncate">{lastAttemptLine(set.lastAttempt, language)}</span>
+        </p>}
       </div>
-      <p className="text-sm text-muted-foreground">{t(set.type === 'FLASHCARD' ? 'cards' : 'questions', { n: set.questionCount })} · {set.topic.name}</p>
-      <p className="text-sm text-muted-foreground">{t('by', { name: set.author.fullName })}</p>
-      {set.lastAttempt && <p className="text-xs font-medium text-foreground">{lastAttemptLine(set.lastAttempt, language)}</p>}
+
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-3.5">
+        <p className="truncate text-xs text-muted-foreground">{t('by', { name: set.author.fullName })}</p>
+        <ArrowRight aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+      </div>
     </Card>
   </Link>
 }
@@ -79,20 +100,20 @@ export function PracticeListPage({ language = 'vi', authenticated = false }: { l
   const commit = (patch: Partial<PracticeFilter>) => setParams(practiceSearch({ ...filter, page: 0, ...patch }))
   const submit = (event: FormEvent) => { event.preventDefault(); commit({ keyword }) }
   const filtered = search !== ''
-  const select = 'h-9 w-full rounded-xl sm:w-44'
+  const select = 'h-9 w-full rounded-lg bg-background/60 sm:w-44'
 
   return <main className="tw-page mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-    <header className="flex flex-wrap items-start justify-between gap-3">
+    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('title')}</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">{t('subtitle')}</p>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t('title')}</h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
-      {authenticated && <Button asChild variant="outline" className={touch}><Link to="/me/practice"><History aria-hidden />{t('history')}</Link></Button>}
+      {authenticated && <Button asChild variant="outline" size="sm" className={cn('ml-auto shrink-0', touch)}><Link to="/me/practice"><History aria-hidden />{t('history')}</Link></Button>}
     </header>
 
-    <Card className="rounded-2xl p-3 shadow-sm sm:p-4">
+    <Card className="rounded-xl p-4">
       <h2 className="sr-only">{t('filters')}</h2>
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+      <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
         {topics.length > 0 && <div className="max-sm:col-span-1">
           <Label htmlFor="practice-topic" className="sr-only">{t('topic')}</Label>
           <NativeSelect id="practice-topic" className={cn(select, touch)} value={filter.topicId} onChange={e => commit({ topicId: e.target.value })}>
@@ -113,11 +134,11 @@ export function PracticeListPage({ language = 'vi', authenticated = false }: { l
           </NativeSelect></div>
         <form role="search" onSubmit={submit} className="relative min-w-56 flex-1 max-sm:col-span-2">
           <Label htmlFor="practice-search" className="sr-only">{t('search')}</Label>
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-accent-text" aria-hidden />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input id="practice-search" type="search" enterKeyHint="search" maxLength={100} value={keyword} onChange={e => setKeyword(e.target.value)} placeholder={t('searchPlaceholder')}
-            className={cn('h-9 rounded-xl bg-muted/50 pr-10 pl-9 [&::-webkit-search-cancel-button]:hidden', touch)} />
+            className={cn('h-9 rounded-lg bg-background/60 pr-10 pl-10 [&::-webkit-search-cancel-button]:hidden', touch)} />
           {keyword && <button type="button" aria-label={t('clearSearch')} onClick={() => { setKeyword(''); commit({ keyword: '' }) }}
-            className={cn('absolute top-1/2 right-1 inline-flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground', touch)}><X className="size-4" aria-hidden /></button>}
+            className={cn('absolute top-1/2 right-1.5 inline-flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground', touch)}><X className="size-4" aria-hidden /></button>}
         </form>
       </div>
     </Card>

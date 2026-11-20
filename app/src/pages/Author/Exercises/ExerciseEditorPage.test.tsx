@@ -309,3 +309,22 @@ it('renders the English copy', async () => {
   expect(screen.getByText('At least 3 questions (or 5 cards) are needed to submit.')).toBeTruthy()
   expect(screen.getByText('Generate with AI')).toBeTruthy()
 })
+
+it('AI results: a shimmering “working” card while the model runs, then every suggestion in full with its correct answer marked', async () => {
+  const user = userEvent.setup()
+  renderEditor('/author/exercises/s1/edit')
+  await screen.findByRole('heading', { name: 'SQL cơ bản', level: 1 })
+  let release!: () => void
+  fetchMock.mockImplementation(async (input, init) => { if (String(input).endsWith('/ai/questions')) await new Promise<void>(r => { release = r }); return backend(input, init) })
+  fireEvent.change(screen.getByLabelText('Số câu'), { target: { value: '3' } })
+  await user.click(screen.getByRole('button', { name: 'Tạo câu hỏi' }))
+  expect(await screen.findByText('AI đang tạo 3 câu hỏi…')).toBeTruthy()
+  expect(screen.queryByText(/Câu hỏi AI đề xuất/)).toBeNull()
+  release()
+  expect(await screen.findByRole('heading', { name: 'Câu hỏi AI đề xuất (2)' })).toBeTruthy()
+  expect(screen.queryByText('AI đang tạo 3 câu hỏi…')).toBeNull()
+  const results = screen.getByRole('heading', { name: 'Câu hỏi AI đề xuất (2)' }).closest('div')!.parentElement!
+  expect(within(results).getByText('AI hỏi 1')).toBeTruthy()
+  expect(within(results).getAllByText('Đáp án đúng')).toHaveLength(2) // one per suggestion, on option C
+  expect(within(results).getAllByText('AI giải thích.')).toHaveLength(2)
+})

@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { PracticeAttemptReviewPage, PracticeHistoryPage } from './PracticeHistoryPage'
@@ -69,4 +69,24 @@ it('review: someone else’s or a missing attempt says so', async () => {
   renderHistory('/me/practice/zzz')
   expect(await screen.findByText('Không tìm thấy lượt làm.')).toBeTruthy()
   expect(screen.getByRole('link', { name: 'Về lịch sử' }).getAttribute('href')).toBe('/me/practice')
+})
+
+it('review: a score summary with counts, and every option listed with the right answer and my pick tagged', async () => {
+  const base = quizAttempt()
+  const attempt = { ...base, correctCount: 1, items: base.items!.map(item => item.questionId === 'q2' ? { ...item, selectedIndex: 0, correct: false } : item) }
+  mockApi((url) => url === '/api/v1/me/exercise-attempts/a1' ? json(attempt) : url === '/api/v1/exercise-sets/s1' ? json(set()) : undefined)
+  renderHistory('/me/practice/a1')
+  const summary = await screen.findByRole('group', { name: 'Tổng kết' })
+  expect(summary.textContent).toMatch(/1\s*Đúng.*1\s*Sai.*1\s*Bỏ trống/)
+  const wrong = screen.getByRole('heading', { name: 'Câu 2' }).closest('li')!
+  expect(within(wrong).getByText('Sắp xếp')).toBeTruthy()
+  expect(within(wrong).getByText('Lọc dòng')).toBeTruthy()
+  expect(within(wrong).getAllByText('Bạn chọn')).toHaveLength(1)
+  expect(within(wrong).getAllByText('Đáp án đúng')).toHaveLength(1)
+  expect(within(wrong).getByText('Sắp xếp').closest('li')!.textContent).toContain('Bạn chọn')
+  expect(within(wrong).getByText('Lọc dòng').closest('li')!.textContent).toContain('Đáp án đúng')
+  const blank = screen.getByRole('heading', { name: 'Câu 3' }).closest('li')!
+  expect(within(blank).getAllByText('Bỏ trống').length).toBeGreaterThan(0)
+  expect(within(blank).queryByText('Bạn chọn')).toBeNull()
+  expect(within(blank).getByText('Ghép bảng').closest('li')!.textContent).toContain('Đáp án đúng')
 })

@@ -73,6 +73,7 @@ const vi = {
   ai: 'Tạo câu hỏi bằng AI', aiHint: 'AI có thể sai. Hãy kiểm tra trước khi dùng. Kết quả chưa được lưu vào bộ.', instruction: 'Yêu cầu', source: 'Nội dung nguồn (dán vào)', count: 'Số câu', generate: 'Tạo câu hỏi', generating: 'Đang tạo…',
   quotaLeft: 'Còn {remaining}/{limit} lượt hôm nay', quotaOut: 'Bạn đã dùng hết lượt AI hôm nay.', instructionLength: 'Yêu cầu tối đa 500 ký tự.', sourceLength: 'Nội dung nguồn tối đa 8.000 ký tự.', countRange: 'Số câu từ 1 đến 10.',
   aiResult: 'AI tạo được {n}/{count} câu. Hãy kiểm tra trước khi dùng.', suggestion: 'Câu đề xuất {n}', pick: 'Chọn {title}', selectAll: 'Chọn tất cả', clearAll: 'Bỏ chọn', addSelected: 'Thêm câu đã chọn', editSuggestion: 'Xem/Sửa', added: 'Đã thêm {n} câu vào danh sách đang soạn. Hãy bấm Lưu.',
+  aiWorking: 'AI đang tạo {count} câu hỏi…', aiWorkingHint: 'Thường mất vài chục giây. Kết quả sẽ hiện ngay tại đây.', aiSuggestions: 'Câu hỏi AI đề xuất ({n})',
 }
 export type ExerciseCopy = typeof vi
 const en: ExerciseCopy = {
@@ -95,6 +96,7 @@ const en: ExerciseCopy = {
   ai: 'Generate with AI', aiHint: 'AI can be wrong. Review before using. Results are not saved to the set.', instruction: 'Request', source: 'Source text (paste)', count: 'Questions', generate: 'Generate', generating: 'Generating…',
   quotaLeft: '{remaining}/{limit} left today', quotaOut: 'You have used today’s AI allowance.', instructionLength: 'The request is at most 500 characters.', sourceLength: 'The source text is at most 8,000 characters.', countRange: 'Choose 1 to 10 questions.',
   aiResult: 'AI produced {n}/{count} questions. Review before using.', suggestion: 'Suggestion {n}', pick: 'Select {title}', selectAll: 'Select all', clearAll: 'Clear', addSelected: 'Add selected', editSuggestion: 'View/Edit', added: 'Added {n} to the list you are editing. Press Save.',
+  aiWorking: 'AI is writing {count} questions…', aiWorkingHint: 'This usually takes a few dozen seconds. Results will appear right here.', aiSuggestions: 'AI suggestions ({n})',
 }
 
 export function exerciseText(language: Language) {
@@ -191,7 +193,7 @@ const practiceVi = {
   // Result
   result: 'Bạn đúng {correct}/{total} câu ({percent}%)', cardResult: 'Đã nhớ {correct}/{total} thẻ', reviewAgain: 'Ôn lại', all: 'Tất cả', onlyWrong: 'Chỉ câu sai/bỏ trống', filter: 'Lọc câu',
   yourAnswer: 'Bạn chọn', correctAnswer: 'Đáp án đúng', explanation: 'Giải thích', blank: 'Bỏ trống', right: 'Đúng', wrong: 'Sai', notRemembered: 'Thẻ chưa nhớ', allRemembered: 'Bạn đã nhớ tất cả thẻ.', allRight: 'Không có câu sai hay bỏ trống.',
-  questionN: 'Câu {n}', cardN: 'Thẻ {n}', setGone: 'Bộ bài tập không còn khả dụng.',
+  questionN: 'Câu {n}', cardN: 'Thẻ {n}', summary: 'Tổng kết', setGone: 'Bộ bài tập không còn khả dụng.',
   // History
   historyTitle: 'Lịch sử luyện tập', historyEmpty: 'Chưa có lượt làm nào.', toPractice: 'Đến khu Luyện tập', backHistory: 'Lịch sử', attemptNotFound: 'Không tìm thấy lượt làm.', toHistory: 'Về lịch sử', minutes: '{n} phút', seconds: '{n} giây', scoreCards: 'Đã nhớ {correct}/{total}', scoreQuiz: '{correct}/{total} ({percent}%)', openAttempt: 'Xem lượt làm',
 }
@@ -208,7 +210,7 @@ const practiceEn: typeof practiceVi = {
   questionsError: 'Could not load the questions.',
   result: 'You got {correct}/{total} correct ({percent}%)', cardResult: 'Remembered {correct}/{total} cards', reviewAgain: 'Review again', all: 'All', onlyWrong: 'Wrong or blank only', filter: 'Filter questions',
   yourAnswer: 'Your answer', correctAnswer: 'Correct answer', explanation: 'Explanation', blank: 'Unanswered', right: 'Correct', wrong: 'Wrong', notRemembered: 'Cards not remembered', allRemembered: 'You remembered every card.', allRight: 'No wrong or blank questions.',
-  questionN: 'Question {n}', cardN: 'Card {n}', setGone: 'This exercise set is no longer available.',
+  questionN: 'Question {n}', cardN: 'Card {n}', summary: 'Summary', setGone: 'This exercise set is no longer available.',
   historyTitle: 'Practice history', historyEmpty: 'No attempts yet.', toPractice: 'Go to Practice', backHistory: 'History', attemptNotFound: 'Attempt not found.', toHistory: 'Back to history', minutes: '{n} min', seconds: '{n} s', scoreCards: 'Remembered {correct}/{total}', scoreQuiz: '{correct}/{total} ({percent}%)', openAttempt: 'Open attempt',
 }
 export function practiceText(language: Language) {
