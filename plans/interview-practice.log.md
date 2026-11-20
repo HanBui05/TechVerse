@@ -12,15 +12,12 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`interview-practic
 
 ## Quyết định người dùng chưa có trong spec
 
-- 2026-11-21: siết AI tạo bài tập (module `exercise-practice` đã merge, sửa trên nhánh này): temperature thấp; server xáo thứ tự đáp án và lọc câu trùng; đáp án nhiễu theo độ khó (càng khó càng giống đáp án đúng); câu hỏi/đáp án dài ngắn tùy nội dung nhưng không cụt; giải thích khớp đáp án đúng; luật độ khó, sourceText, code, flashcard; chạy thử AI thật.
-- 2026-11-21: siết AI của module (không làm RAG): temperature thấp (nhận xét ~0.2, sinh câu ~0.5); nhận xét chỉ chấm theo ý có trong đáp án mẫu, không trừ ý đúng ngoài đáp án; thêm ví dụ cho từng mức đạt; soát lại luật prompt sinh câu và nhận xét; chạy thử bằng AI thật.
-- 2026-11-20: bỏ cổng wireframe của module này; Gemini làm giao diện Task 2a + 2b theo `plans/interview-practice.gemini-prompt.md` (không sửa backend), Claude review sau.
-
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+- 2026-11-21 — Codex: đã đưa quyết định bỏ cổng wireframe và quy trình Gemini/Claude, siết AI phỏng vấn và thay đổi AI bài tập vào spec.
 ### 2026-11-21 — Bài tập: bước AI kiểm chéo
 - Người dùng chọn phương án 1. `ExerciseAiService.verified`: gọi lần hai temperature 0 với `EXERCISE_VERIFY_SYSTEM` (thẩm định, nghi ngờ thì `ok=false`), chỉ giữ index được xác nhận, sót index = loại, đọc lỗi/không còn câu → `AI_OUTPUT_INVALID` + hoàn lượt; cùng một lượt và một deadline. `exercise-timeout` mặc định 60s → 90s (YAML + `.env.example`).
 - TDD (đỏ biên dịch → xanh): ExerciseAi 16, AuthorExerciseController 7, AiPromptFactory 8, AiRateLimit 13, InterviewAi 15 đều đạt.
