@@ -6,7 +6,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`interview-practic
 
 - **Task tiếp:** Hết task của module; còn đồng bộ spec một lần (skill `codex-workflow` mục 3) rồi PR khi người dùng yêu cầu · Giao diện: Không
 - Task 1a, 1b, 1c đã nhận (2026-11-20); Task 2a, 2b (UI do Gemini làm, Claude review + sửa) đã nhận (2026-11-21).
-- Chưa kiểm của 2a/2b: kiểm bằng mắt dark/light × desktop/mobile (người dùng tự xem trên localhost:3000).
+- Đã kiểm bằng mắt desktop light + mobile dark (2026-11-21); chưa kiểm desktop dark, mobile light, hộp thoại AI tác giả trên trình duyệt. DB dev có 3 câu `[Dev]` do Claude tạo để kiểm.
 - Chưa kiểm của 1c: prompt chưa thử với Groq thật.
 - Nhánh `feature/interview-practice` (cắt từ `docs/exercise-practice-spec-sync`, gồm `main` sau PR #11 + commit đồng bộ spec bài tập). Mọi task đã commit cục bộ, chưa push.
 
@@ -19,6 +19,11 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`interview-practic
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-21 — Kiểm bằng mắt UI 2a + 2b
+- Playwright MCP, Vite của người dùng (cổng 3000), backend 8080 của người dùng. Dữ liệu: tạo 3 câu `[Dev]` qua API (bao.author), moderator duyệt 2, 1 chờ duyệt.
+- Desktop light 1440: `/interview` (ảnh) + chi tiết (gợi ý/đáp án tách, `/answer` 1 lần, không cuộn ngang). AI nhận xét thật (Groq) chạy đủ, lượt 20 → 19.
+- Mobile cảm ứng 390 dark: `/interview`, chi tiết (ảnh), `/author/interview-questions`, `/new`, moderator danh sách + chi tiết: không cuộn ngang, không chữ tràn nút. Sửa 2 link thiếu vùng chạm (20px → 44px). Sửa copy kết quả AI, lưu ý AI, `CHANGES_REQUESTED` theo bảng 2a/2b.
+- Test 4 file 21/21 đạt, `npm run build` đạt. Chưa kiểm: desktop dark, mobile light, hộp thoại AI của tác giả trên trình duyệt; danh sách hiện Markdown thô (backtick) trong thẻ — nhỏ, chưa sửa.
 ### 2026-11-20 — Review UI 2a + 2b do Gemini làm
 - Phạm vi: `git diff -- server/` rỗng (không đụng backend). 3 thư mục trang + `interview{Service,I18n}`, `types/interview.ts`, sửa `App.tsx`, 2 sidebar, `navigation`, `managementI18n`, `aiAssist*`.
 - `npm run build` đạt. `npx vitest run` 3 thư mục trang + `interviewService`/`interviewI18n`/`aiAssistService`/`Sidebar` test: 7 file, 65/65 đạt. Lần đầu chạy kèm cả `App*.test` song song với build thì 15 ca timeout 5s (cả `App.practice.test` không liên quan) do máy quá tải; chạy riêng thì đạt. Chưa kiểm bằng mắt.

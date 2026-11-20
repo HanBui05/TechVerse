@@ -204,7 +204,7 @@ export function ModeratorInterviewQuestionDetailPage({ language = 'vi' }: { lang
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link to="/moderator/interview-questions">{t('backToQueue')}</Link>
+              <Link to="/moderator/interview-questions" className="pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center">{t('backToQueue')}</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />

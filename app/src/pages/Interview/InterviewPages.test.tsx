@@ -224,11 +224,13 @@ it('runs AI feedback flow: updates quota from headers, shows verdict/strengths/m
   await user.click(screen.getByRole('button', { name: 'Thử lại' }))
 
   // Success displays verdict badge, strengths, missing, advice, disclaimer, and updated quota from headers
-  expect(await screen.findByText('Đạt một phần')).toBeTruthy()
+  expect(await screen.findByText('Đúng một phần')).toBeTruthy()
+  expect(screen.getByText('Bạn làm tốt')).toBeTruthy()
+  expect(screen.getByText('Lời khuyên')).toBeTruthy()
   expect(screen.getByText('Nêu đúng Atomicity và Consistency')).toBeTruthy()
   expect(screen.getByText('Chưa giải thích các mức Isolation')).toBeTruthy()
   expect(screen.getByText('Hãy bổ sung ví dụ về Read Committed và Serializable để câu trả lời thuyết phục hơn.')).toBeTruthy()
-  expect(screen.getByText('Nhận xét do AI tạo, chỉ dùng để tham khảo khi ôn tập.')).toBeTruthy()
+  expect(screen.getByText('Nhận xét do AI tạo, có thể chưa chính xác. Hãy đối chiếu với đáp án mẫu.')).toBeTruthy()
   expect(screen.getByText('Còn 1/15 lượt hôm nay')).toBeTruthy()
 
   // Next call hits AI_QUOTA_EXCEEDED -> locks button and shows out-of-quota text

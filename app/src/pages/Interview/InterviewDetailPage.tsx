@@ -256,7 +256,7 @@ export function InterviewDetailPage({ language = 'vi', authenticated = false }: 
     <>
       <Link
         to="/interview"
-        className="inline-flex items-center gap-1 self-start text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        className="inline-flex items-center gap-1 self-start pointer-coarse:min-h-11 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         ‹ {t('back')}
       </Link>
