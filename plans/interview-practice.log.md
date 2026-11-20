@@ -12,6 +12,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`interview-practic
 
 ## Quyết định người dùng chưa có trong spec
 
+- 2026-11-21: siết AI tạo bài tập (module `exercise-practice` đã merge, sửa trên nhánh này): temperature thấp; server xáo thứ tự đáp án và lọc câu trùng; đáp án nhiễu theo độ khó (càng khó càng giống đáp án đúng); câu hỏi/đáp án dài ngắn tùy nội dung nhưng không cụt; giải thích khớp đáp án đúng; luật độ khó, sourceText, code, flashcard; chạy thử AI thật.
+- 2026-11-21: siết AI của module (không làm RAG): temperature thấp (nhận xét ~0.2, sinh câu ~0.5); nhận xét chỉ chấm theo ý có trong đáp án mẫu, không trừ ý đúng ngoài đáp án; thêm ví dụ cho từng mức đạt; soát lại luật prompt sinh câu và nhận xét; chạy thử bằng AI thật.
 - 2026-11-20: bỏ cổng wireframe của module này; Gemini làm giao diện Task 2a + 2b theo `plans/interview-practice.gemini-prompt.md` (không sửa backend), Claude review sau.
 
 ## Câu hỏi mở cho người dùng
@@ -19,6 +21,19 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`interview-practic
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-21 — Bài tập: bước AI kiểm chéo
+- Người dùng chọn phương án 1. `ExerciseAiService.verified`: gọi lần hai temperature 0 với `EXERCISE_VERIFY_SYSTEM` (thẩm định, nghi ngờ thì `ok=false`), chỉ giữ index được xác nhận, sót index = loại, đọc lỗi/không còn câu → `AI_OUTPUT_INVALID` + hoàn lượt; cùng một lượt và một deadline. `exercise-timeout` mặc định 60s → 90s (YAML + `.env.example`).
+- TDD (đỏ biên dịch → xanh): ExerciseAi 16, AuthorExerciseController 7, AiPromptFactory 8, AiRateLimit 13, InterviewAi 15 đều đạt.
+- Chạy thật: 11 câu sinh mới giữ 10 (loại đúng câu EASY hai đáp án đúng), kiểm thêm 1,4–8s. Bộ 3 câu biết trước, 3 lần: luôn loại câu sai về phantom ở PostgreSQL, luôn giữ câu đúng; vẫn cho qua câu `LOWER(name)` có hai đáp án cùng đúng. `reasoning_effort=high` không bắt thêm được mà chậm 6–21s → không dùng.
+### 2026-11-21 — Siết AI tạo bài tập
+- `ExerciseAiService`: temperature 0.4; xáo 4 đáp án rồi tính lại `correctIndex`; bỏ câu trùng nhau/trùng câu có sẵn (bỏ hoa/thường, khoảng trắng, so 200 ký tự đầu; flashcard so `front`). `EXERCISE_SYSTEM`: độ khó quyết định đáp án nhiễu (HARD gần giống đáp án đúng, dạng mệnh đề), câu không cụt, cấm “Tất cả các đáp án trên”, explanation khớp `correctIndex`, tự soát đáp án nhiễu, hành vi theo hệ cụ thể, sourceText, code, flashcard.
+- TDD (đỏ 4 → xanh): ExerciseAi 14, AiPromptFactory 7, InterviewAi 15 đều đạt.
+- Chạy thật 3 lượt (script scratchpad, Groq): AI tự đặt đáp án đúng ở [0,0,0,3] → xáo là cần. Cấu trúc, độ dài, đáp án nhiễu theo độ khó, flashcard đạt. Còn: câu HARD về hành vi riêng của PostgreSQL/MySQL và một câu deadlock vẫn sai kiến thức; một câu EASY có nhiều đáp án đúng. Giới hạn của model, prompt không chặn hết; đang chờ người dùng chọn cách xử lý.
+### 2026-11-21 — Siết AI sinh câu và nhận xét
+- `InterviewAiService`: temperature 0.2 (nhận xét) / 0.5 (sinh câu); bỏ câu sinh ra trùng nhau hoặc trùng câu cũ của tác giả (bỏ qua hoa/thường, khoảng trắng). `AiPromptFactory`: nhận xét chỉ chấm theo ý trong đáp án mẫu, không trừ ý đúng ngoài đáp án, ca “không biết”/lạc đề, verdict khớp danh sách, ví dụ 3 mức; sinh câu: định nghĩa EASY/MEDIUM/HARD, một yêu cầu/câu, có sourceText thì chỉ dùng sourceText, đáp án 3–6 ý chính xác, hint không lộ đáp án.
+- TDD (temperature, lọc trùng, luật prompt: đỏ 4 ca → xanh): InterviewAiService 15, AiPromptFactory 6, ExerciseAi 12 đều đạt.
+- Chạy thật (script gọi Groq trực tiếp với prompt mới, ở scratchpad): nhận xét 6 ca × 3 lần ổn định, đúng mức (đủ ý GOOD, ý ngoài đáp án không bị trừ, 2 ý PARTIAL, sai/không biết/chèn lệnh OFF_TRACK). Sinh câu: bám sourceText, bỏ instruction lạc đề; còn sót 1 câu nối “và”, 1 hint liệt kê tên lệnh.
+- Backend của người dùng chưa khởi động lại nên app chạy prompt cũ tới khi Stop → Run.
 ### 2026-11-21 — Kiểm bằng mắt UI 2a + 2b
 - Playwright MCP, Vite của người dùng (cổng 3000), backend 8080 của người dùng. Dữ liệu: tạo 3 câu `[Dev]` qua API (bao.author), moderator duyệt 2, 1 chờ duyệt.
 - Desktop light 1440: `/interview` (ảnh) + chi tiết (gợi ý/đáp án tách, `/answer` 1 lần, không cuộn ngang). AI nhận xét thật (Groq) chạy đủ, lượt 20 → 19.

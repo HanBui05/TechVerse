@@ -32,7 +32,9 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.BiFunction;
@@ -46,6 +48,9 @@ import java.util.function.Function;
 @Service
 @RequiredArgsConstructor
 public class InterviewAiService {
+    // Grading must repeat itself for the same answer; drafts may vary a little.
+    static final double FEEDBACK_TEMPERATURE = 0.2;
+    static final double DRAFT_TEMPERATURE = 0.5;
     private static final JsonMapper STRICT =
             JsonMapper.builder().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();
 
@@ -83,8 +88,9 @@ public class InterviewAiService {
         var ctx = authors.aiContext(actor, topicId);
         var input = new InterviewDraftInput(ctx.topic(), level.name(), r.instruction(), r.sourceText(), ctx.existing(), count);
         return run(actor, Kind.INTERVIEW_DRAFT, (model, deadline) -> {
-            List<AiDraft> usable = generate(model, DraftOutput.class, o -> usableDrafts(o, count),
-                    properties.interviewDraftTokens(), deadline, (s, bad, opt) -> prompts.interviewDraft(input, s, bad, opt));
+            List<AiDraft> usable = generate(model, DraftOutput.class, o -> usableDrafts(o, count, ctx.existing()),
+                    properties.interviewDraftTokens(), DRAFT_TEMPERATURE, deadline,
+                    (s, bad, opt) -> prompts.interviewDraft(input, s, bad, opt));
             return new Drafts(authors.saveAiDrafts(actor, topicId, level, usable), count);
         });
     }
@@ -94,7 +100,7 @@ public class InterviewAiService {
         var ctx = published.feedbackContext(actor, questionId);
         var input = new InterviewFeedbackInput(ctx.topic(), ctx.level().name(), ctx.question(), ctx.sampleAnswer(), r.answer());
         return run(actor, Kind.INTERVIEW_FEEDBACK, (model, deadline) -> generate(model, FeedbackOutput.class,
-                InterviewAiService::cleanFeedback, properties.interviewFeedbackTokens(), deadline,
+                InterviewAiService::cleanFeedback, properties.interviewFeedbackTokens(), FEEDBACK_TEMPERATURE, deadline,
                 (s, bad, opt) -> prompts.interviewFeedback(input, s, bad, opt)));
     }
 
@@ -127,11 +133,21 @@ public class InterviewAiService {
         }
     }
 
-    /** First {@code count} items, each through the Author's save checks; none usable counts as invalid output. */
-    private List<AiDraft> usableDrafts(DraftOutput o, int count) {
+    /**
+     * First {@code count} items, each through the Author's save checks, minus repeats of an earlier item or of the
+     * Author's existing questions (case and spacing ignored); none usable counts as invalid output.
+     */
+    private List<AiDraft> usableDrafts(DraftOutput o, int count, List<String> existing) {
         if (o.questions() == null) return null;
-        var usable = o.questions().stream().limit(count).map(authors::aiUsable).filter(Objects::nonNull).toList();
+        var seen = new HashSet<String>();
+        existing.forEach(q -> seen.add(sameText(q)));
+        var usable = o.questions().stream().limit(count).map(authors::aiUsable).filter(Objects::nonNull)
+                .filter(d -> seen.add(sameText(d.question()))).toList();
         return usable.isEmpty() ? null : usable;
+    }
+
+    private static String sameText(String s) {
+        return s.strip().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
     private static Feedback cleanFeedback(FeedbackOutput o) {
@@ -150,14 +166,15 @@ public class InterviewAiService {
     }
 
     /** The call and its one repair share a single deadline and a single reserved use. */
-    private <O, R> R generate(ChatModel model, Class<O> out, Function<O, R> usable, int tokens, Instant deadline, Ask ask) {
+    private <O, R> R generate(
+            ChatModel model, Class<O> out, Function<O, R> usable, int tokens, double temperature, Instant deadline, Ask ask) {
         // Groq's strict mode rejects `format` on non-strings (see ExerciseAiService).
         String schema = new BeanOutputConverter<>(out).getJsonSchema().replaceAll(",?\\s*\"format\"\\s*:\\s*\"(?:int32|int64|float|double)\"", "");
         var format = ResponseFormat.builder().type(ResponseFormat.Type.JSON_SCHEMA).jsonSchema(schema).strict(true).build();
-        String text = call(model, ask.of(schema, null, options(model, tokens, format, deadline)));
+        String text = call(model, ask.of(schema, null, options(model, tokens, temperature, format, deadline)));
         R result = parse(text, out, usable);
         if (result == null) {
-            text = call(model, ask.of(schema, text, options(model, tokens, format, deadline)));
+            text = call(model, ask.of(schema, text, options(model, tokens, temperature, format, deadline)));
             result = parse(text, out, usable);
         }
         if (result == null) throw new CustomException(ErrorCode.AI_OUTPUT_INVALID);
@@ -173,10 +190,10 @@ public class InterviewAiService {
         }
     }
 
-    private OpenAiChatOptions options(ChatModel model, int tokens, ResponseFormat format, Instant deadline) {
+    private OpenAiChatOptions options(ChatModel model, int tokens, double temperature, ResponseFormat format, Instant deadline) {
         Duration left = Duration.between(clock.instant(), deadline);
         if (left.isNegative() || left.isZero()) throw new CustomException(ErrorCode.AI_TIMEOUT);
-        return prompts.options(model, tokens, left, format);
+        return prompts.options(model, tokens, left, format).mutate().temperature(temperature).build();
     }
 
     private String call(ChatModel model, Prompt prompt) {

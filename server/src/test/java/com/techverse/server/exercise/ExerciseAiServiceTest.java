@@ -80,6 +80,9 @@ class ExerciseAiServiceTest {
     final AiGenerationRegistry registry = new AiGenerationRegistry(clock);
     final List<Prompt> prompts = new ArrayList<>();
     final Deque<Object> replies = new ArrayDeque<>();
+    // The second-pass check: explicit replies when queued, otherwise every question is confirmed.
+    final List<Prompt> verifyPrompts = new ArrayList<>();
+    final Deque<String> verifyReplies = new ArrayDeque<>();
     final Deque<Long> callSeconds = new ArrayDeque<>();
     final AiRateLimitService.Reservation reservation = new AiRateLimitService.Reservation("op-1", "ai:quota:exercise:x:1", 10, 9);
     final AiQuestions request = new AiQuestions(6, "tập trung vào JWT", "JWT là chuẩn token.", 2);
@@ -115,7 +118,14 @@ class ExerciseAiServiceTest {
         when(limits.refund(reservation)).thenReturn(new Quota(10, 10));
         when(model.getDefaultOptions()).thenReturn(OpenAiChatOptions.builder().model("m").build());
         when(model.call(any(Prompt.class))).thenAnswer(i -> {
-            prompts.add(i.getArgument(0));
+            Prompt p = i.getArgument(0);
+            if (AiPromptFactory.EXERCISE_VERIFY_SYSTEM.equals(p.getInstructions().get(0).getText())) {
+                verifyPrompts.add(p);
+                String text = verifyReplies.isEmpty() ? allConfirmed(p) : verifyReplies.removeFirst();
+                return new ChatResponse(List.of(new Generation(new AssistantMessage(text),
+                        ChatGenerationMetadata.builder().finishReason("STOP").build())));
+            }
+            prompts.add(p);
             if (!callSeconds.isEmpty()) clock.now = clock.now.plusSeconds(callSeconds.removeFirst());
             Object next = replies.removeFirst();
             if (next instanceof RuntimeException e) throw e;
@@ -123,6 +133,53 @@ class ExerciseAiServiceTest {
             return new ChatResponse(List.of(new Generation(new AssistantMessage(r[0]),
                     ChatGenerationMetadata.builder().finishReason(r[1]).build())));
         });
+    }
+
+    static String allConfirmed(Prompt p) {
+        int n = JsonMapper.builder().build().readTree(p.getInstructions().get(1).getText()).path("questions").size();
+        var results = new ArrayList<String>();
+        for (int i = 0; i < n; i++) results.add("{\"index\":" + i + ",\"ok\":true,\"reason\":\"\"}");
+        return "{\"results\":[" + String.join(",", results) + "]}";
+    }
+
+    String twoQuiz() {
+        String item = "{\"content\":\"%s\",\"codeSnippet\":\"\",\"codeLanguage\":\"\",\"options\":[\"a\",\"b\",\"c\",\"d\"],\"correctIndex\":1,\"explanation\":\"vì b\"}";
+        return "{\"questions\":[" + item.formatted("Câu đúng về JWT?") + "," + item.formatted("Câu có hai đáp án đúng?") + "]}";
+    }
+
+    @Test
+    void aSecondCheckDropsQuestionsItDoesNotConfirm() {
+        givenSet(ExerciseType.MULTIPLE_CHOICE);
+        reply(twoQuiz());
+        verifyReplies.add("{\"results\":[{\"index\":0,\"ok\":true,\"reason\":\"\"},{\"index\":1,\"ok\":false,\"reason\":\"Hai đáp án cùng đúng\"}]}");
+        var r = service(model).suggest(actor, setId, request);
+        assertThat(r.body().questions()).extracting("content").containsExactly("Câu đúng về JWT?");
+        verify(exercises).markAiAssisted(actor, setId, 1, 6);
+        var check = verifyPrompts.get(0);
+        assertThat(((OpenAiChatOptions) check.getOptions()).getTemperature()).isEqualTo(0.0);
+        // The checker sees the candidates (with the correct index) as data, plus the set's context.
+        var data = check.getInstructions().get(1).getText();
+        assertThat(data).contains("Câu có hai đáp án đúng?", "correctIndex", "Backend", "EASY", "JWT là chuẩn token.");
+        assertThat(check.getInstructions().get(0).getText()).doesNotContain("Câu có hai đáp án đúng?");
+        verify(limits, times(1)).reserve(actor, Kind.EXERCISE);
+    }
+
+    @Test
+    void aQuestionTheCheckSkipsIsDroppedAndNothingConfirmedRefunds() {
+        givenSet(ExerciseType.MULTIPLE_CHOICE);
+        reply(twoQuiz());
+        verifyReplies.add("{\"results\":[{\"index\":1,\"ok\":true,\"reason\":\"\"}]}");
+        assertThat(service(model).suggest(actor, setId, new AiQuestions(6, null, null, 2)).body().questions())
+                .extracting("content").containsExactly("Câu có hai đáp án đúng?");
+
+        reply(twoQuiz());
+        verifyReplies.add("{\"results\":[{\"index\":0,\"ok\":false,\"reason\":\"sai\"},{\"index\":1,\"ok\":false,\"reason\":\"sai\"}]}");
+        assertThat(failure(service(model))).isEqualTo(ErrorCode.AI_OUTPUT_INVALID);
+        reply(twoQuiz());
+        verifyReplies.add("không phải json");
+        assertThat(failure(service(model))).isEqualTo(ErrorCode.AI_OUTPUT_INVALID);
+        verify(limits, times(2)).refund(reservation);
+        verify(exercises, times(1)).markAiAssisted(any(), any(), anyInt(), anyInt());
     }
 
     ErrorCode failure(ExerciseAiService service) {
@@ -148,7 +205,11 @@ class ExerciseAiServiceTest {
         reply(QUIZ_OK);
         var r = service(model).suggest(actor, setId, request);
         assertThat(r.body().questions()).hasSize(1);
-        assertThat(r.body().questions().get(0).correctIndex()).isEqualTo(2);
+        var q = r.body().questions().get(0);
+        // Options are shuffled; the correct one keeps its text.
+        assertThat(q.options()).containsExactlyInAnyOrder("1", "2", "3", "4");
+        assertThat(q.options().get(q.correctIndex())).isEqualTo("3");
+        assertThat(((OpenAiChatOptions) prompts.get(0).getOptions()).getTemperature()).isEqualTo(0.4);
         assertThat(r.body().requested()).isEqualTo(2);
         assertThat(r.body().version()).isEqualTo(7);
         assertThat(r.quota()).isEqualTo(new Quota(10, 9));
@@ -158,6 +219,38 @@ class ExerciseAiServiceTest {
         assertThat(user).contains("MULTIPLE_CHOICE", "Java cơ bản", "Backend", "Câu cũ về Spring", "tập trung vào JWT",
                 "JWT là chuẩn token.", "correctIndex");
         assertThat(prompts.get(0).getInstructions().get(0).getText()).doesNotContain("JWT là chuẩn token.");
+    }
+
+    @Test
+    void theCorrectOptionLandsInDifferentPlacesEvenWhenTheModelAlwaysPutsItFirst() {
+        givenSet(ExerciseType.MULTIPLE_CHOICE);
+        var seen = new java.util.HashSet<Integer>();
+        for (int run = 0; run < 10; run++) {
+            var items = new ArrayList<String>();
+            for (int i = 0; i < 4; i++)
+                items.add("{\"content\":\"Câu " + run + "-" + i + "\",\"codeSnippet\":\"\",\"codeLanguage\":\"\","
+                        + "\"options\":[\"đúng\",\"sai một\",\"sai hai\",\"sai ba\"],\"correctIndex\":0,\"explanation\":\"Vì đúng.\"}");
+            reply("{\"questions\":[" + String.join(",", items) + "]}");
+            for (var q : service(model).suggest(actor, setId, new AiQuestions(6, null, null, 4)).body().questions()) {
+                assertThat(q.options().get(q.correctIndex())).isEqualTo("đúng");
+                seen.add(q.correctIndex());
+            }
+        }
+        assertThat(seen).hasSizeGreaterThan(1);
+    }
+
+    @Test
+    void repeatsOfAnEarlierSuggestionOrOfAnExistingQuestionAreDropped() {
+        givenSet(ExerciseType.MULTIPLE_CHOICE);
+        String item = "{\"content\":\"%s\",\"codeSnippet\":\"\",\"codeLanguage\":\"\",\"options\":[\"a\",\"b\",\"c\",\"d\"],\"correctIndex\":1,\"explanation\":\"vì b\"}";
+        reply("{\"questions\":[" + String.join(",", item.formatted("JWT gồm mấy phần?"), item.formatted("  jwt GỒM mấy   phần?"),
+                item.formatted("Câu cũ về  spring"), item.formatted("OAuth2 là gì?")) + "]}");
+        var r = service(model).suggest(actor, setId, new AiQuestions(6, null, null, 4));
+        assertThat(r.body().questions()).extracting("content").containsExactly("JWT gồm mấy phần?", "OAuth2 là gì?");
+
+        givenSet(ExerciseType.FLASHCARD);
+        reply("{\"questions\":[{\"front\":\"HTTP 404?\",\"back\":\"Not Found\"},{\"front\":\"http 404?\",\"back\":\"Không thấy\"}]}");
+        assertThat(service(model).suggest(actor, setId, new AiQuestions(6, null, null, 2)).body().questions()).hasSize(1);
     }
 
     @Test

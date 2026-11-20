@@ -173,6 +173,16 @@ public class InterviewAiServiceTest {
         assertThat(prompts.get(0).getInstructions().get(0).getText()).doesNotContain("tập trung JVM");
         var options = (OpenAiChatOptions) prompts.get(0).getOptions();
         assertThat(options.getMaxCompletionTokens()).isEqualTo(8192);
+        assertThat(options.getTemperature()).isEqualTo(0.5);
+    }
+
+    @Test
+    void duplicateDraftsAreDroppedAgainstTheBatchAndTheAuthorsExistingQuestions() {
+        String sameAsQ1 = "{\"question\":\"  jvm là gì   và vì sao cần nó?\",\"sampleAnswer\":\"Đáp án đủ dài để qua kiểm tra độ dài.\",\"hint\":\"\"}";
+        String existing = "{\"question\":\"Câu cũ về  SPRING\",\"sampleAnswer\":\"Đáp án đủ dài để qua kiểm tra độ dài.\",\"hint\":\"\"}";
+        reply(items(Q1, sameAsQ1, existing, Q2));
+        service(model).draft(actor, new InterviewQuestionRequest.AiDrafts(topicId.toString(), "MEDIUM", null, null, BigDecimal.valueOf(4)));
+        assertThat(saved()).extracting(AiDraft::question).containsExactly("JVM là gì và vì sao cần nó?", "Garbage collector làm gì?");
     }
 
     @Test
@@ -288,6 +298,7 @@ public class InterviewAiServiceTest {
         assertThat(user).contains("JVM là gì?", "Máy ảo chạy bytecode, đa nền tảng.", "JVM chạy bytecode", "Backend", "verdict");
         assertThat(prompts.get(0).getInstructions().get(0).getText()).doesNotContain("JVM chạy bytecode");
         assertThat(((OpenAiChatOptions) prompts.get(0).getOptions()).getMaxCompletionTokens()).isEqualTo(2048);
+        assertThat(((OpenAiChatOptions) prompts.get(0).getOptions()).getTemperature()).isEqualTo(0.2);
     }
 
     @Test
