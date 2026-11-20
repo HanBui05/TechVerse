@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { ArrowRight, BookCheck, ChevronDown, FileText, GraduationCap, Heart, PlayCircle, Receipt, LogOut, Settings, UserRound, UserRoundPlus, Wallet, X } from 'lucide-react'
+import { ArrowRight, BookCheck, ChevronDown, FileText, GraduationCap, Heart, MessageSquareQuote, PlayCircle, Receipt, LogOut, Settings, UserRound, UserRoundPlus, Wallet, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { navItems, settingsItems } from '../../data/navigation'
 import type { Language } from '../../types/preferences'
@@ -19,7 +19,7 @@ import {
 export const activeLink = 'aria-[current=page]:bg-sidebar-accent aria-[current=page]:font-semibold aria-[current=page]:text-foreground'
 // Clean monochrome icons in the sidebar; `data-tone` is preserved on SVGs for semantic hooks.
 const cleanIcon = 'text-muted-foreground transition-colors group-hover/menu-button:text-foreground'
-export const toneText: Record<string, string> = { blue: cleanIcon, green: cleanIcon, violet: cleanIcon, amber: cleanIcon, rose: cleanIcon, cyan: cleanIcon, sky: cleanIcon }
+export const toneText: Record<string, string> = { blue: cleanIcon, green: cleanIcon, violet: cleanIcon, purple: cleanIcon, amber: cleanIcon, rose: cleanIcon, cyan: cleanIcon, sky: cleanIcon }
 
 // Collapse state (desktop) and the mobile sheet live in the SidebarProvider that App controls.
 export function useSidebarNav() {
@@ -86,6 +86,7 @@ export function Sidebar({ language, t, authenticated, roles, profile, onLogout }
     { path: '/author/blogs', icon: FileText, tone: 'green', label: language === 'vi' ? 'Bài viết của tôi' : 'My articles' },
     { path: '/author/courses', icon: GraduationCap, tone: 'blue', label: language === 'vi' ? 'Khóa học' : 'Courses' },
     { path: '/author/exercises', icon: BookCheck, tone: 'violet', label: language === 'vi' ? 'Bài tập' : 'Exercises' },
+    { path: '/author/interview-questions', icon: MessageSquareQuote, tone: 'sky', label: language === 'vi' ? 'Câu hỏi phỏng vấn' : 'Interview questions' },
     { path: '/author/revenue', icon: Wallet, tone: 'green', label: language === 'vi' ? 'Doanh thu' : 'Revenue' },
   ]
   const footer = authenticated

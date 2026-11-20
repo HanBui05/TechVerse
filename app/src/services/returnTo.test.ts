@@ -6,9 +6,9 @@ import { rememberReturnTo, resolveReturnTo, safeReturnTo } from './returnTo'
 
 afterEach(() => { cleanup(); sessionStorage.clear() })
 
-it('accepts only Reader course paths', () => {
-  for (const ok of ['/courses', '/courses/c1', '/courses/c1/lessons/l2', '/me/courses']) expect(safeReturnTo(ok)).toBe(ok)
-  for (const bad of ['//evil.com', '/admin', '/courses/c1/lessons', 'https://evil.com/courses', '/courses/c1?x=1', 5, null]) expect(safeReturnTo(bad)).toBeNull()
+it('accepts only Reader course and interview paths', () => {
+  for (const ok of ['/courses', '/courses/c1', '/courses/c1/lessons/l2', '/me/courses', '/interview', '/interview/q1']) expect(safeReturnTo(ok)).toBe(ok)
+  for (const bad of ['//evil.com', '/admin', '/courses/c1/lessons', 'https://evil.com/courses', '/courses/c1?x=1', '/interview/q1/answer', '/interviewx', 5, null]) expect(safeReturnTo(bad)).toBeNull()
 })
 
 it('carries the destination through a Google round trip once, and never over a management home', () => {

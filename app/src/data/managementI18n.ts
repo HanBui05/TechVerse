@@ -569,6 +569,14 @@ const messages: Record<string, Record<Language, string>> = {
   "Mở khóa": {
     "vi": "Mở khóa",
     "en": "Unlock"
+  },
+  "Kiểm duyệt câu hỏi phỏng vấn": {
+    "vi": "Kiểm duyệt câu hỏi phỏng vấn",
+    "en": "Review interview questions"
+  },
+  "Câu hỏi phỏng vấn": {
+    "vi": "Câu hỏi phỏng vấn",
+    "en": "Interview questions"
   }
 }
 

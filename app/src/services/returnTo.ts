@@ -1,5 +1,5 @@
-// Post-login destination for Reader course pages. Only these paths are accepted: state and storage are never trusted as an open redirect.
-const RETURN_PATH = /^\/(courses(\/[\w-]+(\/lessons\/[\w-]+)?)?|me\/courses)$/
+// Post-login destination for Reader course and interview pages. Only these paths are accepted: state and storage are never trusted as an open redirect.
+const RETURN_PATH = /^\/(courses(\/[\w-]+(\/lessons\/[\w-]+)?)?|me\/courses|interview(\/[\w-]+)?)$/
 const KEY = 'techverse-return-to'
 
 export const safeReturnTo = (value: unknown): string | null => (typeof value === 'string' && RETURN_PATH.test(value) ? value : null)

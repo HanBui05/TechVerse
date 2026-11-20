@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { BookOpen, FileText, ListChecks, LayoutDashboard, UserRound } from 'lucide-react'
+import { BookOpen, FileText, ListChecks, LayoutDashboard, MessageSquareQuote, UserRound } from 'lucide-react'
 import { StaffSettingsLinks } from './StaffSettingsLinks'
 import { activeLink, SidebarAccount, SidebarFrame, toneText, useSidebarNav } from './Sidebar'
 import type { Language } from '../../types/preferences'
@@ -15,6 +15,7 @@ export function ModeratorSidebar({ language, profile, onLogout }: Props) {
     { path: '/moderator/articles', end: false, icon: FileText, tone: 'green', label: vi ? 'Kiểm duyệt bài viết' : 'Review articles' },
     { path: '/moderator/courses', end: false, icon: BookOpen, tone: 'blue', label: vi ? 'Kiểm duyệt khóa học' : 'Review courses' },
     { path: '/moderator/exercises', end: false, icon: ListChecks, tone: 'violet', label: vi ? 'Kiểm duyệt bài tập' : 'Review exercises' },
+    { path: '/moderator/interview-questions', end: false, icon: MessageSquareQuote, tone: 'sky', label: vi ? 'Câu hỏi phỏng vấn' : 'Interview questions' },
     { path: '/profile', end: false, icon: UserRound, tone: 'amber', label: vi ? 'Thông tin cá nhân' : 'Profile' },
   ]
   return <SidebarFrame mobileTitle={vi ? 'Kiểm duyệt' : 'Moderation'} toggleLabel={iconOnly ? 'Expand menu' : 'Collapse menu'} closeLabel="Close menu" footer={<SidebarAccount profile={profile} onLogout={onLogout} logoutLabel={vi ? 'Đăng xuất' : 'Log out'} />}>

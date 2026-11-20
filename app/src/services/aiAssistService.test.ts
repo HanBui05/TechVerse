@@ -96,9 +96,9 @@ it('reports SSE streams that are cut before a terminal event', async () => {
   expect(events.at(-1)?.type).toBe('metadata')
 })
 
-it('reads today’s quota for both kinds without reserving', async () => {
-  fetchMock.mockResolvedValue(new Response(JSON.stringify({ status: 200, message: 'ok', data: { outline: { limit: 10, remaining: 7 }, draft: { limit: 5, remaining: 5 } } }), { status: 200 }))
-  expect(await aiAssist.quota()).toEqual({ outline: { limit: 10, remaining: 7 }, draft: { limit: 5, remaining: 5 } })
+it('reads today’s quota for all kinds including interviewDraft without reserving', async () => {
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ status: 200, message: 'ok', data: { outline: { limit: 10, remaining: 7 }, draft: { limit: 5, remaining: 5 }, exercise: { limit: 10, remaining: 8 }, interviewDraft: { limit: 10, remaining: 9 } } }), { status: 200 }))
+  expect(await aiAssist.quota()).toEqual({ outline: { limit: 10, remaining: 7 }, draft: { limit: 5, remaining: 5 }, exercise: { limit: 10, remaining: 8 }, interviewDraft: { limit: 10, remaining: 9 } })
   const [url, init] = fetchMock.mock.calls[0]
   expect(String(url)).toMatch(/\/api\/v1\/author\/ai\/quota$/)
   expect(init?.method ?? 'GET').toBe('GET')

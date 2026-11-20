@@ -4,20 +4,27 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`interview-practic
 
 ## Bắt đầu từ đây (cập nhật 2026-11-20)
 
-- **Task tiếp:** Cổng wireframe — viết `plans/interview-practice.wireframe.md` (desktop + mobile, đủ trạng thái), chờ duyệt trước Task 2a · Giao diện: Có
-- Task 1a, 1b, 1c đã nhận (2026-11-20).
+- **Task tiếp:** Hết task của module; còn đồng bộ spec một lần (skill `codex-workflow` mục 3) rồi PR khi người dùng yêu cầu · Giao diện: Không
+- Task 1a, 1b, 1c đã nhận (2026-11-20); Task 2a, 2b (UI do Gemini làm, Claude review + sửa) đã nhận (2026-11-21).
+- Chưa kiểm của 2a/2b: kiểm bằng mắt dark/light × desktop/mobile (người dùng tự xem trên localhost:3000).
 - Chưa kiểm của 1c: prompt chưa thử với Groq thật.
-- Nhánh `feature/interview-practice` (cắt từ `docs/exercise-practice-spec-sync`, gồm `main` sau PR #11 + commit đồng bộ spec bài tập). Task 1a, 1b, 1c đã commit cục bộ, chưa push.
+- Nhánh `feature/interview-practice` (cắt từ `docs/exercise-practice-spec-sync`, gồm `main` sau PR #11 + commit đồng bộ spec bài tập). Mọi task đã commit cục bộ, chưa push.
 
 ## Quyết định người dùng chưa có trong spec
 
-(không có)
+- 2026-11-20: bỏ cổng wireframe của module này; Gemini làm giao diện Task 2a + 2b theo `plans/interview-practice.gemini-prompt.md` (không sửa backend), Claude review sau.
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-20 — Review UI 2a + 2b do Gemini làm
+- Phạm vi: `git diff -- server/` rỗng (không đụng backend). 3 thư mục trang + `interview{Service,I18n}`, `types/interview.ts`, sửa `App.tsx`, 2 sidebar, `navigation`, `managementI18n`, `aiAssist*`.
+- `npm run build` đạt. `npx vitest run` 3 thư mục trang + `interviewService`/`interviewI18n`/`aiAssistService`/`Sidebar` test: 7 file, 65/65 đạt. Lần đầu chạy kèm cả `App*.test` song song với build thì 15 ca timeout 5s (cả `App.practice.test` không liên quan) do máy quá tải; chạy riêng thì đạt. Chưa kiểm bằng mắt.
+- Lỗi phải sửa: (1) `requestWithQuota` dùng `fetch` thô, bỏ qua refresh token khi 401 → hết hạn token thì AI báo phải đăng nhập; dùng `requestRaw` + `quotaOf`. (2) `returnTo.ts` chỉ nhận đường dẫn khóa học → đăng nhập từ `/interview/:id` về trang chủ. (3) `onCreated` của hộp thoại AI gọi `load()` cũ cùng lúc với effect tải lại → có thể hiện danh sách theo bộ lọc cũ.
+- Nhỏ: copy lỗi AI lệch cột “Copy hiển thị”; `quota.limit ?? 15`; trang chi tiết không tải lại khi `authenticated` đổi.
+- Đã sửa cả 6 (TDD: ca `returnTo` `/interview` + ca refresh token đỏ → xanh): `requestWithQuota` qua `requestRaw`/`readEnvelope`/`quotaOf`; regex `returnTo` thêm `interview(/id)?`; `reloadTick` thay `load()`; copy AI theo bảng 1c. 8 file test 69/69 đạt, `npm run build` đạt. Chưa kiểm bằng mắt.
 ### 2026-11-20 — Task 1c: AI sinh câu hỏi và nhận xét câu trả lời
 - Code: `InterviewAiService` (hai luồng, chỗ giữ `Kind.DRAFT` dùng chung, hoàn lượt một lần), `AuthorInterviewService.aiContext/aiUsable/saveAiDrafts`, `PublishedInterviewService.feedbackContext` (+ `reader` public cho quota), `InterviewQuestion.markAiAssisted`, `AiPromptFactory` hai prompt, `Kind.INTERVIEW_DRAFT/FEEDBACK`, `AiQuotaResponse.interviewDraft`, `AiAssistProperties` (+2 giới hạn ngày, `interview-timeout`, khóa token `INTERVIEW_DRAFT` 8192/`INTERVIEW_FEEDBACK` 2048), YAML, `.env.example`, `SecurityConfiguration`; `PublishedInterviewController` đổi gốc sang `/api/v1` để chứa `/me/interview-feedback/quota`.
 - Lệch khác spec: `count` là `BigDecimal` + `@Digits` (1.5 → 400, như `version` ở 1a); cả sai định dạng lẫn “không câu nào đạt”/nhận xét sai luật đều được sửa một lần rồi mới 422; lấy `count` câu đầu rồi mới kiểm.
