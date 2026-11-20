@@ -162,6 +162,15 @@ public enum ErrorCode {
 	EXERCISE_ATTEMPT_INVALID(HttpStatus.BAD_REQUEST, "EXERCISE_ATTEMPT_INVALID", "The attempt is invalid"),
 	EXERCISE_ATTEMPT_KEY_CONFLICT(HttpStatus.CONFLICT, "EXERCISE_ATTEMPT_KEY_CONFLICT", "The idempotency key was already used for another exercise set"),
 	EXERCISE_ATTEMPT_NOT_FOUND(HttpStatus.NOT_FOUND, "EXERCISE_ATTEMPT_NOT_FOUND", "Exercise attempt not found"),
+	INTERVIEW_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "INTERVIEW_QUESTION_NOT_FOUND", "Interview question not found"),
+	INTERVIEW_TOPIC_INACTIVE(HttpStatus.CONFLICT, "INTERVIEW_TOPIC_INACTIVE", "The topic is inactive"),
+	INTERVIEW_CONTENT_INVALID(HttpStatus.BAD_REQUEST, "INTERVIEW_CONTENT_INVALID", "Content contains unsupported formatting"),
+	INTERVIEW_NOT_EDITABLE(HttpStatus.CONFLICT, "INTERVIEW_NOT_EDITABLE", "The current state does not allow editing"),
+	INTERVIEW_STATE_INVALID(HttpStatus.CONFLICT, "INTERVIEW_STATE_INVALID", "The action is not allowed in the current state"),
+	INTERVIEW_NOT_DELETABLE(HttpStatus.CONFLICT, "INTERVIEW_NOT_DELETABLE", "Published or pending interview questions cannot be deleted"),
+	INTERVIEW_VERSION_CONFLICT(HttpStatus.CONFLICT, "INTERVIEW_VERSION_CONFLICT", "The interview question was changed elsewhere. Reload before saving"),
+	INTERVIEW_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "INTERVIEW_RATE_LIMITED", "Too many requests, try again later"),
+	INTERVIEW_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "INTERVIEW_STORAGE_UNAVAILABLE", "Interview service is temporarily unavailable"),
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected error occurred");
 
 	private final HttpStatus status;

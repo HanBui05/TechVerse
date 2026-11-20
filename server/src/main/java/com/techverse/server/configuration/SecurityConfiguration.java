@@ -79,6 +79,7 @@ public class SecurityConfiguration {
 						.requestMatchers("/api/v1/author/articles", "/api/v1/author/articles/**").authenticated()
 						.requestMatchers("/api/v1/author/courses", "/api/v1/author/courses/**").authenticated()
 						.requestMatchers("/api/v1/author/exercise-sets", "/api/v1/author/exercise-sets/**").authenticated()
+						.requestMatchers("/api/v1/author/interview-questions", "/api/v1/author/interview-questions/**").authenticated()
 						.requestMatchers("/api/v1/author/ai/**").authenticated()
 						.requestMatchers("/api/v1/moderator/exercise-sets", "/api/v1/moderator/exercise-sets/**").authenticated()
 						// Authenticated routes first; the single-segment permitAll patterns below cannot cover them anyway.
