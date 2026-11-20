@@ -67,14 +67,14 @@ function Curriculum({ t, courseId, chapters, viewer, learning, authenticated, cu
     </div>
     <nav aria-label={t('content')} className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
       <Link to={`/courses/${courseId}`} onClick={onNavigate} aria-current={currentLessonId ? undefined : 'page'}
-        className={cn(row, touch, 'font-semibold hover:bg-muted aria-[current=page]:bg-tone-blue-bg aria-[current=page]:text-accent-text')}><LayoutList className="size-4 shrink-0" aria-hidden />{t('overview')}</Link>
+        className={cn(row, touch, 'font-semibold transition-colors hover:bg-muted aria-[current=page]:bg-primary/14 aria-[current=page]:text-accent-text aria-[current=page]:shadow-[inset_2.5px_0_0_var(--accent-text)]')}><LayoutList className="size-4 shrink-0" aria-hidden />{t('overview')}</Link>
       {needle && !shown.length && <p role="status" className="px-2 py-3 text-sm text-muted-foreground">{t('noLessonMatch')}</p>}
       {shown.map(({ chapter, lessons }) => {
         const expanded = Boolean(needle) || open.has(chapter.id)
         const stat = learning?.chapters.find(item => item.chapterId === chapter.id)
         const panel = `chapter-${chapter.id}`
-        return <section key={chapter.id} className="border-t border-border pt-1">
-          <button type="button" aria-expanded={expanded} aria-controls={panel} onClick={() => toggle(chapter.id)} className={cn(row, touch, 'items-start font-semibold hover:bg-muted')}>
+        return <section key={chapter.id} className="border-t border-border/70 pt-1.5">
+          <button type="button" aria-expanded={expanded} aria-controls={panel} onClick={() => toggle(chapter.id)} className={cn(row, touch, 'cursor-pointer items-start font-semibold transition-colors hover:bg-muted/70')}>
             <span className="flex min-w-0 flex-1 flex-col"><span>{chapters.indexOf(chapter) + 1}. {chapter.title}</span>
               {stat && <span className="text-xs font-normal text-muted-foreground">{t('chapterProgress', { x: stat.completed, y: stat.total })}</span>}</span>
             <ChevronDown className={cn('mt-0.5 size-4 shrink-0 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} aria-hidden />
@@ -83,11 +83,11 @@ function Curriculum({ t, courseId, chapters, viewer, learning, authenticated, cu
             const mode = lessonAccess(lesson, viewer, authenticated, actions.paid)
             const current = lesson.id === currentLessonId
             const completed = done.has(lesson.id)
-            const icon = completed ? <Check className="size-4 shrink-0 text-success" aria-label={t('done')} /> : mode === 'open' ? <span className="size-4 shrink-0 rounded-full border border-muted-foreground" aria-hidden /> : <Lock className="size-4 shrink-0 text-muted-foreground" aria-label={t('lockedLesson')} />
+            const icon = completed ? <Check className="size-4 shrink-0 text-success" aria-label={t('done')} /> : mode === 'open' ? <span className="size-4 shrink-0 rounded-full border border-muted-foreground/70" aria-hidden /> : <Lock className="size-4 shrink-0 text-muted-foreground" aria-label={t('lockedLesson')} />
             const body = <>{icon}<span className="min-w-0 flex-1">{chapter.lessons.indexOf(lesson) + 1}. {lesson.title}</span>
-              {lesson.hasVideo && <PlayCircle className="size-4 shrink-0 text-muted-foreground" aria-label={t('hasVideo')} />}
+              {lesson.hasVideo && <PlayCircle className="size-4 shrink-0 text-accent-text/80" aria-label={t('hasVideo')} />}
               {lesson.preview && !viewer.enrolled && <Badge tone="sky" className="shrink-0">{t('preview')}</Badge>}</>
-            const cls = cn(row, touch, 'pl-4 hover:bg-muted', current && 'bg-tone-blue-bg font-semibold text-accent-text', mode === 'locked' && 'cursor-not-allowed opacity-70')
+            const cls = cn(row, touch, 'pl-4 transition-colors hover:bg-muted/70', current && 'bg-primary/14 font-semibold text-accent-text shadow-[inset_2.5px_0_0_var(--accent-text)]', mode === 'locked' && 'cursor-not-allowed opacity-70')
             return <li key={lesson.id}>{mode === 'open'
               ? <Link to={`/courses/${courseId}/lessons/${lesson.id}`} onClick={onNavigate} aria-current={current ? 'page' : undefined} className={cls}>{body}</Link>
               : <button type="button" aria-disabled={mode === 'locked'} onClick={() => mode !== 'locked' && pick(lesson.id, mode)} className={cls}>{body}</button>}</li>
@@ -145,7 +145,7 @@ export function CourseFrame({ language, authenticated, courseId, title, chapters
 
   return <div className="flex min-h-svh flex-col">
     <a href="#lesson-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2">{t('skip')}</a>
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/95 px-3 backdrop-blur sm:px-4">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border/80 bg-sidebar/90 px-3 shadow-2xs backdrop-blur-md sm:px-4">
       <Button asChild variant="ghost" size="sm" className={touch}><Link to="/courses"><ChevronLeft aria-hidden /><span className="max-sm:sr-only">{t('back')}</span></Link></Button>
       <Button ref={menuButton} type="button" variant="ghost" size="icon" className={touch} aria-label={t('showTree')} aria-expanded={sheet || !collapsed} onClick={toggleTree}><Menu aria-hidden /></Button>
       <p className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</p>
@@ -153,7 +153,7 @@ export function CourseFrame({ language, authenticated, courseId, title, chapters
       <Button asChild variant="ghost" size="icon" className={touch}><Link to="/settings/theme" aria-label={language === 'vi' ? 'Cài đặt giao diện' : 'Theme settings'}><Moon aria-hidden /></Link></Button>
     </header>
     <div className="flex min-h-0 flex-1">
-      {!collapsed && <aside aria-label={t('content')} className="sticky top-14 hidden h-[calc(100svh-3.5rem)] w-80 shrink-0 flex-col gap-3 border-r border-border p-3 lg:flex">
+      {!collapsed && <aside aria-label={t('content')} className="sticky top-14 hidden h-[calc(100svh-3.5rem)] w-80 shrink-0 flex-col gap-3 border-r border-border/80 bg-sidebar/50 p-3.5 lg:flex">
         {tree()}
         <Button type="button" variant="ghost" size="sm" className={cn('self-start', touch)} onClick={() => setTree(true)}><PanelLeftClose aria-hidden />{t('hideTree')}</Button>
       </aside>}

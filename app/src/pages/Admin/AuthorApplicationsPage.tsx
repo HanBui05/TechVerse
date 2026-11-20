@@ -56,55 +56,71 @@ export function AuthorApplicationsPage({ language = 'vi' }: { language?: Languag
   // Runs only after the AlertDialog is confirmed; payloads are unchanged from the old window.confirm flow.
   const action = async (kind: Kind) => { if (!selected || (kind !== 'APPROVED' && !note.trim())) return; setLoading(true); setError(''); try { const review = kind === 'APPROVED' || kind === 'REJECTED'; const payload = review ? { decision: kind, reviewNote: note.trim(), expectedVersion: selected.version } : kind === 'suspend' ? { reason: note.trim(), expectedVersion: selected.version } : { note: note.trim(), expectedVersion: selected.version }; const updated = await request<Application>(`${base}/${selected.id}/${review ? 'review' : kind}`, { method: 'PATCH', body: JSON.stringify(payload) }); setSelected(updated); setNote(''); await load(); void loadStats() } catch (e) { setError(adminErrorText(e, language, t("Không thể cập nhật hồ sơ"))) } finally { setLoading(false) } }
   const date = (value?: string | null) => value ? new Date(value).toLocaleDateString(vi ? 'vi-VN' : 'en-US') : '—'
-  const filter = (id: string, label: string, value: string, onChange: (value: string) => void, options: [string, string][]) => <div className="flex flex-col gap-2">
+  const filter = (id: string, label: string, value: string, onChange: (value: string) => void, options: [string, string][]) => <div className="flex flex-col gap-1.5">
     <Label htmlFor={id} className={fieldLabel}>{label}</Label>
-    <NativeSelect id={id} className="pointer-coarse:min-h-11" value={value} onChange={e => { onChange(e.target.value); setPage(0) }}>{options.map(([v, text]) => <NativeSelectOption key={v} value={v}>{text}</NativeSelectOption>)}</NativeSelect>
+    <NativeSelect id={id} className="h-10 rounded-xl bg-background/60 pointer-coarse:min-h-11" value={value} onChange={e => { onChange(e.target.value); setPage(0) }}>{options.map(([v, text]) => <NativeSelectOption key={v} value={v}>{text}</NativeSelectOption>)}</NativeSelect>
   </div>
-  const chips: [string, string][] = [['', t("Tất cả")], ['PENDING', t("Chờ duyệt")], ['APPROVED', t("Đã duyệt")], ['REJECTED', t("Từ chối")], ['SUSPENDED', t("Tạm ngưng")]]
+  const chips: [string, string][] = [
+    ['', t("Tất cả")],
+    ['PENDING', t("Chờ duyệt")],
+    ['APPROVED', t("Đã duyệt")],
+    ['REJECTED', t("Từ chối")],
+    ['SUSPENDED', t("Tạm ngưng")],
+  ]
   const refresh = () => { void load(); void loadStats() }
-  const statCards: [keyof Stats, ComponentType<{ className?: string }>, string, string][] = [
-    ['PENDING', Clock, 'text-tone-amber-fg', 'border-tone-amber-border bg-tone-amber-bg text-tone-amber-fg'],
-    ['APPROVED', CheckCircle2, 'text-tone-green-fg', 'border-tone-green-border bg-tone-green-bg text-tone-green-fg'],
-    ['REJECTED', XCircle, 'text-tone-rose-fg', 'border-tone-rose-border bg-tone-rose-bg text-tone-rose-fg'],
-    ['SUSPENDED', PauseCircle, 'text-tone-slate-fg', 'border-tone-slate-border bg-tone-slate-bg text-tone-slate-fg'],
+  const statCards: [keyof Stats, ComponentType<{ className?: string }>][] = [
+    ['PENDING', Clock],
+    ['APPROVED', CheckCircle2],
+    ['REJECTED', XCircle],
+    ['SUSPENDED', PauseCircle],
   ]
   const errorText = error && <p role="alert" className="rounded-lg border border-border bg-tone-rose-bg px-4 py-3 text-sm text-danger">{error}</p>
   const needsNote = !note.trim()
   // Reject/suspend/restore need a reason (backend rule): explain on the field instead of a silently disabled button.
   const ask = (kind: Kind, title: string) => { if (kind !== 'APPROVED' && needsNote) { setNoteError(true); noteRef.current?.focus(); return } setPending({ kind, title }) }
 
-  return <main className="tw-page mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8 lg:px-8">
-    <header className="flex flex-wrap items-start justify-between gap-4">
+  return <main className="tw-page mx-auto flex w-full max-w-7xl flex-col gap-5 px-6 py-8 lg:px-8">
+    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold sm:text-3xl">{t("Hồ sơ đăng ký Author")}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t("Hồ sơ đăng ký Author")}</h1>
         <p className="text-sm text-muted-foreground">{vi ? 'Xem hồ sơ, duyệt hoặc từ chối, đình chỉ và khôi phục quyền tác giả.' : 'Review applications, approve or reject, suspend and restore author access.'}</p>
       </div>
-      <Button variant="outline" onClick={refresh} disabled={loading}><RefreshCw className={loading ? 'animate-spin motion-reduce:animate-none' : ''} />{vi ? 'Làm mới' : 'Refresh'}</Button>
+      <Button variant="outline" size="sm" onClick={refresh} disabled={loading}><RefreshCw className={loading ? 'animate-spin motion-reduce:animate-none' : ''} />{vi ? 'Làm mới' : 'Refresh'}</Button>
     </header>
 
-    <dl className="m-0 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-      {statCards.map(([key, Icon, number, tile]) => <div key={key} className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5">
-        <div className="flex min-w-0 flex-col gap-2">
-          <dt className={fieldLabel}>{chips.find(([value]) => value === key)![1]}</dt>
-          <dd className={`m-0 text-2xl font-bold tabular-nums sm:text-3xl ${number}`}>{stats ? stats[key].toLocaleString(vi ? 'vi-VN' : 'en-US') : '—'}</dd>
+    <dl className="m-0 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {statCards.map(([key, Icon]) => {
+        const isSelected = status === key
+        return <div key={key} onClick={() => { setStatus(isSelected ? '' : key); setPage(0) }}
+          className={`flex cursor-pointer items-start justify-between gap-3 rounded-xl border bg-card p-5 text-card-foreground transition-colors hover:bg-muted/40 ${isSelected ? 'border-foreground/40 bg-muted/30' : 'border-border'}`}>
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <dt className={fieldLabel}>{chips.find(([value]) => value === key)![1]}</dt>
+            <dd className="m-0 text-2xl font-semibold tracking-tight text-foreground tabular-nums">{stats ? stats[key].toLocaleString(vi ? 'vi-VN' : 'en-US') : '—'}</dd>
+          </div>
+          <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </div>
-        <span aria-hidden className={`hidden size-11 shrink-0 items-center justify-center rounded-xl border sm:flex ${tile}`}><Icon className="size-5" /></span>
-      </div>)}
+      })}
     </dl>
 
-    <Card className="gap-0 rounded-2xl py-0">
-      <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-4">
-        <span className="inline-flex items-center gap-2 font-semibold"><span aria-hidden className="flex size-8 items-center justify-center rounded-lg border border-tone-sky-border bg-tone-sky-bg text-tone-sky-fg"><SlidersHorizontal className="size-4" /></span>{vi ? 'Bộ lọc' : 'Filters'}</span>
-        <div role="group" aria-label={t("Hồ sơ")} className="flex flex-wrap gap-2">
-          {chips.map(([value, label]) => <Button key={value || 'all'} size="sm" variant={status === value ? 'default' : 'outline'} className="rounded-full" aria-pressed={status === value} onClick={() => { setStatus(value); setPage(0) }}>{label}</Button>)}
+    <Card className="gap-4 rounded-xl p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3.5">
+        <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase"><SlidersHorizontal className="size-3.5 text-muted-foreground" aria-hidden />{vi ? 'Bộ lọc' : 'Filters'}</span>
+        <div role="group" aria-label={t("Hồ sơ")} className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
+          {chips.map(([value, label]) => {
+            const activeChip = status === value
+            return <button key={value || 'all'} type="button" aria-pressed={activeChip} onClick={() => { setStatus(value); setPage(0) }}
+              className={`inline-flex h-7 cursor-pointer items-center rounded-md px-3 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-11 ${activeChip ? 'bg-card text-foreground shadow-2xs' : 'text-muted-foreground hover:text-foreground'}`}>
+              {label}
+            </button>
+          })}
         </div>
       </div>
-      <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-5 [&_[data-slot=native-select-wrapper]]:w-full">
-        <form className="flex flex-col gap-2 sm:col-span-2" onSubmit={e => { e.preventDefault(); setPage(0); setQuery(keyword.trim()) }}>
+      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-5 [&_[data-slot=native-select-wrapper]]:w-full">
+        <form className="flex flex-col gap-1.5 sm:col-span-2" onSubmit={e => { e.preventDefault(); setPage(0); setQuery(keyword.trim()) }}>
           <Label htmlFor="author-app-search" className={fieldLabel}>{t("Tìm kiếm")}</Label>
           <div className="relative">
-            <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input id="author-app-search" type="search" className="pl-9 pointer-coarse:min-h-11" maxLength={100} placeholder={vi ? 'Nhập tên hoặc email…' : 'Name or email…'} value={keyword} onChange={e => setKeyword(e.target.value)} />
+            <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input id="author-app-search" type="search" className="h-9 rounded-lg bg-background/60 pl-10 pointer-coarse:min-h-11" maxLength={100} placeholder={vi ? 'Nhập tên hoặc email…' : 'Name or email…'} value={keyword} onChange={e => setKeyword(e.target.value)} />
           </div>
         </form>
         {filter('author-app-active', t("Tài khoản"), active, setActive, [['', t("Tất cả")], ['true', t("Hoạt động")], ['false', t("Đã khóa")]])}
@@ -116,32 +132,33 @@ export function AuthorApplicationsPage({ language = 'vi' }: { language?: Languag
     {!selected && errorText}
 
     <Card className="gap-0 overflow-hidden rounded-2xl py-0">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-6 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/75 px-6 py-4">
         <div className="flex flex-col gap-0.5">
-          <h2 className="text-base font-bold">{t("Danh sách hồ sơ")}</h2>
+          <h2 className="text-base font-bold tracking-tight">{t("Danh sách hồ sơ")}</h2>
           <p className="text-xs text-muted-foreground">{vi ? 'Mở một hồ sơ để xem chi tiết, lịch sử duyệt và thao tác.' : 'Open an application for details, review history and actions.'}</p>
         </div>
-        {total !== null && <Badge tone="blue" aria-live="polite">{vi ? `${total} kết quả` : `${total} ${total === 1 ? 'result' : 'results'}`}</Badge>}
+        {total !== null && <Badge tone="blue" aria-live="polite" className="px-3 py-1 font-semibold">{vi ? `${total} kết quả` : `${total} ${total === 1 ? 'result' : 'results'}`}</Badge>}
       </div>
-      <div aria-hidden className={`hidden border-b border-border bg-muted/40 px-6 py-3 ${columns} ${fieldLabel}`}>
+      <div aria-hidden className={`hidden border-b border-border/70 bg-background/40 px-6 py-3 ${columns} ${fieldLabel}`}>
         <span>{vi ? 'Người nộp' : 'Applicant'}</span><span>Email</span><span>{vi ? 'Chuyên môn' : 'Expertise'}</span><span>{t("Trạng thái")}</span><span>{vi ? 'Ngày nộp' : 'Submitted'}</span><span className="text-right">{vi ? 'Thao tác' : 'Actions'}</span>
       </div>
       {loading && !items.length
-        ? <div className="flex flex-col divide-y divide-border" aria-busy="true" aria-label={t("Đang tải...")}>{[0, 1, 2, 3].map(i => <div key={i} className="flex items-center gap-4 px-6 py-4"><Skeleton className="size-10 rounded-full" /><div className="flex flex-1 flex-col gap-2"><Skeleton className="h-4 w-48" /><Skeleton className="h-3 w-72 max-w-full" /></div><Skeleton className="h-5 w-20 rounded-full" /></div>)}</div>
+        ? <div className="flex flex-col divide-y divide-border/70" aria-busy="true" aria-label={t("Đang tải...")}>{[0, 1, 2, 3].map(i => <div key={i} className="flex items-center gap-4 px-6 py-4"><Skeleton className="size-10 rounded-full" /><div className="flex flex-1 flex-col gap-2"><Skeleton className="h-4 w-48" /><Skeleton className="h-3 w-72 max-w-full" /></div><Skeleton className="h-5 w-20 rounded-full" /></div>)}</div>
         : !items.length
           ? <EmptyState className="m-6" icon={UserCheck} title={t("Không có hồ sơ phù hợp.")} description={vi ? 'Chọn trạng thái khác hoặc đổi từ khóa tìm kiếm.' : 'Pick another status or change the keyword.'} />
-          : <ul data-slot="author-app-list" className={`flex flex-col divide-y divide-border transition-opacity ${loading ? 'opacity-60' : ''}`}>
-            {items.map(item => <li key={item.id} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-6 py-3 transition-colors hover:bg-muted/50 ${columns}`}>
-              <span className="flex min-w-0 items-center gap-3"><UserAvatar name={item.fullName} url={item.avatarUrl} /><span className="truncate font-semibold">{item.fullName}</span></span>
-              <span className="flex items-center justify-end gap-1 xl:hidden">{item.active === false && <Badge tone="slate">{t("Đã khóa")}</Badge>}<Badge tone={statusTone(item.status)}>{statusLabel(item.status, 'author', language)}</Badge></span>
+          : <ul data-slot="author-app-list" className={`flex flex-col divide-y divide-border/70 transition-opacity ${loading ? 'opacity-60' : ''}`}>
+            {items.map(item => <li key={item.id} onClick={e => { if (!(e.target as Element).closest('button,a')) void open(item.id) }}
+              className={`group grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-6 py-3.5 transition-colors hover:bg-muted/40 ${columns}`}>
+              <span className="flex min-w-0 items-center gap-3"><UserAvatar name={item.fullName} url={item.avatarUrl} /><span className="truncate font-semibold transition-colors group-hover:text-accent-text">{item.fullName}</span></span>
+              <span className="flex items-center justify-end gap-1.5 xl:hidden">{item.active === false && <Badge tone="slate">{t("Đã khóa")}</Badge>}<Badge tone={statusTone(item.status)}><span aria-hidden className="size-1.5 rounded-full bg-current" />{statusLabel(item.status, 'author', language)}</Badge></span>
               <span className="col-span-2 truncate text-sm text-muted-foreground xl:col-span-1">{item.email}</span>
-              <span className="col-span-2 flex flex-wrap gap-1 xl:col-span-1">{skills(item.expertise).slice(0, 3).map(skill => <Badge key={skill} tone={toneFor(skill)} className="max-w-full whitespace-normal [overflow-wrap:anywhere]">{skill}</Badge>)}{skills(item.expertise).length > 3 && <Badge tone="slate">+{skills(item.expertise).length - 3}</Badge>}</span>
-              <span className="hidden flex-wrap gap-1 xl:flex"><Badge tone={statusTone(item.status)}>{statusLabel(item.status, 'author', language)}</Badge>{item.active === false && <Badge tone="slate">{t("Đã khóa")}</Badge>}</span>
-              <span className="inline-flex items-center gap-1 text-sm text-muted-foreground"><CalendarDays aria-hidden className="size-3.5 xl:hidden" />{date(item.createdAt)}</span>
-              <span className="flex justify-end"><Button size="sm" variant="outline" aria-label={`${vi ? 'Xem hồ sơ' : 'View application of'} ${item.fullName}`} onClick={() => void open(item.id)}><Eye />{vi ? 'Xem' : 'View'}</Button></span>
+              <span className="col-span-2 flex flex-wrap gap-1.5 xl:col-span-1">{skills(item.expertise).slice(0, 3).map(skill => <Badge key={skill} tone={toneFor(skill)} className="max-w-full whitespace-normal [overflow-wrap:anywhere]">{skill}</Badge>)}{skills(item.expertise).length > 3 && <Badge tone="slate">+{skills(item.expertise).length - 3}</Badge>}</span>
+              <span className="hidden flex-wrap items-center gap-1.5 xl:flex"><Badge tone={statusTone(item.status)}><span aria-hidden className="size-1.5 rounded-full bg-current" />{statusLabel(item.status, 'author', language)}</Badge>{item.active === false && <Badge tone="slate">{t("Đã khóa")}</Badge>}</span>
+              <span className="inline-flex items-center gap-1 text-sm tabular-nums text-muted-foreground"><CalendarDays aria-hidden className="size-3.5 xl:hidden" />{date(item.createdAt)}</span>
+              <span className="flex justify-end"><Button size="sm" variant="outline" className="rounded-lg" aria-label={`${vi ? 'Xem hồ sơ' : 'View application of'} ${item.fullName}`} onClick={() => void open(item.id)}><Eye />{vi ? 'Xem' : 'View'}</Button></span>
             </li>)}
           </ul>}
-      {!!total && <div className="border-t border-border px-6 py-4"><AdminPagination language={language} page={page} size={SIZE} total={total ?? 0} loading={loading} onPageChange={setPage} /></div>}
+      {!!total && <div className="border-t border-border/75 px-6 py-4"><AdminPagination language={language} page={page} size={SIZE} total={total ?? 0} loading={loading} onPageChange={setPage} /></div>}
     </Card>
 
     <Sheet open={selected !== null} onOpenChange={next => { if (!next) setSelected(null) }}>

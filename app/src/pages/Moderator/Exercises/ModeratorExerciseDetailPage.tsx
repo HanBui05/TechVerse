@@ -102,9 +102,9 @@ export function ModeratorExerciseDetailPage({ language = 'vi' }: { language?: La
       </BreadcrumbList>
     </Breadcrumb>
 
-    <header className="flex flex-wrap items-start justify-between gap-4">
+    <header className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-border/85 bg-card p-5 shadow-sm sm:p-6">
       <div className="flex min-w-0 flex-col gap-3">
-        <h1 className="text-2xl font-bold [overflow-wrap:anywhere] sm:text-3xl">{set.title}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight [overflow-wrap:anywhere] sm:text-3xl">{set.title}</h1>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <Badge tone={exerciseTone(set.status)}>{statusLabel[set.status][language]}</Badge>
           <Badge tone="slate">{typeLabel[set.type][language]}</Badge>
@@ -117,7 +117,7 @@ export function ModeratorExerciseDetailPage({ language = 'vi' }: { language?: La
           <span className="text-sm text-muted-foreground">{t(card ? 'cards' : 'questions', { n: set.questions.length })}</span>
         </div>
       </div>
-      {actions.length > 0 && <div role="group" aria-label={t('actions')} className="flex flex-wrap gap-2 max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-20 max-md:flex-nowrap max-md:border-t max-md:border-border max-md:bg-background max-md:p-3">
+      {actions.length > 0 && <div role="group" aria-label={t('actions')} className="flex flex-wrap gap-2 max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-20 max-md:flex-nowrap max-md:border-t max-md:border-border max-md:bg-background/95 max-md:p-3 max-md:backdrop-blur-md">
         {shown.map(actionButton)}
         {extra.length > 0 && <Popover open={moreOpen} onOpenChange={setMoreOpen}>
           <PopoverTrigger asChild><Button variant="outline" size="icon" aria-label={t('more')} className="min-h-11 min-w-11"><MoreHorizontal /></Button></PopoverTrigger>

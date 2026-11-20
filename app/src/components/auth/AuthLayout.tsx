@@ -24,10 +24,11 @@ const linkFocus = 'rounded-sm outline-none focus-visible:ring-[3px] focus-visibl
 
 // Centered auth card shared by login/register, forgot password and the Google callback.
 export function AuthShell({ back, tagline, compactBrand, children }: { back?: { to: string; label: string }; tagline: string; compactBrand?: boolean; children: ReactNode }) {
-  return <main className="tw-page flex min-h-svh items-center justify-center bg-background px-5 py-8">
-    <Card className="w-full max-w-[480px] gap-5 rounded-2xl px-5 py-6 shadow-lg sm:px-8 sm:pt-7 sm:pb-8">
+  return <main className="tw-page relative flex min-h-svh items-center justify-center overflow-hidden bg-background px-5 py-8">
+    <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 h-80 w-[36rem] -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
+    <Card className="relative w-full max-w-[480px] gap-5 rounded-2xl px-5 py-6 shadow-xl sm:px-8 sm:pt-7 sm:pb-8">
       {back && <Link className={cn('inline-flex items-center gap-2 self-start text-sm text-muted-foreground transition-colors hover:text-foreground pointer-coarse:min-h-11', linkFocus)} to={back.to}><ArrowLeft size={16} aria-hidden="true" />{back.label}</Link>}
-      <div className="flex flex-col items-center gap-2 text-center"><Brand compact={compactBrand} /><span className="text-[11px] font-bold tracking-[.05em] text-muted-foreground">{tagline}</span></div>
+      <div className="flex flex-col items-center gap-2 text-center"><Brand compact={compactBrand} /><span className="text-[11px] font-bold tracking-[.08em] text-muted-foreground">{tagline}</span></div>
       {children}
     </Card>
   </main>

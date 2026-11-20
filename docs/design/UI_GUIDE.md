@@ -54,7 +54,7 @@ Tám tone: `blue`, `green`, `purple`, `amber`, `rose`, `sky`, `cyan`, `slate`. T
 
 ## Phong cách
 
-- Không gradient (quyết định 2); card nổi bật dùng nền đặc theo tone. Nút chính `primary` đặc, không đổ bóng phát sáng; chữ nhấn là một màu đặc `accent-text`.
+- Cho phép dùng ambient glow (ánh sáng tỏa nền), viền bắt sáng tinh tế (specular border highlight) và chuyển sắc nhẹ (subtle gradient) để tạo chiều sâu thị giác; nút chính `primary` có ánh sáng viền trên và bóng đổ dịu theo tông màu chủ đạo.
 - Đã bỏ khỏi trang chủ: “Featured content”, “Khóa học nổi bật”, khu community (D-015/D-016) — không khôi phục.
 - Chưa có toast (`sonner`) — tách module sau; danh sách Admin/Moderator là hàng trong Card, không dùng Table.
 

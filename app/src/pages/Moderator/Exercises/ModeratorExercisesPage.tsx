@@ -72,28 +72,28 @@ export function ModeratorExercisesPage({ language = 'vi' }: { language?: Languag
       <Button variant="outline" className={touch} onClick={() => { void load(); if (topicsError) loadTopics() }} disabled={loading}><RefreshCw className={loading ? 'animate-spin motion-reduce:animate-none' : ''} />{t('refresh')}</Button>
     </header>
 
-    <Card className="gap-0 rounded-2xl py-0">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
-        <h2 className="inline-flex items-center gap-2 text-base font-semibold"><span aria-hidden className="flex size-8 items-center justify-center rounded-lg border border-tone-sky-border bg-tone-sky-bg text-tone-sky-fg"><SlidersHorizontal className="size-4" /></span>{t('filters')}</h2>
-        {data && <Badge tone="blue" aria-live="polite">{t('count', { n: data.totalElements })}</Badge>}
+    <Card className="gap-4 rounded-2xl p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+        <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground"><SlidersHorizontal className="size-4 text-accent-text" aria-hidden />{t('filters')}</h2>
+        {data && <Badge tone="blue" aria-live="polite" className="px-3 py-1 font-semibold">{t('count', { n: data.totalElements })}</Badge>}
       </div>
-      <div className="flex flex-col gap-4 p-6">
-        <div className="grid gap-4 md:grid-cols-12">
-          <div className="flex flex-col gap-2 md:col-span-6">
+      <div className="flex flex-col gap-3.5">
+        <div className="grid gap-3.5 md:grid-cols-12">
+          <div className="flex flex-col gap-1.5 md:col-span-6">
             <Label htmlFor="exercise-moderator-search" className={fieldLabel}>{t('search')}</Label>
-            <div className="relative"><Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="exercise-moderator-search" type="search" maxLength={100} className={`pl-9 ${touch}`} placeholder={t('searchPlaceholder')} value={keyword} onChange={e => setKeyword(e.target.value)} /></div>
+            <div className="relative"><Search aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-accent-text" />
+              <Input id="exercise-moderator-search" type="search" maxLength={100} className={`h-10 rounded-xl bg-background/60 pl-10 ${touch}`} placeholder={t('searchPlaceholder')} value={keyword} onChange={e => setKeyword(e.target.value)} /></div>
           </div>
-          <div className="flex flex-col gap-2 md:col-span-3">
+          <div className="flex flex-col gap-1.5 md:col-span-3">
             <Label htmlFor="exercise-moderator-type" className={fieldLabel}>{t('type')}</Label>
-            <NativeSelect id="exercise-moderator-type" className={touch} value={filters.type} onChange={e => setFilter({ type: e.target.value as ExerciseType | '' })}>
+            <NativeSelect id="exercise-moderator-type" className={`h-10 rounded-xl bg-background/60 ${touch}`} value={filters.type} onChange={e => setFilter({ type: e.target.value as ExerciseType | '' })}>
               <NativeSelectOption value="">{t('all')}</NativeSelectOption>
               {(Object.keys(typeLabel) as ExerciseType[]).map(type => <NativeSelectOption key={type} value={type}>{typeLabel[type][language]}</NativeSelectOption>)}
             </NativeSelect>
           </div>
-          <div className="flex flex-col gap-2 md:col-span-3">
+          <div className="flex flex-col gap-1.5 md:col-span-3">
             <Label htmlFor="exercise-moderator-topic" className={fieldLabel}>{t('topic')}</Label>
-            <NativeSelect id="exercise-moderator-topic" className={touch} value={filters.topicId} onChange={e => setFilter({ topicId: e.target.value })}>
+            <NativeSelect id="exercise-moderator-topic" className={`h-10 rounded-xl bg-background/60 ${touch}`} value={filters.topicId} onChange={e => setFilter({ topicId: e.target.value })}>
               <NativeSelectOption value="">{t('allTopics')}</NativeSelectOption>
               {topics.map(o => <NativeSelectOption key={o.id} value={o.id}>{o.name}</NativeSelectOption>)}
             </NativeSelect>
@@ -102,8 +102,14 @@ export function ModeratorExercisesPage({ language = 'vi' }: { language?: Languag
         {topicsError && <p className="flex flex-wrap items-center gap-2 text-sm text-danger"><span>{t('loadError')}</span><Button size="sm" variant="outline" className={touch} onClick={loadTopics}><RefreshCw />{t('retry')}</Button></p>}
         <div className="flex items-center gap-2 max-sm:flex-col max-sm:items-start">
           <span className={`${fieldLabel} w-24 shrink-0`}>{t('status')}</span>
-          <div role="group" aria-label={t('status')} className="flex gap-2 max-sm:w-full max-sm:overflow-x-auto max-sm:pb-1 sm:flex-wrap">
-            {STATUSES.map(value => <Button key={value} size="sm" variant={filters.status === value ? 'default' : 'outline'} className={`shrink-0 rounded-full ${touch}`} aria-pressed={filters.status === value} onClick={() => setFilter({ status: value })}>{statusLabel[value][language]}</Button>)}
+          <div role="group" aria-label={t('status')} className="flex items-center gap-1 rounded-xl border border-border/70 bg-background/60 p-1 max-sm:w-full max-sm:overflow-x-auto sm:flex-wrap">
+            {STATUSES.map(value => {
+              const selected = filters.status === value
+              return <button key={value} type="button" aria-pressed={selected} onClick={() => setFilter({ status: value })}
+                className={`inline-flex h-8 shrink-0 cursor-pointer items-center rounded-lg px-3 text-xs font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring ${touch} ${selected ? 'bg-card text-foreground shadow-xs ring-1 ring-border/80' : 'text-muted-foreground hover:text-foreground'}`}>
+                {statusLabel[value][language]}
+              </button>
+            })}
           </div>
         </div>
       </div>

@@ -120,8 +120,8 @@ export function BlogDetailPage({ language = 'vi', canSave = true }: { language?:
   const enter = 'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:fill-mode-both motion-safe:duration-500'
 
   return main(<>
-    <div role="progressbar" aria-label={t('progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} className="fixed inset-x-0 top-0 z-40 h-1">
-      <div className="h-full bg-primary transition-[width] duration-150" style={{ width: `${progress}%` }} />
+    <div role="progressbar" aria-label={t('progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} className="fixed inset-x-0 top-0 z-40 h-1 bg-background/40 backdrop-blur-xs">
+      <div className="h-full bg-linear-to-r from-primary via-accent-text to-violet shadow-[0_0_12px_var(--accent-text)] transition-[width] duration-150" style={{ width: `${progress}%` }} />
     </div>
     <Breadcrumb aria-label={t('breadcrumb')}>
       <BreadcrumbList className="max-sm:hidden">
@@ -135,34 +135,35 @@ export function BlogDetailPage({ language = 'vi', canSave = true }: { language?:
     </Breadcrumb>
 
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-8">
-      <article className={cn('min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-sm', enter)}>
+      <article className={cn('min-w-0 overflow-hidden rounded-2xl border border-border/85 bg-card text-card-foreground shadow-sm dark:bg-linear-to-b dark:from-white/[0.025] dark:to-transparent dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_8px_28px_-6px_rgba(0,0,0,0.5)]', enter)}>
         {article.coverImageUrl
-          ? <img src={article.coverImageUrl} alt={t('cover', { title: article.title })} className="max-h-[480px] w-full border-b border-border object-cover" />
-          : <div aria-hidden className={cn('relative flex h-40 items-center justify-center overflow-hidden border-b sm:h-52', TONE_TILE[tone])}>
+          ? <img src={article.coverImageUrl} alt={t('cover', { title: article.title })} className="max-h-[480px] w-full border-b border-border/80 object-cover" />
+          : <div aria-hidden className={cn('relative flex h-44 items-center justify-center overflow-hidden border-b border-border/70 sm:h-56', TONE_TILE[tone])}>
+              <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(255,255,255,0.14),transparent_70%)]" />
               <TopicIcon className="absolute -top-6 -left-6 size-40 rotate-12 opacity-10" />
               <Hash className="absolute -right-8 -bottom-10 size-48 -rotate-12 opacity-10" />
-              <span className="flex size-20 items-center justify-center rounded-3xl border border-current/30 bg-card/60 shadow-lg"><TopicIcon className="size-10" /></span>
+              <span className="relative flex size-20 items-center justify-center rounded-3xl border border-current/30 bg-card/75 shadow-xl backdrop-blur-xs"><TopicIcon className="size-10" /></span>
             </div>}
         <div className="flex flex-col gap-6 p-5 sm:p-8">
           <header className="flex flex-col gap-4">
-            <Link to={topicLink} className={cn('inline-flex items-center gap-2 self-start text-sm font-semibold transition hover:opacity-80', toneText(tone), touch)}>
-              <span className={cn('flex size-8 items-center justify-center rounded-lg border', TONE_TILE[tone])}><TopicIcon className="size-4" aria-hidden /></span>{article.topic.name}
+            <Link to={topicLink} className={cn('inline-flex items-center gap-2 self-start text-sm font-semibold transition hover:opacity-85', toneText(tone), touch)}>
+              <span className={cn('flex size-8 items-center justify-center rounded-lg border shadow-2xs', TONE_TILE[tone])}><TopicIcon className="size-4" aria-hidden /></span>{article.topic.name}
             </Link>
-            <h1 className="text-[28px] leading-tight font-bold tracking-tight sm:text-4xl sm:leading-[1.2]">{article.title}</h1>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={cn(chip, 'border-border bg-muted/60 text-foreground')}><UserAvatar name={article.author.fullName} url={article.author.avatarUrl} className="size-5 text-[9px]" /><span className="font-semibold">{article.author.fullName}</span></span>
-              <span className={cn(chip, 'border-border text-muted-foreground')}><CalendarDays className="size-3.5" aria-hidden /><time dateTime={article.publishedAt}>{formatDate(article.publishedAt, language)}</time></span>
+            <h1 className="text-[28px] leading-tight font-extrabold tracking-tight sm:text-4xl sm:leading-[1.18]">{article.title}</h1>
+            <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-4">
+              <span className={cn(chip, 'border-border/80 bg-secondary/70 text-foreground')}><UserAvatar name={article.author.fullName} url={article.author.avatarUrl} className="size-5 text-[9px]" /><span className="font-semibold">{article.author.fullName}</span></span>
+              <span className={cn(chip, 'border-border/80 bg-background/40 text-muted-foreground')}><CalendarDays className="size-3.5" aria-hidden /><time dateTime={article.publishedAt}>{formatDate(article.publishedAt, language)}</time></span>
               {article.versionNumber > 1 && <span className={cn(chip, TONE_TILE.green)}><RefreshCw className="size-3.5" aria-hidden /><time dateTime={article.approvedAt}>{t('updated', { date: formatDate(article.approvedAt, language) })}</time></span>}
               <span className={cn(chip, TONE_TILE.sky)}><Clock3 className="size-3.5" aria-hidden /><span>{t('minutes', { n: article.readingMinutes })}</span></span>
               <span className="ml-auto flex flex-wrap items-start gap-2">
                 {canSave && <ArticleSaveButton key={article.id} articleId={article.id} saved={article.saved} language={language} withText />}
                 <CopyButton language={language} label={t('copyLink')} text={() => window.location.href.split('#')[0]}
-                  className="h-8 border border-border px-3 text-sm text-foreground"><Link2 className="size-4" aria-hidden /><span>{t('copyLink')}</span></CopyButton>
+                  className="h-8 rounded-lg border border-border/80 bg-background/50 px-3 text-sm text-foreground hover:bg-accent"><Link2 className="size-4" aria-hidden /><span>{t('copyLink')}</span></CopyButton>
               </span>
             </div>
           </header>
-          {article.summary && <section aria-label={t('summary')} className="rounded-r-xl border-l-4 border-tone-blue-fg bg-tone-blue-bg px-5 py-4">
-            <p className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-tone-blue-fg"><Sparkles className="size-4" aria-hidden />{t('summary')}</p>
+          {article.summary && <section aria-label={t('summary')} className="rounded-xl border border-tone-blue-border/60 border-l-4 border-l-tone-blue-fg bg-tone-blue-bg/55 px-5 py-4 shadow-2xs">
+            <p className="mb-1.5 flex items-center gap-2 text-sm font-bold text-tone-blue-fg"><Sparkles className="size-4" aria-hidden />{t('summary')}</p>
             <p className="text-[15px] leading-relaxed text-foreground/90">{article.summary}</p>
           </section>}
           {!!headings.length && <details className="group rounded-xl border border-border bg-muted/40 lg:hidden">
@@ -185,9 +186,9 @@ export function BlogDetailPage({ language = 'vi', canSave = true }: { language?:
 
       <aside aria-label={t('sidebar')} className="flex flex-col gap-4 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pb-2 [&>*]:shrink-0">
         <Card className={cn('gap-0 overflow-hidden rounded-2xl py-0 shadow-sm', enter)} style={{ animationDelay: '80ms' }}>
-          <div className="h-14 border-b border-tone-blue-border bg-tone-blue-bg" aria-hidden />
+          <div className="h-16 border-b border-tone-blue-border/60 bg-linear-to-r from-tone-blue-bg via-tone-purple-bg/60 to-tone-sky-bg" aria-hidden />
           <div className="-mt-8 flex flex-col gap-3 px-5 pb-5">
-            <UserAvatar name={article.author.fullName} url={article.author.avatarUrl} className="size-16 text-lg ring-4 ring-card" />
+            <UserAvatar name={article.author.fullName} url={article.author.avatarUrl} className="size-16 text-lg shadow-md ring-4 ring-card" />
             <div className="flex flex-col gap-1">
               <h2 className="text-[11px] font-semibold tracking-[.05em] text-muted-foreground uppercase">{t('aboutAuthor')}</h2>
               <p className="text-base font-bold">{article.author.fullName}</p>

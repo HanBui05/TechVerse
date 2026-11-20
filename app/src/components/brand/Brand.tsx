@@ -4,8 +4,10 @@ import { Link } from 'react-router-dom'
 const LOGO_URL = 'https://res.cloudinary.com/baxlqjtt/image/upload/c_crop,x_545,y_490,w_960,h_960/c_scale,w_128/f_auto,q_auto/v1793638005/techverse/brand/logo.png'
 
 export function Brand({ compact = false }: { compact?: boolean }) {
-  return <Link to="/" aria-label="TechVerse home" className="inline-flex min-w-0 items-center gap-2.5 rounded-md outline-hidden focus-visible:ring-2 focus-visible:ring-ring">
-    <img src={LOGO_URL} alt="" width={32} height={32} className="block size-8 shrink-0 rounded-lg" />
-    {!compact && <span className="truncate text-lg font-bold tracking-tight text-foreground">Tech<span className="text-accent-text">Verse</span></span>}
+  return <Link to="/" aria-label="TechVerse home" className="group/brand inline-flex min-w-0 items-center gap-2.5 rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-ring">
+    <span className="relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg ring-1 ring-border/80 transition-transform duration-200 group-hover/brand:scale-105">
+      <img src={LOGO_URL} alt="" width={32} height={32} className="block size-8 shrink-0 object-cover" />
+    </span>
+    {!compact && <span className="truncate text-lg font-extrabold tracking-tight text-foreground">Tech<span className="text-accent-text">Verse</span></span>}
   </Link>
 }

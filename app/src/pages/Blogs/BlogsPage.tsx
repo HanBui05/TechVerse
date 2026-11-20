@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
-import { ArrowDownUp, BookOpen, FileStack, Heart, LayoutGrid, Newspaper, RefreshCw, Search, Sparkles, Tag, X } from 'lucide-react'
+import { ArrowDownUp, BookOpen, FileStack, Heart, LayoutGrid, RefreshCw, Search, Tag, X } from 'lucide-react'
 import { cn } from 'cn'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -74,48 +74,47 @@ export function BlogsPage({ language = 'vi', canSave = true }: { language?: Lang
   const from = location.pathname + location.search
 
   return <main className="tw-page mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-    <header className="flex items-start gap-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
-      <span className="hidden size-14 shrink-0 items-center justify-center rounded-2xl border border-tone-sky-border bg-tone-sky-bg text-tone-sky-fg shadow-sm sm:flex"><Newspaper className="size-7" aria-hidden /></span>
-      <div className="flex flex-col gap-2">
-        <Badge tone="sky" className="self-start font-semibold"><Sparkles aria-hidden />{t('kicker')}</Badge>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('title')}</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">{t('subtitle')}</p>
+    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
+      <div className="flex flex-col gap-1">
+        <span className="text-[11px] font-semibold tracking-[.05em] text-muted-foreground uppercase">{t('kicker')}</span>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t('title')}</h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
-      {canSave && <Button asChild variant="outline" className={cn('ml-auto shrink-0', touch)}>
-        <Link to="/me/saved-articles"><Heart className="text-tone-rose-fg" aria-hidden />{t('savedTitle')}</Link>
+      {canSave && <Button asChild variant="outline" size="sm" className={cn('ml-auto shrink-0', touch)}>
+        <Link to="/me/saved-articles"><Heart className="text-muted-foreground" aria-hidden />{t('savedTitle')}</Link>
       </Button>}
     </header>
 
-    <Card className="gap-3 rounded-2xl p-3 shadow-sm sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
+    <Card className="gap-3.5 rounded-xl p-4">
       <h2 className="sr-only">{t('filters')}</h2>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2.5">
         <form role="search" onSubmit={submit} className="relative min-w-56 flex-1">
           <Label htmlFor="reader-search" className="sr-only">{t('search')}</Label>
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-accent-text" aria-hidden />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input id="reader-search" type="search" enterKeyHint="search" maxLength={255} value={keyword} onChange={e => setKeyword(e.target.value)} placeholder={t('searchPlaceholder')}
-            className={cn('h-9 rounded-xl bg-muted/50 pr-10 pl-9 [&::-webkit-search-cancel-button]:hidden', touch)} />
+            className={cn('h-9 rounded-lg bg-background/60 pr-10 pl-10 [&::-webkit-search-cancel-button]:hidden', touch)} />
           {keyword && <button type="button" aria-label={t('clearSearch')} onClick={() => { setKeyword(''); commit({ keyword: '' }) }}
-            className={cn('absolute top-1/2 right-1 inline-flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground', touch)}><X className="size-4" aria-hidden /></button>}
+            className={cn('absolute top-1/2 right-1.5 inline-flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground', touch)}><X className="size-4" aria-hidden /></button>}
         </form>
         <div className="relative max-sm:flex-1 [&>[data-slot=native-select-wrapper]]:w-full">
           <Label htmlFor="reader-tag" className="sr-only">{t('tag')}</Label>
-          <Tag className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-tone-purple-fg" aria-hidden />
-          <NativeSelect id="reader-tag" className={cn('h-9 w-full rounded-xl pl-9 sm:w-44', touch)} value={filter.tagId} onChange={e => commit({ tagId: e.target.value })}>
+          <Tag className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <NativeSelect id="reader-tag" className={cn('h-9 w-full rounded-lg bg-background/60 pl-9 sm:w-44', touch)} value={filter.tagId} onChange={e => commit({ tagId: e.target.value })}>
             <NativeSelectOption value="">{t('allTags')}</NativeSelectOption>
             {options?.tags.map(tag => <NativeSelectOption key={tag.id} value={tag.id}>{tag.name}</NativeSelectOption>)}
           </NativeSelect>
         </div>
         <div className="relative max-sm:flex-1 [&>[data-slot=native-select-wrapper]]:w-full">
           <Label htmlFor="reader-sort" className="sr-only">{t('sort')}</Label>
-          <ArrowDownUp className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-tone-amber-fg" aria-hidden />
-          <NativeSelect id="reader-sort" className={cn('h-9 w-full rounded-xl pl-9 sm:w-36', touch)} value={filter.sort} onChange={e => commit({ sort: e.target.value as ReaderFilter['sort'] })}>
+          <ArrowDownUp className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <NativeSelect id="reader-sort" className={cn('h-9 w-full rounded-lg bg-background/60 pl-9 sm:w-38', touch)} value={filter.sort} onChange={e => commit({ sort: e.target.value as ReaderFilter['sort'] })}>
             <NativeSelectOption value="NEWEST">{t('newest')}</NativeSelectOption>
             <NativeSelectOption value="OLDEST">{t('oldest')}</NativeSelectOption>
           </NativeSelect>
         </div>
-        {data && <Badge tone="blue" className="h-9 rounded-xl px-3 text-sm font-semibold"><FileStack aria-hidden />{t('count', { n: data.totalElements })}</Badge>}
+        {data && <Badge tone="slate" className="h-9 rounded-lg px-3 text-xs font-medium"><FileStack aria-hidden />{t('count', { n: data.totalElements })}</Badge>}
       </div>
-      <div role="group" aria-label={t('topics')} className="-mx-1 flex gap-2 overflow-x-auto px-1 py-0.5 sm:flex-wrap sm:overflow-visible">
+      <div role="group" aria-label={t('topics')} className="-mx-1 flex gap-1.5 overflow-x-auto border-t border-border px-1 pt-3 pb-0.5 sm:flex-wrap sm:overflow-visible">
         {[{ id: '', name: t('allTopics') }, ...(options?.topics ?? [])].map(topic => {
           const selected = filter.topicId === topic.id
           const Icon = topic.id ? topicIcon(topic.name) : LayoutGrid

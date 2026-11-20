@@ -6,7 +6,7 @@ import { moderatorPublicationLabel, moderatorText, workflowLabel } from '../../d
 import { moderatorArticles } from '../../services/articleService'
 import type { PublicationStatus, WorkflowStatus } from '../../types/articles'
 import type { Language } from '../../types/preferences'
-import { TONE_TILE, fieldLabel } from '../Author/AuthorBlogsPage'
+import { fieldLabel } from '../Author/AuthorBlogsPage'
 
 export type StatFilter = { workflowStatus: WorkflowStatus | ''; publicationStatus: PublicationStatus | '' }
 // Two axes (wireframe 2b-1): queue counts by workflow, publication counts by what readers see.
@@ -40,17 +40,20 @@ export function useArticleStats(list: (filter: { page: number; size: number } & 
 export function ArticleStats({ stats, language, active, onSelect, label: name }: { stats: (number | null)[]; language: Language; active?: StatFilter; onSelect?: (filter: StatFilter) => void; label?: string }) {
   const t = moderatorText(language)
   const format = (n: number | null) => n === null ? '—' : n.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')
-  return <section aria-label={name ?? t('stats')} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-    {STATS.map(([filter, Icon, tone], i) => {
+  return <section aria-label={name ?? t('stats')} className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+    {STATS.map(([filter, Icon], i) => {
       const pressed = Boolean(active && active.workflowStatus === filter.workflowStatus && active.publicationStatus === filter.publicationStatus)
       const body = <>
-        <span className="flex min-w-0 flex-col gap-1"><span className={`${fieldLabel} ${pressed ? 'text-current' : ''}`}>{label(filter, language)}</span><span className="text-2xl font-bold tabular-nums">{format(stats[i])}</span></span>
-        <span aria-hidden className={`flex size-10 shrink-0 items-center justify-center rounded-xl border ${TONE_TILE[tone]}`}><Icon className="size-5" /></span>
+        <span className="flex min-w-0 flex-col gap-1.5">
+          <span className={fieldLabel}>{label(filter, language)}</span>
+          <span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">{format(stats[i])}</span>
+        </span>
+        <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
       </>
-      const frame = 'flex items-center justify-between gap-3 rounded-2xl border p-4 text-left shadow-sm'
+      const frame = 'flex items-start justify-between gap-3 rounded-xl border bg-card p-5 text-left text-card-foreground'
       return onSelect
-        ? <button key={i} type="button" aria-pressed={pressed} onClick={() => onSelect(filter)} className={`${frame} outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring ${touch} ${pressed ? TONE_TILE[tone] : 'border-border bg-card text-card-foreground hover:bg-muted/50'}`}>{body}</button>
-        : <div key={i} className={`${frame} border-border bg-card text-card-foreground`}>{body}</div>
+        ? <button key={i} type="button" aria-pressed={pressed} onClick={() => onSelect(filter)} className={`${frame} cursor-pointer outline-none transition-colors hover:bg-muted/40 focus-visible:ring-[3px] focus-visible:ring-ring ${touch} ${pressed ? 'border-foreground/40 bg-muted/30' : 'border-border'}`}>{body}</button>
+        : <div key={i} className={`${frame} border-border`}>{body}</div>
     })}
   </section>
 }

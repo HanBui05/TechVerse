@@ -5,21 +5,21 @@
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --radius: 0.625rem;
 
-  /* shadcn surfaces and text */
-  --background: #0f172a;
+  /* shadcn surfaces and text — Deep Obsidian Midnight palette for dark mode */
+  --background: #090d16;
   --foreground: #f1f5f9;
-  --card: #1e293b;
+  --card: #111827;
   --card-foreground: #f1f5f9;
-  --popover: #1e293b;
+  --popover: #151e30;
   --popover-foreground: #f1f5f9;
-  --secondary: #334155;
+  --secondary: #1e293b;
   --secondary-foreground: #f1f5f9;
-  --muted: #334155;
-  --muted-foreground: #a8b4c8;
-  --accent: #334155;
+  --muted: #192234;
+  --muted-foreground: #a1afc4;
+  --accent: #1e293b;
   --accent-foreground: #f1f5f9;
-  --border: #334155;
-  --input: #334155;
+  --border: #212c3f;
+  --input: #243046;
 
   /* Brand, focus and danger. --primary is a fill; use --accent-text for text, icons and links. */
   --primary: #0056d2;
@@ -29,13 +29,13 @@
   --destructive-foreground: #ffffff;
 
   /* shadcn Sidebar */
-  --sidebar: var(--background);
+  --sidebar: #0b101b;
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: var(--secondary);
   --sidebar-accent-foreground: var(--secondary-foreground);
-  --sidebar-border: var(--border);
+  --sidebar-border: #1b2436;
   --sidebar-ring: var(--ring);
 
   /* Status and accents */
@@ -108,6 +108,8 @@
   --border: #e5e7eb;
   --input: #e5e7eb;
   --ring: #0056d2;
+  --sidebar: #f9fafb;
+  --sidebar-border: #e5e7eb;
 
 
   --accent-text: #0056d2;

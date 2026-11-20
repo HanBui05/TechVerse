@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Percent, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -55,10 +54,10 @@ export function AdminCommissionPage({ language = 'vi' }: { language?: Language }
   const shown = text.trim() !== '' && bps === null ? t('rateInvalid') : fieldError
   const example = bps === null ? null : authorShare(EXAMPLE_PRICE, bps)
 
-  return <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-    <header className="flex flex-col gap-2">
-      <Badge tone="amber" className="self-start font-semibold"><Percent aria-hidden />{t('kicker')}</Badge>
-      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('commissionTitle')}</h1>
+  return <main className="tw-page mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+    <header className="flex flex-col gap-1 border-b border-border pb-5">
+      <span className={fieldLabel}>{t('kicker')}</span>
+      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t('commissionTitle')}</h1>
     </header>
     {notice && <p role="status" className="rounded-lg border border-border bg-tone-green-bg px-4 py-3 text-sm text-tone-green-fg">{notice}</p>}
     {error
