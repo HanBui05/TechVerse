@@ -2,9 +2,9 @@
 
 Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex chỉ ghi vào mục “Phản hồi”.
 
-**Mục tiêu:** Mọi tài khoản đã đăng nhập đặt câu hỏi theo chủ đề và trả lời bằng Markdown, hiện ngay không qua duyệt; người hỏi đánh dấu một câu trả lời là lời giải; khách chỉ đọc. Người dùng báo cáo bài vi phạm; Moderator xử lý hàng đợi báo cáo (ẩn nội dung hoặc bỏ qua kèm ghi chú) và ẩn/hiện trực tiếp bài bất kỳ.
+**Mục tiêu:** Mọi tài khoản đã đăng nhập đặt câu hỏi theo chủ đề và trả lời bằng Markdown, hiện ngay không qua duyệt; người hỏi đánh dấu một câu trả lời là lời giải; khách chỉ đọc. Người dùng báo cáo bài vi phạm; Moderator xử lý hàng đợi báo cáo (ẩn nội dung hoặc bỏ qua kèm ghi chú) và ẩn/hiện trực tiếp bài bất kỳ. Người đăng nhập bày tỏ cảm xúc (👍 ❤️ 😂 😡) trên bài hỏi và câu trả lời; mọi người xem được số đếm và ai đã react (Task 1c, người dùng chốt 2026-11-21).
 **Làn:** Đầy đủ · **Rủi ro:** thường. Review vòng 1 dùng `review`.
-**Thứ tự:** 1a → 1b (Backend) → cổng wireframe → 2a → 2b (Giao diện). Chỉ mở Giao diện sau khi toàn bộ Backend xong và đã review.
+**Thứ tự:** 1a → 1b → 1c (Backend) → cổng wireframe → 2a → 2b (Giao diện). Chỉ mở Giao diện sau khi toàn bộ Backend xong và đã review.
 **Nguồn quyết định:** câu F1–F11 trong [`roadmap.questions.md`](roadmap.questions.md) (người dùng trả lời 2026-11-14), tất cả chọn A: hỏi–đáp + báo cáo (bình luận dưới bài làm sau); đăng nhập mới đăng, khách đọc; không duyệt trước; gắn chủ đề + tìm từ khóa; người hỏi đánh dấu “đã giải quyết”; Markdown có khối code, chưa cho ảnh; sửa được, xóa bài đã có trả lời thì hiện “đã xóa”; Moderator có hàng đợi báo cáo và ẩn/hiện trực tiếp; Admin không thêm gì; không AI; Admin/Moderator được đăng và trả lời.
 
 ## Hiện trạng đã đối chiếu (2026-11-15)
@@ -17,7 +17,7 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 ## Đường dẫn thuộc module
 
-- `server/src/main/resources/db/migration/V<n>__forum_reports.sql` (tạo; `<n>` là số kế tiếp lúc code).
+- `server/src/main/resources/db/migration/V<n>__forum_reports.sql` (tạo; `<n>` là số kế tiếp lúc code) và migration react riêng của Task 1c.
 - `server/src/main/java/com/techverse/server/{controller,entity,enums,dto,repository,service}/**/*{Forum,Report}*.java` (tạo; mọi lớp mới mang `Forum` hoặc `Report` trong tên); `configuration/SecurityConfiguration.java`, `exception/ErrorCode.java`.
 - `server/src/test/java/com/techverse/server/{forum,report}/**` (tạo). Validator và bộ kiểm nội dung nằm trong các lớp mang tên `Forum`/`Report` ở những gói trên, không tạo gói mới. Test hiện có của module khác chỉ chạy lại khi bị ảnh hưởng, không sửa.
 - `plans/forum-reports.wireframe.md` (tạo ở cổng wireframe).
@@ -27,13 +27,13 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 ## Ngoài phạm vi
 
 - Bình luận dưới bài viết/khóa học; báo cáo bài viết, khóa học, bình luận, tài liệu (API báo cáo nhận `targetType` để mở rộng sau, hiện chỉ chấp nhận `FORUM_POST`).
-- Bình chọn lên/xuống, thẻ, ghim bài, khóa bài, cấm đăng theo thời hạn, theo dõi bài, thông báo (kể cả báo cho người đăng khi bài bị ẩn), nhắc tên, trả lời nhiều cấp.
+- Bình chọn lên/xuống (thay bằng react của Task 1c), loại react ngoài bốn loại của 1c, thẻ, ghim bài, khóa bài, cấm đăng theo thời hạn, theo dõi bài, thông báo (kể cả báo cho người đăng khi bài bị ẩn), nhắc tên, trả lời nhiều cấp.
 - Ảnh và tệp đính kèm; AI; lịch sử chỉnh sửa; thống kê báo cáo theo người dùng; số liệu dashboard.
 - Tìm kiếm toàn văn có chỉ mục (dùng so khớp chuỗi đơn giản).
 
 ## Ràng buộc chung
 
-- Được đổi API: Có. Được đổi DB: Có, chỉ bằng một migration mới; không sửa migration đã có. Giữ `ApiResponse`/`ErrorResponse`. Giữ nguyên hành vi hiện tại của các module khác: Có.
+- Được đổi API: Có. Được đổi DB: Có, chỉ bằng migration mới (1a/1b một migration, 1c một migration riêng); không sửa migration đã có. Giữ `ApiResponse`/`ErrorResponse`. Giữ nguyên hành vi hiện tại của các module khác: Có.
 - Vai trò: Guest đọc danh sách và chi tiết. Mọi tài khoản đã đăng nhập, đang hoạt động (kể cả ADMIN/MODERATOR) được hỏi, trả lời, báo cáo. Tài khoản bị khóa: mọi API ghi và API cần đăng nhập trả 403 `ACCESS_DENIED`; bài cũ của họ vẫn hiện. Chỉ MODERATOR dùng API kiểm duyệt (ADMIN không kèm MODERATOR bị từ chối).
 - Thiếu token → 401 `AUTH_ACCESS_TOKEN_REQUIRED`; token sai/hết hạn → 401 `AUTH_INVALID_ACCESS_TOKEN`.
 - Bài hiện ngay khi đăng (`VISIBLE`). Trạng thái: `VISIBLE` → người đăng xóa → `DELETED` (xóa mềm, không khôi phục); `VISIBLE` ⇄ `HIDDEN` do Moderator. Không xóa cứng.
@@ -151,9 +151,55 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 - [ ] `ModeratorReportIntegrationTest` (gộp theo luồng): (1) `HIDE_CONTENT` ẩn bài, đóng mọi báo cáo `OPEN` cùng bài, trang chi tiết 404 với người thường, rồi khôi phục hiện lại; (2) `DISMISS` giữ bài; ẩn trực tiếp lời giải → bài thành chưa giải quyết và báo cáo được đóng; (3) hai Moderator xử lý song song (một thành công, một `REPORT_ALREADY_HANDLED`); (4) ADMIN không kèm MODERATOR → 403.
 - [ ] Chạy các lớp trên + `ForumIntegrationTest`; full backend do CI.
 
+## Task 1c — React bài diễn đàn
+
+**Giai đoạn:** Backend · **Đổi giao diện:** Không
+
+### Phạm vi
+
+- Migration riêng (số kế tiếp): bảng `forum_post_reactions` (`id uuid` khóa chính, `user_id` → users `ON DELETE CASCADE`, `post_id` → forum_posts `ON DELETE CASCADE`, `type` CHECK `LIKE`/`LOVE`/`HAHA`/`ANGRY`, `created_at`, `updated_at`, UNIQUE `(user_id, post_id)`), index `(post_id, type, updated_at DESC, id DESC)`. Bảng mới nên không cần chặn dữ liệu cũ.
+- Mỗi người một react trên một bài (bài hỏi hoặc câu trả lời, kể cả bài của mình). `PUT /api/v1/forum/posts/{id}/reaction {type}`: chưa có thì tạo, khác loại thì đổi loại và cập nhật `updated_at`, cùng loại thì không đổi gì (giữ `updated_at`, không lỗi). `DELETE /api/v1/forum/posts/{id}/reaction`: bỏ react; chưa có react vẫn 200. Cả hai trả `{counts, mine}` mới nhất của bài. “Bấm lại cùng loại thì bỏ” là việc của giao diện (gọi `DELETE`), API giữ idempotent.
+- `GET /api/v1/forum/posts/{id}/reactions` (công khai): `PageResponse` như các danh sách khác; lọc `type` (thiếu hoặc rỗng = mọi loại); sắp `updated_at DESC, id DESC`; mặc định `page = 0`, `size = 20`; mỗi mục: người dùng (id, tên, ảnh), `type`, `reactedAt` (= `updated_at`, thời điểm chọn loại hiện tại).
+- API 1a bổ sung: mỗi bài trong `GET /questions/{id}` (bài hỏi và từng câu trả lời) có `reactions {counts: {LIKE, LOVE, HAHA, ANGRY}, mine}` (`counts` luôn đủ 4 khóa, loại chưa có = 0; `mine` là loại của người xem, luôn có mặt và bằng `null` khi chưa react, với Guest và tài khoản bị khóa) và `viewer.canReact`; mỗi mục của `GET /questions` có `reactionCount` (tổng). Đếm bằng hai truy vấn gộp cho cả trang: tổng theo `(post_id, type)` với `post_id IN (...)` và react của người xem với cùng tập id; không truy vấn từng bài. Bài hỏi `DELETED` còn hiển thị: vắng trường `reactions` (`viewer.canReact = false`).
+- Ai được react / xem: theo luật “ai thấy gì” của module. Bài hỏi `DELETED` còn hiển thị: không react được, không xem danh sách; câu trả lời của nó vẫn react được. Bài bị ẩn/xóa: react giữ nguyên trong DB, không lộ ra; hiện lại thì số đếm còn nguyên. React của tài khoản sau đó bị khóa vẫn được đếm và vẫn hiện trong danh sách.
+
+### Quy tắc nghiệp vụ và mã lỗi
+
+Thứ tự xét lỗi và lỗi định dạng chung theo “Ràng buộc chung”; JSON hỏng hoặc thiếu body trả 400 `MALFORMED_REQUEST` như 1a (log “Lệch khác spec”).
+
+| Trường / tình huống | Ràng buộc | HTTP / mã lỗi | Copy hiển thị |
+|---|---|---|---|
+| `type` trong body | Bắt buộc; nhận dạng chuỗi theo mẫu `LIKE\|LOVE\|HAHA\|ANGRY` (không deserialize thẳng thành enum) để thiếu, `null`, sai giá trị đều là lỗi trường | 400 `VALIDATION_ERROR` | — |
+| `type` lọc danh sách | Thiếu hoặc rỗng = mọi loại; giá trị khác 4 loại → 400 | 400 `VALIDATION_ERROR` | — |
+| `id` đường dẫn, `page`, `size` | UUID; `page ≥ 0`; `size` 1–50 | 400 `VALIDATION_ERROR` | — |
+| React/bỏ react khi chưa đăng nhập; token sai ở mọi route 1c (kể cả GET công khai) | — | 401 `AUTH_ACCESS_TOKEN_REQUIRED` / `AUTH_INVALID_ACCESS_TOKEN` | Đăng nhập để bày tỏ cảm xúc. |
+| Tài khoản bị khóa | React/bỏ react (GET đọc như Guest) | 403 `ACCESS_DENIED` | Bạn không có quyền. |
+| Bài không tồn tại; bài `HIDDEN`; câu trả lời `DELETED`; câu trả lời của bài hỏi `HIDDEN`; bài hỏi `DELETED` không còn câu trả lời `VISIBLE` (react, bỏ react, xem danh sách) | Không lộ lý do | 404 `FORUM_POST_NOT_FOUND` | Không tìm thấy bài viết. |
+| React/bỏ react/xem danh sách trên bài hỏi `DELETED` còn câu trả lời `VISIBLE` | — | 409 `FORUM_QUESTION_CLOSED` | Bài hỏi đã bị xóa. (giao diện react dùng câu này thay câu của bảng 1a) |
+| Hai request của cùng người song song (đổi loại liên tục, bấm hai lần, PUT tranh chấp DELETE) | Khóa dòng người dùng trước; kết quả cuối là request lấy khóa sau; luôn đúng một dòng hoặc không dòng nào; ghi bằng upsert nên không 500 | 200 | — |
+| Bài bị ẩn/xóa, hoặc câu trả lời cuối của bài hỏi đã xóa bị ẩn/xóa, đúng lúc đang react | Khóa theo thứ tự chung (người → bài hỏi → câu trả lời), kiểm lại trạng thái sau khi khóa | 404 / 409 như hai dòng trên | — |
+| React quá nhanh | Mỗi người tối đa 30 lần react/bỏ react mỗi phút | 429 `FORUM_RATE_LIMITED` | Bạn thao tác quá nhanh, hãy thử lại sau. |
+| Redis lỗi khi kiểm nhịp | Không cho qua | 503 `FORUM_STORAGE_UNAVAILABLE` | Dịch vụ đang gián đoạn. Hãy thử lại. |
+
+### Kế hoạch thực thi
+
+- **File cần đụng:** migration mới; entity `ForumPostReaction`, enum `ForumReactionType`, `ForumPostReactionRepository`; `ForumService` (react, bỏ react, danh sách, đếm gộp truyền vào các hàm dựng DTO tĩnh, `canReact`, `RateKind.REACT`); `ForumController`; `ForumRequest`/`ForumResponse`; `SecurityConfiguration` không cần đổi (GET đã `permitAll`, ghi đã authenticated).
+- **Phần dùng lại:** `lockActiveUser`; khóa bài hỏi/câu trả lời và luật đọc của 1a (`questionReadable`, `answerReadable`); `rateLimit`; `ArticleAuthorResponse`; `PageResponse`; mẫu upsert `ON CONFLICT` của `InterviewQuestionMarkRepository.upsert`; mẫu giữ khóa bằng kết nối riêng trong `ForumIntegrationTest`.
+- **Bẫy đã biết:** upsert `ON CONFLICT (user_id, post_id) DO UPDATE ... WHERE type <> EXCLUDED.type` để cùng loại không đổi `updated_at`; `ForumResponse.Question` đang `NON_NULL` — `reactions` vắng ở bài hỏi đã xóa nhưng record `reactions` không được bỏ `mine: null`; bài nhiều người react cùng lúc xếp hàng trên khóa bài hỏi — chấp nhận ở quy mô hiện tại; thêm dữ liệu gộp không được đổi hành vi hay shape cũ của 1a/1b (chỉ thêm trường).
+
+### Xong khi
+
+- [ ] `ForumReportsMigrationTest`: bảng mới, CHECK `type`, UNIQUE `(user_id, post_id)`, xóa người dùng/bài thì react mất theo, index.
+- [ ] `ForumPostRulesTest` (unit): `canReact` theo trạng thái bài × bài hỏi cha × Guest/khóa; nhịp `REACT` (30 qua, 31 → 429, Redis lỗi → 503) trong phần kiểm nhịp sẵn có.
+- [ ] `ForumControllerTest`: `type` thiếu/`null`/sai, JSON hỏng, ID sai, `type`/`page`/`size` lọc sai và `type` rỗng hợp lệ, 401 khi ghi, mapping mã lỗi.
+- [ ] `ForumIntegrationTest` luồng (1): react → PUT lặp cùng loại (giữ `reactedAt`) → đổi loại → bỏ → bỏ lần hai vẫn 200; bài chưa có react trả `counts` đủ 4 khóa bằng 0 và JSON có `mine: null`; `mine` ở PUT/DELETE, chi tiết và `reactionCount` ở danh sách; Guest và tài khoản bị khóa đọc thấy số đếm với `mine: null`, `canReact = false`; Guest 401 khi ghi, token sai 401 ở GET; danh sách người react lọc loại + phân trang ổn định.
+- [ ] `ForumIntegrationTest` luồng (2): bài ẩn, câu trả lời đã xóa, câu trả lời của bài hỏi ẩn → 404; bài hỏi đã xóa còn câu trả lời → 409, JSON vắng `reactions`, câu trả lời của nó react được; xóa nốt câu trả lời đó → react/bỏ react/danh sách trên bài hỏi → 404; tài khoản bị khóa → 403 khi ghi, react cũ vẫn đếm/liệt kê; dữ liệu đặt lại `VISIBLE` bằng SQL thì số đếm còn nguyên.
+- [ ] `ForumIntegrationTest` luồng (3): cùng người PUT và DELETE song song → đúng 0 hoặc 1 dòng, không 500; giữ khóa bài hỏi ở kết nối riêng rồi ẩn nó trước khi nhả → PUT đang chờ nhận 404; tương tự với bài hỏi đã xóa có câu trả lời cuối bị ẩn trong lúc giữ khóa → 404.
+- [ ] Chạy các lớp trên + lớp test của 1b bị ảnh hưởng nếu 1c sửa phần dùng chung với 1b (xác định khi bắt đầu 1c); full backend do CI.
+
 ## Cổng wireframe
 
-Sau khi 1a–1b xong và đã review: Claude viết `plans/forum-reports.wireframe.md` (bố cục chữ cho các màn của 2a, 2b ở desktop và mobile 390px, trạng thái tải/rỗng/lỗi). Người dùng duyệt rồi mới code giao diện.
+Sau khi 1a–1c xong và đã review: Claude viết `plans/forum-reports.wireframe.md` (bố cục chữ cho các màn của 2a, 2b — gồm thanh react và hộp thoại “ai đã react” — ở desktop và mobile 390px, trạng thái tải/rỗng/lỗi). Người dùng duyệt rồi mới code giao diện.
 
 ## Task 2a — Giao diện diễn đàn
 
@@ -164,6 +210,7 @@ Sau khi 1a–1b xong và đã review: Claude viết `plans/forum-reports.wirefra
 - `/forum` (công khai): danh sách bài hỏi; lọc chủ đề, từ khóa, “Chưa giải quyết” / “Đã giải quyết”, “Bài của tôi” (đã đăng nhập); bộ lọc nằm trên URL; phân trang; nút “Đặt câu hỏi”.
 - `/forum/new`, `/forum/:id/edit` (đăng nhập): tiêu đề, chủ đề, nội dung Markdown có xem trước; cảnh báo khi rời trang chưa lưu.
 - `/forum/:id` (công khai): bài hỏi, danh sách câu trả lời (lời giải đứng đầu, có nhãn), ô trả lời Markdown có xem trước; theo `viewer.*`: Sửa/Xóa bài của mình, “Chọn làm lời giải”/“Bỏ chọn” cho người hỏi, “Báo cáo” (hộp thoại chọn lý do + mô tả). Sửa câu trả lời ngay tại chỗ. Guest thấy lời mời đăng nhập (giữ `returnTo`) thay cho ô trả lời. Bài hỏi đã xóa nhưng còn câu trả lời hiện trạng thái “đã xóa” và không có ô trả lời.
+- React (Task 1c): mỗi bài hỏi và câu trả lời có nút react chọn một trong 4 loại (bấm lại loại đang chọn thì bỏ, chọn loại khác thì đổi) và cụm số đếm; bấm cụm số đếm mở hộp thoại “ai đã react” có tab Tất cả + từng loại kèm số, danh sách ảnh/tên/biểu tượng, “Xem thêm” (mobile: tấm trượt từ dưới). Guest bấm react thấy lời mời đăng nhập. Bố cục chốt ở wireframe.
 - Tài khoản MODERATOR thấy thêm nút “Ẩn” trên mỗi bài (hộp thoại nhập lý do, gọi API ẩn trực tiếp của 1b).
 - Các route diễn đàn **không** bọc `ReaderRoute` (Admin/Moderator dùng được); thêm mục “Hỏi đáp” vào sidebar người dùng, `ModeratorSidebar` và `AdminSidebar`.
 
@@ -189,10 +236,11 @@ Sau khi 1a–1b xong và đã review: Claude viết `plans/forum-reports.wirefra
 | Báo cáo | Báo cáo / Lý do / Mô tả thêm / Gửi báo cáo / Đã gửi báo cáo. Cảm ơn bạn. | Report / Reason / Details / Submit report / Report submitted. Thank you. |
 | Lý do | Spam / Nội dung không phù hợp / Vi phạm bản quyền / Sai lệch, gây hiểu lầm / Khác | Spam / Inappropriate / Copyright / Misleading / Other |
 | Moderator | Ẩn / Lý do ẩn / Đã ẩn bài. | Hide / Reason for hiding / Post hidden. |
+| React | Thích / Yêu thích / Haha / Phẫn nộ / Bày tỏ cảm xúc / Người đã bày tỏ cảm xúc / Tất cả / Xem thêm / Chưa có ai bày tỏ cảm xúc. | Like / Love / Haha / Angry / React / Reactions / All / Show more / No reactions yet. |
 | Rỗng | Chưa có câu hỏi phù hợp. / Chưa có câu trả lời. Hãy là người đầu tiên. | No matching questions. / No answers yet. Be the first. |
 | Chưa lưu | Bạn có thay đổi chưa lưu. Rời trang? | You have unsaved changes. Leave? |
 
-Câu hiển thị cho từng mã lỗi lấy từ cột “Copy hiển thị” của bảng 1a/1b; bản tiếng Anh dịch tương ứng trong `forumI18n`.
+Câu hiển thị cho từng mã lỗi lấy từ cột “Copy hiển thị” của bảng 1a/1b/1c (thao tác react dùng câu của bảng 1c khi trùng mã); bản tiếng Anh dịch tương ứng trong `forumI18n`.
 
 ### UI
 
@@ -200,8 +248,8 @@ Câu hiển thị cho từng mã lỗi lấy từ cột “Copy hiển thị” 
 
 ### Xong khi
 
-- [ ] Test unit: validation theo bảng 1a/1b (biên như test backend), mapping mọi mã lỗi 1a/1b liên quan vi/en (gồm câu dự phòng), nút hiển thị theo từng tổ hợp `viewer.*`.
-- [ ] `Forum/*.test.tsx` (luồng chính, khoảng 5 ca mỗi màn): danh sách + lọc trên URL; Guest thấy lời mời đăng nhập; đặt câu hỏi; trả lời và sửa tại chỗ; xóa có xác nhận; chọn/bỏ lời giải; báo cáo lý do “Khác”; MODERATOR ẩn bài; bài hỏi đã xóa.
+- [ ] Test unit: validation theo bảng 1a/1b (biên như test backend), mapping mọi mã lỗi 1a/1b/1c liên quan vi/en (gồm câu `FORUM_QUESTION_CLOSED` riêng của react) (gồm câu dự phòng), nút hiển thị theo từng tổ hợp `viewer.*`.
+- [ ] `Forum/*.test.tsx` (luồng chính, khoảng 5 ca mỗi màn): danh sách + lọc trên URL; Guest thấy lời mời đăng nhập; đặt câu hỏi; trả lời và sửa tại chỗ; xóa có xác nhận; chọn/bỏ lời giải; báo cáo lý do “Khác”; MODERATOR ẩn bài; bài hỏi đã xóa; react/đổi/bỏ react và hộp thoại “ai đã react”.
 - [ ] Test `Sidebar`, `ModeratorSidebar`, `AdminSidebar`, `App` bị sửa (gồm ADMIN/MODERATOR vào được `/forum`) + `npm run build` trong `app/` (không chạy full `npm test`).
 - [ ] Kiểm bằng mắt: dark/light × desktop/mobile, một lượt; ghi log.
 
@@ -257,3 +305,4 @@ Câu hiển thị cho từng mã lỗi lấy từ cột “Copy hiển thị” 
 - Bảy câu hỏi mở giữ mặc định: báo cáo chỉ áp cho bài diễn đàn; bài bị ẩn thì người đăng không thấy và không được báo; xóa mềm, bài hỏi đã xóa không nhận trả lời mới; các giới hạn độ dài, 200 câu trả lời và nhịp đăng như bảng; người hỏi được chọn câu trả lời của mình, đổi/bỏ chọn tự do; không tự báo cáo, một người một lần, “Khác” phải có mô tả; `/forum` “Hỏi đáp”, `/moderator/reports` “Báo cáo vi phạm”.
 - Hai đề xuất ngoài spec (thông báo khi bài bị ẩn; báo cáo bài viết/khóa học) để sau hạn, ghi ở “Câu hỏi mở” của `PLAN.md`.
 - Phần Claude sửa thân spec sau vòng 1 chưa qua Codex soát vòng 2.
+- **2026-11-21 — thêm Task 1c (react):** người dùng chốt bộ 4 loại, áp cho cả bài hỏi lẫn câu trả lời, có danh sách “ai đã react” (giao diện chốt ở wireframe). Người dùng chốt Task 1c và các dòng sửa kèm ngày 2026-11-21 sau hai vòng Codex phản biện (lịch sử trong `forum-reports.review.md`).
