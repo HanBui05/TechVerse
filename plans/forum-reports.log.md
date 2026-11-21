@@ -35,6 +35,9 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`forum-reports.md`
 - Task 1c — PUT/DELETE react cũng tính nhịp với lần không đổi gì (PUT cùng loại, DELETE khi chưa có). `PostViewer`/`QuestionViewer` thêm `canReact` cuối record; `Summary` thêm `reactionCount`; `Answer`/`Question` thêm `reactions` (chỉ thêm trường).
 
 ## Nhật ký phiên
+### 2026-11-22 — Đồng bộ spec cuối module
+- Codex đồng bộ `forum-reports.md` theo log (tick "Xong khi" đã đạt, đưa lệch/quyết định vào thân spec, thay cổng wireframe bằng mục "Giao frontend"). Claude kiểm diff: đúng.
+- Bằng chứng cho 2 ô Codex để [ ]: `Sidebar.test.tsx` kiểm link `AdminSidebar`/`ModeratorSidebar` (gồm "Hỏi đáp", "Báo cáo vi phạm"); `ForumPages.test.tsx` render `App` cho ADMIN/MODERATOR vào `/forum`. Lần đồng bộ sau có thể tick.
 ### 2026-11-21 — Sửa review vòng 1 (Task 2a, 2b)
 - TDD (7 ca đỏ → xanh): (1) bỏ kiểm regex ảnh/HTML/link ở client (`isForumMarkdownInvalid` chỉ kiểm NUL), hiển thị `FORUM_CONTENT_INVALID` từ server ngay dưới ô đang soạn và giữ nguyên nội dung; (2) chặn `/forum/:id/edit` khi `viewer.canEdit === false` kèm nút quay lại bài; (3) tải lại chi tiết khi react hoặc thao tác ghi gặp 404/409 trạng thái nhưng vẫn giữ câu lỗi; (4) đóng hộp thoại, hiện thông báo và tải lại danh sách khi gặp `FORUM_STATE_INVALID` ở Moderator; (5) tự lùi về trang cuối hợp lệ khi xử lý mục cuối ở `page > 0`; (6) bỏ qua response về muộn của tab/lọc cũ bằng `latestRequest`; (7) hiện câu lỗi + nút `Thử lại` và khóa nút đăng khi `GET /forum/options` lỗi.
 - File sửa: `app/src/services/forumService.ts` (+ `.test.ts`), `app/src/data/forumI18n.ts`, `app/src/pages/Forum/{ForumQuestionEditorPage,ForumQuestionDetailPage}.tsx` (+ `ForumPages.test.tsx`), `app/src/pages/Moderator/Reports/ModeratorReportsPage.tsx` (+ `.test.tsx`).
