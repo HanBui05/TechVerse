@@ -74,5 +74,23 @@ class ForumReportsMigrationTest {
                 .containsExactlyInAnyOrder("idx_forum_posts_topic_created", "idx_forum_posts_user_created", "idx_reports_target");
         assertThat(jdbc.queryForObject("SELECT indexdef FROM pg_indexes WHERE indexname='idx_forum_posts_topic_created'", String.class))
                 .contains("WHERE (parent_id IS NULL)");
+
+        // Reactions: one per user and post, four types, gone with the user or the post.
+        UUID fan = jdbc.queryForObject("INSERT INTO users(full_name, email) VALUES ('F','f@example.com') RETURNING id", UUID.class);
+        UUID a2 = jdbc.queryForObject("INSERT INTO forum_posts(user_id, parent_id, content) VALUES (?,?,'Answer 2') RETURNING id", UUID.class, user, q);
+        jdbc.update("INSERT INTO forum_post_reactions(user_id, post_id, type) VALUES (?,?,'LIKE')", user, q);
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO forum_post_reactions(user_id, post_id, type) VALUES (?,?,'HAHA')", user, q))
+                .hasMessageContaining("uq_forum_post_reactions_user_post");
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO forum_post_reactions(user_id, post_id, type) VALUES (?,?,'WOW')", fan, q))
+                .hasMessageContaining("ck_forum_post_reactions_type");
+        jdbc.update("INSERT INTO forum_post_reactions(user_id, post_id, type) VALUES (?,?,'HAHA')", fan, a2);
+        jdbc.update("INSERT INTO forum_post_reactions(user_id, post_id, type) VALUES (?,?,'LOVE')", fan, q);
+        jdbc.update("INSERT INTO forum_post_reactions(user_id, post_id, type) VALUES (?,?,'ANGRY')", user, a2);
+        jdbc.update("DELETE FROM forum_posts WHERE id=?", a2);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM forum_post_reactions WHERE post_id=?", Integer.class, a2)).isZero();
+        jdbc.update("DELETE FROM users WHERE id=?", fan);
+        assertThat(jdbc.queryForList("SELECT user_id FROM forum_post_reactions", UUID.class)).containsExactly(user);
+        assertThat(jdbc.queryForObject("SELECT indexdef FROM pg_indexes WHERE indexname='idx_forum_post_reactions_post_type'", String.class))
+                .contains("(post_id, type, updated_at DESC, id DESC)");
     }
 }

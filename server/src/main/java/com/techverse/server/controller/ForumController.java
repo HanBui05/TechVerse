@@ -97,6 +97,26 @@ public class ForumController {
         return ok("Forum answer deleted", null);
     }
 
+    @PutMapping("/posts/{id}/reaction")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Set your reaction on a question or answer; the same type again changes nothing")
+    public ApiResponse<Reactions> react(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody ForumRequest.React request) {
+        return ok("Reaction saved", service.react(actor(jwt), id, request.reactionType()));
+    }
+
+    @DeleteMapping("/posts/{id}/reaction")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Remove your reaction; succeeds when there is none")
+    public ApiResponse<Reactions> unreact(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return ok("Reaction removed", service.unreact(actor(jwt), id));
+    }
+
+    @GetMapping("/posts/{id}/reactions")
+    @Operation(summary = "Who reacted, latest first; type filters")
+    public ApiResponse<PageResponse<Reactor>> reactions(@PathVariable UUID id, @Valid @ParameterObject @ModelAttribute ForumRequest.ReactionFilter filter) {
+        return ok("Reactions retrieved", service.reactions(id, filter.reactionType(), filter.getPage(), filter.getSize()));
+    }
+
     private static UUID actor(Jwt jwt) {
         return jwt == null ? null : UUID.fromString(jwt.getSubject());
     }

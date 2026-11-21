@@ -103,14 +103,14 @@ class ForumPostRulesTest {
     @Test
     void questionViewerFlags() {
         var q = question(VISIBLE);
-        assertThat(ForumService.questionViewer(q, null, false)).isEqualTo(new QuestionViewer(false, false, false, false, false));
-        assertThat(ForumService.questionViewer(q, ownerId, false)).isEqualTo(new QuestionViewer(true, true, false, true, true));
-        assertThat(ForumService.questionViewer(q, otherId, false)).isEqualTo(new QuestionViewer(false, false, true, false, true));
-        assertThat(ForumService.questionViewer(q, otherId, true)).isEqualTo(new QuestionViewer(false, false, false, false, true));
+        assertThat(ForumService.questionViewer(q, null, false)).isEqualTo(new QuestionViewer(false, false, false, false, false, false));
+        assertThat(ForumService.questionViewer(q, ownerId, false)).isEqualTo(new QuestionViewer(true, true, false, true, true, true));
+        assertThat(ForumService.questionViewer(q, otherId, false)).isEqualTo(new QuestionViewer(false, false, true, false, true, true));
+        assertThat(ForumService.questionViewer(q, otherId, true)).isEqualTo(new QuestionViewer(false, false, false, false, true, true));
         // Deleted but still shown: nothing left to do on the question itself.
         var deleted = question(DELETED);
-        assertThat(ForumService.questionViewer(deleted, ownerId, false)).isEqualTo(new QuestionViewer(false, false, false, false, false));
-        assertThat(ForumService.questionViewer(deleted, otherId, false)).isEqualTo(new QuestionViewer(false, false, false, false, false));
+        assertThat(ForumService.questionViewer(deleted, ownerId, false)).isEqualTo(new QuestionViewer(false, false, false, false, false, false));
+        assertThat(ForumService.questionViewer(deleted, otherId, false)).isEqualTo(new QuestionViewer(false, false, false, false, false, false));
     }
 
     @Test
@@ -118,19 +118,34 @@ class ForumPostRulesTest {
         var q = question(VISIBLE);
         var mine = answer(q, owner, VISIBLE);
         var theirs = answer(q, other, VISIBLE);
-        assertThat(ForumService.answerViewer(theirs, null, false)).isEqualTo(new PostViewer(false, false, false));
-        assertThat(ForumService.answerViewer(mine, ownerId, false)).isEqualTo(new PostViewer(true, true, false));
-        assertThat(ForumService.answerViewer(theirs, ownerId, false)).isEqualTo(new PostViewer(false, false, true));
-        assertThat(ForumService.answerViewer(theirs, ownerId, true)).isEqualTo(new PostViewer(false, false, false));
+        assertThat(ForumService.answerViewer(theirs, null, false)).isEqualTo(new PostViewer(false, false, false, false));
+        assertThat(ForumService.answerViewer(mine, ownerId, false)).isEqualTo(new PostViewer(true, true, false, true));
+        assertThat(ForumService.answerViewer(theirs, ownerId, false)).isEqualTo(new PostViewer(false, false, true, true));
+        assertThat(ForumService.answerViewer(theirs, ownerId, true)).isEqualTo(new PostViewer(false, false, false, true));
         // Answers under a deleted question stay editable, deletable and reportable.
         var underDeleted = answer(question(DELETED), other, VISIBLE);
-        assertThat(ForumService.answerViewer(underDeleted, otherId, false)).isEqualTo(new PostViewer(true, true, false));
-        assertThat(ForumService.answerViewer(underDeleted, ownerId, false)).isEqualTo(new PostViewer(false, false, true));
+        assertThat(ForumService.answerViewer(underDeleted, otherId, false)).isEqualTo(new PostViewer(true, true, false, true));
+        assertThat(ForumService.answerViewer(underDeleted, ownerId, false)).isEqualTo(new PostViewer(false, false, true, true));
+    }
+
+    @Test
+    void canReactFollowsWhatReadersSeeAndNeedsAnActiveViewer() {
+        // Readable posts only (callers 404 the rest); a deleted question still shown takes no reaction, its answers do.
+        for (var qs : new ForumPostStatus[] {VISIBLE, DELETED}) {
+            var q = question(qs);
+            assertThat(ForumService.questionViewer(q, otherId, false).canReact()).as("question %s", qs).isEqualTo(qs == VISIBLE);
+            assertThat(ForumService.questionViewer(q, ownerId, false).canReact()).as("own question %s", qs).isEqualTo(qs == VISIBLE);
+            assertThat(ForumService.questionViewer(q, null, false).canReact()).isFalse();
+            var a = answer(q, other, VISIBLE);
+            assertThat(ForumService.answerViewer(a, ownerId, true).canReact()).as("answer under %s", qs).isTrue();
+            assertThat(ForumService.answerViewer(a, otherId, false).canReact()).as("own answer under %s", qs).isTrue();
+            assertThat(ForumService.answerViewer(a, null, false).canReact()).isFalse();
+        }
     }
 
     // ------------------------------------------------------------------ content
 
-    final ForumService content = new ForumService(null, new ArticleContentService(), null, null, null, null, null);
+    final ForumService content = new ForumService(null, new ArticleContentService(), null, null, null, null, null, null);
 
     @Test
     void plainMarkdownPasses() {
@@ -161,7 +176,7 @@ class ForumPostRulesTest {
         var stub = when(redis.execute(any(RedisScript.class), anyList(), any(Object[].class)));
         if (reply instanceof RuntimeException e) stub.thenThrow(e);
         else stub.thenReturn(reply);
-        return new ForumService(null, null, null, null, null, null, redis);
+        return new ForumService(null, null, null, null, null, null, null, redis);
     }
 
     @Test
@@ -169,6 +184,7 @@ class ForumPostRulesTest {
         assertThatCode(() -> limiter(3L).rateLimit(ownerId, RateKind.QUESTION)).doesNotThrowAnyException();
         assertThatCode(() -> limiter(10L).rateLimit(ownerId, RateKind.ANSWER)).doesNotThrowAnyException();
         assertThatCode(() -> limiter(10L).rateLimit(ownerId, RateKind.REPORT)).doesNotThrowAnyException();
+        assertThatCode(() -> limiter(30L).rateLimit(ownerId, RateKind.REACT)).doesNotThrowAnyException();
     }
 
     @Test
@@ -176,6 +192,8 @@ class ForumPostRulesTest {
         assertCode(() -> limiter(4L).rateLimit(ownerId, RateKind.QUESTION), ErrorCode.FORUM_RATE_LIMITED);
         assertCode(() -> limiter(11L).rateLimit(ownerId, RateKind.ANSWER), ErrorCode.FORUM_RATE_LIMITED);
         assertCode(() -> limiter(11L).rateLimit(ownerId, RateKind.REPORT), ErrorCode.FORUM_RATE_LIMITED);
+        assertCode(() -> limiter(31L).rateLimit(ownerId, RateKind.REACT), ErrorCode.FORUM_RATE_LIMITED);
+        assertCode(() -> limiter(new QueryTimeoutException("down")).rateLimit(ownerId, RateKind.REACT), ErrorCode.FORUM_STORAGE_UNAVAILABLE);
         assertCode(() -> limiter(null).rateLimit(ownerId, RateKind.QUESTION), ErrorCode.FORUM_STORAGE_UNAVAILABLE);
         assertCode(() -> limiter(new QueryTimeoutException("down")).rateLimit(ownerId, RateKind.ANSWER), ErrorCode.FORUM_STORAGE_UNAVAILABLE);
     }

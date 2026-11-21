@@ -1,6 +1,7 @@
 package com.techverse.server.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.techverse.server.enums.ForumReactionType;
 
 import jakarta.validation.constraints.*;
 
@@ -110,6 +111,34 @@ public final class ForumRequest {
             if (keyword == null || keyword.isBlank()) return true;
             int n = keyword.strip().length();
             return n >= 2 && n <= 100;
+        }
+    }
+
+    // Matched as a string so a missing, null or unknown type is a field error rather than a JSON error.
+    static final String REACTION_PATTERN = "LIKE|LOVE|HAHA|ANGRY";
+
+    public record React(@NotNull @Pattern(regexp = REACTION_PATTERN) String type) {
+        public ForumReactionType reactionType() {
+            return ForumReactionType.valueOf(type);
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class ReactionFilter {
+        /** Missing or blank means every type. */
+        @Pattern(regexp = "(" + REACTION_PATTERN + ")?")
+        private String type;
+
+        @Min(0)
+        private int page = 0;
+
+        @Min(1)
+        @Max(50)
+        private int size = 20;
+
+        public ForumReactionType reactionType() {
+            return type == null || type.isEmpty() ? null : ForumReactionType.valueOf(type);
         }
     }
 

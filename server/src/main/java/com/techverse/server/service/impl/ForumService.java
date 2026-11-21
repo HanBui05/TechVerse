@@ -6,6 +6,7 @@ import com.techverse.server.dto.request.ForumRequest;
 import com.techverse.server.dto.response.*;
 import com.techverse.server.dto.response.ForumResponse.*;
 import com.techverse.server.entity.*;
+import com.techverse.server.enums.ForumReactionType;
 import com.techverse.server.exception.*;
 import com.techverse.server.repository.*;
 import com.techverse.server.repository.specification.TopicSpecification;
@@ -45,6 +46,7 @@ public class ForumService {
     private final TopicRepository topics;
     private final UserRepository users;
     private final ReportRepository reports;
+    private final ForumPostReactionRepository reactions;
     private final StringRedisTemplate redis;
 
     // ------------------------------------------------------------------ reads
@@ -74,10 +76,15 @@ public class ForumService {
         }
         var page = posts.findAll(spec, PageRequest.of(f.getPage(), f.getSize(), Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by("id"))));
         var counts = new HashMap<UUID, Long>();
-        if (page.hasContent())
-            for (Object[] row : posts.countAnswers(page.stream().map(ForumPost::getId).toList(), VISIBLE)) counts.put((UUID) row[0], (Long) row[1]);
+        var reacted = new HashMap<UUID, Long>();
+        if (page.hasContent()) {
+            var ids = page.stream().map(ForumPost::getId).toList();
+            for (Object[] row : posts.countAnswers(ids, VISIBLE)) counts.put((UUID) row[0], (Long) row[1]);
+            for (Object[] row : reactions.countTotal(ids)) reacted.put((UUID) row[0], (Long) row[1]);
+        }
         return PageResponse.from(page, page.stream().map(p -> new Summary(p.getId(), p.getTitle(), excerpt(p.getContent()), topic(p.getTopic()),
-                author(p.getUser()), counts.getOrDefault(p.getId(), 0L), solved(p), p.getCreatedAt(), p.getEditedAt())).toList());
+                author(p.getUser()), counts.getOrDefault(p.getId(), 0L), reacted.getOrDefault(p.getId(), 0L), solved(p), p.getCreatedAt(),
+                p.getEditedAt())).toList());
     }
 
     @Transactional(readOnly = true)
@@ -164,7 +171,7 @@ public class ForumService {
         if (posts.countAnswers(questionId, VISIBLE) >= MAX_ANSWERS) throw new CustomException(ErrorCode.FORUM_ANSWER_LIMIT);
         rateLimit(actor, RateKind.ANSWER);
         var a = posts.save(ForumPost.answer(user, q, r.content()));
-        return view(a, q, actor, false);
+        return view(a, q, actor, false, reactionsOf(List.of(a.getId()), actor).get(a.getId()));
     }
 
     @Transactional
@@ -175,7 +182,7 @@ public class ForumService {
         if (!a.isOwnedBy(actor)) throw new CustomException(ErrorCode.ACCESS_DENIED);
         a.edit(null, null, r.content());
         posts.flush();
-        return view(a, a.getParent(), actor, false);
+        return view(a, a.getParent(), actor, false, reactionsOf(List.of(id), actor).get(id));
     }
 
     @Transactional
@@ -185,6 +192,40 @@ public class ForumService {
         if (!a.isOwnedBy(actor)) throw new CustomException(ErrorCode.ACCESS_DENIED);
         a.delete();
         dismissReports(id);
+    }
+
+    // ------------------------------------------------------------------ reactions
+
+    /** Lock order: the actor (serializes one user's reactions), the question, then the answer; rate checked last. */
+    @Transactional
+    public Reactions react(UUID actor, UUID id, ForumReactionType type) {
+        access.lockActiveUser(actor);
+        lockReactable(id);
+        rateLimit(actor, RateKind.REACT);
+        reactions.upsert(actor, id, type.name());
+        return reactionsOf(List.of(id), actor).get(id);
+    }
+
+    @Transactional
+    public Reactions unreact(UUID actor, UUID id) {
+        access.lockActiveUser(actor);
+        lockReactable(id);
+        rateLimit(actor, RateKind.REACT);
+        reactions.remove(actor, id);
+        return reactionsOf(List.of(id), actor).get(id);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<Reactor> reactions(UUID id, ForumReactionType type, int page, int size) {
+        var p = posts.findById(id).orElseThrow(ForumService::notFound);
+        if (p.isQuestion()) {
+            boolean deleted = p.getStatus() == DELETED;
+            if (!questionReadable(p, deleted && posts.countAnswers(id, VISIBLE) > 0)) throw notFound();
+            if (deleted) throw new CustomException(ErrorCode.FORUM_QUESTION_CLOSED);
+        } else if (!answerReadable(p)) throw notFound();
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt", "id"));
+        var rows = type == null ? reactions.findByPostId(id, pageable) : reactions.findByPostIdAndType(id, type, pageable);
+        return PageResponse.from(rows, rows.stream().map(r -> new Reactor(author(r.getUser()), r.getType(), r.getUpdatedAt())).toList());
     }
 
     // ------------------------------------------------------------------ rules (pure)
@@ -206,13 +247,14 @@ public class ForumService {
     public static QuestionViewer questionViewer(ForumPost q, UUID viewer, boolean reported) {
         boolean open = q.getStatus() == VISIBLE;
         boolean own = q.isOwnedBy(viewer);
-        return new QuestionViewer(own && open, own && open, viewer != null && !own && open && !reported, own && open, viewer != null && open);
+        return new QuestionViewer(own && open, own && open, viewer != null && !own && open && !reported, own && open, viewer != null && open,
+                viewer != null && open);
     }
 
     /** Assumes the answer is readable. */
     public static PostViewer answerViewer(ForumPost a, UUID viewer, boolean reported) {
         boolean own = a.isOwnedBy(viewer);
-        return new PostViewer(own, own, viewer != null && !own && !reported);
+        return new PostViewer(own, own, viewer != null && !own && !reported, viewer != null);
     }
 
     // ------------------------------------------------------------------ checks
@@ -228,7 +270,7 @@ public class ForumService {
     }
 
     public enum RateKind {
-        QUESTION(3), ANSWER(10), REPORT(10);
+        QUESTION(3), ANSWER(10), REPORT(10), REACT(30);
 
         final int perMinute;
 
@@ -266,6 +308,28 @@ public class ForumService {
         return a;
     }
 
+    /** Locks a post that takes reactions: 404 when readers cannot see it, 409 on a deleted question still shown. */
+    private void lockReactable(UUID id) {
+        if (posts.findParentIdById(id).isPresent()) lockAnswer(id);
+        else if (lockQuestion(id).getStatus() == DELETED) throw new CustomException(ErrorCode.FORUM_QUESTION_CLOSED);
+    }
+
+    /** Two grouped queries for the whole set: counts per (post, type) and the viewer's own type. */
+    private Map<UUID, Reactions> reactionsOf(List<UUID> ids, UUID viewer) {
+        var counts = new HashMap<UUID, Map<ForumReactionType, Long>>();
+        for (UUID id : ids) {
+            var m = new EnumMap<ForumReactionType, Long>(ForumReactionType.class);
+            for (var t : ForumReactionType.values()) m.put(t, 0L);
+            counts.put(id, m);
+        }
+        for (Object[] row : reactions.countByType(ids)) counts.get((UUID) row[0]).put((ForumReactionType) row[1], (Long) row[2]);
+        var mine = new HashMap<UUID, ForumReactionType>();
+        if (viewer != null) for (Object[] row : reactions.findMine(viewer, ids)) mine.put((UUID) row[0], (ForumReactionType) row[1]);
+        var out = new HashMap<UUID, Reactions>();
+        for (UUID id : ids) out.put(id, new Reactions(counts.get(id), mine.get(id)));
+        return out;
+    }
+
     private Topic lockTopic(String id) {
         return topics.findByIdForUpdate(UUID.fromString(id))
                 .orElseThrow(() -> new CustomException(ErrorCode.VALIDATION_ERROR, Map.of("topicId", "Topic not found")));
@@ -291,25 +355,24 @@ public class ForumService {
     }
 
     private Question view(ForumPost q, List<ForumPost> visibleAnswers, UUID viewer) {
-        Set<UUID> reported = Set.of();
-        if (viewer != null) {
-            var ids = new ArrayList<UUID>(List.of(q.getId()));
-            visibleAnswers.forEach(a -> ids.add(a.getId()));
-            reported = reports.findReportedTargets(viewer, Report.FORUM_POST, ids);
-        }
+        var ids = new ArrayList<UUID>(List.of(q.getId()));
+        visibleAnswers.forEach(a -> ids.add(a.getId()));
+        Set<UUID> reported = viewer == null ? Set.of() : reports.findReportedTargets(viewer, Report.FORUM_POST, ids);
+        var reacted = reactionsOf(ids, viewer);
         var answers = new ArrayList<ForumResponse.Answer>();
-        for (var a : visibleAnswers) answers.add(view(a, q, viewer, reported.contains(a.getId())));
+        for (var a : visibleAnswers) answers.add(view(a, q, viewer, reported.contains(a.getId()), reacted.get(a.getId())));
         // The accepted answer leads; the rest stay oldest first.
         answers.sort(Comparator.comparing(a -> !a.accepted()));
         boolean deleted = q.getStatus() == DELETED;
         return new Question(q.getId(), deleted ? null : q.getTitle(), deleted ? null : q.getContent(), topic(q.getTopic()),
                 deleted ? null : author(q.getUser()), deleted, solved(q), solved(q) ? q.getAcceptedAnswer().getId() : null,
-                answers.size(), q.getCreatedAt(), q.getEditedAt(), questionViewer(q, viewer, reported.contains(q.getId())), answers);
+                answers.size(), q.getCreatedAt(), q.getEditedAt(), questionViewer(q, viewer, reported.contains(q.getId())),
+                deleted ? null : reacted.get(q.getId()), answers);
     }
 
-    private static ForumResponse.Answer view(ForumPost a, ForumPost q, UUID viewer, boolean reported) {
+    private static ForumResponse.Answer view(ForumPost a, ForumPost q, UUID viewer, boolean reported, Reactions reactions) {
         return new ForumResponse.Answer(a.getId(), a.getContent(), author(a.getUser()), q.isAccepted(a), a.getCreatedAt(), a.getEditedAt(),
-                answerViewer(a, viewer, reported));
+                answerViewer(a, viewer, reported), reactions);
     }
 
     private static ArticleOptionResponse topic(Topic t) {

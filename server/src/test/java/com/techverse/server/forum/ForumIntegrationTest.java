@@ -191,4 +191,207 @@ class ForumIntegrationTest extends ForumIntegrationTestBase {
         }
     }
 
+    // ------------------------------------------------------------------ reactions
+
+    ResultActions react(String post, String token, String type) throws Exception {
+        return send(put(API + "/posts/" + post + "/reaction"), token, Map.of("type", type));
+    }
+
+    ResultActions unreact(String post, String token) throws Exception {
+        return send(delete(API + "/posts/" + post + "/reaction"), token, null);
+    }
+
+    java.sql.Timestamp reactedAt(UUID user, String post) {
+        return jdbc.queryForObject("SELECT updated_at FROM techverse.forum_post_reactions WHERE user_id=? AND post_id=?::uuid",
+                java.sql.Timestamp.class, user, post);
+    }
+
+    static void assertCounts(JsonNode reactions, int like, int love, int haha, int angry) {
+        var c = reactions.path("counts");
+        assertThat(List.of(c.path("LIKE").asInt(-1), c.path("LOVE").asInt(-1), c.path("HAHA").asInt(-1), c.path("ANGRY").asInt(-1)))
+                .containsExactly(like, love, haha, angry);
+    }
+
+    static void assertMine(JsonNode reactions, String type) {
+        assertThat(reactions.has("mine")).as("mine is always present").isTrue();
+        if (type == null) assertThat(reactions.get("mine").isNull()).isTrue();
+        else assertThat(reactions.get("mine").asText()).isEqualTo(type);
+    }
+
+    @Test
+    void reactChangeRemoveAndListWhoReacted() throws Exception {
+        String q = ask(askerToken, "Question to react to here", "Body of the question to react to.");
+        String a = answer(helperToken, q, "An answer to react to.");
+        var fresh = data(get(API + "/questions/" + q, askerToken));
+        assertCounts(fresh.path("reactions"), 0, 0, 0, 0);
+        assertMine(fresh.path("reactions"), null);
+        assertCounts(fresh.path("answers").get(0).path("reactions"), 0, 0, 0, 0);
+        assertThat(fresh.path("viewer").path("canReact").asBoolean()).isTrue();
+        assertThat(fresh.path("answers").get(0).path("viewer").path("canReact").asBoolean()).isTrue();
+
+        var r = data(react(q, helperToken, "LIKE").andExpect(status().isOk()));
+        assertCounts(r, 1, 0, 0, 0);
+        assertMine(r, "LIKE");
+        var first = reactedAt(helper, q);
+        react(q, helperToken, "LIKE").andExpect(status().isOk());
+        assertThat(reactedAt(helper, q)).isEqualTo(first);
+        r = data(react(q, helperToken, "LOVE").andExpect(status().isOk()));
+        assertCounts(r, 0, 1, 0, 0);
+        assertMine(r, "LOVE");
+        assertThat(reactedAt(helper, q)).isAfter(first);
+        react(q, askerToken, "ANGRY").andExpect(status().isOk()); // own post is fine
+        react(q, thirdToken, "HAHA").andExpect(status().isOk());
+        react(a, askerToken, "LOVE").andExpect(status().isOk());
+
+        var detail = data(get(API + "/questions/" + q, askerToken));
+        assertCounts(detail.path("reactions"), 0, 1, 1, 1);
+        assertMine(detail.path("reactions"), "ANGRY");
+        assertCounts(detail.path("answers").get(0).path("reactions"), 0, 1, 0, 0);
+        assertMine(detail.path("answers").get(0).path("reactions"), "LOVE");
+        assertThat(data(get(API + "/questions", null)).path("content").get(0).path("reactionCount").asLong()).isEqualTo(3);
+
+        // Guests and locked accounts see the counts but no "mine" and cannot react.
+        jdbc.update("UPDATE techverse.users SET is_active=false WHERE email='third@example.com'");
+        for (String token : new String[] {null, thirdToken}) {
+            var seen = data(get(API + "/questions/" + q, token));
+            assertCounts(seen.path("reactions"), 0, 1, 1, 1);
+            assertMine(seen.path("reactions"), null);
+            assertMine(seen.path("answers").get(0).path("reactions"), null);
+            assertThat(seen.path("viewer").path("canReact").asBoolean()).isFalse();
+            assertThat(seen.path("answers").get(0).path("viewer").path("canReact").asBoolean()).isFalse();
+        }
+        react(q, null, "LIKE").andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("AUTH_ACCESS_TOKEN_REQUIRED"));
+        unreact(q, null).andExpect(status().isUnauthorized());
+        get(API + "/posts/" + q + "/reactions", "not-a-token").andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH_INVALID_ACCESS_TOKEN"));
+
+        // Who reacted: filter by type, page by updated_at then id, both descending.
+        var list = data(get(API + "/posts/" + q + "/reactions?type=HAHA", null));
+        assertThat(list.path("totalElements").asInt()).isEqualTo(1);
+        assertThat(list.path("content").get(0).path("user").path("fullName").asText()).isEqualTo("User third@example.com");
+        assertThat(list.path("content").get(0).path("type").asText()).isEqualTo("HAHA");
+        assertThat(list.path("content").get(0).path("reactedAt").asText()).isNotEmpty();
+        assertThat(data(get(API + "/posts/" + q + "/reactions?type=", null)).path("totalElements").asInt()).isEqualTo(3);
+        jdbc.update("UPDATE techverse.forum_post_reactions SET updated_at='2026-01-01T00:00:00Z' WHERE post_id=?::uuid", q);
+        var expected = jdbc.queryForList("SELECT user_id::text FROM techverse.forum_post_reactions WHERE post_id=?::uuid ORDER BY id DESC", String.class, q);
+        var paged = new ArrayList<String>();
+        for (int page = 0; page < 2; page++)
+            data(get(API + "/posts/" + q + "/reactions?size=2&page=" + page, null)).path("content").forEach(n -> paged.add(n.path("user").path("id").asText()));
+        assertThat(paged).isEqualTo(expected);
+
+        r = data(unreact(q, helperToken).andExpect(status().isOk()));
+        assertCounts(r, 0, 0, 1, 1);
+        assertMine(r, null);
+        unreact(q, helperToken).andExpect(status().isOk());
+    }
+
+    @Test
+    void reactionsFollowWhatReadersSee() throws Exception {
+        String q = ask(askerToken, "Question whose posts get hidden", "Reactions must follow visibility.");
+        String a = answer(helperToken, q, "Answer that will be hidden.");
+        String a2 = answer(thirdToken, q, "Answer that will be deleted.");
+        react(a, askerToken, "LIKE").andExpect(status().isOk());
+
+        jdbc.update("UPDATE techverse.forum_posts SET status='HIDDEN' WHERE id=?::uuid", a);
+        send(delete(API + "/answers/" + a2), thirdToken, null).andExpect(status().isOk());
+        for (String gone : new String[] {a, a2, UUID.randomUUID().toString()}) {
+            react(gone, askerToken, "HAHA").andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("FORUM_POST_NOT_FOUND"));
+            unreact(gone, askerToken).andExpect(status().isNotFound());
+            get(API + "/posts/" + gone + "/reactions", null).andExpect(status().isNotFound());
+        }
+
+        // Under a hidden question every answer is gone too; showing it again brings the counts back.
+        String q2 = ask(helperToken, "Question that a moderator hides", "Its answers disappear with it.");
+        String b = answer(askerToken, q2, "Answer under a hidden question.");
+        react(q2, thirdToken, "ANGRY").andExpect(status().isOk());
+        jdbc.update("UPDATE techverse.forum_posts SET status='HIDDEN' WHERE id=?::uuid", q2);
+        react(q2, askerToken, "LIKE").andExpect(status().isNotFound());
+        react(b, helperToken, "LIKE").andExpect(status().isNotFound());
+        get(API + "/posts/" + b + "/reactions", null).andExpect(status().isNotFound());
+        jdbc.update("UPDATE techverse.forum_posts SET status='VISIBLE' WHERE id=?::uuid", q2);
+        assertCounts(data(get(API + "/questions/" + q2, null)).path("reactions"), 0, 0, 0, 1);
+
+        // A deleted question still shown: no reactions on it, its visible answer still takes them.
+        jdbc.update("UPDATE techverse.forum_posts SET status='VISIBLE' WHERE id=?::uuid", a);
+        send(delete(API + "/questions/" + q), askerToken, null).andExpect(status().isOk());
+        react(q, thirdToken, "LIKE").andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("FORUM_QUESTION_CLOSED"));
+        unreact(q, thirdToken).andExpect(status().isConflict());
+        get(API + "/posts/" + q + "/reactions", null).andExpect(status().isConflict());
+        var shown = data(get(API + "/questions/" + q, thirdToken));
+        assertThat(shown.has("reactions")).isFalse();
+        assertThat(shown.path("viewer").path("canReact").asBoolean()).isFalse();
+        assertCounts(shown.path("answers").get(0).path("reactions"), 1, 0, 0, 0);
+        react(a, thirdToken, "HAHA").andExpect(status().isOk());
+        send(delete(API + "/answers/" + a), helperToken, null).andExpect(status().isOk());
+        react(q, thirdToken, "LIKE").andExpect(status().isNotFound());
+        unreact(q, thirdToken).andExpect(status().isNotFound());
+        get(API + "/posts/" + q + "/reactions", null).andExpect(status().isNotFound());
+
+        // A locked account writes nothing, but its old reaction still counts and is listed.
+        react(q2, helperToken, "LOVE").andExpect(status().isOk());
+        jdbc.update("UPDATE techverse.users SET is_active=false WHERE id=?", helper);
+        react(q2, helperToken, "LIKE").andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        unreact(q2, helperToken).andExpect(status().isForbidden());
+        assertCounts(data(get(API + "/questions/" + q2, null)).path("reactions"), 0, 1, 0, 1);
+        assertThat(data(get(API + "/posts/" + q2 + "/reactions?type=LOVE", null)).path("content").get(0).path("user").path("id").asText())
+                .isEqualTo(helper.toString());
+    }
+
+    @Test
+    void parallelReactionsAndLockedPostsHold() throws Exception {
+        String q = ask(askerToken, "Question for racing reactions", "Same user reacts and removes at once.");
+        for (int i = 0; i < 4; i++) {
+            var n = new java.util.concurrent.atomic.AtomicInteger();
+            assertThat(race(List.of(helperToken, helperToken), t -> n.getAndIncrement() == 0 ? react(q, t, "LIKE") : unreact(q, t)))
+                    .containsOnly("200:");
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM techverse.forum_post_reactions WHERE post_id=?::uuid", Integer.class, q))
+                    .isBetween(0, 1);
+        }
+
+        // A reaction that waited on the lock is stamped when it is written, not when its transaction began.
+        reactWhileLocked(q, null);
+        assertThat(reactedAt(users.findByEmail("third@example.com").orElseThrow().getId(), q)).isAfterOrEqualTo(released);
+
+        // Hidden while the request waits on the question's lock: 404 once the lock is released.
+        unreact(q, thirdToken).andExpect(status().isOk());
+        assertThat(reactWhileLocked(q, q)).contains("FORUM_POST_NOT_FOUND");
+
+        // A deleted question whose last answer is hidden meanwhile no longer exists.
+        String q2 = ask(askerToken, "Deleted question, one answer", "Its last answer gets hidden.");
+        String a = answer(helperToken, q2, "The last visible answer.");
+        send(delete(API + "/questions/" + q2), askerToken, null).andExpect(status().isOk());
+        assertThat(reactWhileLocked(q2, a)).contains("FORUM_POST_NOT_FOUND");
+    }
+
+    java.sql.Timestamp released;
+
+    /** Holds the question's row lock on another connection until the PUT waits on it, hides {@code hide} (if any), then commits. */
+    String reactWhileLocked(String question, String hide) throws Exception {
+        try (var conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            try (var st = conn.prepareStatement("SELECT 1 FROM techverse.forum_posts WHERE id=?::uuid FOR UPDATE")) {
+                st.setString(1, question);
+                st.executeQuery();
+            }
+            var pool = Executors.newSingleThreadExecutor();
+            try {
+                var body = pool.submit(() -> react(question, thirdToken, "LIKE").andReturn().getResponse().getContentAsString());
+                long until = System.currentTimeMillis() + 10_000;
+                while (jdbc.queryForObject("SELECT count(*) FROM pg_stat_activity WHERE wait_event_type='Lock'", Integer.class) == 0) {
+                    assertThat(System.currentTimeMillis()).as("PUT never waited on the lock").isLessThan(until);
+                    Thread.sleep(20);
+                }
+                if (hide != null)
+                    try (var st = conn.prepareStatement("UPDATE techverse.forum_posts SET status='HIDDEN' WHERE id=?::uuid")) {
+                        st.setString(1, hide);
+                        st.executeUpdate();
+                    }
+                released = jdbc.queryForObject("SELECT clock_timestamp()", java.sql.Timestamp.class);
+                conn.commit();
+                return body.get(10, TimeUnit.SECONDS);
+            } finally {
+                pool.shutdownNow();
+            }
+        }
+    }
 }

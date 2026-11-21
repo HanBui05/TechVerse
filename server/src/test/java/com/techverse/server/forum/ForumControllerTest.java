@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.techverse.server.controller.ForumController;
+import com.techverse.server.enums.ForumReactionType;
 import com.techverse.server.exception.*;
 import com.techverse.server.service.impl.ForumService;
 
@@ -112,12 +113,37 @@ class ForumControllerTest {
     }
 
     @Test
+    void reactionBodiesAndFilters() throws Exception {
+        String path = API + "/posts/" + id + "/reaction";
+        // Missing, null and unknown types are field errors, not JSON errors.
+        for (var bad : List.of(map(), map("type", null), map("type", "WOW"), map("type", "like"), map("type", "")))
+            badRequest(put(path), bad);
+        call(put(path), "{", true).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+        badRequest(put(API + "/posts/abc/reaction"), map("type", "LIKE"));
+        badRequest(delete(API + "/posts/abc/reaction"), map());
+        call(put(path), map("type", "LOVE"), true).andExpect(status().isOk());
+        verify(service).react(actor, id, ForumReactionType.LOVE);
+        call(delete(path), map(), true).andExpect(status().isOk());
+        verify(service).unreact(actor, id);
+
+        for (String q : List.of("type=WOW", "type=like", "page=-1", "size=0", "size=51"))
+            badRequest(get(API + "/posts/" + id + "/reactions?" + q), null);
+        badRequest(get(API + "/posts/abc/reactions"), null);
+        call(get(API + "/posts/" + id + "/reactions?type=&size=50"), null, true).andExpect(status().isOk());
+        verify(service).reactions(id, null, 0, 50);
+        call(get(API + "/posts/" + id + "/reactions?type=HAHA&page=2"), null, true).andExpect(status().isOk());
+        verify(service).reactions(id, ForumReactionType.HAHA, 2, 20);
+    }
+
+    @Test
     void writesNeedLogin() throws Exception {
         // @WebMvcTest has no SecurityConfiguration: body codes come from the integration test.
         call(post(API + "/questions"), map("title", "t".repeat(10), "content", "x".repeat(20), "topicId", topic), false)
                 .andExpect(status().isUnauthorized());
         call(delete(API + "/answers/" + id), map(), false).andExpect(status().isUnauthorized());
         call(put(API + "/questions/" + id + "/accepted-answer"), map("answerId", null), false).andExpect(status().isUnauthorized());
+        call(put(API + "/posts/" + id + "/reaction"), map("type", "LIKE"), false).andExpect(status().isUnauthorized());
+        call(delete(API + "/posts/" + id + "/reaction"), map(), false).andExpect(status().isUnauthorized());
         verifyNoInteractions(service);
     }
 
@@ -135,5 +161,8 @@ class ForumControllerTest {
         when(service.updateQuestion(eq(actor), eq(id), any())).thenThrow(new CustomException(ErrorCode.FORUM_CONTENT_INVALID));
         call(patch(API + "/questions/" + id), map("content", "x".repeat(20)), true).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("FORUM_CONTENT_INVALID"));
+        when(service.react(actor, id, ForumReactionType.LIKE)).thenThrow(new CustomException(ErrorCode.FORUM_QUESTION_CLOSED));
+        call(put(API + "/posts/" + id + "/reaction"), map("type", "LIKE"), true).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("FORUM_QUESTION_CLOSED"));
     }
 }
