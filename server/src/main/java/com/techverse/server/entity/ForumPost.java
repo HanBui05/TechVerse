@@ -109,6 +109,21 @@ public class ForumPost extends BaseEntity {
         status = DELETED;
     }
 
+    public void hide(User moderator, String note) {
+        status = HIDDEN;
+        hiddenBy = moderator;
+        hiddenAt = Instant.now();
+        moderationNote = note;
+    }
+
+    /** The restore note, when given, replaces the hide note; without one the hide note stays. */
+    public void restore(String note) {
+        status = VISIBLE;
+        hiddenBy = null;
+        hiddenAt = null;
+        if (note != null) moderationNote = note;
+    }
+
     /** {@code null} clears the choice. */
     public void accept(ForumPost answer) {
         acceptedAnswer = answer;

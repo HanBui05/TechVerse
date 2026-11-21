@@ -44,6 +44,7 @@ public class ForumService {
     private final ForumPostRepository posts;
     private final TopicRepository topics;
     private final UserRepository users;
+    private final ReportRepository reports;
     private final StringRedisTemplate redis;
 
     // ------------------------------------------------------------------ reads
@@ -129,6 +130,7 @@ public class ForumService {
         if (!q.isOwnedBy(actor)) throw new CustomException(ErrorCode.ACCESS_DENIED);
         if (q.getStatus() == DELETED) throw notFound();
         q.delete();
+        dismissReports(id);
     }
 
     @Transactional
@@ -162,7 +164,7 @@ public class ForumService {
         if (posts.countAnswers(questionId, VISIBLE) >= MAX_ANSWERS) throw new CustomException(ErrorCode.FORUM_ANSWER_LIMIT);
         rateLimit(actor, RateKind.ANSWER);
         var a = posts.save(ForumPost.answer(user, q, r.content()));
-        return view(a, q, actor);
+        return view(a, q, actor, false);
     }
 
     @Transactional
@@ -173,7 +175,7 @@ public class ForumService {
         if (!a.isOwnedBy(actor)) throw new CustomException(ErrorCode.ACCESS_DENIED);
         a.edit(null, null, r.content());
         posts.flush();
-        return view(a, a.getParent(), actor);
+        return view(a, a.getParent(), actor, false);
     }
 
     @Transactional
@@ -182,6 +184,7 @@ public class ForumService {
         var a = lockAnswer(id);
         if (!a.isOwnedBy(actor)) throw new CustomException(ErrorCode.ACCESS_DENIED);
         a.delete();
+        dismissReports(id);
     }
 
     // ------------------------------------------------------------------ rules (pure)
@@ -274,6 +277,11 @@ public class ForumService {
         return users.findById(actor).filter(User::isActive).map(User::getId).orElse(null);
     }
 
+    /** The post's lock is held here, so its open reports cannot change under us. */
+    private void dismissReports(UUID postId) {
+        reports.dismissOpen(Report.FORUM_POST, postId, "Người đăng đã xóa nội dung", Instant.now());
+    }
+
     private static Instant recent() {
         return Instant.now().minusSeconds(DUPLICATE_WINDOW_SECONDS);
     }
@@ -282,20 +290,26 @@ public class ForumService {
         return new CustomException(ErrorCode.FORUM_POST_NOT_FOUND);
     }
 
-    private static Question view(ForumPost q, List<ForumPost> visibleAnswers, UUID viewer) {
+    private Question view(ForumPost q, List<ForumPost> visibleAnswers, UUID viewer) {
+        Set<UUID> reported = Set.of();
+        if (viewer != null) {
+            var ids = new ArrayList<UUID>(List.of(q.getId()));
+            visibleAnswers.forEach(a -> ids.add(a.getId()));
+            reported = reports.findReportedTargets(viewer, Report.FORUM_POST, ids);
+        }
         var answers = new ArrayList<ForumResponse.Answer>();
-        for (var a : visibleAnswers) answers.add(view(a, q, viewer));
+        for (var a : visibleAnswers) answers.add(view(a, q, viewer, reported.contains(a.getId())));
         // The accepted answer leads; the rest stay oldest first.
         answers.sort(Comparator.comparing(a -> !a.accepted()));
         boolean deleted = q.getStatus() == DELETED;
         return new Question(q.getId(), deleted ? null : q.getTitle(), deleted ? null : q.getContent(), topic(q.getTopic()),
                 deleted ? null : author(q.getUser()), deleted, solved(q), solved(q) ? q.getAcceptedAnswer().getId() : null,
-                answers.size(), q.getCreatedAt(), q.getEditedAt(), questionViewer(q, viewer, false), answers);
+                answers.size(), q.getCreatedAt(), q.getEditedAt(), questionViewer(q, viewer, reported.contains(q.getId())), answers);
     }
 
-    private static ForumResponse.Answer view(ForumPost a, ForumPost q, UUID viewer) {
+    private static ForumResponse.Answer view(ForumPost a, ForumPost q, UUID viewer, boolean reported) {
         return new ForumResponse.Answer(a.getId(), a.getContent(), author(a.getUser()), q.isAccepted(a), a.getCreatedAt(), a.getEditedAt(),
-                answerViewer(a, viewer, false));
+                answerViewer(a, viewer, reported));
     }
 
     private static ArticleOptionResponse topic(Topic t) {

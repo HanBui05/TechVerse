@@ -57,4 +57,11 @@ public interface ForumPostRepository extends JpaRepository<ForumPost, UUID>, Jpa
             @Param("content") String content,
             @Param("status") ForumPostStatus status,
             @Param("since") Instant since);
+
+    @EntityGraph(attributePaths = {"user", "parent", "hiddenBy"})
+    @Query("select p from ForumPost p where p.id in :ids")
+    List<ForumPost> findModerated(@Param("ids") Collection<UUID> ids);
+
+    @EntityGraph(attributePaths = {"user", "parent", "hiddenBy"})
+    Page<ForumPost> findByStatus(ForumPostStatus status, Pageable pageable);
 }

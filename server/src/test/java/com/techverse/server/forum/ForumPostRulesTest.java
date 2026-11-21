@@ -12,6 +12,8 @@ import com.techverse.server.exception.*;
 import com.techverse.server.service.impl.ArticleContentService;
 import com.techverse.server.service.impl.ForumService;
 import com.techverse.server.service.impl.ForumService.RateKind;
+import com.techverse.server.service.impl.ReportService;
+import com.techverse.server.dto.request.ReportRequest;
 
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
@@ -128,7 +130,7 @@ class ForumPostRulesTest {
 
     // ------------------------------------------------------------------ content
 
-    final ForumService content = new ForumService(null, new ArticleContentService(), null, null, null, null);
+    final ForumService content = new ForumService(null, new ArticleContentService(), null, null, null, null, null);
 
     @Test
     void plainMarkdownPasses() {
@@ -159,7 +161,7 @@ class ForumPostRulesTest {
         var stub = when(redis.execute(any(RedisScript.class), anyList(), any(Object[].class)));
         if (reply instanceof RuntimeException e) stub.thenThrow(e);
         else stub.thenReturn(reply);
-        return new ForumService(null, null, null, null, null, redis);
+        return new ForumService(null, null, null, null, null, null, redis);
     }
 
     @Test
@@ -180,5 +182,46 @@ class ForumPostRulesTest {
 
     static void assertCode(ThrowingCallable call, ErrorCode code) {
         assertThatThrownBy(call).isInstanceOfSatisfying(CustomException.class, e -> assertThat(e.getErrorCode()).isEqualTo(code));
+    }
+
+    @Test
+    void reportTargetsFollowWhatReadersSee() {
+        for (var qs : ForumPostStatus.values()) {
+            var q = question(qs);
+            assertThat(ReportService.reportable(q)).as("question %s", qs).isEqualTo(qs == VISIBLE);
+            for (var as : ForumPostStatus.values())
+                assertThat(ReportService.reportable(answer(q, other, as))).as("answer %s under %s", as, qs).isEqualTo(as == VISIBLE && qs != HIDDEN);
+        }
+        // Owning the post is refused separately (REPORT_OWN_CONTENT), after the visibility check.
+        assertThat(question(VISIBLE).isOwnedBy(ownerId)).isTrue();
+    }
+
+    @Test
+    void moderatorNotesAndVisibilityTransitions() {
+        assertThat(ReportRequest.noteValid(true, null)).isFalse();
+        assertThat(ReportRequest.noteValid(true, "Spam")).isTrue();
+        assertThat(ReportRequest.noteValid(false, null)).isTrue();
+        assertThat(ReportRequest.noteValid(false, "a b")).isFalse();
+        assertThat(new ReportRequest.Resolve("HIDE_CONTENT", "   ").isNoteValid()).isFalse();
+        assertThat(new ReportRequest.Resolve("DISMISS", "   ").note()).isNull();
+        assertThat(new ReportRequest.Visibility("HIDE", " Off-topic ").note()).isEqualTo("Off-topic");
+        assertThat(new ReportRequest.Visibility("RESTORE", null).isNoteValid()).isTrue();
+
+        assertThat(ReportService.transitionAllowed(VISIBLE, true)).isTrue();
+        assertThat(ReportService.transitionAllowed(HIDDEN, true)).isFalse();
+        assertThat(ReportService.transitionAllowed(DELETED, true)).isFalse();
+        assertThat(ReportService.transitionAllowed(HIDDEN, false)).isTrue();
+        assertThat(ReportService.transitionAllowed(VISIBLE, false)).isFalse();
+        assertThat(ReportService.transitionAllowed(DELETED, false)).isFalse();
+
+        var q = question(VISIBLE);
+        q.hide(other, "Spam");
+        assertThat(q.getStatus()).isEqualTo(HIDDEN);
+        assertThat(q.getHiddenBy()).isSameAs(other);
+        q.restore(null);
+        assertThat(q.getStatus()).isEqualTo(VISIBLE);
+        assertThat(q.getHiddenBy()).isNull();
+        assertThat(q.getHiddenAt()).isNull();
+        assertThat(q.getModerationNote()).isEqualTo("Spam");
     }
 }

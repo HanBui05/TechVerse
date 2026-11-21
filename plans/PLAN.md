@@ -26,7 +26,7 @@ Module đang làm: [forum-reports](forum-reports.md)
 | Course AI tutor | [spec](course-ai-tutor.md) | Hoàn tất | Claude | Task 1 (Backend) và Task 2 (Giao diện) đã nhận, spec đồng bộ 2026-11-17; PR #10 đã merge vào `main` 2026-11-17, CI đạt. Các mục chưa kiểm: xem spec và log. | [log](course-ai-tutor.log.md) |
 | Exercise practice | [spec](exercise-practice.md) | Hoàn tất | Claude | Task 1a–2c đã nhận; spec đồng bộ 2026-11-20. Các mục chưa kiểm: xem spec và log. | [log](exercise-practice.log.md) |
 | Interview practice | [spec](interview-practice.md) | Hoàn tất | Claude | Task 1a–1c (2026-11-20), 2a–2b (2026-11-21) đã nhận; spec đồng bộ 2026-11-21; PR #13 đã merge vào `main` 2026-11-21, CI đạt. Các mục chưa kiểm: xem spec và log. | [log](interview-practice.log.md) |
-| Forum & reports | [spec](forum-reports.md) | Đang thực hiện | Claude | Task 1a đã nhận (2026-11-21); spec Task 1c (react) chốt 2026-11-21; tiếp Task 1b. Xem log. | [log](forum-reports.log.md) |
+| Forum & reports | [spec](forum-reports.md) | Đang thực hiện | Claude | Task 1a, 1b đã nhận (2026-11-21); tiếp Task 1c (react). Xem log. | [log](forum-reports.log.md) |
 | Dashboard stats | [spec](dashboard-stats.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau cùng, khi các module nguồn đã code. | — |
 | Messaging | [spec](messaging.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (rủi ro cao; 7 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `forum-reports`, cắt đầu tiên nếu thiếu thời gian. | — |
 | AI docs optimization | — (làn nhẹ, [brief](ai-docs-optimization.brief.md), 2026-11-13) | Đang thực hiện | Claude | Đang làm; chờ người dùng trả lời câu hỏi mục 5 của brief. | — |

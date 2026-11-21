@@ -181,6 +181,12 @@ public enum ErrorCode {
 	FORUM_DUPLICATE_POST(HttpStatus.CONFLICT, "FORUM_DUPLICATE_POST", "The same content was just posted"),
 	FORUM_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "FORUM_RATE_LIMITED", "Too many requests, try again later"),
 	FORUM_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "FORUM_STORAGE_UNAVAILABLE", "Forum service is temporarily unavailable"),
+	FORUM_STATE_INVALID(HttpStatus.CONFLICT, "FORUM_STATE_INVALID", "The post is not in a state that allows this action"),
+	REPORT_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_TARGET_NOT_FOUND", "The reported content is no longer available"),
+	REPORT_OWN_CONTENT(HttpStatus.CONFLICT, "REPORT_OWN_CONTENT", "You cannot report your own content"),
+	REPORT_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "REPORT_ALREADY_SUBMITTED", "You already reported this content"),
+	REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_NOT_FOUND", "Report not found"),
+	REPORT_ALREADY_HANDLED(HttpStatus.CONFLICT, "REPORT_ALREADY_HANDLED", "The report was already handled"),
 	INTERVIEW_AUTHOR_INELIGIBLE(HttpStatus.CONFLICT, "INTERVIEW_AUTHOR_INELIGIBLE", "The author is no longer eligible to publish"),
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected error occurred");
 
