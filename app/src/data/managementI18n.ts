@@ -577,6 +577,14 @@ const messages: Record<string, Record<Language, string>> = {
   "Câu hỏi phỏng vấn": {
     "vi": "Câu hỏi phỏng vấn",
     "en": "Interview questions"
+  },
+  "Báo cáo vi phạm": {
+    "vi": "Báo cáo vi phạm",
+    "en": "Reports"
+  },
+  "Hỏi đáp": {
+    "vi": "Hỏi đáp",
+    "en": "Q&A"
   }
 }
 

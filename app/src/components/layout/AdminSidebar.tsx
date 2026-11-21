@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { BookOpen, FileText, LayoutDashboard, Banknote, Percent, Receipt, Tag, TrendingUp, UserCheck, Users } from 'lucide-react'
+import { BookOpen, FileText, LayoutDashboard, Banknote, MessagesSquare, Percent, Receipt, Tag, TrendingUp, UserCheck, Users } from 'lucide-react'
 import type { Language } from '../../types/preferences'
 import { StaffSettingsLinks } from './StaffSettingsLinks'
 import { activeLink, SidebarAccount, SidebarFrame, toneText, useSidebarNav } from './Sidebar'
@@ -18,6 +18,7 @@ const groups = [
   { label: { vi: 'Nội dung', en: 'Content' }, items: [
     { label: { vi: 'Chủ đề', en: 'Topics' }, path: '/admin/topics', icon: BookOpen, tone: 'amber' },
     { label: { vi: 'Thẻ', en: 'Tags' }, path: '/admin/tags', icon: Tag, tone: 'green' },
+    { label: { vi: 'Hỏi đáp', en: 'Q&A' }, path: '/forum', icon: MessagesSquare, tone: 'sky' },
   ] },
   { label: { vi: 'Thanh toán', en: 'Payments' }, items: [
     { label: { vi: 'Đơn hàng', en: 'Orders' }, path: '/admin/orders', icon: Receipt, tone: 'sky' },

@@ -91,13 +91,15 @@ it('lists only routable entries for a signed-out visitor', () => {
 it('lists only routable entries in the admin sidebar and keeps the moderator link', () => {
   render(<Shell><AdminSidebar language="vi" profile={profile} onLogout={props.onLogout} isModerator /></Shell>)
   expect(hrefs().filter(href => deadAdminPaths.test(href))).toEqual([])
-  for (const name of ['Trang chủ', 'Hồ sơ tác giả', 'Quản lý người dùng', 'Chủ đề', 'Thẻ', 'Đơn hàng', 'Hoa hồng', 'Doanh thu', 'Chi trả tác giả', 'Kiểm duyệt bài viết']) expect(screen.queryByRole('link', { name })).not.toBeNull()
+  for (const name of ['Trang chủ', 'Hồ sơ tác giả', 'Quản lý người dùng', 'Chủ đề', 'Thẻ', 'Hỏi đáp', 'Đơn hàng', 'Hoa hồng', 'Doanh thu', 'Chi trả tác giả', 'Kiểm duyệt bài viết']) expect(screen.queryByRole('link', { name })).not.toBeNull()
 })
 
-it('links the moderator sidebar to the exercise and interview question review queues', () => {
+it('links the moderator sidebar to the exercise, interview question, report queues and forum', () => {
   render(<Shell><ModeratorSidebar language="vi" profile={profile} onLogout={props.onLogout} /></Shell>)
   expect(screen.getByRole('link', { name: 'Kiểm duyệt bài tập' }).getAttribute('href')).toBe('/moderator/exercises')
   expect(screen.getByRole('link', { name: 'Câu hỏi phỏng vấn' }).getAttribute('href')).toBe('/moderator/interview-questions')
+  expect(screen.getByRole('link', { name: 'Báo cáo vi phạm' }).getAttribute('href')).toBe('/moderator/reports')
+  expect(screen.getByRole('link', { name: 'Hỏi đáp' }).getAttribute('href')).toBe('/forum')
 })
 
 // Management accounts are redirected away from Reader routes, so neither staff sidebar links back to them.
