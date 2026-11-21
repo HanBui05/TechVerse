@@ -20,7 +20,10 @@ public record AiAssistProperties(
         int tutorPerDay,
         Duration tutorTimeout,
         int exercisePerDay,
-        Duration exerciseTimeout) {
+        Duration exerciseTimeout,
+        int interviewDraftPerDay,
+        int interviewFeedbackPerDay,
+        Duration interviewTimeout) {
     static final List<String> LENGTHS = List.of("SHORT", "MEDIUM", "LONG");
 
     public AiAssistProperties {
@@ -31,7 +34,8 @@ public record AiAssistProperties(
         }
         positive("ai.assist.tutor-timeout", tutorTimeout);
         positive("ai.assist.exercise-timeout", exerciseTimeout);
-        for (String kind : List.of("OUTLINE", "SHORT", "MEDIUM", "LONG", "TUTOR", "EXERCISE")) {
+        positive("ai.assist.interview-timeout", interviewTimeout);
+        for (String kind : List.of("OUTLINE", "SHORT", "MEDIUM", "LONG", "TUTOR", "EXERCISE", "INTERVIEW_DRAFT", "INTERVIEW_FEEDBACK")) {
             Integer tokens = maxCompletionTokens == null ? null : maxCompletionTokens.get(kind);
             if (tokens == null || tokens < 512 || tokens > 65536)
                 throw new IllegalArgumentException(
@@ -41,6 +45,8 @@ public record AiAssistProperties(
         positive("ai.assist.draft-per-day", draftPerDay);
         positive("ai.assist.tutor-per-day", tutorPerDay);
         positive("ai.assist.exercise-per-day", exercisePerDay);
+        positive("ai.assist.interview-draft-per-day", interviewDraftPerDay);
+        positive("ai.assist.interview-feedback-per-day", interviewFeedbackPerDay);
         positive("ai.assist.burst-per-minute", burstPerMinute);
         draftTimeouts = Map.copyOf(draftTimeouts);
         maxCompletionTokens = Map.copyOf(maxCompletionTokens);
@@ -58,9 +64,17 @@ public record AiAssistProperties(
         return maxCompletionTokens.get("EXERCISE");
     }
 
+    public int interviewDraftTokens() {
+        return maxCompletionTokens.get("INTERVIEW_DRAFT");
+    }
+
+    public int interviewFeedbackTokens() {
+        return maxCompletionTokens.get("INTERVIEW_FEEDBACK");
+    }
+
     /** Longest deadline of any AI kind; the MVC async timeout must exceed it. */
     public Duration longestTimeout() {
-        return Stream.concat(LENGTHS.stream().map(draftTimeouts::get), Stream.of(outlineTimeout, tutorTimeout, exerciseTimeout))
+        return Stream.concat(LENGTHS.stream().map(draftTimeouts::get), Stream.of(outlineTimeout, tutorTimeout, exerciseTimeout, interviewTimeout))
                 .max(Duration::compareTo)
                 .orElseThrow();
     }

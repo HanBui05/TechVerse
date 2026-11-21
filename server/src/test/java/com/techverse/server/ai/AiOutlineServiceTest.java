@@ -409,8 +409,10 @@ class AiOutlineServiceTest {
     when(limits.peek(actor, Kind.OUTLINE)).thenReturn(new AiRateLimitService.Quota(10, 7));
     when(limits.peek(actor, Kind.DRAFT)).thenReturn(new AiRateLimitService.Quota(5, 5));
     when(limits.peek(actor, Kind.EXERCISE)).thenReturn(new AiRateLimitService.Quota(10, 10));
+    when(limits.peek(actor, Kind.INTERVIEW_DRAFT)).thenReturn(new AiRateLimitService.Quota(10, 8));
     assertThat(service(null).quota(actor))
-        .isEqualTo(new AiQuotaResponse(new AiRateLimitService.Quota(10, 7), new AiRateLimitService.Quota(5, 5), new AiRateLimitService.Quota(10, 10)));
+        .isEqualTo(new AiQuotaResponse(new AiRateLimitService.Quota(10, 7), new AiRateLimitService.Quota(5, 5),
+            new AiRateLimitService.Quota(10, 10), new AiRateLimitService.Quota(10, 8)));
     verify(access).lockWriter(actor);
     verify(limits, never()).reserve(any(), any());
   }

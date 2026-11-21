@@ -1,5 +1,5 @@
 import { ApiError, readEnvelope, request, requestRaw } from './api/client'
-import type { AiDraftRequest, AiOutline, AiOutlineRequest, AiQuota, AiSection, AiStreamEvent } from '../types/aiAssist'
+import type { AiDraftRequest, AiOutline, AiOutlineRequest, AiQuota, AiQuotaResponse, AiSection, AiStreamEvent } from '../types/aiAssist'
 
 const base = '/api/v1/author/ai'
 const EVENTS = new Set(['metadata', 'delta', 'completed', 'cancelled', 'error'])
@@ -84,7 +84,7 @@ export async function streamPost(path: string, body: unknown, signal: AbortSigna
 
 export const aiAssist = {
   /** Today's allowance per kind; reserves nothing. */
-  quota: () => request<{ outline: AiQuota; draft: AiQuota; exercise: AiQuota }>(`${base}/quota`),
+  quota: () => request<AiQuotaResponse>(`${base}/quota`),
   outline: async (body: AiOutlineRequest) => {
     const response = await requestRaw(`${base}/outlines`, { method: 'POST', body: JSON.stringify(body) })
     return { outline: await unwrap<AiOutline>(response), quota: quotaOf(response.headers) }

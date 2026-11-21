@@ -76,13 +76,17 @@ ai:
   assist:
     outline-timeout: ${AI_OUTLINE_TIMEOUT:60s}
     draft-timeouts: {SHORT: 90s, MEDIUM: 120s, LONG: 180s}
-    max-completion-tokens: {OUTLINE: 2048, SHORT: 4096, MEDIUM: 8192, LONG: 16384, TUTOR: 2048, EXERCISE: 4096}
+    max-completion-tokens: {OUTLINE: 2048, SHORT: 4096, MEDIUM: 8192, LONG: 16384, TUTOR: 2048, EXERCISE: 4096, INTERVIEW_DRAFT: 8192, INTERVIEW_FEEDBACK: 2048}
     outline-per-day: ${AI_OUTLINE_PER_DAY:10}
     draft-per-day: ${AI_DRAFT_PER_DAY:5}
     tutor-per-day: ${AI_TUTOR_PER_DAY:20}
     tutor-timeout: ${AI_TUTOR_TIMEOUT:60s}
     exercise-per-day: ${AI_EXERCISE_PER_DAY:10}
-    exercise-timeout: ${AI_EXERCISE_TIMEOUT:60s}
+    # Generation plus the strict second check share this budget.
+    exercise-timeout: ${AI_EXERCISE_TIMEOUT:90s}
+    interview-draft-per-day: ${AI_INTERVIEW_DRAFT_PER_DAY:10}
+    interview-feedback-per-day: ${AI_INTERVIEW_FEEDBACK_PER_DAY:20}
+    interview-timeout: ${AI_INTERVIEW_TIMEOUT:60s}
     burst-per-minute: ${AI_BURST_PER_MINUTE:3}
     completed-generation-ttl: 24h
 

@@ -590,13 +590,19 @@ class AuthorExerciseIntegrationTest extends ArticleIntegrationTestBase {
     static final String AI_QUIZ = "{\"questions\":[{\"content\":\"JWT gồm mấy phần?\",\"codeSnippet\":\"\",\"codeLanguage\":\"\","
             + "\"options\":[\"1\",\"2\",\"3\",\"4\"],\"correctIndex\":2,\"explanation\":\"Header, payload, signature.\"}]}";
 
-    void modelReplies(String json) {
+    // The second-pass check confirms the one suggestion in AI_QUIZ.
+    static final String AI_CHECK_OK = "{\"results\":[{\"index\":0,\"ok\":true,\"reason\":\"\"}]}";
+
+    /** One reply per model call, in order: generation, then the check. */
+    void modelReplies(String... json) {
         org.mockito.Mockito.when(chatModel.getDefaultOptions())
                 .thenReturn(org.springframework.ai.openai.OpenAiChatOptions.builder().model("m").build());
-        org.mockito.Mockito.when(chatModel.call(org.mockito.ArgumentMatchers.any(org.springframework.ai.chat.prompt.Prompt.class)))
-                .thenReturn(new org.springframework.ai.chat.model.ChatResponse(List.of(new org.springframework.ai.chat.model.Generation(
-                        new org.springframework.ai.chat.messages.AssistantMessage(json),
-                        org.springframework.ai.chat.metadata.ChatGenerationMetadata.builder().finishReason("STOP").build()))));
+        var replies = java.util.Arrays.stream(json).map(j -> new org.springframework.ai.chat.model.ChatResponse(List.of(
+                new org.springframework.ai.chat.model.Generation(new org.springframework.ai.chat.messages.AssistantMessage(j),
+                        org.springframework.ai.chat.metadata.ChatGenerationMetadata.builder().finishReason("STOP").build())))).toList();
+        var stub = org.mockito.Mockito.when(chatModel.call(org.mockito.ArgumentMatchers.any(org.springframework.ai.chat.prompt.Prompt.class)))
+                .thenReturn(replies.get(0));
+        for (var r : replies.subList(1, replies.size())) stub = stub.thenReturn(r);
     }
 
     String aiUrl(String id) {
@@ -624,7 +630,7 @@ class AuthorExerciseIntegrationTest extends ArticleIntegrationTestBase {
     void aiQuestionsAreProposedWithoutSavingAndFlagTheSet() throws Exception {
         String id = ready();
         int before = version(id);
-        modelReplies(AI_QUIZ);
+        modelReplies(AI_QUIZ, AI_CHECK_OK);
         var res = send(post(aiUrl(id)), token, Map.of("version", before, "count", 2, "instruction", "JWT", "sourceText", "JWT là chuẩn token."))
                 .andExpect(status().isOk()).andExpect(header().string("X-AI-Quota-Limit", "10"))
                 .andExpect(header().string("X-AI-Quota-Remaining", "9"));

@@ -47,7 +47,7 @@ it('falls back to initials when the avatar fails and retries a newly changed URL
 })
 
 const hrefs = () => screen.queryAllByRole('link').map(link => link.getAttribute('href') ?? '')
-const deadUserPaths = /^\/(challenges|leaderboard|resources|interview|questions|about|messages|notifications|premium|payments|learning\/)/
+const deadUserPaths = /^\/(challenges|leaderboard|resources|questions|about|messages|notifications|premium|payments|learning\/)/
 const deadAdminPaths = /^\/admin\/(roles|logins|login-analytics|active-users|streaks|subscriptions|payments|courses|certificates|exercises|interview-questions|question-contributions|qa-challenges|comments)$/
 
 // Menu entries without a real route led to the "under development" page; only real routes may stay.
@@ -68,6 +68,7 @@ it('groups the Author links under a collapsed “Tác giả” menu, opens it on
   expect(screen.getByRole('link', { name: 'Bài viết của tôi' }).getAttribute('href')).toBe('/author/blogs')
   expect(hrefs()).toContain('/author/courses')
   expect(screen.getByRole('link', { name: 'Bài tập' }).getAttribute('href')).toBe('/author/exercises')
+  expect(screen.getByRole('link', { name: 'Câu hỏi phỏng vấn' }).getAttribute('href')).toBe('/author/interview-questions')
   expect(screen.getByRole('link', { name: 'Doanh thu' }).getAttribute('href')).toBe('/author/revenue')
   cleanup()
   render(<Shell route="/author/courses"><Sidebar {...props} profile={profile} /></Shell>)
@@ -93,9 +94,10 @@ it('lists only routable entries in the admin sidebar and keeps the moderator lin
   for (const name of ['Trang chủ', 'Hồ sơ tác giả', 'Quản lý người dùng', 'Chủ đề', 'Thẻ', 'Đơn hàng', 'Hoa hồng', 'Doanh thu', 'Chi trả tác giả', 'Kiểm duyệt bài viết']) expect(screen.queryByRole('link', { name })).not.toBeNull()
 })
 
-it('links the moderator sidebar to the exercise review queue', () => {
+it('links the moderator sidebar to the exercise and interview question review queues', () => {
   render(<Shell><ModeratorSidebar language="vi" profile={profile} onLogout={props.onLogout} /></Shell>)
   expect(screen.getByRole('link', { name: 'Kiểm duyệt bài tập' }).getAttribute('href')).toBe('/moderator/exercises')
+  expect(screen.getByRole('link', { name: 'Câu hỏi phỏng vấn' }).getAttribute('href')).toBe('/moderator/interview-questions')
 })
 
 // Management accounts are redirected away from Reader routes, so neither staff sidebar links back to them.

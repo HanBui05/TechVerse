@@ -2,6 +2,7 @@
 export type AiLength = 'SHORT' | 'MEDIUM' | 'LONG'
 export type AiSection = { heading: string; subsections: string[] }
 export type AiQuota = { limit: number | null; remaining: number }
+export type AiQuotaResponse = { outline: AiQuota; draft: AiQuota; exercise?: AiQuota; interviewDraft?: AiQuota }
 
 type AiInput = { idea: string; length: AiLength; targetAudience: string }
 // ARTICLE (default) needs topicId + tagIds; LESSON needs courseId and must not send topicId/tagIds (the server takes the course's taxonomy).

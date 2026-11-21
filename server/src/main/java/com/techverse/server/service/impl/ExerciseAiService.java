@@ -32,9 +32,16 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
 /** AI question suggestions for an exercise set. Suggestions are never saved; only the {@code ai_assisted} flag is. */
@@ -53,6 +60,14 @@ public class ExerciseAiService {
     record CardItem(String front, String back) {}
 
     record CardOutput(List<CardItem> questions) {}
+
+    record Check(Integer index, Boolean ok, String reason) {}
+
+    record CheckOutput(List<Check> results) {}
+
+    // Low enough for accurate answers, high enough that suggestions vary; the check must not vary at all.
+    private static final double GENERATE_TEMPERATURE = 0.4;
+    private static final double CHECK_TEMPERATURE = 0.0;
 
     /** {@code version} is the set's version after the flag was set, for the next {@code PUT questions}. */
     public record Suggestions(List<Question> questions, int requested, int version) {}
@@ -83,9 +98,15 @@ public class ExerciseAiService {
             try {
                 var input = new ExerciseInput(ctx.type().name(), ctx.title(), ctx.description(), ctx.topic(),
                         ctx.difficulty().name(), ctx.existing(), r.instruction(), r.sourceText(), r.count());
-                var usable = generate(model, ctx.type(), input, started.plus(properties.exerciseTimeout())).stream()
+                var seen = new HashSet<String>();
+                ctx.existing().forEach(q -> seen.add(sameText(q)));
+                Instant deadline = started.plus(properties.exerciseTimeout());
+                var candidates = generate(model, ctx.type(), input, deadline).stream()
                         .map(q -> exercises.aiUsable(ctx.type(), q)).filter(Objects::nonNull)
+                        .filter(q -> seen.add(sameText(ctx.type() == ExerciseType.FLASHCARD ? q.front() : q.content())))
                         .limit(r.count()).toList();
+                if (candidates.isEmpty()) throw new CustomException(ErrorCode.AI_OUTPUT_INVALID);
+                var usable = verified(model, input, candidates, deadline).stream().map(ExerciseAiService::shuffled).toList();
                 if (usable.isEmpty()) throw new CustomException(ErrorCode.AI_OUTPUT_INVALID);
                 int version = tx.execute(s -> exercises.markAiAssisted(actor, setId, usable.size(), r.version()));
                 log.info("AI exercise actor={} outcome=OK n={} ms={}", actor, usable.size(), elapsedMs(started));
@@ -99,6 +120,61 @@ public class ExerciseAiService {
         } finally {
             registry.finish(slot);
         }
+    }
+
+    /**
+     * A strict second pass at temperature 0 keeps only the questions it confirms (one right answer, correct facts);
+     * a skipped index counts as not confirmed. Unreadable output is invalid; the caller refunds.
+     */
+    private List<Question> verified(ChatModel model, ExerciseInput in, List<Question> candidates, Instant deadline) {
+        var items = new ArrayList<Map<String, Object>>();
+        for (int i = 0; i < candidates.size(); i++) {
+            var q = candidates.get(i);
+            var item = new LinkedHashMap<String, Object>();
+            item.put("index", i);
+            if (q.options() == null) {
+                item.put("front", q.front());
+                item.put("back", q.back());
+            } else {
+                item.put("content", q.content());
+                item.put("codeSnippet", Objects.requireNonNullElse(q.codeSnippet(), ""));
+                item.put("options", q.options());
+                item.put("correctIndex", q.correctIndex());
+                item.put("explanation", q.explanation());
+            }
+            items.add(item);
+        }
+        String schema = schemaOf(CheckOutput.class);
+        String text = call(model, prompts.exerciseVerify(in, items, schema, options(model, formatOf(schema), deadline, CHECK_TEMPERATURE)));
+        CheckOutput out;
+        try {
+            out = STRICT.readValue(text, CheckOutput.class);
+        } catch (JacksonException e) {
+            throw new CustomException(ErrorCode.AI_OUTPUT_INVALID);
+        }
+        if (out == null || out.results() == null) throw new CustomException(ErrorCode.AI_OUTPUT_INVALID);
+        var confirmed = new HashSet<Integer>();
+        for (var c : out.results()) if (c != null && Boolean.TRUE.equals(c.ok()) && c.index() != null) confirmed.add(c.index());
+        var kept = new ArrayList<Question>();
+        for (int i = 0; i < candidates.size(); i++) if (confirmed.contains(i)) kept.add(candidates.get(i));
+        log.info("AI exercise check kept={}/{}", kept.size(), candidates.size());
+        return kept;
+    }
+
+    /** Existing questions reach this service cut at 200 characters, so compare that much, case and spacing ignored. */
+    private static String sameText(String s) {
+        String t = s.strip().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+        return t.length() > 200 ? t.substring(0, 200) : t;
+    }
+
+    /** Models favour the first slots for the right answer; reorder the options and follow the correct one. */
+    private static Question shuffled(Question q) {
+        if (q.options() == null) return q;
+        String correct = q.options().get(q.correctIndex());
+        var options = new ArrayList<>(q.options());
+        Collections.shuffle(options, ThreadLocalRandom.current());
+        return new Question(q.content(), q.codeSnippet(), q.codeLanguage(), List.copyOf(options),
+                options.indexOf(correct), q.explanation(), q.front(), q.back());
     }
 
     private long elapsedMs(Instant started) {
@@ -117,13 +193,12 @@ public class ExerciseAiService {
     /** The call and its one repair share a single deadline and a single reserved use. */
     private <O, I> List<Question> generate(ChatModel model, ExerciseInput in, Instant deadline, Class<O> out,
             Function<O, List<I>> items, Function<I, Question> map) {
-        // Groq's strict mode rejects `format` on non-strings (Spring AI adds int32 to Integer): 400 AI_PROVIDER_REQUEST_REJECTED.
-        String schema = new BeanOutputConverter<>(out).getJsonSchema().replaceAll(",?\\s*\"format\"\\s*:\\s*\"(?:int32|int64|float|double)\"", "");
-        var format = ResponseFormat.builder().type(ResponseFormat.Type.JSON_SCHEMA).jsonSchema(schema).strict(true).build();
-        String text = call(model, prompts.exercise(in, schema, options(model, format, deadline)));
+        String schema = schemaOf(out);
+        var format = formatOf(schema);
+        String text = call(model, prompts.exercise(in, schema, options(model, format, deadline, GENERATE_TEMPERATURE)));
         var parsed = parse(text, out, items);
         if (parsed == null) {
-            text = call(model, prompts.exerciseRepair(in, schema, text, options(model, format, deadline)));
+            text = call(model, prompts.exerciseRepair(in, schema, text, options(model, format, deadline, GENERATE_TEMPERATURE)));
             parsed = parse(text, out, items);
         }
         if (parsed == null) throw new CustomException(ErrorCode.AI_OUTPUT_INVALID);
@@ -140,10 +215,19 @@ public class ExerciseAiService {
         }
     }
 
-    private OpenAiChatOptions options(ChatModel model, ResponseFormat format, Instant deadline) {
+    // Groq's strict mode rejects `format` on non-strings (Spring AI adds int32 to Integer): 400 AI_PROVIDER_REQUEST_REJECTED.
+    private static String schemaOf(Class<?> out) {
+        return new BeanOutputConverter<>(out).getJsonSchema().replaceAll(",?\\s*\"format\"\\s*:\\s*\"(?:int32|int64|float|double)\"", "");
+    }
+
+    private static ResponseFormat formatOf(String schema) {
+        return ResponseFormat.builder().type(ResponseFormat.Type.JSON_SCHEMA).jsonSchema(schema).strict(true).build();
+    }
+
+    private OpenAiChatOptions options(ChatModel model, ResponseFormat format, Instant deadline, double temperature) {
         Duration left = Duration.between(clock.instant(), deadline);
         if (left.isNegative() || left.isZero()) throw new CustomException(ErrorCode.AI_TIMEOUT);
-        return prompts.options(model, properties.exerciseTokens(), left, format);
+        return prompts.options(model, properties.exerciseTokens(), left, format).mutate().temperature(temperature).build();
     }
 
     private String call(ChatModel model, Prompt prompt) {

@@ -448,7 +448,7 @@ class AuthorAiControllerTest {
 
   @Test
   void quotaReturnsBothAllowancesInTheEnvelope() throws Exception {
-    when(service.quota(actor)).thenReturn(new AiQuotaResponse(new Quota(10, 7), new Quota(5, 4), new Quota(10, 10)));
+    when(service.quota(actor)).thenReturn(new AiQuotaResponse(new Quota(10, 7), new Quota(5, 4), new Quota(10, 10), new Quota(10, 9)));
     mvc.perform(get("/api/v1/author/ai/quota")
             .with(jwt().jwt(j -> j.subject(actor.toString())).authorities(new SimpleGrantedAuthority("ROLE_AUTHOR"))))
         .andExpect(status().isOk())

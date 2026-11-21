@@ -2,7 +2,7 @@
 
 Mỗi module có đúng một spec `plans/<module>.md` và một nhật ký `plans/<module>.log.md`. [`PROJECT_CONTEXT.md`](../docs/PROJECT_CONTEXT.md): Codex đọc mục 1–3, 5 trước mọi task; Claude chỉ đọc khi task đụng tới. Lý do các quyết định cũ: [`DECISIONS.md`](DECISIONS.md).
 
-Module đang làm: [exercise-practice](exercise-practice.md)
+Module đang làm: [interview-practice](interview-practice.md)
 
 <!-- Hook SessionStart của Claude đọc đúng dòng trên (dạng `[slug](slug.md)`, “—” nếu không có) để tự nạp mục “Bắt đầu từ đây” của log. Đổi module thì sửa dòng này. -->
 
@@ -25,7 +25,7 @@ Module đang làm: [exercise-practice](exercise-practice.md)
 | PayOS checkout | [spec](payos-checkout.md) | Hoàn tất | Claude | Task 1a, 1b và 2 đã nhận; spec đã đồng bộ 2026-11-17. Các mục chưa kiểm: xem spec và log. | [log](payos-checkout.log.md) |
 | Course AI tutor | [spec](course-ai-tutor.md) | Hoàn tất | Claude | Task 1 (Backend) và Task 2 (Giao diện) đã nhận, spec đồng bộ 2026-11-17; PR #10 đã merge vào `main` 2026-11-17, CI đạt. Các mục chưa kiểm: xem spec và log. | [log](course-ai-tutor.log.md) |
 | Exercise practice | [spec](exercise-practice.md) | Hoàn tất | Claude | Task 1a–2c đã nhận; spec đồng bộ 2026-11-20. Các mục chưa kiểm: xem spec và log. | [log](exercise-practice.log.md) |
-| Interview practice | [spec](interview-practice.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định, Admin/Moderator không vào trang; Codex phản biện một vòng); làm sau `exercise-practice`, bắt đầu Task 1a. | — |
+| Interview practice | [spec](interview-practice.md) | Hoàn tất | Claude | Task 1a–1c (2026-11-20), 2a–2b (2026-11-21) đã nhận; spec đồng bộ 2026-11-21; PR #13 chờ merge. Các mục chưa kiểm: xem spec và log. | [log](interview-practice.log.md) |
 | Forum & reports | [spec](forum-reports.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (7 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `interview-practice`, bắt đầu Task 1a. | — |
 | Dashboard stats | [spec](dashboard-stats.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau cùng, khi các module nguồn đã code. | — |
 | Messaging | [spec](messaging.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (rủi ro cao; 7 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau `forum-reports`, cắt đầu tiên nếu thiếu thời gian. | — |
@@ -39,7 +39,7 @@ Trạng thái hợp lệ: `Đề xuất` → `Đang lập kế hoạch` → `Ch�
 
 - **Làn đầy đủ (đổi vai 2026-11-14, D-030):** Claude viết spec theo [`_template.md`](_template.md) → Codex phản biện tối đa 2 vòng → người dùng chốt (`course-payment` do Codex viết trước đó, giữ nguyên). **Làn nhẹ:** việc cơ học, rủi ro thấp (đổi tên, di chuyển file, sửa tài liệu) — một dòng ở bảng, không spec, Claude làm, Codex review một lần. Người dùng quyết task vào làn nào.
 - **Backend trước, giao diện sau** cho chức năng mới: chỉ mở task giao diện khi toàn bộ backend của module xong (API + test đạt); thiếu endpoint thì mở task backend bổ sung trong spec, không sửa backend trong task giao diện. Chức năng đã đầy đủ: sửa giao diện trước.
-- **Cổng wireframe cho mọi giao diện (người dùng chốt 2026-11-16):** module nào có task “Đổi giao diện: Có” thì sau backend phải có `plans/<module>.wireframe.md` được người dùng duyệt rồi mới code giao diện; áp cả cho spec đã chốt trước đó ghi “không làm wireframe” (`exercise-practice`, `interview-practice`, `forum-reports`, `dashboard-stats`, `messaging`, `course-ai-tutor` nếu có giao diện).
+- **Cổng wireframe cho mọi giao diện (người dùng chốt 2026-11-16):** module nào có task “Đổi giao diện: Có” thì sau backend phải có `plans/<module>.wireframe.md` được người dùng duyệt rồi mới code giao diện; áp cả cho spec đã chốt trước đó ghi “không làm wireframe” (`exercise-practice`, `interview-practice`, `forum-reports`, `dashboard-stats`, `messaging`, `course-ai-tutor` nếu có giao diện); riêng `interview-practice` đã được người dùng bỏ cổng này ngày 2026-11-20.
 - Người dùng quyết định tại bốn cổng: chốt plan; bất đồng giữa các AI; chạm giới hạn vòng; nhận kết quả cuối.
 
 ## Câu hỏi mở

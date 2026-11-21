@@ -92,7 +92,7 @@ public class AiOutlineService implements AuthorAiService {
     public AiQuotaResponse quota(UUID actor) {
         new TransactionTemplate(transactionManager).executeWithoutResult(s -> access.lockWriter(actor));
         return new AiQuotaResponse(limits.peek(actor, Kind.OUTLINE), limits.peek(actor, Kind.DRAFT),
-                limits.peek(actor, Kind.EXERCISE));
+                limits.peek(actor, Kind.EXERCISE), limits.peek(actor, Kind.INTERVIEW_DRAFT));
     }
 
     private long elapsedMs(Instant started) {
