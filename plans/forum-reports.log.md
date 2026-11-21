@@ -4,8 +4,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`forum-reports.md`
 
 ## Bắt đầu từ đây (cập nhật 2026-11-21)
 
-- **Task tiếp:** Task 1c — React bài diễn đàn · Giao diện: Không
-- Task 1a, 1b đã nhận (2026-11-21). Spec Task 1c (react) chốt 2026-11-21.
+- **Task tiếp:** Cổng wireframe — viết `plans/forum-reports.wireframe.md` (Task 2a, 2b; gồm danh sách “ai đã react”), dừng chờ duyệt · Giao diện: Có
+- Task 1a, 1b, 1c đã nhận (2026-11-21).
 - Nhánh `feature/forum-reports` (tách từ `main` sau PR #13), commit cục bộ, chưa push.
 - Chưa kiểm: full backend (CI khi mở PR).
 
@@ -29,7 +29,17 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`forum-reports.md`
 - Task 1b — `reason`/`action` là chuỗi có pattern để giá trị sai thành 400 `VALIDATION_ERROR` (enum Jackson sẽ ra `MALFORMED_REQUEST`). `description`/`note` chứa NUL → 400. `POST /reports` trả `{id, status, createdAt}`; `resolve` trả mục hàng đợi; `visibility` trả bài dạng Moderator.
 - Task 1b — `publiclyVisible`: bài hỏi `VISIBLE`; câu trả lời `VISIBLE` và bài hỏi không `HIDDEN` (câu trả lời dưới bài hỏi `DELETED` vẫn tính là công khai vì vẫn hiện). `RESTORE` có `note` thì ghi đè `moderation_note`, không có thì giữ ghi chú ẩn. Bài đích của `resolve` không còn (không xảy ra vì không xóa cứng) → 409 `REPORT_ALREADY_HANDLED`.
 
+- Task 1c — entity `ForumPostReaction` chỉ đọc, không kế thừa `BaseEntity` (bảng không có `created_by/updated_by`, đúng cột spec); ghi bằng upsert/delete trong repository, không gắn trigger `set_updated_at` (upsert tự đặt `updated_at`). Danh sách lọc loại dùng hai hàm `findByPostId`/`findByPostIdAndType` thay vì `:type is null` (tránh lỗi kiểu tham số null trên Postgres).
+- Task 1c — PUT/DELETE react cũng tính nhịp với lần không đổi gì (PUT cùng loại, DELETE khi chưa có). `PostViewer`/`QuestionViewer` thêm `canReact` cuối record; `Summary` thêm `reactionCount`; `Answer`/`Question` thêm `reactions` (chỉ thêm trường).
+
 ## Nhật ký phiên
+### 2026-11-21 — Task 1c: react bài diễn đàn
+- V22 `forum_reactions.sql`; `ForumReactionType`, `ForumPostReaction`, `ForumPostReactionRepository`; `ForumRequest.React/ReactionFilter`; `ForumResponse.Reactions/Reactor` + `canReact`, `reactionCount`; `ForumService.react/unreact/reactions`, `RateKind.REACT` 30; `ForumController` 3 route.
+- TDD: viết test 4 lớp trước, đỏ biên dịch (chưa có `ForumReactionType`, `react`…) → xanh lần đầu sau khi code.
+- Lần cuối `--tests 'com.techverse.server.forum.*'` (gồm lớp 1b vì sửa `ForumService`/viewer dùng chung): Rules 12, ForumController 7, ReportController 4, Migration 1, ForumIntegration 8, ReportIntegration 6 — 38/38 đạt.
+- Review vòng 1: [P2] upsert dùng `now()` (thời điểm bắt đầu transaction) → request chờ khóa nhận `reactedAt` cũ hơn request xử lý trước. Sửa: `clock_timestamp()` cho cả insert lẫn đổi loại. Test đỏ (`reactedAt` < lúc nhả khóa, `ForumIntegrationTest:353`) → xanh; `ForumIntegrationTest` 8/8 đạt.
+- Review vòng 2 (`adversarial-review`, phần sửa): approve, không phát hiện. Người dùng nhận Task 1c (2026-11-21).
+- Chưa kiểm: full backend (CI khi mở PR).
 ### 2026-11-21 — Task 1b: báo cáo vi phạm và kiểm duyệt
 - `Report`, `ReportReason`, `ReportStatus`, `ReportRepository`, `ReportRequest`, `ReportResponse`, `ReportService`, `ReportController`, `ModeratorReportController`; `ForumPost.hide/restore`; 6 mã lỗi; `SecurityConfiguration`; `ForumService` đóng báo cáo `OPEN` khi người đăng xóa bài, `canReport` xét “đã báo cáo”.
 - TDD: `ReportIntegrationTest` đỏ (403, chưa có route) → xanh lần đầu sau khi code.
