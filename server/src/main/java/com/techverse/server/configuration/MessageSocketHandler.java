@@ -146,6 +146,13 @@ public class MessageSocketHandler extends TextWebSocketHandler implements Handsh
         timer.schedule(() -> senders.execute(() -> drop(t.user(), session, CloseStatus.NORMAL)), delay, TimeUnit.MILLISECONDS);
     }
 
+    /** Open connections of one user, as registered by {@link #afterConnectionEstablished}. */
+    public int connections(UUID user) {
+        synchronized (open) {
+            return open.getOrDefault(user, new ArrayDeque<>()).size();
+        }
+    }
+
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         if (session.getAttributes().get(ATTR) instanceof Ticket t) forget(t.user(), session);

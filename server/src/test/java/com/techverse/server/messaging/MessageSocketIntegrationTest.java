@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.techverse.server.configuration.MessageSocketHandler;
 import com.techverse.server.properties.OAuth2Properties;
 import com.techverse.server.service.TokenService;
 import com.techverse.server.service.impl.ConversationService;
@@ -33,6 +34,7 @@ class MessageSocketIntegrationTest extends ConversationIntegrationTestBase {
     @Autowired PlatformTransactionManager txManager;
     @Autowired TokenService tokens;
     @Autowired @Qualifier("accessTokenDecoder") JwtDecoder decoder;
+    @Autowired MessageSocketHandler socket;
 
     record Conn(WebSocket ws, BlockingQueue<String> events, CompletableFuture<Integer> closed) {
         String next() throws InterruptedException {
@@ -86,8 +88,20 @@ class MessageSocketIntegrationTest extends ConversationIntegrationTestBase {
         }).thenApply(ws -> new Conn(ws, events, closed));
     }
 
+    /**
+     * The client sees the handshake done before the server registers the session, so an event pushed in between is
+     * lost (the browser catches up over REST); wait for the registration so tests see every event.
+     */
     Conn connect(String ticket) throws Exception {
-        return start(ticket, oauth2.webUrl()).get(10, TimeUnit.SECONDS);
+        UUID user = UUID.fromString(redisTemplate.opsForValue().get("messaging:ticket:" + ticket).split(" ")[0]);
+        int before = socket.connections(user);
+        var conn = start(ticket, oauth2.webUrl()).get(10, TimeUnit.SECONDS);
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (socket.connections(user) <= before) {
+            if (System.nanoTime() > deadline) throw new AssertionError("server never registered the connection");
+            Thread.sleep(10);
+        }
+        return conn;
     }
 
     /** The HTTP status of a refused handshake. */
