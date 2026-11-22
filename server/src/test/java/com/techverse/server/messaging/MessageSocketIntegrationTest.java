@@ -158,9 +158,9 @@ class MessageSocketIntegrationTest extends ConversationIntegrationTestBase {
         message(id, learnerToken, "secret text").andExpect(status().isCreated());
 
         String expected = "{\"type\":\"message\",\"conversationId\":\"" + id + "\",\"seq\":1}";
-        assertThat(authorConn.next()).isEqualTo(expected);
+        assertThat(authorConn.next()).as("author closed=%s", authorConn.closed().getNow(null)).isEqualTo(expected);
         assertThat(authorConn.next()).isEqualTo("{\"type\":\"unread\"}");
-        assertThat(learnerConn.next()).isEqualTo(expected);
+        assertThat(learnerConn.next()).as("learner closed=%s", learnerConn.closed().getNow(null)).isEqualTo(expected);
         learnerConn.quiet();
         third.quiet();
     }

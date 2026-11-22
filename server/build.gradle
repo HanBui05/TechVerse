@@ -55,4 +55,6 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// CI keeps no test reports: print the assertion message and cause in the log.
+	testLogging { exceptionFormat = 'full' }
 }
