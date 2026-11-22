@@ -11,21 +11,14 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`messaging.md`](me
 
 ## Quyết định người dùng chưa có trong spec
 
-- **2026-11-22 — Bỏ cổng wireframe của messaging:** người dùng không muốn viết `plans/messaging.wireframe.md`; bố cục giao diện 2a/2b lấy từ `plans/messaging.ui-prompt.md` (Claude viết, được phép sáng tạo trong khuôn khổ web thực tế). Giao diện không sửa backend.
-
-- **2026-11-22 — Nhắn tin trước khi mua (thay M2 A):** người học đăng nhập được nhắn cho tác giả của một khóa **kể cả khi chưa đăng ký/mua**, để hỏi khóa có phù hợp không. Đã đưa vào thân spec 2026-11-22.
-
-- **2026-11-22 — Thời gian thực: REST + WebSocket kết hợp (thay M3 B):** REST giữ nguyên cho gửi tin, chặn, báo cáo, đánh dấu đã đọc và tải tin (`beforeSeq`/`afterSeq`). Thêm WebSocket chỉ để server đẩy **sự kiện** (“cuộc X có tin mới, seq=N”, “số chưa đọc đổi”, đổi trạng thái chặn/khóa) — **không chở nội dung tin**; trình duyệt nhận sự kiện rồi gọi REST lấy tin. Rớt socket: tự kết nối lại + lấy bù bằng `afterSeq`; polling giữ làm dự phòng, giãn ~30 giây. (Chi tiết kỹ thuật STOMP ban đầu đã đổi sang WebSocket thô + vé một lần, xem nhật ký 2026-11-22; spec Task 1c.) Thứ tự: Task 1a (REST) trước, task WebSocket riêng sau; thiếu thời gian thì dừng ở polling. “Đang gõ”, “đã xem”, online vẫn ngoài phạm vi.
-
-- **2026-11-22 — Chi tiết nhắn trước khi mua (đồng ý cả 4 khuyến nghị):** (1) chống spam: trước khi tác giả trả lời lần đầu, người học gửi tối đa 3 tin; mỗi người mở tối đa 10 cuộc trò chuyện mới/ngày; chỉ mở từ khóa đang công khai; (2) lưu khóa mà người học bấm “Nhắn tác giả” gần nhất, tác giả thấy “Hỏi về: <tên khóa>” và “Đã đăng ký / Chưa đăng ký”; (3) khách bấm “Nhắn tác giả” → đăng nhập rồi quay lại trang khóa; (4) không có nút tắt nhận tin từ người chưa đăng ký, tác giả dùng “Chặn”.
-
-- **2026-11-22 — Bỏ giới hạn 10 cuộc trò chuyện mới/ngày:** sau khi nghe giải thích (chặn rải spam tới nhiều tác giả), người dùng chọn bỏ hẳn; chống spam còn: 3 tin trước khi tác giả trả lời, nhịp 20 tin/phút và 5 lần mở/phút, Chặn, Báo cáo. Đã sửa thân spec.
+- (không có)
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-22 — Codex: đã đưa các quyết định người dùng ngày 2026-11-22 vào spec (bỏ cổng wireframe, nhắn trước khi mua và REST + WebSocket thô với vé một lần; bỏ giới hạn 10 cuộc/ngày).
 ### 2026-11-22 — Task 2b — Kết quả (đã nhận 2026-11-22)
 - Code: `app/src/types/forum.ts` (+`ReportTargetType`, `ModeratedConversation`, `ReportResolveAction` thêm `LOCK_CONVERSATION`, `ModeratorReportItem.targetType/conversation`, `ModeratorReportsFilter.targetType`), `app/src/services/forumService.ts` (`moderatorReportsFilter`/`moderatorReportsSearch`/`moderatorReportService.listReports` truyền `targetType=CONVERSATION`), `app/src/data/forumI18n.ts` (copy Task 2b vi/en + mã lỗi `CONVERSATION_*`, `REPORT_TARGET_EMPTY`, `MESSAGE_STORAGE_UNAVAILABLE`), `app/src/pages/Messages/MessagesPage.tsx` (`ConversationMessageThread` xếp trái/phải theo `senderId !== viewer.otherUserId` cả khi `mine=false` ở API Moderator), `app/src/pages/Moderator/Reports/ModeratorReportsPage.tsx` (bộ chọn `Bài diễn đàn | Cuộc trò chuyện` dưới các tab; thẻ báo cáo hiện `Người học ↔ Tác giả`, `Đang bị chặn`/`Đang bị khóa`, 3 nút `Xem tin nhắn`/`Khóa cuộc trò chuyện`/`Bỏ qua`; `Sheet` bên phải ~560px chỉ đọc, chỉ gọi API tin nhắn khi bấm `Xem tin nhắn`, có `Tải tin cũ hơn` và nút xử lý ở chân khung; khóa bắt buộc ghi lý do 1–1.000 ký tự; tab `Nội dung đang ẩn` chia 2 phần: bài diễn đàn đang ẩn và cuộc trò chuyện đang bị khóa có nút `Xem tin nhắn` + `Mở khóa`).
 - Test (`npx vitest run src/pages/Moderator/Reports/ModeratorReportsPage.test.tsx src/pages/Messages/MessagesPage.test.tsx` + `npm run build` trong `app/`): TDD viết 2 ca test mới trước (đỏ 2/10), sau khi code đạt 10/10 trong `ModeratorReportsPage.test.tsx` và 15/15 trong `MessagesPage.test.tsx` (tổng 25/25); `npm run build` (`tsc -b && vite build`) thành công 0 lỗi.

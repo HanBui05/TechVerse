@@ -4,7 +4,7 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 **Mục tiêu:** Người học (đã mua hoặc chưa) mở cuộc trò chuyện riêng với tác giả của một khóa đang công khai để hỏi trước khi mua hoặc hỏi bài; hai bên nhắn chữ (Markdown, có khối code), tin mới hiện ngay nhờ server đẩy sự kiện qua WebSocket, thanh bên báo số cuộc trò chuyện chưa đọc. Mỗi bên chặn được cuộc trò chuyện và báo cáo cho Moderator; Moderator chỉ đọc được cuộc trò chuyện đã bị báo cáo.
 **Làn:** Đầy đủ · **Rủi ro:** **cao** (tin nhắn riêng tư, ranh giới quyền đọc). Review vòng 1 dùng `adversarial-review`.
-**Thứ tự:** 1a → 1b → 1c (Backend) → cổng wireframe → 2a → 2b (Giao diện). **Làm cuối cùng và là phần bị cắt đầu tiên** nếu thiếu thời gian (M1 A, T3 A). Bỏ 1c chỉ khi người dùng quyết (ghi log); khi đó cổng wireframe mở sau 1b và 2a chạy bằng nhánh tự làm mới đã mô tả trong 2a, không thêm việc backend. **Điều kiện bắt đầu:** `forum-reports` đã xong (PR #14 merge 2026-11-22).
+**Thứ tự:** 1a → 1b → 1c (Backend) → 2a → 2b (Giao diện); người dùng bỏ cổng wireframe ngày 2026-11-22. **Điều kiện bắt đầu:** `forum-reports` đã xong (PR #14 merge 2026-11-22).
 **Nguồn quyết định:** câu M1–M7 trong [`roadmap.questions.md`](roadmap.questions.md) (người dùng trả lời 2026-11-14): M1 A, M2 A (người học với tác giả khóa đang học — **thay 2026-11-22**: cả người chưa mua), M3 B (tự làm mới vài giây/lần — **thay 2026-11-22**: REST + WebSocket đẩy sự kiện), M4 A (chỉ chữ, có khối code), M5 A (chặn + báo cáo), M6 A (Moderator chỉ đọc cuộc trò chuyện bị báo cáo), M7 A (số chưa đọc trên thanh bên).
 
 ## Hiện trạng đã đối chiếu (2026-11-22)
@@ -22,7 +22,7 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 - `server/src/main/java/com/techverse/server/{controller,configuration,entity,enums,dto,repository,service}/**/*{Conversation,Message}*.java` (tạo, gồm cấu hình và handler WebSocket của Task 1c); `configuration/SecurityConfiguration.java`, `exception/ErrorCode.java`, `server/build.gradle` (thêm `spring-boot-starter-websocket`).
 - Lớp báo cáo của `forum-reports`, chỉ để nhận loại đích `CONVERSATION` (Task 1b): `dto/request/ReportRequest.java`, `dto/response/ReportResponse.java`, `service/impl/ReportService.java`, `repository/ReportRepository.java`, `controller/ModeratorReportController.java`, `entity/Report.java`.
 - `server/src/test/java/com/techverse/server/messaging/**` (tạo; mọi lớp test mới của module) và test báo cáo bị ảnh hưởng (`forum/Report*Test.java`).
-- `plans/messaging.wireframe.md` (tạo ở cổng wireframe).
+- `plans/messaging.ui-prompt.md`, `plans/messaging.ui-prompt-2b.md` (bố cục giao diện; prompt 2b được ưu tiên khi khác nhau).
 - `docs/RUNBOOK.md` (Task 1c: ghi yêu cầu proxy không ghi query của `/ws/messaging`).
 - `app/src/pages/Messages/**` và test (tạo); `app/src/{types/messaging.ts,services/messagingService.ts,data/messagingI18n.ts}` và test (tạo).
 - `app/src/pages/Courses/CourseOverviewPage.tsx` và test (nút “Nhắn tác giả”); `app/src/pages/Moderator/Reports/**`, `app/src/{types/forum.ts,services/forumService.ts,data/forumI18n.ts}` và test (báo cáo cuộc trò chuyện, Task 2b).
@@ -65,11 +65,11 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 - Migration: bảng `conversations` (`learner_id`, `author_id` → users `ON DELETE RESTRICT`; `context_course_id` → courses `ON DELETE SET NULL` + `context_course_title` (tên lúc mở); `author_replied` boolean mặc định false; `last_message_seq`, `last_message_at`, `last_message_sender_id`; `learner_last_read_seq`, `author_last_read_seq` mặc định 0; `blocked_by` → users, `blocked_at`; `locked_by` → users, `locked_at`, `lock_note`; cột audit; UNIQUE `(learner_id, author_id)`; CHECK hai người khác nhau; index `(learner_id, last_message_at DESC)`, `(author_id, last_message_at DESC)`); bảng `messages` (`conversation_id` → conversations `ON DELETE RESTRICT`, `sender_id` → users, `content` không rỗng, `client_id uuid`, `seq bigint` tự tăng, `created_at`; UNIQUE `(sender_id, client_id)` trên toàn bảng, không theo từng cuộc trò chuyện; index `(conversation_id, seq)`). Cùng migration này thêm `CONVERSATION` vào CHECK `reports.target_type` và vào hàm `validate_report_target` (giữ nguyên các nhánh cũ), để Task 1b không phải sửa migration đã chạy.
 - `POST /api/v1/conversations {courseId}` — mở hoặc lấy lại cuộc trò chuyện với tác giả của khóa, cập nhật `contextCourse`; trả cuộc trò chuyện (200 cho cả hai trường hợp).
-- `GET /api/v1/conversations` — các cuộc trò chuyện của mình ở cả hai vai, mới có tin trước; phân trang; mỗi mục: người kia (tên, ảnh), vai của mình, `contextCourse {id, title, available}`, `contextEnrolled`, đoạn trích tin cuối (120 ký tự), thời điểm tin cuối, `unread`, `blockedByMe`, `blockedByOther`, `locked`.
+- `GET /api/v1/conversations` — các cuộc trò chuyện của mình ở cả hai vai, mới có tin trước; tác giả không thấy cuộc chưa có tin, người học vẫn thấy; phân trang; mỗi mục: người kia (tên, ảnh), vai của mình, `contextCourse {id, title, available}`, `contextEnrolled`, đoạn trích tin cuối (120 ký tự), thời điểm tin cuối, `unread`, `blockedByMe`, `blockedByOther`, `locked`.
 - `GET /api/v1/conversations/{id}` — thông tin một cuộc trò chuyện như một mục danh sách, thêm `canSend` và `remainingBeforeReply` (số tin người học còn gửi được trước khi tác giả trả lời; `null` khi không áp dụng: mình là tác giả hoặc tác giả đã trả lời).
 - `GET /api/v1/conversations/{id}/messages` — `size` 1–50 mặc định 30; luôn trả theo `seq` tăng dần kèm `hasMore`. Không tham số: `size` tin mới nhất. `beforeSeq`: `size` tin liền trước mốc đó (`hasMore` = còn tin cũ hơn). `afterSeq`: `size` tin **sớm nhất** sau mốc đó (`hasMore` = còn tin mới hơn chưa lấy), `afterSeq = 0` là từ đầu; giao diện gọi tiếp tới khi `hasMore = false` để không bỏ sót khi có nhiều hơn một trang tin mới.
 - `POST /api/v1/conversations/{id}/messages {content, clientId}` — gửi tin (201); cập nhật tin cuối của cuộc trò chuyện trong cùng transaction. Gửi tin **không** tự nâng mốc đã đọc của người gửi.
-- `PUT /api/v1/conversations/{id}/read {seq}` — đặt mốc đã đọc của mình (chỉ tăng, không lùi; lớn hơn tin cuối thì lấy tin cuối); giao diện chỉ gửi `seq` của tin thực sự đã tải và hiển thị liền mạch.
+- `PUT /api/v1/conversations/{id}/read {seq}` — đặt mốc đã đọc của mình (chỉ tăng, không lùi; lớn hơn tin cuối thì lấy tin cuối); giao diện chỉ gửi `seq` của tin thực sự đã tải và hiển thị liền mạch; trả chi tiết cuộc trò chuyện.
 - `unread` của một cuộc trò chuyện = tin cuối do **người kia** gửi và có `seq` lớn hơn mốc đã đọc của mình. `GET /api/v1/conversations/unread-count` — số cuộc trò chuyện có `unread`.
 - Gửi tin của tác giả đặt `author_replied = true` trong cùng transaction.
 
@@ -82,8 +82,9 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 | `id` trên đường dẫn không phải UUID; body thiếu hoặc sai kiểu | Theo xử lý chung | 400 `VALIDATION_ERROR` | — |
 | `courseId` | Bắt buộc, UUID | 400 `VALIDATION_ERROR` | — |
 | Mở từ khóa không tồn tại hoặc không công khai | Không lộ lý do; **không** đòi đang học | 403 `CONVERSATION_NOT_ALLOWED` | Không thể nhắn cho tác giả của khóa này. |
+| Mở từ khóa có tác giả mang role ADMIN/MODERATOR | Không cho mở | 403 `CONVERSATION_NOT_ALLOWED` | Không thể nhắn cho tác giả của khóa này. |
 | Mở với tác giả là chính mình | — | 403 `CONVERSATION_NOT_ALLOWED` | Không thể nhắn cho tác giả của khóa này. |
-| Hai request mở cùng lúc cho cùng cặp | UNIQUE; request thua đọc lại và trả cuộc trò chuyện đã có | 200 | — |
+| Hai request mở cùng lúc cho cùng cặp | UNIQUE; một `INSERT … ON CONFLICT DO UPDATE` trả cuộc trò chuyện đã có | 200 | — |
 | Cuộc trò chuyện không tồn tại hoặc mình không phải người tham gia (đọc, gửi, đánh dấu đã đọc) | Không lộ sự tồn tại | 404 `CONVERSATION_NOT_FOUND` | Không tìm thấy cuộc trò chuyện. |
 | `content` | Sau trim 1–2.000 ký tự | 400 `VALIDATION_ERROR` | Tin nhắn từ 1 đến 2.000 ký tự. |
 | Nội dung Markdown | HTML thô, link nguy hiểm, NUL, ảnh | 400 `MESSAGE_CONTENT_INVALID` | Tin nhắn chứa định dạng không được hỗ trợ. |
@@ -94,7 +95,7 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 | Gửi khi cuộc trò chuyện bị Moderator khóa | Không lưu tin | 409 `CONVERSATION_LOCKED` | Cuộc trò chuyện đã bị khóa bởi kiểm duyệt. |
 | Người học gửi tin thứ 4 khi tác giả chưa từng trả lời (kể cả hai request song song: đếm dưới khóa cuộc trò chuyện) | Không lưu tin; gửi lại cùng `clientId` của tin đã lưu vẫn trả tin cũ | 409 `CONVERSATION_AWAITING_REPLY` | Hãy chờ tác giả trả lời trước khi gửi thêm. |
 | Hai bên gửi cùng lúc | Khóa dòng cuộc trò chuyện; cả hai tin được lưu, `seq` khác nhau, tin cuối là tin có `seq` lớn hơn | 201 | — |
-| `seq` khi đánh dấu đã đọc | Bắt buộc, số nguyên 0 tới giới hạn số nguyên 64 bit; sai → 400. Hợp lệ → 200: không làm lùi mốc, lớn hơn tin cuối thì lấy tin cuối, hai request song song giữ mốc lớn hơn | 400 `VALIDATION_ERROR` / 200 | — |
+| `seq` khi đánh dấu đã đọc | Bắt buộc, số nguyên 0 tới giới hạn số nguyên 64 bit; sai → 400. Hợp lệ → 200: không làm lùi mốc, lớn hơn tin cuối thì lấy tin cuối, hai request song song giữ mốc lớn hơn | 400 `VALIDATION_ERROR` (vượt 64 bit trong JSON: `MALFORMED_REQUEST`) / 200 | — |
 | `beforeSeq`, `afterSeq`, `size`, `page` | Số nguyên ≥ 0 trong giới hạn 64 bit; không gửi cả `beforeSeq` lẫn `afterSeq`; `size` 1–50; `page ≥ 0` | 400 `VALIDATION_ERROR` | — |
 | Gửi quá nhanh | Mỗi người tối đa 20 tin/phút và 5 lần mở cuộc trò chuyện/phút | 429 `MESSAGE_RATE_LIMITED` | Bạn gửi quá nhanh, hãy thử lại sau. |
 | Redis lỗi khi kiểm nhịp | Không cho qua | 503 `MESSAGE_STORAGE_UNAVAILABLE` | Dịch vụ đang gián đoạn. Hãy thử lại. |
@@ -102,17 +103,16 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** migration; entity `Conversation`, `Message`; `ConversationController`, `ConversationService` (luật thuần public static: người tham gia, `unread`, `canSend`, `remainingBeforeReply`, mốc đọc, đoạn trích; kiểm nội dung và nhịp viết trong service theo luật “Ít class”), repository; `ConversationRequest`/`ConversationResponse`; `SecurityConfiguration`; `ErrorCode`.
-- **Phần dùng lại:** `lockActiveUser`; `CourseSpecification.visibleCourse()` để tìm khóa; `CourseEnrollmentRepository.findActive` cho `contextEnrolled`; kiểm Markdown như `ForumService.checkContent`; mẫu đếm Redis như `ForumService.rateLimit` cho nhịp phút; `ArticleAuthorResponse` cho người kia; mẫu `INSERT … ON CONFLICT` như `ForumPostReactionRepository.upsert`.
-- **Bẫy đã biết:** mọi truy vấn đọc tin kèm điều kiện người tham gia hoặc kiểm trước khi đọc — không có đường đọc tin chỉ bằng `id`; API mở không đi qua đường đọc bài học (đường đó tự enroll khóa miễn phí); `seq` có thể có khoảng trống, chỉ so lớn nhỏ; `last_message_*`, `author_replied` cập nhật cùng transaction với lưu tin; đếm 3 tin chờ trả lời dưới khóa dòng cuộc trò chuyện; tra `clientId` trước giới hạn 3 tin; không đưa `content` vào log; `unread-count` là một câu đếm; tác giả bị đình chỉ vẫn là tác giả của cuộc đã mở.
+Task đã nhận 2026-11-22; kết quả code, test và review xem [log](messaging.log.md).
 
 ### Xong khi
 
-- [ ] `MessagingMigrationTest` (Flyway thuần): hai bảng, UNIQUE cặp và `(sender_id, client_id)`, CHECK hai người khác nhau, `context_course_id` về NULL khi xóa khóa, các index; báo cáo `CONVERSATION` ghi được, loại cũ vẫn ghi được, đích không tồn tại bị trigger từ chối.
-- [ ] `ConversationRulesTest` (unit, gọi thẳng hàm tĩnh và hàm kiểm của service): ma trận role × người tham gia ra 403/404 theo “Hợp đồng mã quyền”; `canSend` theo chặn/khóa/chờ trả lời; `remainingBeforeReply` (0–3, `null` cho tác giả hoặc sau khi tác giả trả lời); dựng `contextCourse` khi khóa đã xóa (`id = null`, `available = false`, `contextEnrolled = null`, giữ tên) và khi khóa bị ẩn; `unread`; mốc đọc không lùi; đoạn trích; ba kiểu phân trang và `hasMore`; idempotency theo `clientId`; nội dung hợp lệ/không; nhịp phút với Redis giả (như `ForumPostRulesTest.limiter`), Redis lỗi → 503.
-- [ ] `ConversationControllerTest` (`@WebMvcTest`): validation từng trường theo biên, 401, mapping mã lỗi (gồm `CONVERSATION_AWAITING_REPLY`), gửi cả `beforeSeq` lẫn `afterSeq`.
-- [ ] `ConversationIntegrationTest` (DB/security thật, gộp theo luồng): (1) người **chưa mua** mở từ khóa công khai, mở lại từ khóa khác của cùng tác giả trả cuộc cũ với `contextCourse` mới và `contextEnrolled` đúng; khóa ngữ cảnh bị ẩn sau đó → `available = false`; mở từ khóa ẩn/của mình → 403; (2) người học gửi 3 tin, tin thứ 4 → 409, tác giả trả lời → người học gửi tiếp được; nhắn qua lại, lấy hơn một trang tin mới bằng `afterSeq`, đánh dấu đã đọc, `unread-count` đúng từng bên; (3) **riêng tư: người thứ ba gọi mọi API với `id` thật → 404 và không thấy cuộc đó; ADMIN, MODERATOR, đa vai, tài khoản bị khóa → 403; không phản hồi lỗi nào chứa nội dung**; (4) đồng thời: hai request mở cùng cặp một dòng; gửi lại cùng `clientId` một tin, khác nội dung → 409; hai bên gửi song song đủ hai tin; hai tin thứ 3 và thứ 4 song song chỉ một được lưu.
-- [ ] Chạy các lớp trên (cần Docker); full backend do CI.
+- [x] `MessagingMigrationTest` (Flyway thuần): hai bảng, UNIQUE cặp và `(sender_id, client_id)`, CHECK hai người khác nhau, `context_course_id` về NULL khi xóa khóa, các index; báo cáo `CONVERSATION` ghi được, loại cũ vẫn ghi được, đích không tồn tại bị trigger từ chối.
+- [x] `ConversationRulesTest` (unit, gọi thẳng hàm tĩnh và hàm kiểm của service): ma trận role × người tham gia ra 403/404 theo “Hợp đồng mã quyền”; `canSend` theo chặn/khóa/chờ trả lời; `remainingBeforeReply` (0–3, `null` cho tác giả hoặc sau khi tác giả trả lời); dựng `contextCourse` khi khóa đã xóa (`id = null`, `available = false`, `contextEnrolled = null`, giữ tên) và khi khóa bị ẩn; `unread`; mốc đọc không lùi; đoạn trích; ba kiểu phân trang và `hasMore`; idempotency theo `clientId`; nội dung hợp lệ/không; nhịp phút với Redis giả (như `ForumPostRulesTest.limiter`), Redis lỗi → 503.
+- [x] `ConversationControllerTest` (`@WebMvcTest`): validation từng trường theo biên, 401, mapping mã lỗi (gồm `CONVERSATION_AWAITING_REPLY`), gửi cả `beforeSeq` lẫn `afterSeq`.
+- [x] `ConversationIntegrationTest` (DB/security thật, gộp theo luồng): (1) người **chưa mua** mở từ khóa công khai, mở lại từ khóa khác của cùng tác giả trả cuộc cũ với `contextCourse` mới và `contextEnrolled` đúng; khóa ngữ cảnh bị ẩn sau đó → `available = false`; mở từ khóa ẩn/của mình → 403; (2) người học gửi 3 tin, tin thứ 4 → 409, tác giả trả lời → người học gửi tiếp được; nhắn qua lại, lấy hơn một trang tin mới bằng `afterSeq`, đánh dấu đã đọc, `unread-count` đúng từng bên; (3) **riêng tư: người thứ ba gọi mọi API với `id` thật → 404 và không thấy cuộc đó; ADMIN, MODERATOR, đa vai, tài khoản bị khóa → 403; không phản hồi lỗi nào chứa nội dung**; (4) đồng thời: hai request mở cùng cặp một dòng; gửi lại cùng `clientId` một tin, khác nội dung → 409; hai bên gửi song song đủ hai tin; hai tin thứ 3 và thứ 4 song song chỉ một được lưu.
+- [x] Chạy các lớp trên (cần Docker).
+- [ ] Full backend do CI (chưa kiểm — xem log).
 
 ## Task 1b — Chặn, báo cáo và quyền đọc của Moderator
 
@@ -123,16 +123,16 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 - `PUT /api/v1/conversations/{id}/block {blocked}` — người tham gia chặn (`true`) hoặc bỏ chặn (`false`). Đã bị bên kia chặn thì mình không chặn thêm và không bỏ chặn được.
 - Task này không có migration (phần schema báo cáo đã nằm trong migration của 1a).
 - Báo cáo: `POST /api/v1/reports` của `forum-reports` nhận thêm `targetType = CONVERSATION`, `targetId` là cuộc trò chuyện; chỉ người tham gia báo cáo được, khi cuộc trò chuyện chưa bị Moderator khóa; mỗi người một báo cáo cho một cuộc trò chuyện. Mọi quy tắc và mã lỗi khác của báo cáo (`targetId`, `reason`, `description`, nhịp báo cáo, Redis lỗi, 401/403) **thừa kế nguyên** bảng Task 1b của `forum-reports`; bảng dưới chỉ ghi phần khác đi theo loại đích.
-- Hàng đợi Moderator của `forum-reports`: mục báo cáo cuộc trò chuyện hiện loại đích, hai người tham gia, trạng thái chặn/khóa, **không kèm nội dung tin nhắn, đoạn trích hay tin cuối**. Xử lý: `PATCH /api/v1/moderator/reports/{id}/resolve` nhận thêm `action = LOCK_CONVERSATION` cho loại đích này (`HIDE_CONTENT` không áp dụng); `DISMISS` giữ nguyên nghĩa. Như báo cáo diễn đàn, xử lý một báo cáo áp cho mọi báo cáo `OPEN` của cùng cuộc trò chuyện.
-- `GET /api/v1/moderator/conversations/{id}/messages` — chỉ MODERATOR, chỉ khi cuộc trò chuyện có ít nhất một báo cáo (ở trạng thái bất kỳ); phân trang như API của người dùng; chỉ đọc, không đổi mốc đã đọc của ai.
-- `PATCH /api/v1/moderator/conversations/{id}/lock {locked, note}` — khóa hoặc mở khóa trực tiếp một cuộc trò chuyện đã từng bị báo cáo; khóa đồng thời đóng mọi báo cáo `OPEN` của nó thành `ACTIONED`.
+- Hàng đợi Moderator của `forum-reports` nhận `targetType` (`FORUM_POST` mặc định hoặc `CONVERSATION`); mọi mục có `targetType` và `conversation` (null với bài diễn đàn). Mục báo cáo cuộc trò chuyện hiện loại đích, hai người tham gia, trạng thái chặn/khóa, **không kèm nội dung tin nhắn, đoạn trích hay tin cuối**. Xử lý: `PATCH /api/v1/moderator/reports/{id}/resolve` nhận thêm `action = LOCK_CONVERSATION` cho loại đích này (`HIDE_CONTENT` không áp dụng); `DISMISS` giữ nguyên nghĩa. Như báo cáo diễn đàn, xử lý một báo cáo áp cho mọi báo cáo `OPEN` của cùng cuộc trò chuyện.
+- `GET /api/v1/moderator/conversations/{id}/messages` — chỉ MODERATOR, chỉ khi cuộc trò chuyện có ít nhất một báo cáo (ở trạng thái bất kỳ), kiểm bằng `findReported` riêng trong cùng transaction read-only trước khi đọc; phân trang như API của người dùng; chỉ đọc, không đổi mốc đã đọc của ai.
+- `PATCH /api/v1/moderator/conversations/{id}/lock {locked, note}` — khóa hoặc mở khóa trực tiếp một cuộc trò chuyện đã từng bị báo cáo; khóa đồng thời đóng mọi báo cáo `OPEN` của nó thành `ACTIONED`. Mở khóa ghi `note` (có thể null) vào `lock_note`, xóa `locked_by/at`.
 - `GET /api/v1/moderator/conversations?locked=true` — chỉ MODERATOR; các cuộc trò chuyện đang bị khóa (đều đã từng bị báo cáo): hai người tham gia, ghi chú khóa, người khóa, thời điểm; phân trang, mới khóa trước; không có nội dung tin nhắn. Tham số `locked` bắt buộc là `true`.
 
 ### Quy tắc nghiệp vụ và mã lỗi
 
 | Trường / tình huống | Ràng buộc | HTTP / mã lỗi | Copy hiển thị |
 |---|---|---|---|
-| `blocked` | Bắt buộc, boolean | 400 `VALIDATION_ERROR` | — |
+| `blocked` | Bắt buộc, boolean; chuỗi sai kiểu JSON | 400 `VALIDATION_ERROR` / `MALFORMED_REQUEST` | — |
 | Chặn/bỏ chặn khi không phải người tham gia | — | 404 `CONVERSATION_NOT_FOUND` | Không tìm thấy cuộc trò chuyện. |
 | Chặn khi mình đã chặn; bỏ chặn khi không bị chặn | Gọi lặp cho cùng kết quả | 200 | — |
 | Chặn hoặc bỏ chặn khi **bên kia** đang chặn (kể cả hai bên bấm chặn cùng lúc: người sau) | Chỉ người chặn bỏ chặn được | 409 `CONVERSATION_BLOCKED` | Cuộc trò chuyện đã bị chặn. |
@@ -141,7 +141,7 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 | Báo cáo cuộc trò chuyện đang bị Moderator khóa (kể cả báo cáo đến ngay sau khi khóa) | Không tạo báo cáo | 409 `CONVERSATION_LOCKED` | Cuộc trò chuyện đã bị khóa bởi kiểm duyệt. |
 | Chặn, bỏ chặn, báo cáo bằng tài khoản bị khóa hoặc mang role ADMIN/MODERATOR | Xét trước `id` | 403 `ACCESS_DENIED` | Bạn không có quyền. |
 | Đã báo cáo cuộc trò chuyện này (kể cả hai request song song) | UNIQUE sẵn có | 409 `REPORT_ALREADY_SUBMITTED` | Bạn đã báo cáo nội dung này. |
-| `action` khi xử lý báo cáo | `LOCK_CONVERSATION` chỉ cho đích `CONVERSATION`; `HIDE_CONTENT` chỉ cho đích `FORUM_POST`; dùng sai loại bị từ chối | 400 `VALIDATION_ERROR` | — |
+| `action` khi xử lý báo cáo | `LOCK_CONVERSATION` chỉ cho đích `CONVERSATION`; `HIDE_CONTENT` chỉ cho đích `FORUM_POST`; dùng sai loại bị từ chối sau khi tìm báo cáo (không có báo cáo → 404 trước) | 400 `VALIDATION_ERROR` | — |
 | `note` | Bắt buộc 1–1.000 ký tự cho `LOCK_CONVERSATION` và khi khóa trực tiếp; tùy chọn ≤ 1.000 cho `DISMISS` và mở khóa | 400 `VALIDATION_ERROR` | Hãy ghi lý do (tối đa 1.000 ký tự). |
 | Báo cáo đã được xử lý (kể cả hai Moderator đồng thời) | Như `forum-reports` | 409 `REPORT_ALREADY_HANDLED` | Báo cáo đã được xử lý. Hãy tải lại. |
 | Gọi API Moderator khi thiếu token / token sai | — | 401 `AUTH_ACCESS_TOKEN_REQUIRED` / `AUTH_INVALID_ACCESS_TOKEN` | Đăng nhập để tiếp tục. |
@@ -149,22 +149,21 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 | Moderator đọc hoặc khóa cuộc trò chuyện **chưa từng bị báo cáo**, hoặc không tồn tại (kể cả đoán đúng `id` thật) | Không phân biệt hai trường hợp | 404 `CONVERSATION_NOT_FOUND` | Không tìm thấy cuộc trò chuyện. |
 | `LOCK_CONVERSATION` khi cuộc trò chuyện đã bị khóa | Không xảy ra với báo cáo `OPEN` (khóa đã đóng báo cáo, và cuộc đã khóa không nhận báo cáo mới); nếu gặp thì từ chối | 409 `REPORT_ALREADY_HANDLED` | Báo cáo đã được xử lý. Hãy tải lại. |
 | Tham số danh sách cuộc đang khóa | `locked=true` bắt buộc; `page ≥ 0`, `size` 1–50 | 400 `VALIDATION_ERROR` | — |
-| `locked` | Bắt buộc, boolean | 400 `VALIDATION_ERROR` | — |
+| `locked` | Bắt buộc, boolean; chuỗi sai kiểu JSON | 400 `VALIDATION_ERROR` / `MALFORMED_REQUEST` | — |
 | Khóa khi đã khóa; mở khi không khóa (kể cả hai Moderator đồng thời) | — | 409 `CONVERSATION_STATE_INVALID` | Không thực hiện được ở trạng thái hiện tại. |
 | Báo cáo quá nhanh / Redis lỗi | Theo giới hạn báo cáo của `forum-reports` | 429 / 503 như `forum-reports` | Như `forum-reports`. |
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** `ConversationService` (chặn, đọc và khóa của Moderator); `ReportRequest` (pattern `targetType` thêm `CONVERSATION`, `action` thêm `LOCK_CONVERSATION`), `ReportService` (rẽ nhánh theo loại đích ở tạo, hàng đợi, xử lý thay cho `FORUM_POST` gắn cứng), `ReportResponse.Item` (thêm `conversation` — hai người tham gia, chặn/khóa — bên cạnh `post`; mục nào chỉ có một trong hai), `ReportRepository`; `ModeratorConversationController`; `SecurityConfiguration`; `ErrorCode`.
-- **Phần dùng lại:** toàn bộ luồng báo cáo, xử lý, đồng thời và giới hạn nhịp của `forum-reports`; cách kiểm role MODERATOR; phân trang tin nhắn của 1a.
-- **Bẫy đã biết:** test hồi quy báo cáo diễn đàn phải vẫn đạt; điều kiện “đã có báo cáo” kiểm trong cùng truy vấn với việc đọc tin (không kiểm ở giao diện); hàng đợi **không** trả nội dung tin nhắn — Moderator phải gọi API đọc riêng, để mọi lần đọc đều qua một cổng kiểm; thứ tự khóa: cuộc trò chuyện trước, báo cáo sau; `HIDE_CONTENT` gửi cho đích `CONVERSATION` phải bị từ chối chứ không lặng lẽ bỏ qua.
+Task đã nhận 2026-11-22; kết quả code, test và review xem [log](messaging.log.md).
 
 ### Xong khi
 
-- [ ] `ConversationRulesTest` thêm ma trận chặn/bỏ chặn (ai chặn, ai gọi) và hành động hợp lệ theo loại đích.
-- [ ] `ModeratorConversationControllerTest` (`@WebMvcTest`) và test `@WebMvcTest` của báo cáo bị sửa: validation (`action` sai loại đích, `note` theo hành động), 401/403, mapping mã lỗi.
-- [ ] `ConversationModerationIntegrationTest` (DB/security thật, gộp theo luồng): (1) chặn → cả hai không gửi được, bên kia không bỏ chặn được, người chặn bỏ chặn → gửi lại được; gửi lại tin cũ cùng `clientId` sau khi bị chặn vẫn trả tin đã lưu; (2) người tham gia báo cáo, người ngoài báo cáo → 404, báo cáo lần hai → 409, cuộc chưa có tin của bên kia → `REPORT_TARGET_EMPTY`; (3) **riêng tư: Moderator đọc cuộc trò chuyện chưa bị báo cáo bằng `id` thật → 404, sau khi có báo cáo → đọc được; ADMIN đơn vai → 403; hàng đợi và danh sách cuộc đang khóa không chứa nội dung, đoạn trích hay tin cuối**; (4) `LOCK_CONVERSATION` khóa và đóng mọi báo cáo `OPEN`, hai bên không gửi được, báo cáo mới bị từ chối, cuộc hiện trong danh sách đang khóa, mở khóa → gửi lại được; hai Moderator xử lý song song một thành công.
-- [ ] Chạy các lớp trên + `ConversationIntegrationTest` + `ReportIntegrationTest`, `ReportControllerTest`, `ForumPostRulesTest` của `forum-reports`; full backend do CI.
+- [x] `ConversationRulesTest` thêm ma trận chặn/bỏ chặn (ai chặn, ai gọi) và hành động hợp lệ theo loại đích.
+- [x] `ModeratorConversationControllerTest` (`@WebMvcTest`) và test `@WebMvcTest` của báo cáo bị sửa: validation (`action` sai loại đích, `note` theo hành động), 401/403, mapping mã lỗi.
+- [x] `ConversationModerationIntegrationTest` (DB/security thật, gộp theo luồng): (1) chặn → cả hai không gửi được, bên kia không bỏ chặn được, người chặn bỏ chặn → gửi lại được; gửi lại tin cũ cùng `clientId` sau khi bị chặn vẫn trả tin đã lưu; (2) người tham gia báo cáo, người ngoài báo cáo → 404, báo cáo lần hai → 409, cuộc chưa có tin của bên kia → `REPORT_TARGET_EMPTY`; (3) **riêng tư: Moderator đọc cuộc trò chuyện chưa bị báo cáo bằng `id` thật → 404, sau khi có báo cáo → đọc được; ADMIN đơn vai → 403; hàng đợi và danh sách cuộc đang khóa không chứa nội dung, đoạn trích hay tin cuối**; (4) `LOCK_CONVERSATION` khóa và đóng mọi báo cáo `OPEN`, hai bên không gửi được, báo cáo mới bị từ chối, cuộc hiện trong danh sách đang khóa, mở khóa → gửi lại được; hai Moderator xử lý song song một thành công.
+- [x] Chạy các lớp trên + `ConversationIntegrationTest` + `ReportIntegrationTest`, `ReportControllerTest`, `ForumPostRulesTest` của `forum-reports`.
+- [ ] Full backend do CI (chưa kiểm — xem log).
 
 ## Task 1c — Đẩy sự kiện qua WebSocket
 
@@ -172,12 +171,14 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 ### Phạm vi
 
+- Dùng WebSocket thô (`TextWebSocketHandler`) với vé một lần, kết hợp REST; không dùng STOMP.
 - `POST /api/v1/conversations/socket-ticket` (cùng hợp đồng quyền của API người dùng) → `{ticket, expiresAt}`: vé là 32 byte ngẫu nhiên (`SecureRandom`, base64url), dùng một lần, sống 30 giây, lưu Redis kèm người dùng, `sid` (phiên) và `exp` của access token đã dùng để xin vé. Lý do: `WebSocket` của trình duyệt không gửi được header `Authorization`, và không đặt JWT vào URL.
 - `GET /ws/messaging?ticket=…` (nâng cấp WebSocket): kiểm `Origin` bằng `webUrl` **trước**, rồi tiêu thụ vé bằng một thao tác Redis nguyên tử (`GETDEL`), rồi kiểm phiên `sid` còn hiệu lực, tài khoản còn hoạt động và không phải ADMIN/MODERATOR; sai thì từ chối trước khi nâng cấp. `Origin` chỉ chặn trang web lạ, không thay xác thực — vé mới là xác thực. Mỗi người tối đa 5 kết nối (nhiều tab), quá thì đóng kết nối cũ nhất.
 - **Vòng đời quyền:** từ chối nâng cấp nếu `exp` của access token đã xin vé đã qua (vé còn TTL vẫn bị từ chối); kết nối tự đóng khi tới `exp` (≤ 15 phút), giao diện xin vé mới; trước mỗi lần đẩy, server kiểm lại `exp` chưa qua (kể cả khi tác vụ đóng chạy trễ), phiên `sid` còn hiệu lực và tài khoản còn hoạt động, không phải ADMIN/MODERATOR — sai thì không gửi và đóng kết nối. Như vậy đăng xuất, đăng xuất mọi phiên, khóa tài khoản hay đổi role đều cắt sự kiện ngay ở lần đẩy kế tiếp, không dựa vào giao diện. Vé xin trước khi phiên bị thu hồi sẽ bị từ chối ở bước kiểm phiên.
 - **Vé trong URL:** server không bật access log ghi query string cho `/ws/messaging`; giới hạn triển khai: proxy phía trước (nếu có) phải không ghi query của đường này — ghi vào `docs/RUNBOOK.md` khi triển khai. Vé sống 30 giây và dùng một lần nên lộ sau khi dùng không còn giá trị.
 - Server giữ kết nối theo người dùng (bộ nhớ, một server) và tự chọn người nhận: chỉ hai người tham gia của cuộc trò chuyện. Trình duyệt **không** đăng ký kênh theo cuộc trò chuyện, nên không có đường nào nghe trộm cuộc của người khác. Tin trình duyệt gửi lên bị bỏ qua.
-- Sự kiện là **tín hiệu để đọc lại REST**, không mang trạng thái để tin trực tiếp (nên đảo thứ tự không gây sai): JSON không có nội dung, đoạn trích, tên khóa hay số đếm, gửi **sau khi transaction commit** (giao dịch rollback không phát): `{"type":"message","conversationId","seq"}` cho cả hai bên khi có tin mới; `{"type":"unread"}` cho người có số chưa đọc vừa đổi (tin mới, đánh dấu đã đọc); `{"type":"state","conversationId"}` cho cả hai bên khi chặn/bỏ chặn/khóa/mở khóa và khi mở lại đổi khóa ngữ cảnh.
+- Sự kiện là **tín hiệu để đọc lại REST**, không mang trạng thái để tin trực tiếp (nên đảo thứ tự không gây sai): JSON không có nội dung, đoạn trích, tên khóa hay số đếm, gửi **sau khi transaction commit** (giao dịch rollback không phát): `{"type":"message","conversationId","seq"}` cho cả hai bên khi có tin mới; `{"type":"unread"}` chỉ cho người có trạng thái chưa đọc của cuộc vừa đổi (gửi tin: người nhận chưa có chưa đọc hoặc người gửi đang có; đánh dấu đã đọc: chuyển từ chưa đọc sang đã đọc); `{"type":"state","conversationId"}` cho cả hai bên khi chặn/bỏ chặn/khóa/mở khóa và khi mở lại đổi khóa ngữ cảnh.
+- Đẩy bất đồng bộ qua hàng đợi theo người dùng trên virtual thread, giữ thứ tự từng người; hàng đợi chưa giới hạn số sự kiện, người dùng đã nhận giới hạn này. Mở cuộc mới không phát `state`; mở lại chỉ phát khi khóa ngữ cảnh đổi. Đóng bằng `NORMAL` khi tới `exp` hoặc quá 5 kết nối, `POLICY_VIOLATION` khi kiểm lại thất bại.
 - Gửi tới một phiên thất bại → đóng phiên đó; giao diện tự kết nối lại và lấy bù bằng `afterSeq` + `unread-count`. Mất sự kiện (rớt mạng, server khởi động lại) không mất tin vì cùng cơ chế lấy bù.
 
 ### Quy tắc nghiệp vụ và mã lỗi
@@ -186,28 +187,29 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 |---|---|---|---|
 | Xin vé: thiếu/sai token; tài khoản bị khóa hoặc ADMIN/MODERATOR | Như hợp đồng quyền chung | 401 / 403 `ACCESS_DENIED` | — (giao diện chuyển sang tự làm mới) |
 | Xin vé quá nhanh | 10 vé/phút mỗi người | 429 `MESSAGE_RATE_LIMITED` | — |
-| Redis lỗi khi cấp hoặc kiểm vé | Không cho qua | 503 `MESSAGE_STORAGE_UNAVAILABLE` / từ chối nâng cấp | — |
+| Redis lỗi khi cấp hoặc kiểm vé | Không cho qua | 503 `MESSAGE_STORAGE_UNAVAILABLE` / 503 khi bắt tay | — |
 | Nâng cấp thiếu vé, vé sai, hết hạn hoặc đã dùng (kể cả hai kết nối song song cùng vé: một thành công) | Từ chối trước khi nâng cấp | 401 | — |
 | Nâng cấp khi phiên `sid` đã bị thu hồi/hết hạn, hoặc `exp` của access token đã qua | Từ chối trước khi nâng cấp | 401 | — |
 | Nâng cấp khi chủ vé đã bị khóa hoặc mang role ADMIN/MODERATOR | Từ chối trước khi nâng cấp | 403 | — |
-| `Origin` khác `webUrl` | Kiểm trước khi tiêu thụ vé: vé vẫn còn dùng được | 403 | — |
+| Thiếu `Origin` hoặc `Origin` khác `webUrl` | Kiểm trước khi tiêu thụ vé; `Origin` lạ có thể bị `CorsFilter` chặn trước handler, vé vẫn còn dùng được | 403 | — |
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** `server/build.gradle` (`spring-boot-starter-websocket`); `MessageSocketConfiguration` (đăng ký `/ws/messaging`, interceptor kiểm vé và `Origin`); `MessageSocketHandler` (giữ phiên theo người dùng, gửi sự kiện); `ConversationService` (cấp vé, phát sự kiện sau commit); `ConversationController` (vé); `SecurityConfiguration` (`/ws/messaging` `permitAll` vì đã kiểm vé); `ErrorCode` nếu cần; `docs/RUNBOOK.md` (giới hạn proxy).
-- **Phần dùng lại:** mẫu Redis của `ForumService.rateLimit`; `webUrl` của cấu hình OAuth2/CORS; kiểm phiên như `JwtTokenService.isTokenActive` (phiên `sid` còn và chưa hết hạn); hợp đồng quyền của 1a.
-- **Bẫy đã biết:** gửi trước commit thì trình duyệt gọi `afterSeq` không thấy tin → dùng `TransactionSynchronization.afterCommit`; gửi trên một phiên từ nhiều luồng không an toàn → bọc `ConcurrentWebSocketSessionDecorator`; chuỗi bộ lọc JWT sẽ trả 401 cho bắt tay không có header → mở đường riêng và tự kiểm vé; CORS không áp cho WebSocket → tự kiểm `Origin`; không ghi vé, query của bắt tay hay sự kiện vào log, kể cả log lỗi khi từ chối bắt tay (`GlobalExceptionHandler` chỉ dùng `getRequestURI()`, không có query — giữ nguyên); phiên chết phải được gỡ khỏi bảng phiên.
+Task đã nhận 2026-11-22; kết quả code, test và review xem [log](messaging.log.md).
 
 ### Xong khi
 
-- [ ] `ConversationRulesTest` thêm: chọn người nhận sự kiện (đúng hai người tham gia), payload sự kiện không có trường nội dung/đoạn trích/tên khóa/số đếm.
-- [ ] `ConversationControllerTest` thêm: vé 401/403/429.
-- [ ] `MessageSocketIntegrationTest` (`@SpringBootTest` cổng ngẫu nhiên, client WebSocket thật; một lớp vì tạo context riêng; 5 ca): (1) vé: hợp lệ kết nối được; dùng lại/hết hạn/không có → từ chối; hai bắt tay song song cùng vé chỉ một thành công; `Origin` lạ → từ chối và vé vẫn dùng được với `Origin` đúng; (2) A gửi tin → B nhận `message` đúng `seq`, không có nội dung; người thứ ba đang kết nối không nhận gì; (3) chỉ phát sau commit: gọi thao tác ghi trong một transaction của test rồi ép rollback sau khi sự kiện đã được đăng ký → không có sự kiện; cùng thao tác commit → có sự kiện; chặn → cả hai nhận `state`; đánh dấu đã đọc → nhận `unread`; (4) sau khi kết nối, khóa tài khoản B hoặc xóa phiên của B → sự kiện kế tiếp không tới B và kết nối bị đóng; vé xin trước khi xóa phiên bị từ chối; (5) kết nối đóng khi tới `exp`, không có sự kiện nào được đẩy sau `exp`, vé còn TTL nhưng access token đã hết hạn bị từ chối (đồng hồ giả hoặc `exp` ngắn trong test).
-- [ ] Chạy các lớp trên + `ConversationIntegrationTest`; full backend do CI.
+- [ ] Giới hạn 5 kết nối và vé thực sự hết TTL Redis (chưa kiểm — xem log; vé không tồn tại đã thử cùng nhánh `GETDEL` null).
 
-## Cổng wireframe
+- [x] `ConversationRulesTest` thêm: chọn người nhận sự kiện (đúng hai người tham gia), payload sự kiện không có trường nội dung/đoạn trích/tên khóa/số đếm.
+- [x] `ConversationControllerTest` thêm: vé 401/403/429.
+- [x] `MessageSocketIntegrationTest` (`@SpringBootTest` cổng ngẫu nhiên, client WebSocket thật; một lớp vì tạo context riêng; 5 ca): (1) vé: hợp lệ kết nối được; dùng lại/không có → từ chối; hai bắt tay song song cùng vé chỉ một thành công; `Origin` lạ → từ chối và vé vẫn dùng được với `Origin` đúng; (2) A gửi tin → B nhận `message` đúng `seq`, không có nội dung; người thứ ba đang kết nối không nhận gì; (3) chỉ phát sau commit: gọi thao tác ghi trong một transaction của test rồi ép rollback sau khi sự kiện đã được đăng ký → không có sự kiện; cùng thao tác commit → có sự kiện; chặn → cả hai nhận `state`; đánh dấu đã đọc → nhận `unread`; (4) sau khi kết nối, khóa tài khoản B hoặc xóa phiên của B → sự kiện kế tiếp không tới B và kết nối bị đóng; vé xin trước khi xóa phiên bị từ chối; (5) kết nối đóng khi tới `exp`, không có sự kiện nào được đẩy sau `exp`, vé còn TTL nhưng access token đã hết hạn bị từ chối (đồng hồ giả hoặc `exp` ngắn trong test).
+- [x] Chạy các lớp trên + `ConversationIntegrationTest`.
+- [ ] Full backend do CI (chưa kiểm — xem log).
 
-Sau khi 1a–1c xong và đã review (hoặc sau 1b nếu người dùng đã quyết bỏ 1c, ghi log): Claude viết `plans/messaging.wireframe.md` (bố cục chữ cho các màn của 2a, 2b ở desktop và mobile 390px, trạng thái tải/rỗng/lỗi/bị chặn/bị khóa). Người dùng duyệt rồi mới code giao diện.
+## Bố cục giao diện
+
+Người dùng bỏ cổng wireframe ngày 2026-11-22; bố cục 2a/2b theo `plans/messaging.ui-prompt.md`, riêng 2b ưu tiên `plans/messaging.ui-prompt-2b.md` khi khác nhau. Giao diện không sửa backend.
 
 ## Task 2a — Giao diện nhắn tin
 
@@ -226,9 +228,7 @@ Sau khi 1a–1c xong và đã review (hoặc sau 1b nếu người dùng đã qu
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** `pages/Messages/**`, `messagingService.ts` (REST + kết nối WebSocket dùng `WebSocket` có sẵn của trình duyệt, không thêm thư viện), `types/messaging.ts`, `messagingI18n.ts`, `CourseOverviewPage.tsx`, `App.tsx`, `navigation.ts`, `Sidebar.tsx`, `Sidebar.test.tsx`.
-- **Phần dùng lại:** `MarkdownContent`; `UserAvatar`; `EmptyState`; `Textarea`, `Button`, `Dialog`, `AlertDialog`; hộp thoại báo cáo của diễn đàn (cùng lý do và quy tắc mô tả); cách dừng/tiếp tục theo `document.visibilityState`; `returnTo`.
-- **Bẫy đã biết:** một kết nối WebSocket cho cả app, đóng khi đăng xuất; không tin nội dung từ socket (socket không có nội dung); hủy hẹn giờ làm mới khi rời trang hoặc đổi cuộc trò chuyện; lần làm mới trước chưa xong thì không gọi lần mới; gộp tin theo `seq` để không hiện trùng tin vừa gửi với tin lấy về; chỉ tự cuộn xuống khi người dùng đang ở cuối; test dùng đồng hồ giả, không chờ thật; chuỗi dài trong test dùng `user.paste`; vùng chạm 44px; không assert class Tailwind.
+Task đã nhận 2026-11-22; kết quả code, test và review xem [log](messaging.log.md).
 
 ### Copy vi/en
 
@@ -250,16 +250,19 @@ Sau khi 1a–1c xong và đã review (hoặc sau 1b nếu người dùng đã qu
 
 Câu hiển thị cho từng mã lỗi lấy từ cột “Copy hiển thị” của bảng 1a/1b; bản tiếng Anh dịch tương ứng trong `messagingI18n`; dòng có copy “—” dùng câu dự phòng “Yêu cầu không hợp lệ. Hãy tải lại trang.”
 
+Các khóa copy phụ trợ song ngữ trong `messagingI18n.ts`: `aboutCoursePrefix`, `reconnecting`, `loadMoreConversations`, `selectConversation`, `browseCourses`, `sendFailed`, `newMessagesBelow`, `enterHint`, `backToList`, `moreActions`, `cancel`, `retry`, `loading`, `unreadDot`, `reportTitle`, `reportReasonLabel`, `reportDescriptionLabel`, `reportSubmit`, `reportSubmitted`, `reasonSpam`, `reasonAbuse`, `reasonOffTopic`, `reasonOther`, `reportOtherRequired`, `today`, `yesterday`.
+
 ### UI
 
-- Theo wireframe đã duyệt và `UI_GUIDE.md`; primitive và token hiện có, không thêm màu mới. Trạng thái: tải, rỗng, lỗi, đang gửi, gửi lỗi, bị chặn, bị khóa. Mobile 390px: ô nhập dính đáy, khối code cuộn ngang trong khung của nó, trang không cuộn ngang.
+- Theo prompt giao diện và `UI_GUIDE.md`; primitive và token hiện có, không thêm màu mới. Trạng thái: tải, rỗng, lỗi, đang gửi, gửi lỗi, bị chặn, bị khóa. Mobile 390px: ô nhập dính đáy, khối code cuộn ngang trong khung của nó, trang không cuộn ngang.
 
 ### Xong khi
 
-- [ ] Test unit: validation theo bảng 1a (biên như test backend), mapping mọi mã lỗi 1a/1b liên quan vi/en, gộp tin theo `seq` không trùng, `canSend` theo trạng thái.
-- [ ] `Messages/*.test.tsx` (luồng chính, `WebSocket` giả): danh sách và dấu chưa đọc; mở cuộc → đánh dấu đã đọc; gửi tin, lỗi → “Gửi lại” cùng `clientId`; sự kiện `message` → gọi `afterSeq` và tải lại chi tiết (tác giả trả lời → ô nhập của người học mở lại); `state` khi đổi ngữ cảnh → “Hỏi về” đổi; mất kết nối → kết nối lại và lấy bù; xin vé lỗi → chạy bằng tự làm mới 5/30 giây (đồng hồ giả); mất sự kiện `state` rồi kết nối lại → chi tiết và danh sách được tải lại; hai lần tải chi tiết chồng nhau trả về đảo thứ tự → giữ kết quả của lần gọi sau; “Hỏi về” và còn {n} tin / hết lượt chờ trả lời; tải tin cũ hơn; chặn/bỏ chặn; báo cáo; bị khóa.
-- [ ] `CourseOverviewPage.test.tsx`: nút hiện với người chưa mua và người đang học, không hiện với chủ khóa; khách bấm → đăng nhập kèm `returnTo`; đã đăng nhập bấm → chuyển tới cuộc trò chuyện. Test `Sidebar` (số chưa đọc, không hiện với khách), `App` bị sửa (ADMIN/MODERATOR vào `/messages` bị chuyển về dashboard) + `npm run build` trong `app/`.
-- [ ] Kiểm bằng mắt: dark/light × desktop/mobile, một lượt; ghi log.
+- [ ] (chưa kiểm đầy đủ — xem log) Test unit: validation theo bảng 1a (biên như test backend), mapping mọi mã lỗi 1a/1b liên quan vi/en, gộp tin theo `seq` không trùng, `canSend` theo trạng thái.
+- [ ] (chưa kiểm đầy đủ — xem log) `Messages/*.test.tsx` (luồng chính, `WebSocket` giả): danh sách và dấu chưa đọc; mở cuộc → đánh dấu đã đọc; gửi tin, lỗi → “Gửi lại” cùng `clientId`; sự kiện `message` → gọi `afterSeq` và tải lại chi tiết (tác giả trả lời → ô nhập của người học mở lại); `state` khi đổi ngữ cảnh → “Hỏi về” đổi; mất kết nối → kết nối lại và lấy bù; xin vé lỗi → chạy bằng tự làm mới 5/30 giây (đồng hồ giả); mất sự kiện `state` rồi kết nối lại → chi tiết và danh sách được tải lại; hai lần tải chi tiết chồng nhau trả về đảo thứ tự → giữ kết quả của lần gọi sau; “Hỏi về” và còn {n} tin / hết lượt chờ trả lời; tải tin cũ hơn; chặn/bỏ chặn; báo cáo; bị khóa.
+- [ ] (chưa kiểm đầy đủ — xem log) `CourseOverviewPage.test.tsx`: nút hiện với người chưa mua và người đang học, không hiện với chủ khóa; khách bấm → đăng nhập kèm `returnTo`; đã đăng nhập bấm → chuyển tới cuộc trò chuyện. Test `Sidebar` (số chưa đọc, không hiện với khách), `App` bị sửa (ADMIN/MODERATOR vào `/messages` bị chuyển về dashboard).
+- [x] `npm run build` trong `app/`.
+- [ ] Kiểm bằng mắt đủ dark/light × desktop/mobile (chưa kiểm đầy đủ — xem log); đã kiểm desktop dark/light và mobile 390px.
 
 ## Task 2b — Giao diện Moderator: báo cáo cuộc trò chuyện
 
@@ -273,9 +276,7 @@ Câu hiển thị cho từng mã lỗi lấy từ cột “Copy hiển thị” 
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** `pages/Moderator/Reports/**`, `forumService.ts`/`types/forum.ts`/`forumI18n.ts` (loại đích mới), `messagingService.ts` (API đọc và khóa của Moderator).
-- **Phần dùng lại:** toàn bộ màn báo cáo của `forum-reports`; khung hiển thị tin nhắn của 2a ở chế độ chỉ đọc.
-- **Bẫy đã biết:** không tự tải tin nhắn khi mở danh sách — chỉ tải khi Moderator bấm “Xem tin nhắn”; khung xem không có ô nhập và không gọi API đánh dấu đã đọc; sau khi xử lý tải lại danh sách.
+Task đã nhận 2026-11-22; kết quả code, test và review xem [log](messaging.log.md).
 
 ### Copy vi/en
 
@@ -287,15 +288,17 @@ Câu hiển thị cho từng mã lỗi lấy từ cột “Copy hiển thị” 
 | Lưu ý | Bạn chỉ xem được vì cuộc trò chuyện này đã bị báo cáo. | You can view this only because the conversation was reported. |
 | Ghi chú | Hãy ghi lý do (tối đa 1.000 ký tự). | Enter a reason (up to 1,000 characters). |
 
+Các khóa copy phụ trợ song ngữ trong `forumI18n.ts`: `targetTypeFilter`, `targetForumPost`, `learnerRole`, `authorRole`, `lockedByLabel`, `lockNoteLabelRequired`, `lockDialogTitle`, `lockDialogDesc`, `unlockDialogTitle`, `unlockDialogDesc`, `resolvedLockedMsg`, `unlockedMsg`, `sectionHiddenPosts`, `sectionLockedConversations`, `close`, `dismissConversationDesc`, `statusConversationLocked`; subtitle trang cũng nhắc cuộc trò chuyện.
+
 ### UI
 
-- Theo wireframe và chuẩn màn Moderator hiện có; đủ tải/rỗng/lỗi; desktop và mobile 390px không cuộn ngang.
+- Theo prompt 2b và chuẩn màn Moderator hiện có; đủ tải/rỗng/lỗi; desktop và mobile 390px không cuộn ngang.
 
 ### Xong khi
 
-- [ ] `Moderator/Reports/*.test.tsx` thêm: mục báo cáo cuộc trò chuyện không gọi API tin nhắn khi chưa bấm; “Xem tin nhắn” hiện lịch sử chỉ đọc; khóa thiếu ghi chú; khóa và bỏ qua thành công; mở khóa ở tab đang ẩn; báo cáo diễn đàn vẫn hoạt động như cũ.
-- [ ] `npm run build` trong `app/`.
-- [ ] Kiểm bằng mắt: dark/light × desktop/mobile, một lượt; ghi log.
+- [x] `Moderator/Reports/*.test.tsx` thêm: mục báo cáo cuộc trò chuyện không gọi API tin nhắn khi chưa bấm; “Xem tin nhắn” hiện lịch sử chỉ đọc; khóa thiếu ghi chú; khóa và bỏ qua thành công; mở khóa ở tab đang ẩn; báo cáo diễn đàn vẫn hoạt động như cũ.
+- [x] `npm run build` trong `app/`.
+- [ ] Kiểm bằng mắt đủ dark/light × desktop/mobile (chưa kiểm đầy đủ — xem log); đã kiểm luồng Moderator và mobile 390px, chưa kiểm 320px.
 
 ## Câu hỏi mở cần người dùng chốt
 
@@ -303,10 +306,10 @@ Câu hiển thị cho từng mã lỗi lấy từ cột “Copy hiển thị” 
 
 ## Quyết định của người dùng
 
-**Người dùng chốt spec 2026-11-15** (Task 1a–1b, cổng wireframe, 2a–2b). Lịch sử phản biện: [`messaging.review.md`](messaging.review.md).
+**Người dùng chốt spec 2026-11-15** (Task 1a–1b, 2a–2b; cổng wireframe sau đó được bỏ). Lịch sử phản biện: [`messaging.review.md`](messaging.review.md).
 
 - Bảy câu hỏi mở giữ mặc định (hai điểm “chỉ người đang học mở được” và “tự làm mới 5 giây và 30 giây” đã thay ngày 2026-11-22, xem dòng cuối): một cuộc trò chuyện cho mỗi cặp người học – tác giả; chỉ người đang học mở được, sau đó nhắn tiếp được; chặn hai chiều, chỉ người chặn bỏ chặn; Moderator đọc và khóa được cuộc đã từng bị báo cáo; không sửa/xóa tin, 2.000 ký tự, 20 tin/phút; tự làm mới 5 giây và 30 giây; Admin/Moderator không dùng, `/messages` “Tin nhắn”.
 - Làm cuối cùng, cắt đầu tiên nếu thiếu thời gian; chỉ bắt đầu khi `forum-reports` xong cả backend lẫn giao diện báo cáo.
 - Phần Claude sửa thân spec sau vòng 1 chưa qua Codex soát vòng 2.
-- **2026-11-22 — người dùng đổi hai điểm (log `messaging.log.md`):** (1) nhắn cả khi chưa mua: mở từ khóa công khai, giới hạn 3 tin trước khi tác giả trả lời (giới hạn 10 cuộc mới/ngày đã bỏ cùng ngày), “Hỏi về: <khóa>” + đã/chưa đăng ký, khách bấm → đăng nhập, không có nút tắt nhận tin; (2) REST + WebSocket đẩy sự kiện thay cho chỉ tự làm mới (Task 1c mới). Codex phản biện 2 vòng (vòng 1: 9 điểm, vòng 2: 7 điểm; kết luận chính: giới hạn ngày bỏ, vé gắn `sid`+`exp` và kiểm trước mỗi lần đẩy, sự kiện chỉ là tín hiệu, `contextCourse.available`, cổng wireframe sau 1c); lịch sử ở `messaging.review.md`.
-- **Người dùng chốt spec 2026-11-22** (Task 1a, 1b, 1c, cổng wireframe, 2a, 2b). Điểm yếu đã biết: spec ~52 KB vượt mục tiêu; socket trong bộ nhớ chỉ một server; giới hạn proxy chưa có hạ tầng để kiểm.
+- **2026-11-22 — người dùng đổi hai điểm (log `messaging.log.md`):** (1) nhắn cả khi chưa mua: mở từ khóa công khai, giới hạn 3 tin trước khi tác giả trả lời (giới hạn 10 cuộc mới/ngày đã bỏ cùng ngày), “Hỏi về: <khóa>” + đã/chưa đăng ký, khách bấm → đăng nhập, không có nút tắt nhận tin; (2) REST + WebSocket đẩy sự kiện thay cho chỉ tự làm mới (Task 1c mới). Codex phản biện 2 vòng (vòng 1: 9 điểm, vòng 2: 7 điểm; kết luận chính: giới hạn ngày bỏ, vé gắn `sid`+`exp` và kiểm trước mỗi lần đẩy, sự kiện chỉ là tín hiệu, `contextCourse.available`, cổng wireframe sau 1c, sau đó người dùng bỏ cổng); lịch sử ở `messaging.review.md`.
+- **Người dùng chốt spec 2026-11-22** (Task 1a, 1b, 1c, 2a, 2b; sau đó bỏ cổng wireframe). Điểm yếu đã biết: spec ~52 KB vượt mục tiêu; socket trong bộ nhớ chỉ một server; giới hạn proxy chưa có hạ tầng để kiểm.
