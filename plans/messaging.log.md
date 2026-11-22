@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`messaging.md`](me
 
 ## Bắt đầu từ đây (cập nhật 2026-11-22)
 
-- **Task tiếp:** Codex phản biện phần spec sửa 2026-11-22 (“Phản hồi vòng 1”), Claude trả lời, người dùng chốt; sau đó Task 1a (dùng `/model opus`) · Giao diện: Không
+- **Task tiếp:** Người dùng đọc “Phản hồi vòng 1 (Codex)” + “Trả lời vòng 1 (Claude)” trong spec rồi chốt hoặc cho chạy vòng 2; sau đó Task 1a (dùng `/model opus`) · Giao diện: Không
 - Nhánh `feature/messaging` (tách từ `main` sau PR #14). Chưa code.
 
 ## Quyết định người dùng chưa có trong spec
@@ -24,3 +24,4 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`messaging.md`](me
 - Đối chiếu code thật (V22, lớp `Report*` của forum-reports, `viewer.canStart`, `findActive`, CORS/`webUrl`, chưa có starter WebSocket) rồi sửa `messaging.md`: Hiện trạng, Đường dẫn, Ngoài phạm vi, Ràng buộc (mở không cần mua, khóa đang hỏi, chống spam, thời gian thực), Task 1a (cột ngữ cảnh khóa, `author_replied`, 2 mã lỗi mới, kế hoạch theo luật “Ít class”), Task 1b (tên lớp báo cáo thật), Task 1c mới (vé một lần + WebSocket chỉ đẩy sự kiện, người nhận do server chọn), Task 2a (nút cho người chưa mua, “Hỏi về”, giới hạn chờ trả lời, socket + dự phòng 30 giây).
 - Lệch kỹ thuật so với ghi chú trước: chọn WebSocket thô (`TextWebSocketHandler`) + vé một lần thay cho STOMP — không cần thư viện frontend, không có bề mặt đăng ký kênh cần phân quyền.
 - Spec ~49 KB, vượt mục tiêu ~30 KB.
+- Vòng 1: Codex 9 điểm; Claude chấp nhận 1,2,3,5,6,7,8, một phần 4,9 (từ chối test log vé, tách nhịp Redis khỏi unit, cắt lớn kích thước). Sửa thân spec: giới hạn ngày đếm DB dưới khóa người, vé gắn `sid`+`exp` và kiểm phiên trước mỗi lần đẩy, `GETDEL`, sự kiện chỉ là tín hiệu (`unread` không số), `contextCourse.available`, nhánh 2a không có 1c (5/30 giây).
