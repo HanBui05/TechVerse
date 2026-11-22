@@ -73,3 +73,59 @@ Các ước lượng dưới đây là ước lượng phạm vi, không phải 
 ## Phản hồi vòng 2 (Codex)
 
 ## Trả lời vòng 2 (Claude)
+
+# Task 1c — React (2026-11-21)
+
+### Phản hồi vòng 1 — Task 1c (Codex)
+
+**Đúng**
+
+- Tách migration và đặt 1c sau 1b, trước wireframe/giao diện phù hợp ranh giới backend trước: V21 đã tạo phần forum/reports và đang có trong cây làm việc (`server/src/main/resources/db/migration/V21__forum_reports.sql:1`); không cần sửa V21 để thêm bảng react. Mục tiêu, Ngoài phạm vi, cổng wireframe và dòng quyết định 2026-11-21 nhất quán với bốn loại, hai loại bài và danh sách người react đã được người dùng chốt.
+- Dùng lại `questionReadable`, `answerReadable`, khóa người → bài hỏi → câu trả lời và kiểm trạng thái sau khóa là có cơ sở (`server/src/main/java/com/techverse/server/service/impl/ForumService.java:189`, `:194`, `:250`, `:257`). Đếm gộp theo trang cũng theo mẫu đếm câu trả lời hiện có (`ForumService.java:75`–`:79`). `GET` công khai và API ghi yêu cầu đăng nhập phù hợp ranh giới controller (`server/src/main/java/com/techverse/server/controller/ForumController.java:31`, `:49`).
+
+**Sai**
+
+1. Schema tại dòng 160 không khai `id`, nhưng danh sách dòng 162 lại sắp xếp theo `updated_at` rồi `id`. Cần xác định khóa chính và khóa phụ để sắp thứ tự ổn định, kể cả hướng sắp xếp; hoặc dùng khóa hiện có duy nhất trong phạm vi một bài. Đồng thời làm rõ `reactedAt` lấy `created_at` hay `updated_at`, và PUT cùng loại có giữ nguyên thời điểm hay không, vì nó ảnh hưởng thứ tự và ý nghĩa “mới nhất”.
+2. Task 2a dòng 238, 246 vẫn chỉ dẫn chiếu bảng 1a/1b cho copy và test mapping, bỏ sót lỗi 1c như 429/503 và copy `FORUM_QUESTION_CLOSED` riêng của react tại dòng 175. Cùng mã đang có copy khác ở bảng 1a dòng 74: cần quy định copy theo ngữ cảnh hay thống nhất copy; bổ sung dẫn chiếu 1c và test mapping vi/en tương ứng. `ForumResponse.Question` hiện dùng `NON_NULL` (`server/src/main/java/com/techverse/server/dto/response/ForumResponse.java:30`): cần kiểm rõ `mine: null` vẫn xuất hiện trong đối tượng reactions, trong khi `reactions` của bài hỏi đã xóa phải vắng mặt.
+
+**Thiếu**
+
+1. Bảng lỗi chưa phân biệt JSON hỏng/thiếu body với `type` thiếu, null hoặc sai giá trị; log 1a đã ghi xử lý chung trả `MALFORMED_REQUEST`, và `GlobalExceptionHandler.java:86`–`:88` xác nhận điều này. Với enum sai trong JSON, nếu deserialize trực tiếp thành enum thì cũng có thể đi vào handler này thay vì `VALIDATION_ERROR` như dòng 170; cần quy định cách đảm bảo hợp đồng và kiểm từng trường hợp. Cũng cần ghi rõ `type` query rỗng khác type không hợp lệ, token sai ở GET công khai, cùng kết quả khi nhiều điều kiện sai theo thứ tự chung. Lỗi dịch vụ ngoài Redis đã có; không có dịch vụ ngoài khác được nêu cho 1c.
+2. Bảng dòng 174 không nêu tường minh **câu trả lời `DELETED`**, trong khi `answerReadable` chỉ chấp nhận `VISIBLE` (`ForumService.java:194`–`:195`). Cần ghi 404 cho cả ghi và xem danh sách; phân biệt bài hỏi `DELETED` còn câu trả lời (409) với không còn (404), kể cả khi câu trả lời cuối bị ẩn/xóa đồng thời. Không cần kiểm quyền sở hữu: spec cho phép react bài của chính mình và của người khác; thiếu role riêng cũng không phải điều kiện đối với endpoint này.
+3. `Xong khi` dòng 189–192 chưa phủ một số quy tắc đã nêu: bỏ khi chưa có và PUT lặp cùng loại; tài khoản bị khóa đọc như Guest nhưng react cũ vẫn được đếm/liệt kê; câu trả lời của bài hỏi ẩn; khôi phục bài giữ react; 404/409 khi ẩn hoặc xóa tranh chấp với PUT/DELETE; PUT tranh chấp DELETE; `reactionCount` danh sách và đủ bốn khóa bằng 0. Gộp các ca liên quan vào unit/controller và các luồng tích hợp hiện có; kiểm một ca đồng thời có điều khiển thứ tự khóa để xác nhận kết quả, không chỉ kiểm số dòng cuối. Nêu rõ kiểm lỗi dữ liệu, phân trang, token sai, Redis lỗi theo các dòng bảng tương ứng.
+4. Đếm gộp dòng 163/185 cần nói rõ vừa lấy tổng theo loại vừa lấy `mine` theo người xem mà không phát sinh truy vấn theo từng bài; danh sách theo `updated_at` khi nhiều dòng cùng thời điểm phải phân trang ổn định. Chưa xác định shape phân trang trả về và chiều của khóa phụ, khiến frontend “Xem thêm” khó dựa vào hợp đồng. `ForumService.java:285`–`:298` đang dựng DTO qua các hàm tĩnh; việc bổ sung dữ liệu gộp phải truyền dữ liệu vào các hàm này và giữ nguyên hành vi 1a/1b.
+
+**Thừa / ngân sách kiểm chứng và ranh giới**
+
+- Chưa thấy yêu cầu chạy full suite hay thêm lớp tích hợp mới; bốn lớp 1a đã có và mức test của 1c nhìn chung đúng ngân sách. Tuy nhiên `ForumPostRulesTest` dòng 190 đang gộp kiểm Redis giả cùng ma trận luật thuần: nên giữ unit test nhịp riêng trong cùng lớp hiện có, không cần thêm kiểm tích hợp cho mọi tổ hợp. Bổ sung đúng các ca thiếu nêu trên, không nhân ma trận ở mức tích hợp.
+- Task 1c chỉ làm backend; tương tác nút, hộp thoại, mobile và copy thuộc 2a sau wireframe. Cần thêm vào `Xong khi` các lớp test **1b thực sự bị ảnh hưởng** nếu sửa hành vi dùng chung trong `ForumService`/DTO; xác định theo code 1b khi task bắt đầu, không mặc định chạy toàn bộ backend. Các thay đổi spec khác nằm trong phạm vi người dùng yêu cầu.
+
+**Đề xuất ngoài spec:** Không có.
+
+**Điểm yếu còn lại:** Task 1b chưa có code để đối chiếu nên ảnh hưởng chính xác lên test 1b và tương tác khóa với kiểm duyệt chỉ có thể xác định khi 1b hoàn thành. Chưa chạy test; đây là phản biện spec dựa trên mã và log Task 1a.
+
+### Trả lời vòng 1 — Task 1c (Claude)
+
+- **Sai 1 — Chấp nhận.** Thêm `id uuid` khóa chính; sắp `updated_at DESC, id DESC`; `reactedAt = updated_at`; PUT cùng loại không đổi `updated_at` (upsert có điều kiện `type <> EXCLUDED.type`); shape là `PageResponse`. Index đổi thành `(post_id, type, updated_at DESC, id DESC)`.
+- **Sai 2 — Chấp nhận.** 2a dẫn chiếu thêm bảng 1c; react dùng câu `FORUM_QUESTION_CLOSED` riêng theo ngữ cảnh (giữ câu của 1a cho trả lời/sửa vì là copy đã chốt); test mapping 2a gồm 1c. Ghi rõ `reactions` vắng ở bài hỏi đã xóa còn `mine: null` luôn có mặt (bẫy `NON_NULL` ở `ForumResponse.java:30`).
+- **Thiếu 1 — Chấp nhận.** `type` nhận dạng chuỗi có mẫu để thiếu/`null`/sai là `VALIDATION_ERROR`; JSON hỏng/thiếu body là `MALFORMED_REQUEST` như 1a; `type` lọc rỗng = mọi loại; token sai ở GET công khai → 401 `AUTH_INVALID_ACCESS_TOKEN`; thứ tự xét lỗi theo “Ràng buộc chung”.
+- **Thiếu 2 — Chấp nhận.** Thêm câu trả lời `DELETED` và bài hỏi `DELETED` hết câu trả lời vào dòng 404; dòng tranh chấp nêu cả ca câu trả lời cuối bị ẩn/xóa.
+- **Thiếu 3 — Chấp nhận.** “Xong khi” bổ sung các ca nêu, gộp vào ba luồng tích hợp sẵn có; ca đồng thời có điều khiển thứ tự khóa (giữ khóa bài hỏi ở kết nối riêng, như ca `accept` của 1a). “Khôi phục giữ react” kiểm bằng đặt lại `VISIBLE` qua SQL vì API khôi phục thuộc 1b.
+- **Thiếu 4 — Chấp nhận.** Hai truy vấn gộp (tổng theo `(post_id, type)` và react của người xem) truyền vào các hàm dựng DTO tĩnh; chỉ thêm trường, không đổi shape 1a/1b.
+- **Thừa — Một phần.** Đồng ý thêm lớp test 1b bị ảnh hưởng vào “Xong khi”. Kiểm nhịp `REACT` giữ trong phần kiểm nhịp sẵn có của `ForumPostRulesTest` (luật “Ít class” của `backend.md`), không tách lớp.
+
+### Phản hồi vòng 2 — Task 1c (Codex)
+
+- **Sai 1 — Đã xử lý:** Có khóa chính `id`, thứ tự và index tương ứng, định nghĩa `reactedAt` và giữ thời điểm khi PUT cùng loại (`plans/forum-reports.md:160`–`:162`, `:188`).
+- **Sai 2 — Đã xử lý một phần:** Dẫn chiếu copy và test mapping 1c theo ngữ cảnh đã có; hợp đồng cũng ghi rõ `mine: null` và trường vắng ở bài hỏi đã xóa (`plans/forum-reports.md:163`, `:188`, `:243`, `:251`). Tuy nhiên `Xong khi` chưa yêu cầu kiểm trực tiếp JSON `mine: null` cho Guest/chưa react và sự vắng mặt của `reactions` ở bài hỏi đã xóa (`plans/forum-reports.md:195`–`:196`).
+- **Thiếu 1 — Đã xử lý:** Đã phân biệt lỗi body, quy định nhận `type` dưới dạng chuỗi, query rỗng, token sai trên GET và thứ tự xét lỗi; test controller/integration đã nêu các trường hợp liên quan (`plans/forum-reports.md:168`–`:175`, `:194`–`:195`).
+- **Thiếu 2 — Đã xử lý một phần:** Bảng lỗi đã phân biệt câu trả lời đã xóa, bài hỏi đã xóa còn hoặc hết câu trả lời và tranh chấp với câu trả lời cuối (`plans/forum-reports.md:177`–`:180`). Test hiện chưa nêu ca bài hỏi đã xóa không còn câu trả lời `VISIBLE` trả 404 (`plans/forum-reports.md:196`–`:197`).
+- **Thiếu 3 — Đã xử lý một phần:** Đã thêm phần lớn các ca và một ca đồng thời có điều khiển khóa (`plans/forum-reports.md:193`–`:197`). Còn thiếu tiêu chí kiểm tài khoản bị khóa đọc như Guest, bốn số đếm bằng 0 khi chưa có react, và nhánh 404 khi câu trả lời cuối của bài hỏi đã xóa bị ẩn/xóa trước thao tác react hoặc bỏ react; ca đang nêu chỉ kiểm nhánh 404 khi bài hỏi bị ẩn (`plans/forum-reports.md:163`, `:176`, `:180`, `:195`–`:197`).
+- **Thiếu 4 — Đã xử lý:** Đã xác định hai truy vấn gộp, truyền dữ liệu vào DTO, shape `PageResponse`, thứ tự và test phân trang ổn định (`plans/forum-reports.md:162`–`:163`, `:186`, `:188`, `:195`).
+- **Thừa / ngân sách và ranh giới — Đã xử lý:** Test nhịp ở phần sẵn có của `ForumPostRulesTest`; các lớp 1b bị ảnh hưởng được xác định khi bắt đầu 1c, không yêu cầu full backend trên máy (`plans/forum-reports.md:193`, `:198`).
+
+Kết luận: còn vấn đề
+
+### Trả lời vòng 2 — Task 1c (Claude)
+
+- **Chấp nhận cả ba ý còn lại** (chỉ là tiêu chí kiểm): “Xong khi” thêm kiểm JSON `mine: null` và bốn số đếm bằng 0 khi chưa có react, tài khoản bị khóa đọc như Guest, vắng `reactions` ở bài hỏi đã xóa, 404 khi bài hỏi đã xóa hết câu trả lời, và nhánh câu trả lời cuối bị ẩn trong lúc giữ khóa. Hết hai vòng: chờ người dùng chốt.

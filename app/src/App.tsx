@@ -23,6 +23,9 @@ import { PracticeAttemptPage } from './pages/Practice/PracticeAttemptPage'
 import { PracticeAttemptReviewPage, PracticeHistoryPage } from './pages/Practice/PracticeHistoryPage'
 import { InterviewListPage } from './pages/Interview/InterviewListPage'
 import { InterviewDetailPage } from './pages/Interview/InterviewDetailPage'
+import { ForumListPage } from './pages/Forum/ForumListPage'
+import { ForumQuestionEditorPage } from './pages/Forum/ForumQuestionEditorPage'
+import { ForumQuestionDetailPage } from './pages/Forum/ForumQuestionDetailPage'
 import { OrdersPage } from './pages/Payments/OrdersPage'
 import { OrderDetailPage } from './pages/Payments/OrderDetailPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
@@ -63,6 +66,7 @@ import { ModeratorExercisesPage } from './pages/Moderator/Exercises/ModeratorExe
 import { ModeratorExerciseDetailPage } from './pages/Moderator/Exercises/ModeratorExerciseDetailPage'
 import { ModeratorInterviewQuestionsPage } from './pages/Moderator/InterviewQuestions/ModeratorInterviewQuestionsPage'
 import { ModeratorInterviewQuestionDetailPage } from './pages/Moderator/InterviewQuestions/ModeratorInterviewQuestionDetailPage'
+import { ModeratorReportsPage } from './pages/Moderator/Reports/ModeratorReportsPage'
 import type { Language, Theme } from './types/preferences'
 import { login as loginWithApi, logout as logoutFromApi, logoutAll as logoutAllFromApi, restoreSession, type GoogleSession } from './services/authService'
 import { setAccessToken } from './services/api/client'
@@ -196,6 +200,10 @@ export default function App() {
       <Route path="/me/practice/:attemptId" element={<AuthRoute authenticated={authenticated} returnTo={location.pathname}><ReaderRoute roles={roles}><PracticeAttemptReviewPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route path="/interview" element={<ReaderRoute roles={roles}><InterviewListPage language={language} authenticated={authenticated} /></ReaderRoute>} />
       <Route path="/interview/:id" element={<ReaderRoute roles={roles}><InterviewDetailPage language={language} authenticated={authenticated} /></ReaderRoute>} />
+      <Route path="/forum" element={<ForumListPage language={language} authenticated={authenticated} />} />
+      <Route path="/forum/new" element={<AuthRoute authenticated={authenticated} returnTo="/forum/new"><ForumQuestionEditorPage language={language} /></AuthRoute>} />
+      <Route path="/forum/:id" element={<ForumQuestionDetailPage language={language} authenticated={authenticated} isModerator={roles.includes('MODERATOR')} />} />
+      <Route path="/forum/:id/edit" element={<AuthRoute authenticated={authenticated} returnTo={location.pathname}><ForumQuestionEditorPage language={language} /></AuthRoute>} />
       <Route path="/me/orders" element={<AuthRoute authenticated={authenticated} returnTo="/me/orders"><ReaderRoute roles={roles}><OrdersPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route path="/me/orders/:orderCode" element={<AuthRoute authenticated={authenticated} returnTo={location.pathname}><ReaderRoute roles={roles}><OrderDetailPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route element={<AuthLayout t={t} />}>
@@ -215,6 +223,7 @@ export default function App() {
       <Route path="/moderator/exercises/:id" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorExerciseDetailPage language={language} /></RoleRoute>} />
       <Route path="/moderator/interview-questions" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorInterviewQuestionsPage language={language} /></RoleRoute>} />
       <Route path="/moderator/interview-questions/:id" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorInterviewQuestionDetailPage language={language} /></RoleRoute>} />
+      <Route path="/moderator/reports" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['MODERATOR']}><ModeratorReportsPage language={language} /></RoleRoute>} />
       <Route path="/admin/author-applications" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AuthorApplicationsPage language={language} /></RoleRoute>} />
       <Route path="/admin/users" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><AdminUsersPage language={language} /></RoleRoute>} />
       <Route path="/admin/topics" element={<RoleRoute authenticated={authenticated} roles={profile?.roles || []} allowed={['ADMIN']}><TaxonomyPage kind="topics" language={language} /></RoleRoute>} />

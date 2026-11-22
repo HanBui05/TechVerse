@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`interview-practic
 
 ## Bắt đầu từ đây (cập nhật 2026-11-21)
 
-- **Task tiếp:** Người dùng merge PR #13 (Create a merge commit); CI lần 2 đạt · Giao diện: Không
+- **Task tiếp:** (module hoàn tất; PR #13 đã merge vào `main` 2026-11-21) · Giao diện: Không
 - Task 1a–1c (2026-11-20), 2a–2b (2026-11-21) đã nhận; spec đồng bộ 2026-11-21 (Codex).
 - Chưa kiểm: desktop dark, mobile light, hộp thoại AI tác giả trên trình duyệt; prompt mới qua app sau khi khởi động lại backend (đã thử bằng script gọi thẳng Groq).
 - Nhánh `feature/interview-practice` đã push, PR #13 → `main` (đã merge `origin/main` sau PR #12). 3 câu `[Dev]` trong DB dev đã xóa.
