@@ -11,6 +11,7 @@
 | Frontend Vite | `cd app && npm run dev -- --port 3000 --strictPort` | Cổng phải bằng `WEB_URL` trong `.env` (hiện `http://localhost:3000`); API ở `VITE_API_BASE_URL` (mặc định `http://localhost:8080`) |
 
 - **CORS:** backend chỉ nhận origin `WEB_URL` (`SecurityConfiguration.corsConfigurationSource`). Frontend chạy cổng khác → preflight 403, đăng nhập báo “lỗi hệ thống”.
+- **WebSocket nhắn tin (`/ws/messaging?ticket=…`):** chỉ nhận `Origin` = `WEB_URL`; vé một lần (30 giây) nằm trong query nên backend không bật access log ghi query. Khi triển khai sau proxy/reverse proxy: proxy phải chuyển tiếp nâng cấp WebSocket và **không ghi query string của đường này** vào log. Socket giữ trong bộ nhớ, chỉ đúng khi chạy một backend.
 - **DB:** database `POSTGRES_DB`, schema `techverse` (Hikari đặt `search_path`). `psql` trong container: `docker exec techverse psql -U <POSTGRES_USER> -d <POSTGRES_DB> -c "set search_path=techverse; ..."`.
 - **Đã có tiến trình đang chạy** (cổng 3000/8080 bận): kiểm `Get-NetTCPConnection -LocalPort <cổng>` + `CommandLine` của tiến trình. Của người dùng thì dùng chung, không tắt, không khởi động lại.
 - **Backend có đúng code không:** so `CreationDate` của tiến trình 8080 với lần sửa `server/` cuối (`git log -1 --format=%ci -- server`, cộng file chưa commit). Backend cũ hơn → ghi “chưa kiểm: backend chạy code cũ” và báo người dùng, không tự khởi động lại.

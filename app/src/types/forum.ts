@@ -4,7 +4,8 @@ export type ForumReactionType = 'LIKE' | 'LOVE' | 'HAHA' | 'ANGRY'
 export type ForumPostStatus = 'VISIBLE' | 'HIDDEN' | 'DELETED'
 export type ReportReason = 'SPAM' | 'INAPPROPRIATE' | 'COPYRIGHT' | 'MISLEADING' | 'OTHER'
 export type ReportStatus = 'OPEN' | 'ACTIONED' | 'DISMISSED'
-export type ReportResolveAction = 'HIDE_CONTENT' | 'DISMISS'
+export type ReportTargetType = 'FORUM_POST' | 'CONVERSATION'
+export type ReportResolveAction = 'HIDE_CONTENT' | 'LOCK_CONVERSATION' | 'DISMISS'
 export type ModeratorVisibilityAction = 'HIDE' | 'RESTORE'
 
 export type ForumPostViewer = {
@@ -111,8 +112,20 @@ export type ModeratedForumPost = {
   hiddenAt?: string | null
 }
 
+export type ModeratedConversation = {
+  id: string
+  learner: ArticleAuthor
+  author: ArticleAuthor
+  blocked: boolean
+  locked: boolean
+  lockNote?: string | null
+  lockedBy?: ArticleAuthor | null
+  lockedAt?: string | null
+}
+
 export type ModeratorReportItem = {
   id: string
+  targetType?: ReportTargetType
   reason: ReportReason
   description?: string | null
   status: ReportStatus
@@ -121,6 +134,7 @@ export type ModeratorReportItem = {
   handledAt?: string | null
   resolutionNote?: string | null
   post: ModeratedForumPost
+  conversation?: ModeratedConversation | null
   otherOpenReports: number
 }
 
@@ -128,6 +142,7 @@ export type ModeratorReportsTab = 'open' | 'handled' | 'hidden'
 
 export type ModeratorReportsFilter = {
   tab: ModeratorReportsTab
+  targetType?: ReportTargetType
   status: 'ACTIONED' | 'DISMISSED'
   reason: ReportReason | ''
   page: number

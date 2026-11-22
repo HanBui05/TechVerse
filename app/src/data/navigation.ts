@@ -1,4 +1,4 @@
-import { Dumbbell, FileText, GraduationCap, House, Languages, MessageSquareQuote, MessagesSquare, Settings, Sun } from 'lucide-react'
+import { Dumbbell, FileText, GraduationCap, House, Languages, MessageCircle, MessageSquareQuote, MessagesSquare, Settings, Sun } from 'lucide-react'
 
 // `tone` picks a token colour for the menu icon (see `.nav-icon[data-tone]` in sidebar.css).
 export const navItems = [
@@ -9,6 +9,14 @@ export const navItems = [
   { label: { vi: 'Ôn phỏng vấn', en: 'Interview prep' }, path: '/interview', icon: MessageSquareQuote, tone: 'purple' },
   { label: { vi: 'Hỏi đáp', en: 'Q&A' }, path: '/forum', icon: MessagesSquare, tone: 'sky' },
 ]
+
+// Reader-only entry rendered right after `navItems` when signed in as a Reader account.
+export const messagingNavItem = {
+  label: { vi: 'Tin nhắn', en: 'Messages' },
+  path: '/messages',
+  icon: MessageCircle,
+  tone: 'rose',
+} as const
 
 export const settingsItems = [
   { path: '/settings/theme', icon: Sun, key: 'appearance', tone: 'amber' },

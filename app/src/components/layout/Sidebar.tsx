@@ -3,12 +3,15 @@ import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { ArrowRight, BookCheck, ChevronDown, FileText, GraduationCap, Heart, MessageSquareQuote, PlayCircle, Receipt, LogOut, Settings, UserRound, UserRoundPlus, Wallet, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { navItems, settingsItems } from '../../data/navigation'
+import { messagingNavItem, navItems, settingsItems } from '../../data/navigation'
+import { messagingText } from '../../data/messagingI18n'
+import { messagingService } from '../../services/messagingService'
 import type { Language } from '../../types/preferences'
 import type { Translation } from '../../data/i18n'
 import { Brand } from '../brand/Brand'
 import { AccountIdentity } from './AccountIdentity'
 import type { UserProfile } from '../../services/profileService'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Sidebar as UiSidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu,
@@ -78,6 +81,18 @@ type Props = { language: Language; t: Translation; authenticated: boolean; roles
 export function Sidebar({ language, t, authenticated, roles, profile, onLogout }: Props) {
   const { iconOnly, close } = useSidebarNav()
   const isAuthor = roles.includes('AUTHOR')
+  const isReader = Boolean(authenticated && profile && !roles.some(role => role === 'ADMIN' || role === 'MODERATOR'))
+  const [unreadCount, setUnreadCount] = useState(0)
+  const mt = messagingText(language)
+
+  useEffect(() => {
+    if (!isReader) {
+      setUnreadCount(0)
+      return
+    }
+    return messagingService.subscribeUnread(setUnreadCount)
+  }, [isReader])
+
   const subLinks = [
     ...(authenticated ? [{ path: '/profile', icon: UserRound, tone: 'blue', label: language === 'vi' ? 'Thông tin cá nhân' : 'Personal information' }] : []),
     ...settingsItems.map(({ path, icon, key, tone }) => ({ path, icon, tone, label: t[key as 'appearance' | 'language'] })),
@@ -100,6 +115,32 @@ export function Sidebar({ language, t, authenticated, roles, profile, onLogout }
       <SidebarGroupLabel className="uppercase tracking-[.05em]">{t.mainMenu}</SidebarGroupLabel>
       <SidebarMenu>
         {navItems.map(({ path, icon: Icon, label, tone }) => <SidebarMenuItem key={path}><SidebarMenuButton asChild tooltip={label[language]} className={activeLink}><NavLink to={path} end={path === '/'} onClick={close}><Icon className={toneText[tone]} data-tone={tone} /><span>{label[language]}</span></NavLink></SidebarMenuButton></SidebarMenuItem>)}
+        {isReader && (
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip={messagingNavItem.label[language]} className={activeLink}>
+              <NavLink to={messagingNavItem.path} onClick={close} className="relative">
+                <messagingNavItem.icon className={toneText[messagingNavItem.tone]} data-tone={messagingNavItem.tone} />
+                <span>{messagingNavItem.label[language]}</span>
+                {unreadCount > 0 && (
+                  iconOnly ? (
+                    <span
+                      aria-label={mt('unreadConversations', { n: unreadCount })}
+                      className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary"
+                    />
+                  ) : (
+                    <Badge
+                      tone="blue"
+                      aria-label={mt('unreadConversations', { n: unreadCount })}
+                      className="ml-auto rounded-full px-1.5 py-0 text-[11px] font-semibold"
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Badge>
+                  )
+                )}
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
         {authenticated && !isAuthor && <SidebarMenuItem><SidebarMenuButton asChild tooltip={language === 'vi' ? 'Tác giả' : 'Author'} className={activeLink}><NavLink to="/author/apply" onClick={close}><UserRound className={toneText.violet} data-tone="violet" /><span>{language === 'vi' ? 'Tác giả' : 'Author'}</span></NavLink></SidebarMenuButton></SidebarMenuItem>}
       </SidebarMenu>
     </SidebarGroup>

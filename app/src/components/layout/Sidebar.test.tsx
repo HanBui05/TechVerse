@@ -47,7 +47,7 @@ it('falls back to initials when the avatar fails and retries a newly changed URL
 })
 
 const hrefs = () => screen.queryAllByRole('link').map(link => link.getAttribute('href') ?? '')
-const deadUserPaths = /^\/(challenges|leaderboard|resources|questions|about|messages|notifications|premium|payments|learning\/)/
+const deadUserPaths = /^\/(challenges|leaderboard|resources|questions|about|notifications|premium|payments|learning\/)/
 const deadAdminPaths = /^\/admin\/(roles|logins|login-analytics|active-users|streaks|subscriptions|payments|courses|certificates|exercises|interview-questions|question-contributions|qa-challenges|comments)$/
 
 // Menu entries without a real route led to the "under development" page; only real routes may stay.
@@ -259,3 +259,34 @@ it('expands a collapsed sidebar and shows the settings links when the settings i
   expect(onOpenChange).toHaveBeenCalledWith(true)
   expect(screen.getByRole('button', { name: 'Cài đặt' }).getAttribute('aria-expanded')).toBe('true')
 })
+
+it('shows “Tin nhắn” with unread count only for signed-in Reader accounts and hides it for guests and staff', async () => {
+  let count = 4
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const url = new URL(String(input))
+    if (url.pathname === '/api/v1/conversations/unread-count') {
+      return new Response(JSON.stringify({ status: 200, data: { count } }), { status: 200 })
+    }
+    return new Response(JSON.stringify({ status: 503, code: 'MESSAGE_STORAGE_UNAVAILABLE' }), { status: 503 })
+  }))
+
+  const reader = render(<Shell><Sidebar {...props} profile={profile} /></Shell>)
+  const link = screen.getByRole('link', { name: /Tin nhắn/ })
+  expect(link.getAttribute('href')).toBe('/messages')
+  expect(await screen.findByLabelText('4 cuộc trò chuyện chưa đọc')).toBeTruthy()
+  reader.unmount()
+
+  count = 120
+  const many = render(<Shell><Sidebar {...props} profile={profile} /></Shell>)
+  expect((await screen.findByLabelText('120 cuộc trò chuyện chưa đọc')).textContent).toBe('99+')
+  many.unmount()
+
+  const guest = render(<Shell><Sidebar {...props} authenticated={false} roles={[]} profile={null} /></Shell>)
+  expect(screen.queryByRole('link', { name: /Tin nhắn/ })).toBeNull()
+  guest.unmount()
+
+  render(<Shell><Sidebar {...props} roles={['LEARNER', 'MODERATOR']} profile={{ ...profile, roles: ['LEARNER', 'MODERATOR'] }} /></Shell>)
+  expect(screen.queryByRole('link', { name: /Tin nhắn/ })).toBeNull()
+  vi.unstubAllGlobals()
+})
+

@@ -16,6 +16,11 @@ public interface ReportRepository extends JpaRepository<Report, UUID>, JpaSpecif
     @Query("select r.targetId from Report r where r.id=:id")
     Optional<UUID> findTargetIdById(@Param("id") UUID id);
 
+    @Query("select r.targetType from Report r where r.id=:id")
+    Optional<String> findTargetTypeById(@Param("id") UUID id);
+
+    boolean existsByTargetTypeAndTargetId(String targetType, UUID targetId);
+
     boolean existsByReporter_IdAndTargetTypeAndTargetId(UUID reporter, String targetType, UUID targetId);
 
     /** Locks the open reports of one target in id order (the shared lock order). */

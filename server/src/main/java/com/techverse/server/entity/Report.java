@@ -20,6 +20,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Report extends BaseEntity {
     public static final String FORUM_POST = "FORUM_POST";
+    public static final String CONVERSATION = "CONVERSATION";
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "reporter_id", nullable = false)
@@ -52,11 +53,11 @@ public class Report extends BaseEntity {
     @Column(name = "resolution_note", columnDefinition = "text")
     private String resolutionNote;
 
-    public static Report forumPost(User reporter, UUID postId, ReportReason reason, String description) {
+    public static Report of(User reporter, String targetType, UUID targetId, ReportReason reason, String description) {
         var r = new Report();
         r.reporter = reporter;
-        r.targetType = FORUM_POST;
-        r.targetId = postId;
+        r.targetType = targetType;
+        r.targetId = targetId;
         r.reason = reason;
         r.description = description;
         return r;

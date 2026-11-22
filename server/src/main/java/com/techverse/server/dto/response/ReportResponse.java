@@ -28,8 +28,21 @@ public final class ReportResponse {
             ArticleAuthorResponse hiddenBy,
             Instant hiddenAt) {}
 
+    /** A conversation as moderators see it: who takes part and its block/lock state, never its messages. */
+    public record ModeratedConversation(
+            UUID id,
+            ArticleAuthorResponse learner,
+            ArticleAuthorResponse author,
+            boolean blocked,
+            boolean locked,
+            String lockNote,
+            ArticleAuthorResponse lockedBy,
+            Instant lockedAt) {}
+
+    /** Exactly one of {@code post} and {@code conversation} is set, by {@code targetType}. */
     public record Item(
             UUID id,
+            String targetType,
             ReportReason reason,
             String description,
             ReportStatus status,
@@ -38,5 +51,6 @@ public final class ReportResponse {
             Instant handledAt,
             String resolutionNote,
             ModeratedPost post,
+            ModeratedConversation conversation,
             long otherOpenReports) {}
 }

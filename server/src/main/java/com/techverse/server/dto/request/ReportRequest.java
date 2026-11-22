@@ -16,7 +16,7 @@ public final class ReportRequest {
     private ReportRequest() {}
 
     public record Create(
-            @NotNull @Pattern(regexp = "FORUM_POST") String targetType,
+            @NotNull @Pattern(regexp = "FORUM_POST|CONVERSATION") String targetType,
             @NotNull @Pattern(regexp = ForumRequest.UUID_PATTERN) String targetId,
             @NotNull(message = "Hãy chọn lý do.") @Pattern(regexp = "SPAM|INAPPROPRIATE|COPYRIGHT|MISLEADING|OTHER", message = "Hãy chọn lý do.")
                     String reason,
@@ -37,9 +37,12 @@ public final class ReportRequest {
         }
     }
 
-    /** {@code note} is required for HIDE_CONTENT, optional for DISMISS. */
+    /**
+     * {@code note} is required for HIDE_CONTENT and LOCK_CONVERSATION, optional for DISMISS. Whether the action fits the
+     * report's target type is checked by the service, which knows the target.
+     */
     public record Resolve(
-            @NotNull @Pattern(regexp = "HIDE_CONTENT|DISMISS") String action,
+            @NotNull @Pattern(regexp = "HIDE_CONTENT|LOCK_CONVERSATION|DISMISS") String action,
             @Size(max = 1000, message = "Hãy ghi lý do (tối đa 1.000 ký tự).") String note) {
         public Resolve {
             note = blankToNull(note);
@@ -48,11 +51,15 @@ public final class ReportRequest {
         @JsonIgnore
         @AssertTrue(message = "Hãy ghi lý do (tối đa 1.000 ký tự).")
         public boolean isNoteValid() {
-            return noteValid("HIDE_CONTENT".equals(action), note);
+            return noteValid(!"DISMISS".equals(action), note);
         }
 
         public boolean hide() {
             return "HIDE_CONTENT".equals(action);
+        }
+
+        public boolean dismiss() {
+            return "DISMISS".equals(action);
         }
     }
 
@@ -82,6 +89,11 @@ public final class ReportRequest {
         @NotNull
         private ReportStatus status = ReportStatus.OPEN;
         private ReportReason reason;
+
+        // Defaults to forum posts so a client unaware of conversation reports keeps working.
+        @NotNull
+        @Pattern(regexp = "FORUM_POST|CONVERSATION")
+        private String targetType = "FORUM_POST";
 
         @Min(0)
         private int page = 0;

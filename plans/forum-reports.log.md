@@ -4,10 +4,9 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`forum-reports.md`
 
 ## Bắt đầu từ đây (cập nhật 2026-11-22)
 
-- **Task tiếp:** Cuối module — nhờ Codex đồng bộ spec theo log (skill `codex-workflow` mục 3), rồi PR khi người dùng yêu cầu · Giao diện: Không
-- Task 1a, 1b, 1c đã nhận (2026-11-21); Task 2a, 2b đã nhận (2026-11-22, đã kiểm bằng mắt Playwright cả trạng thái lỗi).
-- Nhánh `feature/forum-reports` (tách từ `main` sau PR #13), commit cục bộ, chưa push.
-- Chưa kiểm: full backend + full frontend (CI khi mở PR).
+- **Task tiếp:** (không còn) — module hoàn tất: PR #14 đã merge vào `main` 2026-11-22, CI `test-server` đạt · Giao diện: Không
+- Task 1a–1c đã nhận (2026-11-21); Task 2a, 2b đã nhận (2026-11-22). Spec đã đồng bộ.
+- Còn để sau (không chặn): tick 2 ô test sidebar/App trong spec ở lần đồng bộ sau (bằng chứng ở nhật ký 2026-11-22).
 
 ## Quyết định người dùng chưa có trong spec
 
@@ -35,6 +34,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`forum-reports.md`
 - Task 1c — PUT/DELETE react cũng tính nhịp với lần không đổi gì (PUT cùng loại, DELETE khi chưa có). `PostViewer`/`QuestionViewer` thêm `canReact` cuối record; `Summary` thêm `reactionCount`; `Answer`/`Question` thêm `reactions` (chỉ thêm trường).
 
 ## Nhật ký phiên
+### 2026-11-22 — Merge PR #14
+- PR #14 `feature/forum-reports` → `main` (8 commit, Create a merge commit) đã merge; CI `test-server` đạt (8m39s). Ghi trạng thái "Hoàn tất" ở `PLAN.md`; commit cùng nhánh module kế tiếp (như PR #13).
 ### 2026-11-22 — Đồng bộ spec cuối module
 - Codex đồng bộ `forum-reports.md` theo log (tick "Xong khi" đã đạt, đưa lệch/quyết định vào thân spec, thay cổng wireframe bằng mục "Giao frontend"). Claude kiểm diff: đúng.
 - Bằng chứng cho 2 ô Codex để [ ]: `Sidebar.test.tsx` kiểm link `AdminSidebar`/`ModeratorSidebar` (gồm "Hỏi đáp", "Báo cáo vi phạm"); `ForumPages.test.tsx` render `App` cho ADMIN/MODERATOR vào `/forum`. Lần đồng bộ sau có thể tick.
