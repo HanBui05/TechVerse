@@ -155,9 +155,11 @@ class MessageSocketIntegrationTest extends ConversationIntegrationTestBase {
         var authorConn = connect(ticket(authorToken));
         var third = connect(ticket(thirdToken));
         String id = openConversation();
-        message(id, learnerToken, "secret text").andExpect(status().isCreated());
+        // seq is one identity for the whole table (TRUNCATE keeps it), so take it from the reply rather than assume 1.
+        long seq = data(message(id, learnerToken, "secret text").andExpect(status().isCreated())).path("seq").asLong();
+        assertThat(seq).isPositive();
 
-        String expected = "{\"type\":\"message\",\"conversationId\":\"" + id + "\",\"seq\":1}";
+        String expected = "{\"type\":\"message\",\"conversationId\":\"" + id + "\",\"seq\":" + seq + "}";
         assertThat(authorConn.next()).as("author closed=%s", authorConn.closed().getNow(null)).isEqualTo(expected);
         assertThat(authorConn.next()).isEqualTo("{\"type\":\"unread\"}");
         assertThat(learnerConn.next()).as("learner closed=%s", learnerConn.closed().getNow(null)).isEqualTo(expected);
