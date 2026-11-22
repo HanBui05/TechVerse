@@ -26,6 +26,7 @@ import { InterviewDetailPage } from './pages/Interview/InterviewDetailPage'
 import { ForumListPage } from './pages/Forum/ForumListPage'
 import { ForumQuestionEditorPage } from './pages/Forum/ForumQuestionEditorPage'
 import { ForumQuestionDetailPage } from './pages/Forum/ForumQuestionDetailPage'
+import { MessagesPage } from './pages/Messages/MessagesPage'
 import { OrdersPage } from './pages/Payments/OrdersPage'
 import { OrderDetailPage } from './pages/Payments/OrderDetailPage'
 import { LanguagePage } from './pages/Settings/LanguagePage'
@@ -190,7 +191,7 @@ export default function App() {
       <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><BlogDetailPage language={language} canSave={canSave} /></ReaderRoute></AuthRoute>} />
       <Route path="/me/saved-articles" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><SavedArticlesPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route path="/courses" element={<ReaderRoute roles={roles}><CoursesPage language={language} authenticated={authenticated} /></ReaderRoute>} />
-      <Route path="/courses/:id" element={<ReaderRoute roles={roles}><CourseOverviewPage language={language} authenticated={authenticated} /></ReaderRoute>} />
+      <Route path="/courses/:id" element={<ReaderRoute roles={roles}><CourseOverviewPage language={language} authenticated={authenticated} currentUserId={profile?.id} /></ReaderRoute>} />
       <Route path="/courses/:courseId/lessons/:lessonId" element={<ReaderRoute roles={roles}><CourseLessonPage language={language} authenticated={authenticated} /></ReaderRoute>} />
       <Route path="/me/courses" element={<AuthRoute authenticated={authenticated} returnTo="/me/courses"><ReaderRoute roles={roles}><MyCoursesPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route path="/practice" element={<ReaderRoute roles={roles}><PracticeListPage language={language} authenticated={authenticated} /></ReaderRoute>} />
@@ -204,6 +205,8 @@ export default function App() {
       <Route path="/forum/new" element={<AuthRoute authenticated={authenticated} returnTo="/forum/new"><ForumQuestionEditorPage language={language} /></AuthRoute>} />
       <Route path="/forum/:id" element={<ForumQuestionDetailPage language={language} authenticated={authenticated} isModerator={roles.includes('MODERATOR')} />} />
       <Route path="/forum/:id/edit" element={<AuthRoute authenticated={authenticated} returnTo={location.pathname}><ForumQuestionEditorPage language={language} /></AuthRoute>} />
+      <Route path="/messages" element={<AuthRoute authenticated={authenticated} returnTo="/messages"><ReaderRoute roles={roles}><MessagesPage language={language} /></ReaderRoute></AuthRoute>} />
+      <Route path="/messages/:id" element={<AuthRoute authenticated={authenticated} returnTo={location.pathname}><ReaderRoute roles={roles}><MessagesPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route path="/me/orders" element={<AuthRoute authenticated={authenticated} returnTo="/me/orders"><ReaderRoute roles={roles}><OrdersPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route path="/me/orders/:orderCode" element={<AuthRoute authenticated={authenticated} returnTo={location.pathname}><ReaderRoute roles={roles}><OrderDetailPage language={language} /></ReaderRoute></AuthRoute>} />
       <Route element={<AuthLayout t={t} />}>

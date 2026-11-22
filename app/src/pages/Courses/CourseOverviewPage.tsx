@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { BookOpen, CalendarDays, ChevronDown, Hash, Layers, ListChecks, Lock, PlayCircle, RefreshCw, Check } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { BookOpen, CalendarDays, ChevronDown, Hash, Layers, ListChecks, Lock, MessageCircle, PlayCircle, RefreshCw, Check } from 'lucide-react'
 import { cn } from 'cn'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,8 +11,10 @@ import { MarkdownContent } from '../../components/MarkdownContent'
 import { UserAvatar } from '../../components/UserAvatar'
 import { topicIcon } from '../../components/articles/ArticleCard'
 import { courseErrorText, readerCourseText } from '../../data/courseI18n'
+import { messagingErrorText, messagingText } from '../../data/messagingI18n'
 import { ApiError } from '../../services/api/client'
 import { flatLessons, lessonAccess, publicCourses } from '../../services/courseService'
+import { messagingService } from '../../services/messagingService'
 import { formatDate } from '../Author/AuthorBlogsPage'
 import { CourseFrame, type FrameActions } from './CourseFrame'
 import { LEVEL_TONE, PriceChip, ProgressBar, touch } from './courseParts'
@@ -20,13 +22,35 @@ import type { PublicCourseDetail } from '../../types/courses'
 import type { Language } from '../../types/preferences'
 
 /** Course overview (wireframe 2c-3): info card + CTA by `viewer`, description, accordion of chapters; shares the learning frame. */
-export function CourseOverviewPage({ language = 'vi', authenticated = false }: { language?: Language; authenticated?: boolean }) {
+export function CourseOverviewPage({ language = 'vi', authenticated = false, currentUserId }: { language?: Language; authenticated?: boolean; currentUserId?: string }) {
   const t = readerCourseText(language)
+  const mt = messagingText(language)
+  const navigate = useNavigate()
   const { id = '' } = useParams()
   const [course, setCourse] = useState<PublicCourseDetail | null>(null)
   const [error, setError] = useState<{ missing: boolean; text: string } | null>(null)
   const [open, setOpen] = useState<Set<string>>(new Set())
+  const [messagingAuthor, setMessagingAuthor] = useState(false)
+  const [messageError, setMessageError] = useState<string | null>(null)
   const latest = useRef(0)
+
+  const handleMessageAuthor = async (courseId: string) => {
+    if (!authenticated) {
+      navigate('/login', { state: { returnTo: `/courses/${courseId}` } })
+      return
+    }
+    if (messagingAuthor) return
+    setMessagingAuthor(true)
+    setMessageError(null)
+    try {
+      const conv = await messagingService.openConversation(courseId)
+      navigate(`/messages/${conv.id}`)
+    } catch (e) {
+      setMessageError(messagingErrorText(e, language))
+    } finally {
+      setMessagingAuthor(false)
+    }
+  }
 
   const load = useCallback(async () => {
     const request = ++latest.current
@@ -82,6 +106,19 @@ export function CourseOverviewPage({ language = 'vi', authenticated = false }: {
           <span className="flex items-center gap-2.5">
             <UserAvatar name={course.author.fullName} url={course.author.avatarUrl} className="size-10 text-xs ring-2 ring-accent-text/25 ring-offset-2 ring-offset-card" />
             <span className="flex flex-col leading-tight"><span className="text-sm font-semibold">{course.author.fullName}</span><span className="text-[11px] tracking-wide text-muted-foreground uppercase">{t('author')}</span></span>
+            {course.viewer.canStart && course.author.id !== currentUserId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={messagingAuthor}
+                onClick={() => void handleMessageAuthor(course.id)}
+                className={cn('ml-1', touch)}
+              >
+                <MessageCircle aria-hidden />
+                {mt('messageAuthor')}
+              </Button>
+            )}
           </span>
           <div className="flex flex-wrap items-center gap-2.5 max-sm:w-full max-sm:flex-col max-sm:items-stretch">
             <PriceChip amount={course.priceAmount} language={language} className="px-3 py-1 text-sm max-sm:self-start" />
@@ -98,6 +135,7 @@ export function CourseOverviewPage({ language = 'vi', authenticated = false }: {
         {progress && <div className="relative flex flex-col gap-1.5 rounded-xl border border-border/60 bg-background/40 p-3.5"><ProgressBar percent={progress.percent} label={t('progressLabel')} /><p className="text-xs font-medium text-muted-foreground">{t('progress', { x: progress.completed, y: progress.total, p: progress.percent })}</p></div>}
         {paid && !course.viewer.enrolled && course.viewer.canStart && <p className="text-sm text-muted-foreground"><span aria-hidden>ⓘ </span>{t('noRefund')}</p>}
         {actions.startError && <p role="alert" className="text-sm text-danger">{actions.startError}</p>}
+        {messageError && <p role="alert" className="text-sm text-danger">{messageError}</p>}
       </section>
 
       {course.coverImageUrl && <img src={course.coverImageUrl} alt="" className="aspect-video w-full rounded-2xl border border-border/80 object-cover shadow-md" />}

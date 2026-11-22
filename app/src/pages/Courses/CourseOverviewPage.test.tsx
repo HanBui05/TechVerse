@@ -169,3 +169,55 @@ it('offers the owner of a paid course no Buy button, and an enrolled buyer Conti
   expect(await screen.findByRole('link', { name: /Tiếp tục học: Cài đặt/ })).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Mua khóa học' })).toBeNull()
 })
+
+function WhereWithReturn() {
+  const l = useLocation()
+  const state = l.state as { returnTo?: string } | null
+  return <output data-testid="where">{l.pathname}{state?.returnTo ? `?returnTo=${state.returnTo}` : ''}</output>
+}
+
+it('shows “Nhắn tác giả” for unpurchased and enrolled viewers, hides it for the owner, sends Guests to login with returnTo, and opens the conversation for signed-in Learners', async () => {
+  const user = userEvent.setup()
+
+  // Owner (canStart = false) does not see the button
+  mockApi(paid({ viewer: { enrolled: false, canStart: false } }))
+  const ownerView = renderPaid(true)
+  await screen.findByRole('heading', { level: 1, name: 'Java cơ bản' })
+  expect(screen.queryByRole('button', { name: 'Nhắn tác giả' })).toBeNull()
+  ownerView.unmount()
+
+  // Guest sees the button on an unpurchased paid course; clicking redirects to /login with returnTo
+  const guestFetch = mockApi(paid({ viewer: { enrolled: false, canStart: true } }))
+  const guestView = render(
+    <MemoryRouter initialEntries={['/courses/c1']}>
+      <Routes>
+        <Route path="/courses/:id" element={<CourseOverviewPage language="vi" authenticated={false} />} />
+        <Route path="/login" element={<WhereWithReturn />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+  await user.click(await screen.findByRole('button', { name: 'Nhắn tác giả' }))
+  expect(screen.getByTestId('where').textContent).toBe('/login?returnTo=/courses/c1')
+  expect(guestFetch.mock.calls.some(([input]) => new URL(String(input)).pathname === '/api/v1/conversations')).toBe(false)
+  guestView.unmount()
+
+  // Signed-in Learner (enrolled or unpurchased) clicks "Nhắn tác giả" -> POST /api/v1/conversations -> /messages/conv-1
+  const learnerFetch = mockApi(
+    ok({ viewer: { enrolled: true, canStart: true }, learning }),
+    () => json({ id: 'conv-1' }, 200),
+  )
+  render(
+    <MemoryRouter initialEntries={['/courses/c1']}>
+      <Routes>
+        <Route path="/courses/:id" element={<CourseOverviewPage language="vi" authenticated />} />
+        <Route path="/messages/:id" element={<WhereWithReturn />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+  await user.click(await screen.findByRole('button', { name: 'Nhắn tác giả' }))
+  await vi.waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/messages/conv-1'))
+  const convCalls = learnerFetch.mock.calls.filter(([input]) => new URL(String(input)).pathname === '/api/v1/conversations')
+  expect(convCalls).toHaveLength(1)
+  expect(JSON.parse(String(convCalls[0][1]?.body))).toEqual({ courseId: 'c1' })
+})
+
