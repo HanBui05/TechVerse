@@ -15,6 +15,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`messaging.md`](me
 
 - **2026-11-22 — Chi tiết nhắn trước khi mua (đồng ý cả 4 khuyến nghị):** (1) chống spam: trước khi tác giả trả lời lần đầu, người học gửi tối đa 3 tin; mỗi người mở tối đa 10 cuộc trò chuyện mới/ngày; chỉ mở từ khóa đang công khai; (2) lưu khóa mà người học bấm “Nhắn tác giả” gần nhất, tác giả thấy “Hỏi về: <tên khóa>” và “Đã đăng ký / Chưa đăng ký”; (3) khách bấm “Nhắn tác giả” → đăng nhập rồi quay lại trang khóa; (4) không có nút tắt nhận tin từ người chưa đăng ký, tác giả dùng “Chặn”.
 
+- **2026-11-22 — Bỏ giới hạn 10 cuộc trò chuyện mới/ngày:** sau khi nghe giải thích (chặn rải spam tới nhiều tác giả), người dùng chọn bỏ hẳn; chống spam còn: 3 tin trước khi tác giả trả lời, nhịp 20 tin/phút và 5 lần mở/phút, Chặn, Báo cáo. Đã sửa thân spec.
+
 ## Câu hỏi mở cho người dùng
 
 - (không có)
