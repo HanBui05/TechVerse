@@ -95,6 +95,7 @@ public class SecurityConfiguration {
 						.requestMatchers(HttpMethod.GET, "/api/v1/forum/**").permitAll()
 						.requestMatchers("/api/v1/forum/**").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/v1/reports").authenticated()
+						.requestMatchers("/api/v1/conversations", "/api/v1/conversations/**").authenticated()
 						.requestMatchers("/api/v1/moderator/reports", "/api/v1/moderator/reports/**", "/api/v1/moderator/forum/**").authenticated()
 						.requestMatchers("/api/v1/moderator/articles", "/api/v1/moderator/articles/**").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/**").authenticated()

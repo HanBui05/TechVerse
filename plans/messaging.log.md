@@ -4,9 +4,10 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`messaging.md`](me
 
 ## Bắt đầu từ đây (cập nhật 2026-11-22)
 
-- **Task tiếp:** Task 1a — Schema, cuộc trò chuyện và tin nhắn (dùng `/model opus`, `/clear` trước) · Giao diện: Không
+- **Task tiếp:** Task 1b — Chặn, báo cáo và quyền đọc của Moderator (dùng `/model opus`, `/clear` trước) · Giao diện: Không
+- Task 1a đã nhận (2026-11-22).
 - Spec chốt 2026-11-22 sau 2 vòng Codex phản biện; lịch sử ở `messaging.review.md`.
-- Nhánh `feature/messaging` (tách từ `main` sau PR #14). Chưa code.
+- Nhánh `feature/messaging` (tách từ `main` sau PR #14).
 
 ## Quyết định người dùng chưa có trong spec
 
@@ -23,6 +24,14 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`messaging.md`](me
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-22 — Task 1a — Kết quả (đã nhận 2026-11-22)
+- Code: `V23__messaging.sql`, `Conversation`/`Message`, `ConversationRepository`/`MessageRepository`, `ConversationRequest`/`ConversationResponse`, `ConversationService`, `ConversationController`, `ErrorCode` (+9 mã), `SecurityConfiguration`.
+- Test (`./gradlew test --tests messaging.* + ForumReportsMigrationTest, ReportIntegrationTest, DatabaseBootstrapIntegrationTest`): Migration 1/1, Rules 9/9, Controller 5/5, Integration 4/4, regression 1/1, 6/6, 2/2 — 0 lỗi. Migration + Integration đỏ trước (bảng chưa có; route `denyAll` 403); Rules/Controller viết sau code.
+- Lệch khác spec: (1) tác giả không thấy cuộc trò chuyện chưa có tin nào trong danh sách (người học thấy); (2) mở từ khóa mà tác giả mang role ADMIN/MODERATOR → 403 `CONVERSATION_NOT_ALLOWED`; (3) `PUT /read` trả chi tiết cuộc trò chuyện; (4) `seq` vượt 64 bit trong body JSON → 400 `MALFORMED_REQUEST` (xử lý chung), ở query → `VALIDATION_ERROR`; (5) mở dùng một câu `INSERT … ON CONFLICT DO UPDATE` thay cho bắt lỗi UNIQUE rồi đọc lại.
+- Chưa kiểm: full backend (CI).
+- Review vòng 1 (`adversarial-review`): (high) deadlock khi hai tác giả mở chéo — **từ chối**: Hibernate 7.4 khóa user bằng `for no key update` (xem SQL log), không xung đột `FOR KEY SHARE` của kiểm FK; vẫn thêm ca đua mở chéo 5 lần (xanh). (medium) thiếu ca gửi đồng thời cùng `clientId` — chấp nhận, thêm ca (201 + 200, một dòng).
+- Sau sửa: `ConversationIntegrationTest.racesKeepOne…` 1/1 đạt.
+- Review vòng 2 (`adversarial-review`, chỉ phần sửa): approve, không có phát hiện; Codex chấp nhận phản biện deadlock.
 ### 2026-11-22 — Chốt spec
 - Người dùng chốt spec (1a, 1b, 1c, cổng wireframe, 2a, 2b). Chuyển 4 mục phản hồi/trả lời sang `messaging.review.md`, giữ kết luận ngắn ở “Quyết định của người dùng”.
 ### 2026-11-22 — Sửa spec theo quyết định mới
