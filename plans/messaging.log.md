@@ -4,7 +4,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`messaging.md`](me
 
 ## Bắt đầu từ đây (cập nhật 2026-11-22)
 
-- **Task tiếp:** Người dùng chốt spec sau 2 vòng phản biện (Claude đã trả lời vòng 2); Claude chuyển phản biện sang `messaging.review.md`, rồi Task 1a (dùng `/model opus`) · Giao diện: Không
+- **Task tiếp:** Task 1a — Schema, cuộc trò chuyện và tin nhắn (dùng `/model opus`, `/clear` trước) · Giao diện: Không
+- Spec chốt 2026-11-22 sau 2 vòng Codex phản biện; lịch sử ở `messaging.review.md`.
 - Nhánh `feature/messaging` (tách từ `main` sau PR #14). Chưa code.
 
 ## Quyết định người dùng chưa có trong spec
@@ -22,6 +23,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`messaging.md`](me
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-22 — Chốt spec
+- Người dùng chốt spec (1a, 1b, 1c, cổng wireframe, 2a, 2b). Chuyển 4 mục phản hồi/trả lời sang `messaging.review.md`, giữ kết luận ngắn ở “Quyết định của người dùng”.
 ### 2026-11-22 — Sửa spec theo quyết định mới
 - Vòng 2: Codex 7 điểm, Claude chấp nhận cả 7: bỏ dòng hiện trạng giới hạn ngày; từ chối bắt tay/không đẩy khi `exp` đã qua; `RUNBOOK.md` vào đường dẫn; kết nối lại tải lại chi tiết + danh sách, chỉ áp response mới nhất; test rollback thật + unit khóa đã xóa; cổng wireframe sau 1c (hoặc sau 1b nếu bỏ 1c), bỏ giả định vé 404.
 - Đối chiếu code thật (V22, lớp `Report*` của forum-reports, `viewer.canStart`, `findActive`, CORS/`webUrl`, chưa có starter WebSocket) rồi sửa `messaging.md`: Hiện trạng, Đường dẫn, Ngoài phạm vi, Ràng buộc (mở không cần mua, khóa đang hỏi, chống spam, thời gian thực), Task 1a (cột ngữ cảnh khóa, `author_replied`, 2 mã lỗi mới, kế hoạch theo luật “Ít class”), Task 1b (tên lớp báo cáo thật), Task 1c mới (vé một lần + WebSocket chỉ đẩy sự kiện, người nhận do server chọn), Task 2a (nút cho người chưa mua, “Hỏi về”, giới hạn chờ trả lời, socket + dự phòng 30 giây).
