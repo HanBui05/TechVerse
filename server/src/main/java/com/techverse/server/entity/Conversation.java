@@ -93,6 +93,19 @@ public class Conversation extends BaseEntity {
         if (!isLearner(m.getSenderId())) authorReplied = true;
     }
 
+    /** {@code by} null clears the block. */
+    public void block(UUID by) {
+        blockedBy = by;
+        blockedAt = by == null ? null : Instant.now();
+    }
+
+    /** Unlocking keeps the note given for it (may be null) as the latest moderation note. */
+    public void lock(UUID moderator, boolean locked, String note) {
+        lockedBy = locked ? moderator : null;
+        lockedAt = locked ? Instant.now() : null;
+        lockNote = note;
+    }
+
     public void markRead(UUID user, long seq) {
         if (isLearner(user)) learnerLastReadSeq = seq;
         else authorLastReadSeq = seq;

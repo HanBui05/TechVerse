@@ -47,6 +47,18 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
                 or (c.author.id=:me and c.lastMessageSeq > c.authorLastReadSeq))""")
     long countUnread(@Param("me") UUID me);
 
+    /** The moderator's read gate: the conversation only when it has at least one report, in any status. */
+    @Query("""
+            select c from Conversation c
+            where c.id=:id and exists (select 1 from Report r where r.targetType='CONVERSATION' and r.targetId=c.id)""")
+    Optional<Conversation> findReported(@Param("id") UUID id);
+
+    @EntityGraph(attributePaths = {"learner", "author"})
+    List<Conversation> findByIdIn(Collection<UUID> ids);
+
+    @EntityGraph(attributePaths = {"learner", "author"})
+    Page<Conversation> findByLockedAtIsNotNull(Pageable pageable);
+
     /** Rows of (course id, user id) for active enrollments among the given courses and users. */
     @Query("select e.course.id, e.userId from CourseEnrollment e where e.revokedAt is null and e.course.id in :courses and e.userId in :users")
     List<Object[]> findActiveEnrollments(@Param("courses") Collection<UUID> courses, @Param("users") Collection<UUID> users);

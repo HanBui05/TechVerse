@@ -196,6 +196,8 @@ public enum ErrorCode {
 	REPORT_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "REPORT_ALREADY_SUBMITTED", "You already reported this content"),
 	REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_NOT_FOUND", "Report not found"),
 	REPORT_ALREADY_HANDLED(HttpStatus.CONFLICT, "REPORT_ALREADY_HANDLED", "The report was already handled"),
+	REPORT_TARGET_EMPTY(HttpStatus.CONFLICT, "REPORT_TARGET_EMPTY", "There is no message to report yet"),
+	CONVERSATION_STATE_INVALID(HttpStatus.CONFLICT, "CONVERSATION_STATE_INVALID", "The conversation is not in a state that allows this action"),
 	INTERVIEW_AUTHOR_INELIGIBLE(HttpStatus.CONFLICT, "INTERVIEW_AUTHOR_INELIGIBLE", "The author is no longer eligible to publish"),
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected error occurred");
 

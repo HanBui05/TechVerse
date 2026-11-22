@@ -10,6 +10,7 @@ import com.techverse.server.exception.*;
 import com.techverse.server.service.impl.ArticleContentService;
 import com.techverse.server.service.impl.ConversationService;
 import com.techverse.server.service.impl.ConversationService.RateKind;
+import com.techverse.server.service.impl.ReportService;
 
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
@@ -116,6 +117,52 @@ class ConversationRulesTest {
         assertThat(ConversationService.sendBlock(c, 3)).isEqualTo(ErrorCode.CONVERSATION_BLOCKED);
     }
 
+    // ------------------------------------------------------------------ blocking and moderation
+
+    @Test
+    void onlyTheBlockerLiftsABlockAndRepeatsAreNoOps() {
+        for (var blocker : List.of(learner, author)) {
+            var other = blocker == learner ? author : learner;
+            var c = conversation();
+            ConversationService.applyBlock(c, other.getId(), false);
+            assertThat(c.isBlocked()).isFalse();
+            ConversationService.applyBlock(c, blocker.getId(), true);
+            ConversationService.applyBlock(c, blocker.getId(), true);
+            assertThat(c.getBlockedBy()).isEqualTo(blocker.getId());
+            assertThat(c.getBlockedAt()).isNotNull();
+            assertCode(() -> ConversationService.applyBlock(c, other.getId(), true), ErrorCode.CONVERSATION_BLOCKED);
+            assertCode(() -> ConversationService.applyBlock(c, other.getId(), false), ErrorCode.CONVERSATION_BLOCKED);
+            ConversationService.applyBlock(c, blocker.getId(), false);
+            assertThat(c.isBlocked()).isFalse();
+            assertThat(c.getBlockedAt()).isNull();
+        }
+    }
+
+    @Test
+    void actionsFitTheirTargetTypeAndOnlyModeratorsModerate() {
+        assertThat(ReportService.actionAllowed("CONVERSATION", "LOCK_CONVERSATION")).isTrue();
+        assertThat(ReportService.actionAllowed("CONVERSATION", "DISMISS")).isTrue();
+        assertThat(ReportService.actionAllowed("CONVERSATION", "HIDE_CONTENT")).isFalse();
+        assertThat(ReportService.actionAllowed("FORUM_POST", "HIDE_CONTENT")).isTrue();
+        assertThat(ReportService.actionAllowed("FORUM_POST", "DISMISS")).isTrue();
+        assertThat(ReportService.actionAllowed("FORUM_POST", "LOCK_CONVERSATION")).isFalse();
+
+        assertThatCode(() -> ConversationService.checkModerator(user(RoleName.MODERATOR))).doesNotThrowAnyException();
+        assertThatCode(() -> ConversationService.checkModerator(user(RoleName.AUTHOR, RoleName.MODERATOR))).doesNotThrowAnyException();
+        var locked = user(RoleName.MODERATOR);
+        locked.updateActiveStatus(false);
+        for (var denied : Arrays.asList(user(RoleName.ADMIN), user(RoleName.LEARNER), locked, null))
+            assertCode(() -> ConversationService.checkModerator(denied), ErrorCode.ACCESS_DENIED);
+
+        var c = conversation();
+        c.lock(UUID.randomUUID(), true, "Abuse");
+        assertThat(c.isLocked()).isTrue();
+        assertThat(ConversationService.sendBlock(c, null)).isEqualTo(ErrorCode.CONVERSATION_LOCKED);
+        c.lock(UUID.randomUUID(), false, null);
+        assertThat(c.isLocked()).isFalse();
+        assertThat(c.getLockedBy()).isNull();
+    }
+
     @Test
     void authorMessageMarksTheReplyAndUpdatesTheLastMessage() {
         var c = conversation();
@@ -194,7 +241,7 @@ class ConversationRulesTest {
 
     // ------------------------------------------------------------------ content and rate
 
-    final ConversationService content = new ConversationService(null, new ArticleContentService(), null, null, null, null, null);
+    final ConversationService content = new ConversationService(null, new ArticleContentService(), null, null, null, null, null, null);
 
     @Test
     void markdownWithCodeIsAcceptedButHtmlUnsafeLinksNulAndImagesAreNot() {
@@ -210,7 +257,7 @@ class ConversationRulesTest {
         var stub = when(redis.execute(any(RedisScript.class), anyList(), any(Object[].class)));
         if (reply instanceof RuntimeException e) stub.thenThrow(e);
         else stub.thenReturn(reply);
-        return new ConversationService(null, null, null, null, null, null, redis);
+        return new ConversationService(null, null, null, null, null, null, null, redis);
     }
 
     @Test

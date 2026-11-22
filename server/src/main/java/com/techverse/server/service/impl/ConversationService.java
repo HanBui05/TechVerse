@@ -2,8 +2,10 @@ package com.techverse.server.service.impl;
 
 import com.techverse.server.dto.response.*;
 import com.techverse.server.dto.response.ConversationResponse.*;
+import com.techverse.server.dto.response.ReportResponse.ModeratedConversation;
 import com.techverse.server.entity.*;
 import com.techverse.server.entity.Message;
+import com.techverse.server.enums.ReportStatus;
 import com.techverse.server.enums.RoleName;
 import com.techverse.server.exception.*;
 import com.techverse.server.repository.*;
@@ -13,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -42,6 +45,7 @@ public class ConversationService {
     private final MessageRepository messages;
     private final CourseRepository courses;
     private final UserRepository users;
+    private final ReportRepository reports;
     private final StringRedisTemplate redis;
 
     /** The stored (or found) message and whether this request created it (201) or repeated an earlier one (200). */
@@ -66,11 +70,7 @@ public class ConversationService {
     public Messages messages(UUID actor, UUID id, Long beforeSeq, Long afterSeq, int size) {
         reader(actor);
         participant(conversations.findById(id), actor);
-        var limit = PageRequest.of(0, size + 1);
-        List<Message> rows = afterSeq != null
-                ? messages.findAfter(id, afterSeq, limit)
-                : beforeSeq != null ? messages.findBefore(id, beforeSeq, limit) : messages.findLatest(id, limit);
-        return page(rows, size, afterSeq == null, actor);
+        return readMessages(id, beforeSeq, afterSeq, size, actor);
     }
 
     @Transactional(readOnly = true)
@@ -121,7 +121,74 @@ public class ConversationService {
         return detail(c, actor);
     }
 
+    /** Blocks or unblocks for both sides; only the blocker can lift a block. Repeating the current state is a no-op. */
+    @Transactional
+    public Detail block(UUID actor, UUID id, boolean blocked) {
+        checkReader(access.lockActiveUser(actor));
+        var c = participant(conversations.findByIdForUpdate(id), actor);
+        applyBlock(c, actor, blocked);
+        return detail(c, actor);
+    }
+
+    // ------------------------------------------------------------------ moderators
+
+    /** Read-only, and only once the conversation has been reported; a never-reported id looks missing. */
+    @Transactional(readOnly = true)
+    public Messages moderatorMessages(UUID actor, UUID id, Long beforeSeq, Long afterSeq, int size) {
+        checkModerator(users.findWithRolesById(actor).orElse(null));
+        conversations.findReported(id).orElseThrow(() -> new CustomException(ErrorCode.CONVERSATION_NOT_FOUND));
+        return readMessages(id, beforeSeq, afterSeq, size, actor);
+    }
+
+    /** Locking closes every open report of the conversation as ACTIONED. Lock order: moderator, conversation, reports. */
+    @Transactional
+    public ModeratedConversation lock(UUID actor, UUID id, boolean locked, String note) {
+        var moderator = access.lockActiveUser(actor);
+        checkModerator(moderator);
+        var c = conversations.findByIdForUpdate(id).filter(x -> reports.existsByTargetTypeAndTargetId(Report.CONVERSATION, x.getId()))
+                .orElseThrow(() -> new CustomException(ErrorCode.CONVERSATION_NOT_FOUND));
+        if (c.isLocked() == locked) throw new CustomException(ErrorCode.CONVERSATION_STATE_INVALID);
+        c.lock(actor, locked, note);
+        if (locked) reports.findOpenForUpdate(Report.CONVERSATION, id).forEach(r -> r.close(ReportStatus.ACTIONED, moderator, note));
+        conversations.flush();
+        return moderated(List.of(c)).get(c.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ModeratedConversation> locked(UUID actor, int page, int size) {
+        checkModerator(users.findWithRolesById(actor).orElse(null));
+        var rows = conversations.findByLockedAtIsNotNull(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "lockedAt").and(Sort.by("id"))));
+        var views = moderated(rows.getContent());
+        return PageResponse.from(rows, rows.stream().map(c -> views.get(c.getId())).toList());
+    }
+
+    /** Moderator views by conversation id: participants and block/lock state, no message content. */
+    public Map<UUID, ModeratedConversation> moderated(Collection<Conversation> page) {
+        var lockerIds = page.stream().map(Conversation::getLockedBy).filter(Objects::nonNull).collect(Collectors.toSet());
+        var lockers = lockerIds.isEmpty() ? Map.<UUID, User>of()
+                : users.findAllById(lockerIds).stream().collect(Collectors.toMap(User::getId, u -> u));
+        var out = new HashMap<UUID, ModeratedConversation>();
+        for (var c : page) {
+            var by = c.getLockedBy() == null ? null : lockers.get(c.getLockedBy());
+            out.put(c.getId(), new ModeratedConversation(c.getId(), person(c.getLearner()), person(c.getAuthor()), c.isBlocked(), c.isLocked(),
+                    c.getLockNote(), by == null ? null : person(by), c.getLockedAt()));
+        }
+        return out;
+    }
+
     // ------------------------------------------------------------------ rules (pure)
+
+    /** Someone else's block cannot be added to or lifted; my own block or no block follows the request. */
+    public static void applyBlock(Conversation c, UUID me, boolean blocked) {
+        if (c.isBlocked() && !me.equals(c.getBlockedBy())) throw new CustomException(ErrorCode.CONVERSATION_BLOCKED);
+        if (blocked != c.isBlocked()) c.block(blocked ? me : null);
+    }
+
+    /** MODERATOR role on an active account; ADMIN alone is not enough. */
+    public static void checkModerator(User user) {
+        if (user == null || !user.isActive() || user.getUserRoles().stream().noneMatch(l -> l.getRole().getName() == RoleName.MODERATOR))
+            throw new CustomException(ErrorCode.ACCESS_DENIED);
+    }
 
     /** Locked accounts and any account holding ADMIN or MODERATOR (even with other roles) stay out of messaging. */
     public static void checkReader(User user) {
@@ -216,6 +283,15 @@ public class ConversationService {
 
     // ------------------------------------------------------------------ helpers
 
+    /** Callers check who may read first; this only pages. */
+    private Messages readMessages(UUID id, Long beforeSeq, Long afterSeq, int size, UUID me) {
+        var limit = PageRequest.of(0, size + 1);
+        List<Message> rows = afterSeq != null
+                ? messages.findAfter(id, afterSeq, limit)
+                : beforeSeq != null ? messages.findBefore(id, beforeSeq, limit) : messages.findLatest(id, limit);
+        return page(rows, size, afterSeq == null, me);
+    }
+
     private void reader(UUID actor) {
         checkReader(users.findById(actor).orElse(null));
     }
@@ -256,10 +332,14 @@ public class ConversationService {
             var course = contextCourse(c, c.getContextCourse() != null && available.contains(c.getContextCourse().getId()));
             Boolean isEnrolled = course.id() == null ? null : enrolled.contains(List.of(course.id(), c.getLearner().getId()));
             String text = last.get(c.getId());
-            return new Summary(c.getId(), new ArticleAuthorResponse(other.getId(), other.getFullName(), other.getAvatarUrl()),
+            return new Summary(c.getId(), person(other),
                     learner ? "LEARNER" : "AUTHOR", course, isEnrolled, text == null ? null : excerpt(text), c.getLastMessageAt(),
                     unread(c, me), c.isBlocked() && me.equals(c.getBlockedBy()), c.isBlocked() && !me.equals(c.getBlockedBy()), c.isLocked());
         }).toList();
+    }
+
+    private static ArticleAuthorResponse person(User u) {
+        return new ArticleAuthorResponse(u.getId(), u.getFullName(), u.getAvatarUrl());
     }
 
     private static ConversationResponse.Message view(Message m, UUID me) {

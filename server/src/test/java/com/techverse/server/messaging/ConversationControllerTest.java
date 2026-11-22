@@ -116,6 +116,18 @@ class ConversationControllerTest {
     }
 
     @Test
+    void blockNeedsABoolean() throws Exception {
+        for (var bad : List.of(map(), map("blocked", null))) badRequest(put(API + "/" + id + "/block"), bad);
+        badRequest(put(API + "/abc/block"), map("blocked", true));
+        call(put(API + "/" + id + "/block"), map("blocked", false), true).andExpect(status().isOk());
+        verify(service).block(actor, id, false);
+        call(put(API + "/" + id + "/block"), map("blocked", true), false).andExpect(status().isUnauthorized());
+        doThrow(new CustomException(ErrorCode.CONVERSATION_BLOCKED)).when(service).block(actor, id, true);
+        call(put(API + "/" + id + "/block"), map("blocked", true), true).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONVERSATION_BLOCKED"));
+    }
+
+    @Test
     void everyRouteNeedsLogin() throws Exception {
         // @WebMvcTest has no SecurityConfiguration: body codes come from the integration test.
         call(post(API), map("courseId", UUID.randomUUID().toString()), false).andExpect(status().isUnauthorized());

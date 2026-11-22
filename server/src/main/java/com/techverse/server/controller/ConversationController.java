@@ -77,6 +77,12 @@ public class ConversationController {
         return ok("Read marker updated", service.markRead(actor(jwt), id, request.seq()));
     }
 
+    @PutMapping("/{id}/block")
+    @Operation(summary = "Block (true) or unblock (false) for both sides; only the blocker can unblock")
+    public ApiResponse<Detail> block(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody ConversationRequest.Block request) {
+        return ok("Block updated", service.block(actor(jwt), id, request.blocked()));
+    }
+
     private static UUID actor(Jwt jwt) {
         return UUID.fromString(jwt.getSubject());
     }

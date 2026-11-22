@@ -4,8 +4,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`messaging.md`](me
 
 ## Bắt đầu từ đây (cập nhật 2026-11-22)
 
-- **Task tiếp:** Task 1b — Chặn, báo cáo và quyền đọc của Moderator (dùng `/model opus`, `/clear` trước) · Giao diện: Không
-- Task 1a đã nhận (2026-11-22).
+- **Task tiếp:** Task 1c — Đẩy sự kiện qua WebSocket (dùng `/model opus`, `/clear` trước) · Giao diện: Không
+- Task 1a, 1b đã nhận (2026-11-22).
 - Spec chốt 2026-11-22 sau 2 vòng Codex phản biện; lịch sử ở `messaging.review.md`.
 - Nhánh `feature/messaging` (tách từ `main` sau PR #14).
 
@@ -24,6 +24,13 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`messaging.md`](me
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-22 — Task 1b — Kết quả (đã nhận 2026-11-22)
+- Code: `ConversationService` (block, moderatorMessages, lock, locked, moderated), `ReportService` (rẽ nhánh FORUM_POST/CONVERSATION ở tạo, hàng đợi, xử lý; `actionAllowed`), `ModeratorConversationController` (mới), `ReportRequest/Response` (`Item.targetType`, `Item.conversation`, `ModeratedConversation`), `ConversationRequest` (Block, Lock, Locked), repo, `ErrorCode` (+`REPORT_TARGET_EMPTY`, `CONVERSATION_STATE_INVALID`), `SecurityConfiguration`. Test: tách `ConversationIntegrationTestBase` dùng chung.
+- Test (`./gradlew test --tests messaging.* + ReportIntegrationTest, ReportControllerTest, ForumPostRulesTest, ForumReportsMigrationTest`): ModerationIntegration 4/4, Integration 4/4, Rules 11/11, Controller 6/6, ModeratorController 5/5, Migration 1/1; Report 6/6, 4/4, ForumPostRules 12/12, ForumReportsMigration 1/1 — 0 lỗi. ModerationIntegration đỏ trước (4/4 lỗi) rồi mới code.
+- Lệch khác spec: (1) cổng “đã có báo cáo” của Moderator là truy vấn `findReported` riêng trong cùng transaction readOnly trước khi đọc tin (báo cáo không bị xóa nên tương đương); (2) mở khóa ghi `note` (có thể null) vào `lock_note`, xóa `locked_by/at`; (3) `blocked`/`locked` sai kiểu JSON (chuỗi) → 400 `MALFORMED_REQUEST` theo xử lý chung; (4) sai loại hành động (`HIDE_CONTENT` cho cuộc trò chuyện…) → 400 `VALIDATION_ERROR` xét sau khi tìm báo cáo (thiếu báo cáo → 404 trước); (5) hàng đợi có tham số `targetType` (`FORUM_POST` mặc định | `CONVERSATION`) để giao diện hiện tại không gặp mục cuộc trò chuyện; Task 2b gọi `targetType=CONVERSATION`; mọi mục có thêm `targetType`, `conversation` (null cho bài diễn đàn).
+- Review vòng 1 (`adversarial-review`): (high) hàng đợi trả mục cuộc trò chuyện làm `ModeratorReportsPage.tsx:463` (`item.post.type`) lỗi — chấp nhận, sửa bằng (5). Sau sửa: ModerationIntegration 4/4, ReportIntegration 6/6, ReportController 4/4 đạt.
+- Review vòng 2 (`adversarial-review`, chỉ phần sửa): approve, không có phát hiện.
+- Chưa kiểm: full backend (CI).
 ### 2026-11-22 — Task 1a — Kết quả (đã nhận 2026-11-22)
 - Code: `V23__messaging.sql`, `Conversation`/`Message`, `ConversationRepository`/`MessageRepository`, `ConversationRequest`/`ConversationResponse`, `ConversationService`, `ConversationController`, `ErrorCode` (+9 mã), `SecurityConfiguration`.
 - Test (`./gradlew test --tests messaging.* + ForumReportsMigrationTest, ReportIntegrationTest, DatabaseBootstrapIntegrationTest`): Migration 1/1, Rules 9/9, Controller 5/5, Integration 4/4, regression 1/1, 6/6, 2/2 — 0 lỗi. Migration + Integration đỏ trước (bảng chưa có; route `denyAll` 403); Rules/Controller viết sau code.
