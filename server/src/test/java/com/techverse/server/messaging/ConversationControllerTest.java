@@ -156,4 +156,22 @@ class ConversationControllerTest {
         call(post(API), map("courseId", UUID.randomUUID().toString()), true).andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("CONVERSATION_NOT_ALLOWED"));
     }
+
+    @Test
+    void socketTicketNeedsLoginAndPassesTheSessionAndTokenExpiry() throws Exception {
+        String path = API + "/socket-ticket";
+        call(post(path), null, false).andExpect(status().isUnauthorized());
+        verifyNoInteractions(service);
+
+        Instant exp = Instant.now().plusSeconds(900).truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+        var ticket = new ConversationResponse.SocketTicket("abc", exp.minusSeconds(60));
+        when(service.socketTicket(actor, "s1", exp)).thenReturn(ticket);
+        mvc.perform(post(path).with(csrf()).with(jwt().jwt(j -> j.subject(actor.toString()).claim("sid", "s1").expiresAt(exp))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.ticket").value("abc"));
+
+        for (var e : Map.of(ErrorCode.ACCESS_DENIED, 403, ErrorCode.MESSAGE_RATE_LIMITED, 429, ErrorCode.MESSAGE_STORAGE_UNAVAILABLE, 503).entrySet()) {
+            when(service.socketTicket(eq(actor), any(), any())).thenThrow(new CustomException(e.getKey()));
+            call(post(path), null, true).andExpect(status().is(e.getValue())).andExpect(jsonPath("$.code").value(e.getKey().name()));
+        }
+    }
 }

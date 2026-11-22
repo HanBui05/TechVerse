@@ -96,6 +96,8 @@ public class SecurityConfiguration {
 						.requestMatchers("/api/v1/forum/**").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/v1/reports").authenticated()
 						.requestMatchers("/api/v1/conversations", "/api/v1/conversations/**").authenticated()
+						// Browsers cannot send Authorization on a WebSocket: the handshake spends a one-use ticket instead.
+						.requestMatchers(HttpMethod.GET, "/ws/messaging").permitAll()
 						.requestMatchers("/api/v1/moderator/conversations", "/api/v1/moderator/conversations/**").authenticated()
 						.requestMatchers("/api/v1/moderator/reports", "/api/v1/moderator/reports/**", "/api/v1/moderator/forum/**").authenticated()
 						.requestMatchers("/api/v1/moderator/articles", "/api/v1/moderator/articles/**").authenticated()

@@ -4,8 +4,8 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`messaging.md`](me
 
 ## Bắt đầu từ đây (cập nhật 2026-11-22)
 
-- **Task tiếp:** Task 1c — Đẩy sự kiện qua WebSocket (dùng `/model opus`, `/clear` trước) · Giao diện: Không
-- Task 1a, 1b đã nhận (2026-11-22).
+- **Task tiếp:** Cổng wireframe — viết `plans/messaging.wireframe.md` cho Task 2a, 2b (desktop + mobile, rỗng/lỗi/chờ) rồi dừng chờ duyệt · Giao diện: Có
+- Task 1a, 1b, 1c đã nhận (2026-11-22).
 - Spec chốt 2026-11-22 sau 2 vòng Codex phản biện; lịch sử ở `messaging.review.md`.
 - Nhánh `feature/messaging` (tách từ `main` sau PR #14).
 
@@ -24,6 +24,14 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`messaging.md`](me
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-22 — Task 1c — Kết quả (đã nhận 2026-11-22)
+- Code: `build.gradle` (+`spring-boot-starter-websocket`), `MessageSocketHandler` (vé: phát/`GETDEL`, kiểm `Origin`→vé→phiên `sid`+`exp`→tài khoản; giữ phiên theo người, tối đa 5, đóng khi tới `exp`; kiểm lại trước mỗi lần đẩy), `MessageSocketConfiguration`, `ConversationService` (`socketTicket`, `RateKind.TICKET` 10/phút, `canMessage`, sự kiện sau commit ở send/markRead/block/lock/open), `ReportService.resolve` (khóa → `state`), `ConversationController` (`POST /socket-ticket`), `ConversationRepository.findContextCourseIds`, `SecurityConfiguration` (`GET /ws/messaging` permitAll), `docs/RUNBOOK.md`.
+- Test (`./gradlew test --tests messaging.* + ReportIntegrationTest, ReportControllerTest`): MessageSocketIntegration 5/5, Rules 13/13, Controller 7/7, Integration 4/4, ModerationIntegration 4/4, ModeratorController 5/5, Migration 1/1, Report 6/6, 4/4 — 0 lỗi. Test viết trước, đỏ ở mức biên dịch; xanh ngay → kiểm ngược bằng đột biến (phát trước commit; bỏ kiểm phiên khi đẩy): 2 ca đỏ đúng chỗ, đã khôi phục.
+- Lệch khác spec: (1) thiếu `Origin` → 403 như `Origin` lạ (lạ thì `CorsFilter` chặn 403 trước handler, vé không bị đụng); (2) `unread` chỉ gửi cho người mà trạng thái “cuộc này có chưa đọc” đổi (gửi tin: người nhận chưa có chưa đọc, người gửi đang có); đánh dấu đã đọc chỉ phát khi chuyển chưa đọc → đã đọc; (3) `state` khi mở lại chỉ phát khi khóa ngữ cảnh đổi, mở cuộc mới không phát; (4) đẩy chạy trên một luồng nền (không chặn request); (5) Redis lỗi lúc bắt tay → 503; (6) mã đóng: NORMAL khi tới `exp`/bị đẩy do quá 5, POLICY_VIOLATION khi kiểm lại thất bại.
+- Review vòng 1 (`adversarial-review`): (high) một worker chung → client ngừng đọc làm kẹt mọi người dùng — chấp nhận (luồng giữ `flushLock` gửi đồng bộ; Tomcat chỉ cắt sau ~20 giây). Sửa: hàng đợi theo người dùng trên virtual thread (giữ thứ tự từng người), đóng khi hết hạn chạy ngoài luồng hẹn giờ; thêm `ConversationRulesTest.aConnectionThatStopsReading…` (đỏ trên bản cũ, xanh sau sửa). Sau sửa: Rules 14/14, MessageSocketIntegration 5/5.
+- Review vòng 2 (`adversarial-review`, chỉ phần sửa): (medium) hàng đợi theo người nhận không có giới hạn khi kết nối kẹt. Claude: thực tế bị chặn bởi timeout gửi ~20 giây của Tomcat (lỗi → đóng → phần còn lại chạy rỗng); khuyến nghị giới hạn 100 sự kiện chờ/người rồi đóng kết nối. Người dùng nhận task không sửa (2026-11-22): giới hạn đã biết.
+- Chưa kiểm: giới hạn 5 kết nối (không có test); vé hết TTL Redis chỉ thử bằng vé không tồn tại (cùng nhánh `GETDEL` null); full backend (CI).
+
 ### 2026-11-22 — Task 1b — Kết quả (đã nhận 2026-11-22)
 - Code: `ConversationService` (block, moderatorMessages, lock, locked, moderated), `ReportService` (rẽ nhánh FORUM_POST/CONVERSATION ở tạo, hàng đợi, xử lý; `actionAllowed`), `ModeratorConversationController` (mới), `ReportRequest/Response` (`Item.targetType`, `Item.conversation`, `ModeratedConversation`), `ConversationRequest` (Block, Lock, Locked), repo, `ErrorCode` (+`REPORT_TARGET_EMPTY`, `CONVERSATION_STATE_INVALID`), `SecurityConfiguration`. Test: tách `ConversationIntegrationTestBase` dùng chung.
 - Test (`./gradlew test --tests messaging.* + ReportIntegrationTest, ReportControllerTest, ForumPostRulesTest, ForumReportsMigrationTest`): ModerationIntegration 4/4, Integration 4/4, Rules 11/11, Controller 6/6, ModeratorController 5/5, Migration 1/1; Report 6/6, 4/4, ForumPostRules 12/12, ForumReportsMigration 1/1 — 0 lỗi. ModerationIntegration đỏ trước (4/4 lỗi) rồi mới code.

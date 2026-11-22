@@ -1,5 +1,6 @@
 package com.techverse.server.service.impl;
 
+import com.techverse.server.configuration.MessageSocketHandler;
 import com.techverse.server.dto.response.*;
 import com.techverse.server.dto.response.ConversationResponse.*;
 import com.techverse.server.dto.response.ReportResponse.ModeratedConversation;
@@ -20,7 +21,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -47,6 +51,7 @@ public class ConversationService {
     private final UserRepository users;
     private final ReportRepository reports;
     private final StringRedisTemplate redis;
+    private final MessageSocketHandler socket;
 
     /** The stored (or found) message and whether this request created it (201) or repeated an earlier one (200). */
     public record Sent(ConversationResponse.Message message, boolean created) {}
@@ -79,6 +84,14 @@ public class ConversationService {
         return new UnreadCount(conversations.countUnread(actor));
     }
 
+    /** A one-use socket ticket bound to the caller's login session and access-token expiry. */
+    @Transactional(readOnly = true)
+    public SocketTicket socketTicket(UUID actor, String sid, Instant tokenExpiresAt) {
+        reader(actor);
+        rateLimit(actor, RateKind.TICKET);
+        return socket.issueTicket(actor, sid, tokenExpiresAt);
+    }
+
     // ------------------------------------------------------------------ writes
 
     /** Any public course whose author is someone else; no purchase needed. Reopening moves the context to this course. */
@@ -90,8 +103,12 @@ public class ConversationService {
         var author = course.getAuthor();
         if (author.getId().equals(actor) || isStaff(author)) throw new CustomException(ErrorCode.CONVERSATION_NOT_ALLOWED);
         rateLimit(actor, RateKind.OPEN);
+        // Read under the actor lock: only this learner moves the pair's context.
+        var before = conversations.findContextCourseIds(actor, author.getId());
         conversations.upsert(actor, author.getId(), courseId, course.getPublishedVersion().getTitle());
-        return detail(conversations.findPairForUpdate(actor, author.getId()).orElseThrow(), actor);
+        var c = conversations.findPairForUpdate(actor, author.getId()).orElseThrow();
+        if (!before.isEmpty() && !courseId.equals(before.get(0))) publishState(c);
+        return detail(c, actor);
     }
 
     @Transactional
@@ -108,7 +125,10 @@ public class ConversationService {
         boolean inserted = messages.insert(id, actor, content, clientId) == 1;
         var m = sameRequest(messages.findBySenderIdAndClientId(actor, clientId).orElseThrow(), id, content);
         if (!inserted) return new Sent(view(m, actor), false);
+        var flipped = unreadFlippedBySend(c, actor);
         c.recordMessage(m);
+        publish(participants(c), messageEvent(id, m.getSeq()));
+        publish(flipped, UNREAD_EVENT);
         return new Sent(view(m, actor), true);
     }
 
@@ -117,7 +137,9 @@ public class ConversationService {
     public Detail markRead(UUID actor, UUID id, long seq) {
         checkReader(access.lockActiveUser(actor));
         var c = participant(conversations.findByIdForUpdate(id), actor);
+        boolean wasUnread = unread(c, actor);
         c.markRead(actor, nextReadSeq(c.lastReadSeq(actor), seq, c.getLastMessageSeq()));
+        if (wasUnread && !unread(c, actor)) publish(List.of(actor), UNREAD_EVENT);
         return detail(c, actor);
     }
 
@@ -126,7 +148,9 @@ public class ConversationService {
     public Detail block(UUID actor, UUID id, boolean blocked) {
         checkReader(access.lockActiveUser(actor));
         var c = participant(conversations.findByIdForUpdate(id), actor);
+        boolean was = c.isBlocked();
         applyBlock(c, actor, blocked);
+        if (was != c.isBlocked()) publishState(c);
         return detail(c, actor);
     }
 
@@ -149,6 +173,7 @@ public class ConversationService {
                 .orElseThrow(() -> new CustomException(ErrorCode.CONVERSATION_NOT_FOUND));
         if (c.isLocked() == locked) throw new CustomException(ErrorCode.CONVERSATION_STATE_INVALID);
         c.lock(actor, locked, note);
+        publishState(c);
         if (locked) reports.findOpenForUpdate(Report.CONVERSATION, id).forEach(r -> r.close(ReportStatus.ACTIONED, moderator, note));
         conversations.flush();
         return moderated(List.of(c)).get(c.getId());
@@ -176,6 +201,50 @@ public class ConversationService {
         return out;
     }
 
+    // ------------------------------------------------------------------ socket events
+
+    public static final String UNREAD_EVENT = "{\"type\":\"unread\"}";
+
+    /** Signals to re-read over REST: ids and seq only, never content, excerpts, titles or counts. */
+    public static String messageEvent(UUID conversation, long seq) {
+        return "{\"type\":\"message\",\"conversationId\":\"" + conversation + "\",\"seq\":" + seq + "}";
+    }
+
+    public static String stateEvent(UUID conversation) {
+        return "{\"type\":\"state\",\"conversationId\":\"" + conversation + "\"}";
+    }
+
+    /** The server picks recipients: the two participants, nobody else. */
+    public static List<UUID> participants(Conversation c) {
+        return List.of(c.getLearner().getId(), c.getAuthor().getId());
+    }
+
+    /** Before a new message from {@code sender} is recorded: whose "has unread" state it changes. */
+    public static List<UUID> unreadFlippedBySend(Conversation c, UUID sender) {
+        UUID other = c.isLearner(sender) ? c.getAuthor().getId() : c.getLearner().getId();
+        var out = new ArrayList<UUID>();
+        if (unread(c, sender)) out.add(sender);
+        if (!unread(c, other)) out.add(other);
+        return out;
+    }
+
+    /** Block, lock or context change: both sides re-read the conversation. */
+    public void publishState(Conversation c) {
+        publish(participants(c), stateEvent(c.getId()));
+    }
+
+    /** Sent after commit only; a rolled-back write sends nothing. */
+    private void publish(Collection<UUID> to, String event) {
+        if (to.isEmpty()) return;
+        var recipients = List.copyOf(to);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                socket.push(recipients, event);
+            }
+        });
+    }
+
     // ------------------------------------------------------------------ rules (pure)
 
     /** Someone else's block cannot be added to or lifted; my own block or no block follows the request. */
@@ -192,7 +261,11 @@ public class ConversationService {
 
     /** Locked accounts and any account holding ADMIN or MODERATOR (even with other roles) stay out of messaging. */
     public static void checkReader(User user) {
-        if (user == null || !user.isActive() || isStaff(user)) throw new CustomException(ErrorCode.ACCESS_DENIED);
+        if (!canMessage(user)) throw new CustomException(ErrorCode.ACCESS_DENIED);
+    }
+
+    public static boolean canMessage(User user) {
+        return user != null && user.isActive() && !isStaff(user);
     }
 
     /** Missing and not-mine look the same. */
@@ -261,7 +334,7 @@ public class ConversationService {
     }
 
     public enum RateKind {
-        SEND(20), OPEN(5);
+        SEND(20), OPEN(5), TICKET(10);
 
         final int perMinute;
 

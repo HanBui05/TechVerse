@@ -98,6 +98,7 @@ public class ReportService {
         } else if (!r.dismiss()) {
             if (conversation.isLocked()) throw new CustomException(ErrorCode.REPORT_ALREADY_HANDLED);
             conversation.lock(actor, true, r.note());
+            conversationService.publishState(conversation);
         }
         var outcome = r.dismiss() ? ReportStatus.DISMISSED : ReportStatus.ACTIONED;
         open.forEach(x -> x.close(outcome, moderator, r.note()));

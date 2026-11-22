@@ -21,6 +21,10 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             nativeQuery = true)
     void upsert(@Param("learner") UUID learner, @Param("author") UUID author, @Param("course") UUID course, @Param("title") String title);
 
+    /** Empty when the pair has no conversation; one element (null once the course is deleted) when it has. Scalar on purpose: no managed entity goes stale under the native upsert. */
+    @Query("select k.id from Conversation c left join c.contextCourse k where c.learner.id=:learner and c.author.id=:author")
+    List<UUID> findContextCourseIds(@Param("learner") UUID learner, @Param("author") UUID author);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Conversation c where c.learner.id=:learner and c.author.id=:author")
     Optional<Conversation> findPairForUpdate(@Param("learner") UUID learner, @Param("author") UUID author);

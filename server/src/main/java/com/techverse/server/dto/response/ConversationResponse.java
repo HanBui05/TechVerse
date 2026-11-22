@@ -50,4 +50,7 @@ public final class ConversationResponse {
     public record Messages(List<Message> messages, boolean hasMore) {}
 
     public record UnreadCount(long count) {}
+
+    /** One-use ticket for opening {@code /ws/messaging?ticket=…}. */
+    public record SocketTicket(String ticket, Instant expiresAt) {}
 }

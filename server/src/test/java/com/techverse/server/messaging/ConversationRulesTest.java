@@ -4,9 +4,13 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.techverse.server.configuration.MessageSocketHandler;
 import com.techverse.server.entity.*;
 import com.techverse.server.enums.RoleName;
 import com.techverse.server.exception.*;
+import com.techverse.server.properties.OAuth2Properties;
+import com.techverse.server.repository.AuthSessionRepository;
+import com.techverse.server.repository.UserRepository;
 import com.techverse.server.service.impl.ArticleContentService;
 import com.techverse.server.service.impl.ConversationService;
 import com.techverse.server.service.impl.ConversationService.RateKind;
@@ -16,11 +20,18 @@ import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.http.server.ServletServerHttpRequest;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 
 /** Pure messaging rules: who gets in, what may be sent, read markers, context course, pages, client ids, content and rate. */
 class ConversationRulesTest {
@@ -241,7 +252,7 @@ class ConversationRulesTest {
 
     // ------------------------------------------------------------------ content and rate
 
-    final ConversationService content = new ConversationService(null, new ArticleContentService(), null, null, null, null, null, null);
+    final ConversationService content = new ConversationService(null, new ArticleContentService(), null, null, null, null, null, null, null);
 
     @Test
     void markdownWithCodeIsAcceptedButHtmlUnsafeLinksNulAndImagesAreNot() {
@@ -257,17 +268,86 @@ class ConversationRulesTest {
         var stub = when(redis.execute(any(RedisScript.class), anyList(), any(Object[].class)));
         if (reply instanceof RuntimeException e) stub.thenThrow(e);
         else stub.thenReturn(reply);
-        return new ConversationService(null, null, null, null, null, null, null, redis);
+        return new ConversationService(null, null, null, null, null, null, null, redis, null);
     }
 
     @Test
-    void rateIsTwentySendsAndFiveOpensPerMinuteAndFailsClosed() {
+    void rateIsTwentySendsFiveOpensAndTenTicketsPerMinuteAndFailsClosed() {
         UUID me = learner.getId();
         assertThatCode(() -> limiter(20L).rateLimit(me, RateKind.SEND)).doesNotThrowAnyException();
         assertThatCode(() -> limiter(5L).rateLimit(me, RateKind.OPEN)).doesNotThrowAnyException();
+        assertThatCode(() -> limiter(10L).rateLimit(me, RateKind.TICKET)).doesNotThrowAnyException();
         assertCode(() -> limiter(21L).rateLimit(me, RateKind.SEND), ErrorCode.MESSAGE_RATE_LIMITED);
         assertCode(() -> limiter(6L).rateLimit(me, RateKind.OPEN), ErrorCode.MESSAGE_RATE_LIMITED);
+        assertCode(() -> limiter(11L).rateLimit(me, RateKind.TICKET), ErrorCode.MESSAGE_RATE_LIMITED);
         assertCode(() -> limiter(null).rateLimit(me, RateKind.SEND), ErrorCode.MESSAGE_STORAGE_UNAVAILABLE);
         assertCode(() -> limiter(new QueryTimeoutException("down")).rateLimit(me, RateKind.OPEN), ErrorCode.MESSAGE_STORAGE_UNAVAILABLE);
+    }
+
+    // ------------------------------------------------------------------ socket events
+
+    @Test
+    void eventsGoToTheTwoParticipantsOnlyAndCarryNoContentTitleOrCount() {
+        var c = conversation();
+        UUID id = c.getId();
+        assertThat(ConversationService.participants(c)).containsExactlyInAnyOrder(learner.getId(), author.getId()).doesNotContain(outsider.getId());
+        assertThat(ConversationService.messageEvent(id, 7)).isEqualTo("{\"type\":\"message\",\"conversationId\":\"" + id + "\",\"seq\":7}");
+        assertThat(ConversationService.stateEvent(id)).isEqualTo("{\"type\":\"state\",\"conversationId\":\"" + id + "\"}");
+        assertThat(ConversationService.UNREAD_EVENT).isEqualTo("{\"type\":\"unread\"}");
+    }
+
+    @Test
+    void aNewMessageSignalsUnreadOnlyToThoseWhoseUnreadStateFlips() {
+        var c = conversation();
+        UUID me = learner.getId(), them = author.getId();
+        assertThat(ConversationService.unreadFlippedBySend(c, me)).containsExactly(them);
+        c.recordMessage(message(c.getId(), me, 1, "hi"));
+        assertThat(ConversationService.unreadFlippedBySend(c, me)).isEmpty();
+        assertThat(ConversationService.unreadFlippedBySend(c, them)).containsExactlyInAnyOrder(me, them);
+    }
+
+    /** A live connection for {@code u} made through the real handshake checks, with mocked Redis, session and user lookups. */
+    @SuppressWarnings("unchecked")
+    static WebSocketSession connect(MessageSocketHandler h, StringRedisTemplate redis, AuthSessionRepository sessions, UserRepository users,
+            User u, CountDownLatch blockUntil) throws Exception {
+        String sid = "s-" + u.getId();
+        var ops = (ValueOperations<String, String>) redis.opsForValue();
+        Instant exp = Instant.now().plusSeconds(60);
+        when(ops.getAndDelete("messaging:ticket:" + sid)).thenReturn(u.getId() + " " + sid + " " + exp.toEpochMilli());
+        when(sessions.findById(sid)).thenReturn(Optional.of(AuthSession.builder().id(sid).userId(u.getId().toString()).expiresAt(exp).build()));
+        when(users.findWithRolesById(u.getId())).thenReturn(Optional.of(u));
+        var req = new MockHttpServletRequest();
+        req.addHeader("Origin", "http://web");
+        req.setParameter("ticket", sid);
+        Map<String, Object> attrs = new HashMap<>();
+        assertThat(h.beforeHandshake(new ServletServerHttpRequest(req), mock(ServerHttpResponse.class), h, attrs)).isTrue();
+        var raw = mock(WebSocketSession.class);
+        when(raw.getAttributes()).thenReturn(attrs);
+        when(raw.getId()).thenReturn(sid);
+        when(raw.isOpen()).thenReturn(true);
+        if (blockUntil != null) doAnswer(i -> { blockUntil.await(); return null; }).when(raw).sendMessage(any());
+        h.afterConnectionEstablished(raw);
+        return raw;
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void aConnectionThatStopsReadingDoesNotHoldUpOtherUsers() throws Exception {
+        var redis = mock(StringRedisTemplate.class);
+        when(redis.opsForValue()).thenReturn(mock(ValueOperations.class));
+        var sessions = mock(AuthSessionRepository.class);
+        var users = mock(UserRepository.class);
+        var h = new MessageSocketHandler(redis, sessions, users, new OAuth2Properties("http://web"));
+        var release = new CountDownLatch(1);
+        try {
+            var stuck = connect(h, redis, sessions, users, learner, release);
+            var free = connect(h, redis, sessions, users, author, null);
+            h.push(List.of(learner.getId()), "first");
+            verify(stuck, timeout(2000)).sendMessage(new TextMessage("first"));
+            h.push(List.of(learner.getId(), author.getId()), "second");
+            verify(free, timeout(2000)).sendMessage(new TextMessage("second"));
+        } finally {
+            release.countDown();
+        }
     }
 }

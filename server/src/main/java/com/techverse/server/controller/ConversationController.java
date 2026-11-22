@@ -48,6 +48,12 @@ public class ConversationController {
         return ok("Unread count retrieved", service.unreadCount(actor(jwt)));
     }
 
+    @PostMapping("/socket-ticket")
+    @Operation(summary = "One-use ticket (30 s) for the event socket /ws/messaging?ticket=…; bound to this login session and token expiry")
+    public ApiResponse<SocketTicket> socketTicket(@AuthenticationPrincipal Jwt jwt) {
+        return ok("Socket ticket issued", service.socketTicket(actor(jwt), jwt.getClaimAsString("sid"), jwt.getExpiresAt()));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "One conversation with what I may do in it")
     public ApiResponse<Detail> detail(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
