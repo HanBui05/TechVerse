@@ -57,6 +57,8 @@ export type LockedConversationItem = {
   id: string
   learner: ArticleAuthor
   author: ArticleAuthor
+  blocked?: boolean
+  locked?: boolean
   lockedBy: ArticleAuthor | null
   lockedAt: string | null
   lockNote: string | null

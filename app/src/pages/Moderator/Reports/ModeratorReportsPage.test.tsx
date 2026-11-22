@@ -225,9 +225,13 @@ it('restores a hidden post from the "Nội dung đang ẩn" tab after confirmati
 
 it('closes the dialog, shows the message and reloads the list on 409 FORUM_STATE_INVALID during restore', async () => {
   let listCalls = 0
-  const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = new URL(String(input))
     if (init?.method === 'PATCH') {
       return json(null, 409, 'FORUM_STATE_INVALID')
+    }
+    if (url.pathname === '/api/v1/moderator/conversations') {
+      return json(page([]))
     }
     listCalls++
     return json(
@@ -416,3 +420,233 @@ it('hides the old rows and actions when the reload after a successful action fai
   expect(screen.queryByText('Câu hỏi nghi vấn spam liên kết?')).toBeNull()
   expect(screen.queryByRole('button', { name: 'Ẩn nội dung' })).toBeNull()
 })
+
+const makeConversationReport = (over: Partial<ModeratorReportItem> = {}): ModeratorReportItem => ({
+  id: 'rc-1',
+  targetType: 'CONVERSATION',
+  reason: 'SPAM',
+  description: 'Gửi liên kết lừa đảo qua tin nhắn riêng.',
+  status: 'OPEN',
+  reporter: { id: 'u-learner', fullName: 'Lê Học Viên', avatarUrl: null },
+  createdAt: '2026-11-22T08:00:00Z',
+  handledAt: null,
+  resolutionNote: null,
+  post: null as unknown as ModeratedForumPost,
+  conversation: {
+    id: 'conv-99',
+    learner: { id: 'u-learner', fullName: 'Lê Học Viên', avatarUrl: null },
+    author: { id: 'u-author', fullName: 'Phạm Tác Giả', avatarUrl: null },
+    blocked: true,
+    locked: false,
+    lockNote: null,
+    lockedBy: null,
+    lockedAt: null,
+  },
+  otherOpenReports: 1,
+  ...over,
+})
+
+it('labels an actioned conversation report as locked, not as hidden content', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const url = new URL(String(input))
+    if (url.pathname === '/api/v1/moderator/reports' && url.searchParams.get('targetType') === 'CONVERSATION') {
+      return json(page([makeConversationReport({ status: 'ACTIONED', resolutionNote: 'Khóa vì spam.' })]))
+    }
+    return json(page([]))
+  }))
+  setAccessToken('moderator')
+  renderPage('/moderator/reports?tab=handled&targetType=CONVERSATION')
+  expect(await screen.findByText(/Khóa vì spam\./)).toBeTruthy()
+  expect(screen.getAllByText('Đã khóa cuộc trò chuyện')).toHaveLength(2) // filter + badge
+  expect(screen.queryByText('Đã ẩn nội dung')).toBeNull()
+})
+
+it('loads conversation reports without fetching messages upfront, opens the read-only message sheet on "Xem tin nhắn", and loads older messages', async () => {
+  let messageApiCalls = 0
+  let readApiCalls = 0
+
+  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const url = new URL(String(input))
+    if (url.pathname.endsWith('/read')) {
+      readApiCalls++
+      return json(null, 200)
+    }
+    if (url.pathname === '/api/v1/moderator/conversations/conv-99/messages') {
+      messageApiCalls++
+      if (url.searchParams.get('beforeSeq') === '2') {
+        return json({
+          messages: [
+            {
+              id: 'm-1',
+              seq: 1,
+              senderId: 'u-learner',
+              mine: false,
+              content: 'Tin nhắn đầu tiên của người học.',
+              createdAt: '2026-11-22T07:50:00Z',
+            },
+          ],
+          hasMore: false,
+        })
+      }
+      return json({
+        messages: [
+          {
+            id: 'm-2',
+            seq: 2,
+            senderId: 'u-author',
+            mine: false,
+            content: 'Tin nhắn trả lời của tác giả.',
+            createdAt: '2026-11-22T07:55:00Z',
+          },
+        ],
+        hasMore: true,
+      })
+    }
+    if (url.pathname === '/api/v1/moderator/reports') {
+      if (url.searchParams.get('targetType') === 'CONVERSATION') {
+        return json(page([makeConversationReport()]))
+      }
+      return json(page([makeReport()]))
+    }
+    return json(page([]))
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  setAccessToken('moderator')
+  const user = userEvent.setup()
+
+  renderPage()
+  await screen.findByText('Câu hỏi nghi vấn spam liên kết?')
+
+  // Switch target type filter to "Cuộc trò chuyện"
+  await user.click(screen.getByRole('button', { name: 'Cuộc trò chuyện' }))
+  expect(await screen.findByText('Gửi liên kết lừa đảo qua tin nhắn riêng.')).toBeTruthy()
+  expect(screen.getByText('Đang bị chặn')).toBeTruthy()
+  expect(screen.getAllByText(/Lê Học Viên/).length).toBeGreaterThan(0)
+  expect(screen.getAllByText(/Phạm Tác Giả/).length).toBeGreaterThan(0)
+
+  // Messages API must NOT be called before clicking "Xem tin nhắn"
+  expect(messageApiCalls).toBe(0)
+
+  await user.click(screen.getByRole('button', { name: 'Xem tin nhắn' }))
+  expect(
+    await screen.findByText('Bạn chỉ xem được vì cuộc trò chuyện này đã bị báo cáo.'),
+  ).toBeTruthy()
+  expect(await screen.findByText('Tin nhắn trả lời của tác giả.')).toBeTruthy()
+  expect(messageApiCalls).toBe(1)
+
+  // Read-only: no message input and no mark-read call
+  expect(screen.queryByPlaceholderText('Nhập tin nhắn…')).toBeNull()
+  expect(readApiCalls).toBe(0)
+
+  // Load older messages inside the sheet
+  await user.click(screen.getByRole('button', { name: 'Tải tin cũ hơn' }))
+  expect(await screen.findByText('Tin nhắn đầu tiên của người học.')).toBeTruthy()
+  expect(messageApiCalls).toBe(2)
+})
+
+it('requires a reason to lock a reported conversation, resolves LOCK_CONVERSATION and DISMISS, and unlocks from the "Nội dung đang ẩn" tab', async () => {
+  let convReports = [makeConversationReport()]
+  let lockedConvs = [
+    {
+      id: 'conv-99',
+      learner: { id: 'u-learner', fullName: 'Lê Học Viên', avatarUrl: null },
+      author: { id: 'u-author', fullName: 'Phạm Tác Giả', avatarUrl: null },
+      blocked: false,
+      locked: true,
+      lockNote: 'Khóa do gửi link độc hại.',
+      lockedBy: { id: 'mod-1', fullName: 'Kiểm Duyệt Viên', avatarUrl: null },
+      lockedAt: '2026-11-22T09:30:00Z',
+    },
+  ]
+  const writes: { path: string; body: unknown }[] = []
+
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = new URL(String(input))
+    const method = init?.method || 'GET'
+    if (method === 'PATCH') {
+      const body = JSON.parse(String(init?.body))
+      writes.push({ path: url.pathname, body })
+      if (url.pathname.endsWith('/resolve')) {
+        convReports = []
+        return json(makeConversationReport({ status: body.action === 'LOCK_CONVERSATION' ? 'ACTIONED' : 'DISMISSED' }))
+      }
+      if (url.pathname === '/api/v1/moderator/conversations/conv-99/lock') {
+        lockedConvs = []
+        return json({ ...lockedConvs[0], locked: false })
+      }
+    }
+    if (url.pathname === '/api/v1/moderator/reports') {
+      if (url.searchParams.get('targetType') === 'CONVERSATION') {
+        return json(page(convReports))
+      }
+      return json(page([]))
+    }
+    if (url.pathname === '/api/v1/moderator/forum/posts') {
+      return json(page([]))
+    }
+    if (url.pathname === '/api/v1/moderator/conversations' && url.searchParams.get('locked') === 'true') {
+      return json(page(lockedConvs))
+    }
+    return json(page([]))
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  setAccessToken('moderator')
+  const user = userEvent.setup()
+
+  renderPage('/moderator/reports?targetType=CONVERSATION')
+  expect(await screen.findByText('Gửi liên kết lừa đảo qua tin nhắn riêng.')).toBeTruthy()
+
+  // 1. Lock conversation without note fails client validation
+  await user.click(screen.getByRole('button', { name: 'Khóa cuộc trò chuyện' }))
+  const lockDialog = await screen.findByRole('dialog')
+  await user.click(within(lockDialog).getByRole('button', { name: 'Khóa cuộc trò chuyện' }))
+  expect(within(lockDialog).getByText('Hãy ghi lý do (tối đa 1.000 ký tự).')).toBeTruthy()
+  expect(writes).toHaveLength(0)
+
+  // 2. Fill note and confirm LOCK_CONVERSATION
+  const noteBox = within(lockDialog).getByRole('textbox')
+  await user.click(noteBox)
+  await user.paste('Khóa do gửi link độc hại.')
+  await user.click(within(lockDialog).getByRole('button', { name: 'Khóa cuộc trò chuyện' }))
+
+  expect(await screen.findByText('Không có báo cáo nào chờ xử lý.')).toBeTruthy()
+  expect(writes[0]).toEqual({
+    path: '/api/v1/moderator/reports/rc-1/resolve',
+    body: { action: 'LOCK_CONVERSATION', note: 'Khóa do gửi link độc hại.' },
+  })
+
+  // 3. Dismiss another conversation report
+  convReports = [makeConversationReport({ id: 'rc-2', description: 'Báo cáo nhầm lẫn.' })]
+  await user.click(screen.getByRole('tab', { name: 'Đã xử lý' }))
+  await user.click(screen.getByRole('tab', { name: 'Chờ xử lý' }))
+  expect(await screen.findByText('Báo cáo nhầm lẫn.')).toBeTruthy()
+
+  await user.click(screen.getByRole('button', { name: 'Bỏ qua' }))
+  const dismissDialog = await screen.findByRole('dialog')
+  // Conversation copy, not the forum post one.
+  expect(within(dismissDialog).getByText(/Cuộc trò chuyện vẫn mở/)).toBeTruthy()
+  expect(within(dismissDialog).queryByText(/diễn đàn/)).toBeNull()
+  await user.click(within(dismissDialog).getByRole('button', { name: 'Bỏ qua' }))
+  await waitFor(() =>
+    expect(writes[1]).toEqual({
+      path: '/api/v1/moderator/reports/rc-2/resolve',
+      body: { action: 'DISMISS' },
+    }),
+  )
+
+  // 4. Switch to "Nội dung đang ẩn" tab -> see locked conversation and unlock it
+  await user.click(screen.getByRole('tab', { name: 'Nội dung đang ẩn' }))
+  expect(await screen.findByText(/Khóa do gửi link độc hại\./)).toBeTruthy()
+  await user.click(screen.getByRole('button', { name: 'Mở khóa' }))
+  const unlockDialog = await screen.findByRole('dialog')
+  await user.click(within(unlockDialog).getByRole('button', { name: 'Mở khóa' }))
+
+  await waitFor(() =>
+    expect(writes[2]).toEqual({
+      path: '/api/v1/moderator/conversations/conv-99/lock',
+      body: { locked: false, note: null },
+    }),
+  )
+  expect(await screen.findByText('Không có nội dung nào đang ẩn.')).toBeTruthy()
+})
+

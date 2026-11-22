@@ -21,6 +21,7 @@ import type {
   ReportReason,
   ReportResolveAction,
   ReportStatus,
+  ReportTargetType,
 } from '../types/forum'
 
 const FORUM_BASE = '/api/v1/forum'
@@ -166,6 +167,9 @@ export function forumSearch(filter: ForumListFilter, authenticated = true): URLS
 export function moderatorReportsFilter(search: URLSearchParams): ModeratorReportsFilter {
   const rawTab = search.get('tab')
   const tab: ModeratorReportsTab = rawTab === 'handled' || rawTab === 'hidden' ? rawTab : 'open'
+  const rawTarget = search.get('targetType') ?? search.get('type')
+  const targetType: ReportTargetType =
+    rawTarget?.toUpperCase() === 'CONVERSATION' ? 'CONVERSATION' : 'FORUM_POST'
   const rawStatus = search.get('status')
   const status: 'ACTIONED' | 'DISMISSED' = rawStatus === 'DISMISSED' ? 'DISMISSED' : 'ACTIONED'
   const rawReason = search.get('reason') ?? ''
@@ -173,6 +177,7 @@ export function moderatorReportsFilter(search: URLSearchParams): ModeratorReport
   const page = Number.parseInt(search.get('page') ?? '0', 10)
   return {
     tab,
+    targetType,
     status,
     reason,
     page: Number.isFinite(page) && page > 0 ? page : 0,
@@ -182,6 +187,7 @@ export function moderatorReportsFilter(search: URLSearchParams): ModeratorReport
 export function moderatorReportsSearch(filter: ModeratorReportsFilter): URLSearchParams {
   const params = new URLSearchParams()
   if (filter.tab !== 'open') params.set('tab', filter.tab)
+  if (filter.tab !== 'hidden' && filter.targetType === 'CONVERSATION') params.set('targetType', 'CONVERSATION')
   if (filter.tab === 'handled' && filter.status === 'DISMISSED') params.set('status', 'DISMISSED')
   if (filter.tab !== 'hidden' && filter.reason) params.set('reason', filter.reason)
   if (filter.page > 0) params.set('page', String(filter.page))
@@ -280,10 +286,19 @@ export const forumService = {
 }
 
 export const moderatorReportService = {
-  listReports: (params: { status?: ReportStatus; reason?: ReportReason | ''; page?: number; size?: number } = {}) =>
+  listReports: (
+    params: {
+      status?: ReportStatus
+      targetType?: ReportTargetType
+      reason?: ReportReason | ''
+      page?: number
+      size?: number
+    } = {},
+  ) =>
     request<Page<ModeratorReportItem>>(
       `${MOD_REPORTS_BASE}${query({
         status: params.status ?? 'OPEN',
+        targetType: params.targetType === 'CONVERSATION' ? 'CONVERSATION' : undefined,
         reason: params.reason || undefined,
         page: params.page ?? 0,
         size: params.size ?? 20,

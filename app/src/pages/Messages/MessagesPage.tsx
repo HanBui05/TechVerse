@@ -282,7 +282,7 @@ export function ConversationMessageThread({
               next.senderId === msg.senderId &&
               Math.abs(new Date(next.createdAt).getTime() - new Date(msg.createdAt).getTime()) < FIVE_MINUTES_MS
 
-            const isMine = msg.mine || (msg.senderId !== viewer.otherUserId && !viewer.participantsById)
+            const isMine = msg.mine || msg.senderId !== viewer.otherUserId
             const senderLabel = viewer.participantsById?.[msg.senderId]
 
             return (
