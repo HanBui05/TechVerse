@@ -2,7 +2,7 @@
 
 Mỗi module có đúng một spec `plans/<module>.md` và một nhật ký `plans/<module>.log.md`. [`PROJECT_CONTEXT.md`](../docs/PROJECT_CONTEXT.md): Codex đọc mục 1–3, 5 trước mọi task; Claude chỉ đọc khi task đụng tới. Lý do các quyết định cũ: [`DECISIONS.md`](DECISIONS.md).
 
-Module đang làm: [deploy-readiness](deploy-readiness.md)
+Module đang làm: [dashboard-stats](dashboard-stats.md)
 
 <!-- Hook SessionStart của Claude đọc đúng dòng trên (dạng `[slug](slug.md)`, “—” nếu không có) để tự nạp mục “Bắt đầu từ đây” của log. Đổi module thì sửa dòng này. -->
 
@@ -27,9 +27,9 @@ Module đang làm: [deploy-readiness](deploy-readiness.md)
 | Exercise practice | [spec](exercise-practice.md) | Hoàn tất | Claude | Task 1a–2c đã nhận; spec đồng bộ 2026-11-20. Các mục chưa kiểm: xem spec và log. | [log](exercise-practice.log.md) |
 | Interview practice | [spec](interview-practice.md) | Hoàn tất | Claude | Task 1a–1c (2026-11-20), 2a–2b (2026-11-21) đã nhận; spec đồng bộ 2026-11-21; PR #13 đã merge vào `main` 2026-11-21, CI đạt. Các mục chưa kiểm: xem spec và log. | [log](interview-practice.log.md) |
 | Forum & reports | [spec](forum-reports.md) | Hoàn tất | Claude | Task 1a–1c (2026-11-21), 2a–2b (2026-11-22) đã nhận; spec đồng bộ 2026-11-22; PR #14 đã merge vào `main` 2026-11-22, CI đạt. Các mục chưa kiểm: xem spec và log. | [log](forum-reports.log.md) |
-| Dashboard stats | [spec](dashboard-stats.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau cùng, khi các module nguồn đã code. | — |
+| Dashboard stats | [spec](dashboard-stats.md) | Đang thực hiện | Claude | Task 1 (API số liệu) đã nhận 2026-11-23; tiếp: wireframe Task 2. Xem log. | [log](dashboard-stats.log.md) |
 | Messaging | [spec](messaging.md) | Hoàn tất | Claude | Task 1a–1c, 2a–2b đã nhận và spec đồng bộ 2026-11-22; Task 2b nhận không qua Codex review. PR #15 đã merge vào `main` 2026-11-23, CI đạt. Các mục chưa kiểm: xem spec và log. | [log](messaging.log.md) |
-| Deploy readiness | — (làn nhẹ, [brief](deploy-readiness.md), 2026-11-23) | Đang thực hiện | Claude | Task 1 (chia code frontend) và Task 2 (cấu hình Railway + RUNBOOK) đã nhận 2026-11-23; chờ deploy thật khi có tên miền. Làm trước Dashboard stats. | [log](deploy-readiness.log.md) |
+| Deploy readiness | — (làn nhẹ, [brief](deploy-readiness.md), 2026-11-23) | Hoàn tất | Claude | Task 1–2 đã nhận, brief đồng bộ; PR #16 đã merge vào `main` 2026-11-23, CI đạt. Còn deploy thật theo RUNBOOK khi có tên miền. Làm trước Dashboard stats. | [log](deploy-readiness.log.md) |
 | AI docs optimization | — (làn nhẹ, [brief](ai-docs-optimization.brief.md), 2026-11-13) | Đang thực hiện | Claude | Câu hỏi mục 5 đã trả lời 2026-11-14. Làm một phần (`PLAN.md` ≤ 60 dòng, có `DECISIONS.md`); còn: rút gọn `PROJECT_CONTEXT.md` (169 dòng), chuyển module xong vào `plans/archive/`, job frontend trong CI. | — |
 
 Đã xong: Author profile (Backend) — [spec](author-profile.md), [log](author-profile.log.md) · UI foundation v2 (shadcn) — [spec](ui-foundation-v2.md), [log](ui-foundation-v2.log.md) · Article flow (2026-11-04, PR #2) — [spec](article-flow.md), [log](article-flow.log.md) · AI assist (2026-11-06, PR #3) — [spec](ai-assist.md), [log](ai-assist.log.md).

@@ -7,7 +7,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Brief: [`deploy-readiness
 - **Task tiếp:** không còn task; người dùng deploy theo RUNBOOK khi có tên miền, lỗi thì gửi log Railway · Giao diện: Không
 - Task 1, Task 2 đã nhận (2026-11-23).
 - Task 2 chưa kiểm trên Railway thật: SPA fallback (`RAILPACK_SPA_OUTPUT_DIR`), IP proxy Railway có nằm trong dải Tomcat tin cậy không (RUNBOOK bước 5.2 có cách xử lý).
-- Nhánh `feature/deploy-readiness` (từ `main`), Task 1 + 2 đã commit cục bộ, chưa push.
+- PR #16 đã merge vào `main` 2026-11-23 (CI `test-server` đạt).
 
 ## Quyết định người dùng chưa có trong spec
 
