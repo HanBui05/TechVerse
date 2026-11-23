@@ -4,22 +4,22 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`dashboard-stats.m
 
 ## Bắt đầu từ đây (cập nhật 2026-11-24)
 
-- **Task tiếp:** đồng bộ spec cuối module (Codex) · Giao diện: Không
+- **Task tiếp:** không còn task; spec đã đồng bộ (2026-11-24). Mở PR khi người dùng yêu cầu · Giao diện: Không
 - Task 1 đã nhận (2026-11-23); Task 2, Task 2b đã nhận (2026-11-24).
 - Task 2 chưa kiểm với API thật (backend người dùng đang chạy bản trước Task 1).
 - Nhánh `feature/dashboard-stats` (từ `main`), Task 1, 2, 2b đã commit cục bộ, chưa push.
 
 ## Quyết định người dùng chưa có trong spec
 
-- **2026-11-23 — Duyệt wireframe Task 2 kèm 5 điều chỉnh (`plans/dashboard-stats.wireframe.md` mục 4):** (1) dùng đúng copy đầy đủ của spec, nhãn dài xuống dòng; (2) khi đang tải lần đầu render ô thật có nhãn, chỉ thay số bằng `Skeleton` (không dùng khung `h-[88px]` cố định), ô cùng hàng cao bằng nhau, số canh đáy (`mt-auto`); (3) bấm “Tải lại” khi đã có số giữ số cũ, nút `disabled` + spinner, không quay về khung chờ, chỉ lượt mới nhất được ghi; (4) bảng doanh thu desktop dùng `<table>` có `th scope` (ô tiêu đề cột kỳ để trống với nhãn `sr-only`), mobile dùng `<dl>`, thiếu một kỳ hoặc một trường tiền thì ẩn đúng hàng/dòng đó; (5) mobile: ô lẻ cuối nhóm chiếm nửa hàng như các ô khác (không `col-span`).
-- 2026-11-24 — Thêm **Task 2b: khu “Phân bổ”** (biểu đồ cột) dưới khu “Số liệu”, giữ nguyên các ô số; dùng số của API hiện có, **không đổi backend** (thay mục “Ngoài phạm vi: biểu đồ” của spec). Admin: thẻ “Nội dung đang công khai theo loại” (cột), “Chia doanh thu” (cột chồng nền tảng/tác giả theo kỳ), “Tài khoản” (tỷ lệ người dùng hoạt động/khóa, tác giả duyệt/đình chỉ/chờ); “Khu vực quản trị” ở cuối trang. Moderator: thẻ “Việc đang chờ theo hàng đợi” (4 hàng đợi + báo cáo chờ xử lý, không gồm nội dung đang ẩn) giữa ô số và thẻ hàng đợi. Dùng **shadcn `chart` (Recharts)** qua `npx shadcn@latest add chart` (đúng D-024), thêm biến `--chart-*` vào `tokens.css` lấy từ tone có sẵn (dark + light). Cần wireframe được duyệt trước khi code.
-- 2026-11-24 — Duyệt wireframe Task 2b (`dashboard-stats.wireframe.md` mục 5); mục 5.5 theo khuyến nghị: thay “Chia doanh thu” bằng thẻ **“Doanh thu 30 ngày qua”** (thanh tỷ lệ tổng thu 30 ngày / toàn thời gian).
+- (không có)
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+
+- 2026-11-24 — Codex: đã đưa các quyết định duyệt wireframe Task 2, bổ sung Task 2b và duyệt wireframe Task 2b vào spec.
 
 ### 2026-11-24 — Task 2b: khu “Phân bổ” (biểu đồ)
 - Người dùng nhận Task 2b (2026-11-24).
