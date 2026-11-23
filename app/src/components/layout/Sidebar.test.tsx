@@ -237,6 +237,7 @@ it('opens the mobile menu as a sheet and closes it after navigating', async () =
   await userEvent.click(screen.getByRole('button', { name: 'Open menu' }))
   const sheet = screen.getByRole('dialog')
   await userEvent.click(within(sheet).getByRole('link', { name: 'Ngôn ngữ' }))
+  await screen.findByText('Chọn ngôn ngữ hiển thị trên toàn bộ nền tảng') // the lazy page lands before the menu reopens
   expect(screen.queryByRole('dialog')).toBeNull()
   expect(screen.getByRole('button', { name: 'Open menu' })).toBeTruthy()
   await userEvent.click(screen.getByRole('button', { name: 'Open menu' }))

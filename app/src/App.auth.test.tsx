@@ -7,6 +7,8 @@ import App from './App'
 import { getAccessToken, request, setAccessToken } from './services/api/client'
 import { restoreSession } from './services/authService'
 import { isEmail } from './components/auth/AuthLayout'
+// App lazy-loads pages; load them up front so a cold module transform does not eat the waitFor budget.
+import.meta.glob(['./pages/**/*.tsx', '!./pages/**/*.test.tsx'], { eager: true })
 
 describe('isEmail', () => {
   it.each(['user@example..com', 'user@.example.com', 'user@example.com.', 'user@-example.com', 'user name@example.com', 'user..name@example.com', '.user@example.com', 'user.@example.com', `${'a'.repeat(65)}@example.com`, 'user@', '@example.com', `${'a'.repeat(243)}@example.com`])('rejects %s', value => expect(isEmail(value)).toBe(false))
@@ -59,9 +61,9 @@ afterEach(() => {
 })
 
 describe('Google signup and login', () => {
-  it.each(['/register', '/login'])('%s starts browser OAuth at the configured backend', (path) => {
+  it.each(['/register', '/login'])('%s starts browser OAuth at the configured backend', async (path) => {
     renderApp(path)
-    const link = screen.getByRole('link', { name: /Google/ })
+    const link = await screen.findByRole('link', { name: /Google/ })
     const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '')
     expect(link.getAttribute('href')).toBe(`${apiBase}/oauth2/authorization/google`)
     expect(link.getAttribute('target')).not.toBe('_blank')
@@ -575,7 +577,7 @@ describe('Forgot password', () => {
     })
     const user = userEvent.setup()
     renderApp('/forgot-password')
-    await user.type(screen.getByLabelText('Email'), 'learner@example.com')
+    await user.type(await screen.findByLabelText('Email'), 'learner@example.com')
     await user.click(screen.getByRole('button', { name: lang === 'vi' ? 'Tiếp tục' : 'Continue' }))
     expect((await screen.findByRole('alert')).textContent).toBe(message)
     expectNoBackendMessage()

@@ -2,12 +2,12 @@
 
 Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`messaging.md`](messaging.md). Ba mục đầu và “Nhật ký phiên” được hook SessionStart tự nạp sau `/clear`; giữ chúng ngắn.
 
-## Bắt đầu từ đây (cập nhật 2026-11-22)
+## Bắt đầu từ đây (cập nhật 2026-11-23)
 
-- **Task tiếp:** Cuối module — nhờ Codex đồng bộ spec một lần (skill `codex-workflow` mục 3) · Giao diện: Không
-- Task 1a, 1b, 1c, 2a, 2b đã nhận (2026-11-22). Task 2b nhận không qua Codex review (người dùng chọn commit luôn).
-- Spec chốt 2026-11-22 sau 2 vòng Codex phản biện; lịch sử ở `messaging.review.md`.
-- Nhánh `feature/messaging` (tách từ `main` sau PR #14).
+- **Task tiếp:** (không có — module hoàn tất) · Giao diện: Không
+- Task 1a–1c, 2a–2b đã nhận (2026-11-22); spec đồng bộ 2026-11-22.
+- PR #15 đã merge vào `main` 2026-11-23 (`a9cba72`), CI đạt sau khi sửa test `seq` (xem nhật ký).
+- Các mục chưa kiểm còn hiệu lực: xem các `[ ]` trong spec.
 
 ## Quyết định người dùng chưa có trong spec
 

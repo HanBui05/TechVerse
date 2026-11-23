@@ -2,8 +2,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
-import App from './App'
+import App, { loadPage } from './App'
 import { setAccessToken } from './services/api/client'
+// App lazy-loads pages; load them up front so a cold module transform does not eat the waitFor budget.
+import.meta.glob(['./pages/**/*.tsx', '!./pages/**/*.test.tsx'], { eager: true })
 
 const fetchMock = vi.fn<typeof fetch>()
 let roles: string[]
@@ -55,4 +57,19 @@ it('sends a learner or an author away from both course moderation routes', async
     expect(courseCalls()).toHaveLength(0)
     cleanup()
   }
+})
+
+it('reloads once when a page chunk fails to load (stale deploy), then lets the next failure through', async () => {
+  const Page = () => null
+  const reload = vi.fn()
+  const missing = () => Promise.reject(new TypeError('Failed to fetch dynamically imported module'))
+  let settled = false
+  void loadPage(missing, 'Page', reload).finally(() => { settled = true })
+  await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1))
+  expect(settled).toBe(false)
+  await expect(loadPage(missing, 'Page', reload)).rejects.toThrow('dynamically imported')
+  expect(reload).toHaveBeenCalledTimes(1)
+  expect((await loadPage(async () => ({ Page }), 'Page', reload)).default).toBe(Page)
+  void loadPage(missing, 'Page', reload)
+  await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(2))
 })

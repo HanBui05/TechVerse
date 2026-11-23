@@ -5,6 +5,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import App from './App'
 import { getAccessToken, setAccessToken } from './services/api/client'
+// App lazy-loads pages; load them up front so a cold module transform does not eat the waitFor budget.
+import.meta.glob(['./pages/**/*.tsx', '!./pages/**/*.test.tsx'], { eager: true })
 
 const fetchMock = vi.fn<typeof fetch>()
 const author = { id: 'approved-user', fullName: 'Approved Author', email: 'author@example.com', roles: ['LEARNER', 'AUTHOR'], phoneNumber: null, dateOfBirth: null, avatarUrl: null, createdAt: '', updatedAt: '' }

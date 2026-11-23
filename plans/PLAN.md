@@ -2,7 +2,7 @@
 
 Mỗi module có đúng một spec `plans/<module>.md` và một nhật ký `plans/<module>.log.md`. [`PROJECT_CONTEXT.md`](../docs/PROJECT_CONTEXT.md): Codex đọc mục 1–3, 5 trước mọi task; Claude chỉ đọc khi task đụng tới. Lý do các quyết định cũ: [`DECISIONS.md`](DECISIONS.md).
 
-Module đang làm: [messaging](messaging.md)
+Module đang làm: [deploy-readiness](deploy-readiness.md)
 
 <!-- Hook SessionStart của Claude đọc đúng dòng trên (dạng `[slug](slug.md)`, “—” nếu không có) để tự nạp mục “Bắt đầu từ đây” của log. Đổi module thì sửa dòng này. -->
 
@@ -10,15 +10,15 @@ Module đang làm: [messaging](messaging.md)
 
 | Module | Spec | Trạng thái | Người thực hiện | Task hiện tại | Nhật ký |
 |---|---|---|---|---|---|
-| Workflow bootstrap | [spec](workflow-bootstrap.md) | Chờ người dùng nhận kết quả | Codex (pilot) | Chờ người dùng nhận (2026-11-02). | [log](workflow-bootstrap.log.md) |
-| UI foundation | [spec](ui-foundation.md) | Đang review | Claude | Task 1–3 đã code; chờ review Task 3. | [log](ui-foundation.log.md) |
-| Auth login/register | [spec](auth-login-register.md) | Chờ người dùng nhận kết quả | Claude | Review vòng 2 đạt; chờ người dùng nhận. | [log](auth-login-register.log.md) |
-| User profile | [spec](user-profile.md) | Chờ người dùng nhận kết quả | Claude | Code + review vòng 1 xong; chờ người dùng nhận. | [log](user-profile.log.md) |
-| Sidebar cleanup | — (làn nhẹ, D-012) | Chờ người dùng nhận kết quả | Claude | Code + review vòng 1 xong; chờ người dùng nhận. | [log](sidebar-cleanup.log.md) |
-| Seed LF fix | — (làn nhẹ) | Đang review | Claude | Verify đạt; chờ review vòng 1. | — |
-| Forgot password UI | — (làn nhẹ, 2026-11-02) | Đang review | Claude | Code + test đạt; chờ review. | — |
-| Docs + `.claude` restructure | — (làn nhẹ, 2026-11-02) | Chờ người dùng nhận kết quả | Claude | Xong; chờ người dùng nhận. | — |
-| Sidebar + login redirect | — (làn nhẹ, 2026-11-02) | Chờ người dùng nhận kết quả | Claude | Xong; chờ người dùng nhận. | — |
+| Workflow bootstrap | [spec](workflow-bootstrap.md) | Hoàn tất | Codex (pilot) | Người dùng chốt hoàn tất 2026-11-23 (code đã ở `main`). | [log](workflow-bootstrap.log.md) |
+| UI foundation | [spec](ui-foundation.md) | Hoàn tất | Claude | Người dùng chốt hoàn tất 2026-11-23 (code đã ở `main`, thay bởi UI foundation v2). | [log](ui-foundation.log.md) |
+| Auth login/register | [spec](auth-login-register.md) | Hoàn tất | Claude | Người dùng chốt hoàn tất 2026-11-23 (code đã ở `main`). | [log](auth-login-register.log.md) |
+| User profile | [spec](user-profile.md) | Hoàn tất | Claude | Người dùng chốt hoàn tất 2026-11-23 (code đã ở `main`). | [log](user-profile.log.md) |
+| Sidebar cleanup | — (làn nhẹ, D-012) | Hoàn tất | Claude | Người dùng chốt hoàn tất 2026-11-23 (code đã ở `main`). | [log](sidebar-cleanup.log.md) |
+| Seed LF fix | — (làn nhẹ) | Hoàn tất | Claude | Người dùng chốt hoàn tất 2026-11-23 (`.gitattributes` đã ở `main`). | — |
+| Forgot password UI | — (làn nhẹ, 2026-11-02) | Hoàn tất | Claude | Người dùng chốt hoàn tất 2026-11-23 (`ForgotPasswordPage` đã ở `main`). | — |
+| Docs + `.claude` restructure | — (làn nhẹ, 2026-11-02) | Hoàn tất | Claude | Người dùng chốt hoàn tất 2026-11-23. | — |
+| Sidebar + login redirect | — (làn nhẹ, 2026-11-02) | Hoàn tất | Claude | Người dùng chốt hoàn tất 2026-11-23 (code đã ở `main`). | — |
 | Course free | [spec](course-free.md) | Hoàn tất | Claude | Mọi task đã nhận (2026-11-10), spec đồng bộ 2026-11-14; PR #4 đã merge vào `main` 2026-11-15, CI đạt. Các mục chưa kiểm: xem log. | [log](course-free.log.md) |
 | Course payment | [spec](course-payment.md) | Hoàn tất | Claude | Task 1a–1d, 2a–2c đã nhận; spec đồng bộ 2026-11-16. Các mục chưa kiểm và lỗi test có sẵn: xem spec và log. | [log](course-payment.log.md) |
 | Author payout | [spec](author-payout.md) | Hoàn tất | Claude | Task 1a–1d, 2a–2c đã nhận; spec đồng bộ 2026-11-16. Các mục chưa kiểm và review Task 1b: xem spec và log. | [log](author-payout.log.md) |
@@ -28,8 +28,9 @@ Module đang làm: [messaging](messaging.md)
 | Interview practice | [spec](interview-practice.md) | Hoàn tất | Claude | Task 1a–1c (2026-11-20), 2a–2b (2026-11-21) đã nhận; spec đồng bộ 2026-11-21; PR #13 đã merge vào `main` 2026-11-21, CI đạt. Các mục chưa kiểm: xem spec và log. | [log](interview-practice.log.md) |
 | Forum & reports | [spec](forum-reports.md) | Hoàn tất | Claude | Task 1a–1c (2026-11-21), 2a–2b (2026-11-22) đã nhận; spec đồng bộ 2026-11-22; PR #14 đã merge vào `main` 2026-11-22, CI đạt. Các mục chưa kiểm: xem spec và log. | [log](forum-reports.log.md) |
 | Dashboard stats | [spec](dashboard-stats.md) | Đã chốt | Claude | Spec chốt 2026-11-15 (6 câu hỏi mở giữ mặc định; Codex phản biện một vòng); làm sau cùng, khi các module nguồn đã code. | — |
-| Messaging | [spec](messaging.md) | Hoàn tất | Claude | Task 1a–1c, 2a–2b đã nhận và spec đồng bộ 2026-11-22; Task 2b nhận không qua Codex review. Các mục chưa kiểm: xem spec và log. | [log](messaging.log.md) |
-| AI docs optimization | — (làn nhẹ, [brief](ai-docs-optimization.brief.md), 2026-11-13) | Đang thực hiện | Claude | Đang làm; chờ người dùng trả lời câu hỏi mục 5 của brief. | — |
+| Messaging | [spec](messaging.md) | Hoàn tất | Claude | Task 1a–1c, 2a–2b đã nhận và spec đồng bộ 2026-11-22; Task 2b nhận không qua Codex review. PR #15 đã merge vào `main` 2026-11-23, CI đạt. Các mục chưa kiểm: xem spec và log. | [log](messaging.log.md) |
+| Deploy readiness | — (làn nhẹ, [brief](deploy-readiness.md), 2026-11-23) | Đang thực hiện | Claude | Task 1 (chia code frontend) và Task 2 (cấu hình Railway + RUNBOOK) đã nhận 2026-11-23; chờ deploy thật khi có tên miền. Làm trước Dashboard stats. | [log](deploy-readiness.log.md) |
+| AI docs optimization | — (làn nhẹ, [brief](ai-docs-optimization.brief.md), 2026-11-13) | Đang thực hiện | Claude | Câu hỏi mục 5 đã trả lời 2026-11-14. Làm một phần (`PLAN.md` ≤ 60 dòng, có `DECISIONS.md`); còn: rút gọn `PROJECT_CONTEXT.md` (169 dòng), chuyển module xong vào `plans/archive/`, job frontend trong CI. | — |
 
 Đã xong: Author profile (Backend) — [spec](author-profile.md), [log](author-profile.log.md) · UI foundation v2 (shadcn) — [spec](ui-foundation-v2.md), [log](ui-foundation-v2.log.md) · Article flow (2026-11-04, PR #2) — [spec](article-flow.md), [log](article-flow.log.md) · AI assist (2026-11-06, PR #3) — [spec](ai-assist.md), [log](ai-assist.log.md).
 
