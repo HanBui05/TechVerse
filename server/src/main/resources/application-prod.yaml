@@ -7,9 +7,33 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+      username: ${REDIS_USERNAME:}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL:false}
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: openid, profile, email
+            # Fixed URI only if the proxy is not trusted and {baseUrl} comes out as http.
+            redirect-uri: "${GOOGLE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}"
+
+sendgrid:
+  api-key: ${SENDGRID_API_KEY}
+  from-email: ${SENDGRID_FROM_EMAIL}
+  from-name: ${SENDGRID_FROM_NAME}
+  template-id:
+    register-success: ${SENDGRID_TEMPLATE_REGISTER_SUCCESS}
 
 jwt:
   refresh-cookie-secure: true
 
 server:
-  port: ${SERVER_PORT}
+  # Hosting platforms inject PORT; SERVER_PORT still wins (Compose sets it).
+  port: ${SERVER_PORT:${PORT:8080}}
+  # Behind the platform's TLS proxy: trust X-Forwarded-* from private-range proxies so {baseUrl} is https and getRemoteAddr is the client.
+  forward-headers-strategy: native
