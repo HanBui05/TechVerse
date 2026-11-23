@@ -4,9 +4,10 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Brief: [`deploy-readiness
 
 ## Bắt đầu từ đây (cập nhật 2026-11-23)
 
-- **Task tiếp:** Task 2 — cấu hình triển khai Railway + RUNBOOK (làm được ngay, tên miền để chỗ trống `<tên-miền>`; không cần tài khoản) · Giao diện: Không
-- Task 1 đã nhận (2026-11-23).
-- Nhánh `feature/deploy-readiness` (từ `main`), Task 1 đã commit cục bộ, chưa push.
+- **Task tiếp:** không còn task; người dùng deploy theo RUNBOOK khi có tên miền, lỗi thì gửi log Railway · Giao diện: Không
+- Task 1, Task 2 đã nhận (2026-11-23).
+- Task 2 chưa kiểm trên Railway thật: SPA fallback (`RAILPACK_SPA_OUTPUT_DIR`), IP proxy Railway có nằm trong dải Tomcat tin cậy không (RUNBOOK bước 5.2 có cách xử lý).
+- Nhánh `feature/deploy-readiness` (từ `main`), Task 1 + 2 đã commit cục bộ, chưa push.
 
 ## Quyết định người dùng chưa có trong spec
 
@@ -19,6 +20,14 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Brief: [`deploy-readiness
 - (không có)
 
 ## Nhật ký phiên
+### 2026-11-23 — Task 2: cấu hình triển khai Railway
+- Người dùng nhận Task 2 (2026-11-23).
+- `application-prod.yaml`: Redis `username`/`password`/`ssl.enabled` qua `REDIS_USERNAME`/`REDIS_PASSWORD`/`REDIS_SSL`; **thêm Google OAuth + SendGrid** (trước chỉ có ở dev → prod không khởi động được); `server.port: ${SERVER_PORT:${PORT:8080}}`; `forward-headers-strategy: native` (để `{baseUrl}` OAuth ra https và `getRemoteAddr` của rate limit quên mật khẩu là IP khách, không phải proxy). Lệch khác spec: 3 mục sau không có trong brief, cần để deploy chạy.
+- RUNBOOK mục “Triển khai lên Railway”: dịch vụ, biến `server`/`app` (biến tham chiếu `${{Postgres.PGHOST}}`…), Custom Domain CNAME+TXT, Google redirect URI, kiểm sau deploy, chi phí/bật-tắt/khởi động lạnh/heap. `JWT_SECRET_KEY` phải Base64; prod không tạo admin → SQL gán vai trò.
+- Sửa nhầm: tưởng khóa JWT trong `.env` không phải Base64, thực ra Git Bash đổi giá trị có `/` thành đường dẫn Windows khi truyền cho `java` (thêm `:`). Theo yêu cầu người dùng đã thay khóa `.env` bằng khóa Base64 mới (khóa cũ không giữ lại; phiên đăng nhập cũ mất nếu backend đọc `.env`) và sửa mẫu `.env.example` (mẫu cũ có `-`, thật sự không phải Base64). Smoke lại với `MSYS2_ENV_CONV_EXCL='*'` và khóa `.env`: `Started ServerApplication in 46.596 seconds`, `redirect_uri` https.
+- Kiểm: `bootJar` + `java -jar` profile prod cổng 8090, DB/Redis local, khóa JWT tạm → `Started ServerApplication in 47.975 seconds`; `/oauth2/authorization/google` với `X-Forwarded-Proto: https` → `redirect_uri=https://api.example.test/login/oauth2/code/google`. Không chạy test Gradle (chỉ đổi YAML prod, test dùng profile `test`).
+- Codex vòng 1: [P1] RUNBOOK gợi ý `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES=.*` → client giả `X-Forwarded-For` né rate limit; [P2] Cloudflare `Full` không xác thực origin. Đúng cả hai → dự phòng đổi thành biến `GOOGLE_REDIRECT_URI` (prod YAML, mặc định `{baseUrl}`), cấm `.*` trong RUNBOOK; Cloudflare để DNS only. Smoke lại: không đặt biến → `redirect_uri=https://api.example.test/…` (51,8 s); đặt biến → `https://api.fixed.test/…`.
+- Codex vòng 2 (adversarial, phần sửa): approve, không có phát hiện.
 ### 2026-11-23 — Task 1: chia code frontend theo trang
 - Người dùng nhận Task 1 (2026-11-23), chọn không sửa góp ý vòng 2.
 - `App.tsx`: 58 trang qua `lazyPage` (`React.lazy` + export theo tên), `Suspense` quanh `Routes`, fallback `Skeleton`; `HomePage`, `AuthLayout` nạp ngay. Chunk `index-*.js` 1.873,40 kB (gzip 518,12) → 443,05 kB (gzip 139,03); lớn nhất khi vào trang chủ giờ là `index` (MarkdownContent 336 kB tách chunk riêng).

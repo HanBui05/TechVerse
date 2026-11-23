@@ -34,6 +34,7 @@ Luật vùng: [`frontend.md`](.claude/rules/frontend.md) (`app/**`), [`backend.m
 ## Bài học vận hành
 
 - Script tạm (kể cả Python ngắn): Write vào scratchpad rồi chạy file; không nhúng heredoc trong Bash (vỡ cú pháp). Node/Python trên Windows dùng `D:/...`, không `/d/...`. File CRLF: sửa bằng Edit hoặc Python `newline=''`; không `sed -i`.
+- Git Bash đổi biến môi trường có `/` (vd. khóa Base64) thành đường dẫn Windows khi chạy `java`/exe Windows: thêm `MSYS2_ENV_CONV_EXCL='*'` trước lệnh.
 - Windows: lệnh có cờ `/X` (`taskkill /PID`) chạy bằng PowerShell; PowerShell ghi file không BOM. `npm` luôn `cd` đường dẫn tuyệt đối vào `app/`.
 - Kết luận khi dò thư viện/spike: ghi ngay vào rule vùng hoặc log trước khi code tiếp. Việc sửa lỗi người dùng giao thẳng (không spec) ghi vào log module đang làm.
 - Gom các lệnh đọc/kiểm độc lập vào một lượt; lệnh lâu chạy nền. Tắt server do Claude bật.
