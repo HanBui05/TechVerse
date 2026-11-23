@@ -98,7 +98,8 @@ describe('Google signup and login', () => {
     successfulGoogleSession()
     renderApp('/auth/callback?status=success')
     await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/'))
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    // Only the session bootstrap counts: the signed-in shell also loads message counts.
+    expect(fetchMock.mock.calls.filter(([url]) => /\/api\/v1\/(auth|users)\//.test(String(url)))).toHaveLength(2)
     expect(new Headers(fetchMock.mock.calls[0][1]?.headers).has('Authorization')).toBe(false)
     expect(screen.getAllByText('Google Learner').length).toBeGreaterThan(0)
   })
@@ -109,7 +110,7 @@ describe('Google signup and login', () => {
     successfulGoogleSession()
     renderApp(`${path}?status=success`)
     await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/'))
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls.filter(([url]) => /\/api\/v1\/(auth|users)\//.test(String(url)))).toHaveLength(2)
     expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/auth\/refresh$/)
   })
 
