@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`dashboard-stats.m
 
 ## Bắt đầu từ đây (cập nhật 2026-11-23)
 
-- **Task tiếp:** viết wireframe Task 2 (cổng 2026-11-16 thắng câu “không làm wireframe” của spec) · Giao diện: Không
+- **Task tiếp:** viết wireframe Task 2 (cổng 2026-11-16 thắng câu “không làm wireframe” của spec) · Giao diện: Có
 - Task 1 đã nhận (2026-11-23).
 - Nhánh `feature/dashboard-stats` (từ `main`), Task 1 đã commit cục bộ, chưa push.
 
