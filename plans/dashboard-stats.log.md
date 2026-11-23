@@ -4,10 +4,10 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`dashboard-stats.m
 
 ## Bắt đầu từ đây (cập nhật 2026-11-24)
 
-- **Task tiếp:** không còn task; spec đã đồng bộ (2026-11-24). Mở PR khi người dùng yêu cầu · Giao diện: Không
+- **Task tiếp:** không còn task; PR #17 đã mở (2026-11-24), chờ CI và người dùng merge · Giao diện: Không
 - Task 1 đã nhận (2026-11-23); Task 2, Task 2b đã nhận (2026-11-24).
 - Task 2 chưa kiểm với API thật (backend người dùng đang chạy bản trước Task 1).
-- Nhánh `feature/dashboard-stats` (từ `main`), Task 1, 2, 2b đã commit cục bộ, chưa push.
+- Nhánh `feature/dashboard-stats` (từ `main`), đã push, PR #17 vào `main`.
 
 ## Quyết định người dùng chưa có trong spec
 
