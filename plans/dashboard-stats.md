@@ -2,9 +2,9 @@
 
 Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex chỉ ghi vào mục “Phản hồi”.
 
-**Mục tiêu:** Trang tổng quan của Admin và Moderator hiện số đếm thật thay cho khung tĩnh: Admin thấy người dùng, tác giả, nội dung đang công khai, đơn cần xử lý và doanh thu; Moderator thấy số việc đang chờ ở từng hàng đợi. Chỉ là số đếm, không biểu đồ.
+**Mục tiêu:** Trang tổng quan của Admin và Moderator hiện số đếm thật thay cho khung tĩnh: Admin thấy người dùng, tác giả, nội dung đang công khai, đơn cần xử lý và doanh thu; Moderator thấy số việc đang chờ ở từng hàng đợi. Số liệu được trình bày bằng các ô và biểu đồ phân bổ.
 **Làn:** Đầy đủ · **Rủi ro:** thường. Review vòng 1 dùng `review`.
-**Thứ tự:** Task 1 (Backend) → Task 2 (Giao diện). **Làm sau cùng**, khi các module khác đã code xong (T6 A).
+**Thứ tự:** Task 1 (Backend) → Task 2 (Giao diện) → Task 2b (biểu đồ). **Làm sau cùng**, khi các module khác đã code xong (T6 A).
 **Nguồn quyết định:** câu T6 trong [`roadmap.questions.md`](roadmap.questions.md) (người dùng trả lời 2026-11-14): chỉ số đếm, làm cuối; doanh thu chỉ Admin thấy, Moderator chỉ thấy số đếm nội dung/báo cáo.
 
 ## Hiện trạng đã đối chiếu (2026-11-15)
@@ -17,11 +17,12 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 - `server/src/main/java/com/techverse/server/{controller,dto,repository,service}/**/*Dashboard*.java` (tạo); `configuration/SecurityConfiguration.java` (thêm matcher authenticated cho `/api/v1/moderator/dashboard`; đường Admin đã được matcher hiện có phủ).
 - `server/src/test/java/com/techverse/server/dashboard/{DashboardControllerTest,DashboardServiceTest,DashboardIntegrationTest}.java` (tạo).
+- `app/src/components/DashboardCharts.tsx`, `app/src/components/ui/chart.tsx`, `app/src/styles/tokens.css`, `app/package.json`, `app/package-lock.json`; [wireframe](dashboard-stats.wireframe.md).
 - `app/src/pages/Admin/AdminDashboardPage.tsx`, `app/src/pages/Moderator/ModeratorDashboardPage.tsx` và test của hai trang; `app/src/{types/dashboard.ts,services/dashboardService.ts,data/dashboardI18n.ts}` và test (tạo).
 
 ## Ngoài phạm vi
 
-- Biểu đồ, số liệu theo thời gian, xuất file, lọc theo khoảng ngày tùy chọn, so sánh kỳ trước.
+- Số liệu theo thời gian, xuất file, lọc theo khoảng ngày tùy chọn, so sánh kỳ trước.
 - Trang tổng quan cho Tác giả và người học (doanh thu tác giả đã có ở `course-payment`).
 - Bộ nhớ đệm, bảng tổng hợp, tác vụ nền tính trước; số liệu AI (lượt dùng, chi phí); số liệu nhắn tin.
 - Sửa repository, entity hay API của module khác.
@@ -30,6 +31,7 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 - Được đổi API: Có (thêm hai endpoint chỉ đọc). Được đổi DB: Không. Giữ nguyên hành vi hiện tại: Có — các ô lối tắt của Admin và thẻ hàng đợi của Moderator vẫn còn; `ArticleStats` trên trang hàng đợi bài viết không đổi.
 - **Mỗi chỉ số chỉ được đưa vào khi phần nguồn của nó đã có trong code lúc làm task này**, xét theo từng task nguồn chứ không theo tên module (bảng “Phụ thuộc” ở Task 1). Phần nguồn chưa có: **bỏ hẳn khóa đó khỏi JSON** (không `null`, không 0) và bỏ ô khỏi giao diện; một nhóm không còn trường nào thì bỏ cả nhóm; ghi “Lệch khác spec” trong log. Số 0 chỉ có nghĩa là “có nguồn và đếm được 0”.
+- Mọi nguồn đã có khi thực hiện Task 1 nên API trả đủ các khóa; không triển khai logic bỏ nhóm rỗng (xem log).
 - Điều kiện đếm lấy từ code của phần nguồn khi đã có, đối chiếu với spec đã chốt của phần đó; hai bên khác nhau thì theo code và ghi lệch vào log.
 - Mỗi endpoint tính bằng các câu đếm đọc trực tiếp, không lưu đệm. Thời điểm tham chiếu cho các mốc “7 ngày”, “30 ngày” lấy **một lần** cho cả request. **Không hứa các số là một ảnh chụp nhất quán**: mỗi số đúng tại lúc câu đếm của nó chạy, các số có thể lệch nhau vài thao tác khi dữ liệu đang đổi.
 - Truy vấn đếm viết riêng trong `DashboardRepository` (SQL chỉ đọc), không thêm phương thức vào repository của module khác.
@@ -73,16 +75,15 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** `DashboardController` (hai endpoint), `DashboardService` (kiểm role + người dùng hoạt động, gom kết quả), `DashboardRepository` (các câu đếm SQL), DTO phản hồi (trường vắng không được serialize thành `null`); `SecurityConfiguration` thêm matcher authenticated cho `/api/v1/moderator/dashboard` (hiện chỉ có matcher cho hàng đợi bài viết/khóa học, còn lại bị từ chối mặc định).
-- **Phần dùng lại:** cách kiểm role ADMIN/MODERATOR và người dùng hoạt động của các service quản trị hiện có; điều kiện lọc của từng hàng đợi và quy tắc doanh thu lấy **từ code của module nguồn lúc làm task** (đọc truy vấn của chúng rồi viết câu đếm tương đương), không suy lại từ spec.
-- **Bẫy đã biết:** `SUM` trên tập rỗng trả NULL — phải quy về 0; `SUM(bigint)` của PostgreSQL trả `numeric`; cộng tiền từ `order_items` mà nối thêm bảng giao dịch sẽ nhân đôi; điều kiện công khai của bài viết và khóa học dùng trục công khai riêng của hai module đó, không phải cột `status` thô; DTO của Moderator là kiểu riêng, không dùng chung kiểu với Admin rồi bỏ trường; điều kiện lọc của module nguồn đổi sau này thì số ở đây lệch — có hai ca đối chiếu với API hàng đợi để bắt lệch (xem “Xong khi”), không đối chiếu từng chỉ số.
+Task đã nhận; chi tiết thực hiện và kiểm chứng xem [log](dashboard-stats.log.md).
 
 ### Xong khi
 
-- [ ] `DashboardControllerTest` (`@WebMvcTest`): 401 thiếu token và token sai, mapping 403; **toàn bộ cấu trúc JSON của Moderator đúng bằng hai nhóm `pending`, `reports` với các khóa con đã liệt kê, không có khóa nào khác ở bất kỳ tầng nào**; trường vắng không xuất hiện dưới dạng `null`; tham số query lạ bị bỏ qua.
-- [ ] `DashboardServiceTest` (unit, repository giả): một câu đếm lỗi → cả request lỗi, không trả dở dang; tổng tiền vượt 2^53 − 1 → lỗi; `SUM` rỗng → 0; nhóm không còn trường nào thì bị bỏ.
-- [ ] `DashboardIntegrationTest` (DB/security thật, gộp theo luồng): (1) cơ sở dữ liệu trống → mọi số bằng 0; (2) dữ liệu mẫu cho các chỉ số đã có nguồn → số đúng, gồm ca tác giả bị đình chỉ vẫn được tính ở `content`, biên 7 ngày của người dùng mới, và `pending.articles`, `pending.courses` bằng `totalElements` của hai API hàng đợi tương ứng; (3) doanh thu (khi `course-payment` 1c đã có): đơn hết hạn chưa trả không tính, một đơn `PAID` có hai giao dịch tính một lần, hai đơn `PAID` cho cùng khóa tính cả hai, `platformAmount + authorAmount = grossAmount`, biên 30 ngày theo `paid_at`, đơn đã báo chuyển khoản ở `PENDING`/`EXPIRED` được tính còn `PAID` thì không; (4) quyền: chỉ MODERATOR gọi API Admin → 403, ADMIN đơn vai gọi API Moderator → 403, tài khoản hai vai gọi được cả hai, tài khoản bị khóa → 403 ở cả hai.
-- [ ] Chạy ba lớp trên (cần Docker); full backend do CI chạy khi mở PR.
+- [x] `DashboardControllerTest` (`@WebMvcTest`): 401 thiếu token và token sai, mapping 403; **toàn bộ cấu trúc JSON của Moderator đúng bằng hai nhóm `pending`, `reports` với các khóa con đã liệt kê, không có khóa nào khác ở bất kỳ tầng nào**; trường vắng không xuất hiện dưới dạng `null`; tham số query lạ bị bỏ qua.
+- [x] `DashboardServiceTest` (unit, repository giả): một câu đếm lỗi → cả request lỗi, không trả dở dang; tổng tiền vượt 2^53 − 1 → lỗi; `SUM` rỗng → 0.
+- [ ] Nhóm không còn trường nào thì bị bỏ (chưa kiểm — xem log; mọi nguồn đã có, không triển khai logic này).
+- [x] `DashboardIntegrationTest` (DB/security thật, gộp theo luồng): (1) cơ sở dữ liệu trống → mọi số bằng 0; (2) dữ liệu mẫu cho các chỉ số đã có nguồn → số đúng, gồm ca tác giả bị đình chỉ vẫn được tính ở `content`, biên 7 ngày của người dùng mới, và `pending.articles`, `pending.courses` bằng `totalElements` của hai API hàng đợi tương ứng; (3) doanh thu (khi `course-payment` 1c đã có): đơn hết hạn chưa trả không tính, một đơn `PAID` có hai giao dịch tính một lần, hai đơn `PAID` cho cùng khóa tính cả hai, `platformAmount + authorAmount = grossAmount`, biên 30 ngày theo `paid_at`, đơn đã báo chuyển khoản ở `PENDING`/`EXPIRED` được tính còn `PAID` thì không; (4) quyền: chỉ MODERATOR gọi API Admin → 403, ADMIN đơn vai gọi API Moderator → 403, tài khoản hai vai gọi được cả hai, tài khoản bị khóa → 403 ở cả hai.
+- [x] Chạy ba lớp trên (cần Docker); full backend do CI chạy khi mở PR.
 
 ## Task 2 — Giao diện hai trang tổng quan
 
@@ -95,19 +96,19 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 - Liên kết **không cam kết lọc sẵn** ngoài bộ lọc mặc định của trang đích (các trang hồ sơ tác giả và hàng đợi hiện giữ bộ lọc trong state, không đọc URL, và mặc định vốn là “chờ duyệt”/“chờ xử lý”). Chỉ thêm tham số lọc vào liên kết khi trang đích lúc đó đã đọc bộ lọc từ URL (ví dụ tab của `/moderator/reports`); không sửa trang đích trong task này. Liên kết chỉ hiện khi route đích đã tồn tại; chưa có thì ô là ô thường.
 - Một lần gọi API cho mỗi trang khi mở; có nút “Tải lại”. Đang tải hiện khung chờ; lỗi thì các ô hiện “—” kèm thông báo và nút thử lại, phần còn lại của trang vẫn dùng được.
 - Ô của module không có trong phản hồi API thì không hiển thị.
-- Không có wireframe riêng: dùng lại kiểu ô số liệu và bố cục lưới đang có ở hai trang này.
+- Wireframe được duyệt trước khi code: [`dashboard-stats.wireframe.md`](dashboard-stats.wireframe.md), gồm 5 điều chỉnh tại mục 4: copy đầy đủ; skeleton chỉ thay số; tải lại giữ số cũ và chỉ nhận lượt mới nhất; doanh thu desktop dùng bảng có `th scope`, mobile dùng `dl`, ẩn đúng kỳ/trường thiếu; ô lẻ mobile chiếm nửa hàng.
+- Liên kết đơn hàng: `/admin/orders?status=ALL&transferReported=true` và `/admin/orders?status=ALL&needsReconciliation=true`; `ALL` không giấu đơn hết hạn và có thể bao gồm đơn đã xử lý.
 
 ### Kế hoạch thực thi
 
-- **File cần đụng:** `AdminDashboardPage.tsx`, `ModeratorDashboardPage.tsx` và hai file test cùng tên; `dashboardService.ts` + `dashboardService.test.ts`, `types/dashboard.ts`, `dashboardI18n.ts` + test. Không sửa `ArticleStats.tsx` (trang hàng đợi bài viết và khóa học đang dùng).
-- **Phần dùng lại:** kiểu ô của `ArticleStats` (`TONE_TILE`, định dạng số theo ngôn ngữ, “—” khi không có số); `Card`, `Skeleton`, `Button`; hàm định dạng tiền VND của `course-payment` nếu đã có, nếu chưa thì `Intl.NumberFormat` với `vi-VN`/`en-US`.
-- **Bẫy đã biết:** `ModeratorDashboardPage` đang lấy số bài chờ từ `useArticleStats` cho câu ở thẻ hàng đợi — đổi sang số từ API mới và bỏ năm lần gọi cũ ở trang này (không xóa `ArticleStats`, trang hàng đợi vẫn dùng); test hiện có của hai trang phải sửa theo; chỉ lần gọi mới nhất được ghi kết quả khi bấm “Tải lại” nhiều lần; không assert class Tailwind.
+Task đã nhận; chi tiết thực hiện và kiểm chứng xem [log](dashboard-stats.log.md).
 
 ### Copy vi/en
 
 | Khóa / trạng thái | vi | en |
 |---|---|---|
 | Tiêu đề khu | Số liệu | Overview |
+| Tiêu đề nhóm | Người dùng / Tác giả / Nội dung đang công khai / Đơn hàng và doanh thu | Users / Authors / Public content / Orders and revenue |
 | Người dùng | Tổng người dùng / Đang hoạt động / Đã khóa / Mới trong 7 ngày | Total users / Active / Locked / New in 7 days |
 | Tác giả | Tác giả đã duyệt / Tác giả bị đình chỉ / Hồ sơ chờ duyệt | Approved authors / Suspended authors / Pending applications |
 | Nội dung | Bài viết / Khóa học / Bộ bài tập / Câu hỏi phỏng vấn / Câu hỏi diễn đàn | Articles / Courses / Exercise sets / Interview questions / Forum questions |
@@ -123,11 +124,33 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 ### Xong khi
 
-- [ ] `dashboardI18n`/định dạng (unit): số và tiền theo vi/en, “—” khi thiếu số.
-- [ ] `AdminDashboardPage.test.tsx`: trạng thái đang tải; hiện đủ số từ API (gồm số đơn ở doanh thu); liên kết của ba ô việc cần xử lý; lỗi tải → “—” + thử lại thành công; thiếu một nhóm và thiếu một trường con trong phản hồi → không có ô đó; bấm “Tải lại” hai lần, phản hồi cũ về sau không ghi đè phản hồi mới; đổi ngôn ngữ; các ô lối tắt cũ vẫn còn.
-- [ ] `ModeratorDashboardPage.test.tsx`: hiện số chờ của từng hàng đợi và liên kết; **không có** chữ hay số doanh thu; lỗi tải; chỉ gọi một API số liệu (không còn năm lần gọi cũ).
-- [ ] Chạy đúng các file test trên và `dashboardService.test.ts` theo cách chạy test theo file của `frontend.md`, cùng `npm run build` trong `app/` (không chạy full `npm test`).
-- [ ] Kiểm bằng mắt: dark/light × desktop/mobile, một lượt; ghi log.
+- [x] `dashboardI18n`/định dạng (unit): số và tiền theo vi/en, “—” khi thiếu số.
+- [x] `AdminDashboardPage.test.tsx`: trạng thái đang tải; hiện đủ số từ API (gồm số đơn ở doanh thu); liên kết của ba ô việc cần xử lý; lỗi tải → “—” + thử lại thành công; thiếu một nhóm và thiếu một trường con trong phản hồi → không có ô đó; bấm “Tải lại” hai lần, phản hồi cũ về sau không ghi đè phản hồi mới; đổi ngôn ngữ; các ô lối tắt cũ vẫn còn.
+- [x] `ModeratorDashboardPage.test.tsx`: hiện số chờ của từng hàng đợi và liên kết; **không có** chữ hay số doanh thu; lỗi tải; chỉ gọi một API số liệu (không còn năm lần gọi cũ).
+- [x] Chạy đúng các file test trên và `dashboardService.test.ts` theo cách chạy test theo file của `frontend.md`, cùng `npm run build` trong `app/` (không chạy full `npm test`).
+- [x] Kiểm bằng mắt: dark/light × desktop/mobile, một lượt; ghi log.
+
+- [ ] Kiểm hai trang với API dashboard thật (chưa kiểm — xem log).
+
+## Task 2b — Khu “Phân bổ”
+
+**Giai đoạn:** Giao diện · **Đổi giao diện:** Có · Đã nhận 2026-11-24. [Wireframe mục 5](dashboard-stats.wireframe.md) đã duyệt.
+
+### Phạm vi
+
+- Dùng response dashboard đã tải, không gọi thêm API hay đổi backend; giữ ô số. Admin đặt “Phân bổ” trước “Khu vực quản trị”: nội dung công khai theo loại (cột ngang giảm dần), tài khoản (thanh chia người dùng và tác giả), doanh thu 30 ngày qua (tỷ lệ tổng thu 30 ngày / toàn thời gian). Moderator đặt biểu đồ việc chờ theo hàng đợi và báo cáo trước thẻ hàng đợi; không gồm nội dung đang ẩn.
+- Dùng shadcn `chart` trên Recharts. Thêm `--chart-1..3` trong `tokens.css`: light `#1d4ed8`, `#92400e`, `#7e22ce`; dark `#3b82f6`, `#d97706`, `#a855f7`. Chi tiết bố cục, copy, trạng thái, dữ liệu thiếu và khả năng truy cập theo wireframe mục 5.
+- Tải lần đầu dùng skeleton; tải lại giữ dữ liệu cũ; lỗi ẩn khu biểu đồ; thiếu trường thì bỏ hàng/thanh tương ứng; tất cả giá trị bằng 0 hiện “Chưa có dữ liệu.” / “No data yet.”.
+
+### Kế hoạch thực thi
+
+Task đã nhận; chi tiết thực hiện và kiểm chứng xem [log](dashboard-stats.log.md).
+
+### Xong khi
+
+- [x] Chạy test các file dashboard và test UI liên quan cùng `npm run build`; ba ca mới cho biểu đồ (kết quả xem log).
+- [x] Kiểm mắt dark/light × desktop/mobile: nhãn và số không bị cắt, không cuộn ngang; kiểm thêm nhãn số lớn và số 0 (dùng dữ liệu mẫu, xem log).
+- [ ] Kiểm biểu đồ với số thật từ API (chưa kiểm — xem log).
 
 ## Câu hỏi mở cần người dùng chốt
 
@@ -137,5 +160,5 @@ Trạng thái: xem [`PLAN.md`](PLAN.md). Spec do Claude viết (D-030); Codex ch
 
 **Người dùng chốt spec 2026-11-15** (Task 1, Task 2). Lịch sử phản biện: [`dashboard-stats.review.md`](dashboard-stats.review.md).
 
-- Sáu câu hỏi mở giữ mặc định: danh sách chỉ số của Admin như thân spec; doanh thu hai mốc (toàn thời gian, 30 ngày qua); Moderator chỉ thấy số hàng đợi, báo cáo và nội dung đang ẩn; không biểu đồ, không lưu đệm, có nút “Tải lại”; không làm wireframe riêng; module chưa có thì bỏ ô, không hiện số 0.
+- Quyết định ban đầu được cập nhật: có wireframe được duyệt và Task 2b biểu đồ theo quyết định 2026-11-23–24; không lưu đệm, có nút “Tải lại”; nguồn chưa có thì bỏ ô, không hiện số 0.
 - Phần Claude sửa thân spec sau vòng 1 chưa qua Codex soát vòng 2.
