@@ -82,3 +82,20 @@ it('shows "—" and an error alert with Retry when the request fails, and recove
   expect(await screen.findByText('4 bài đang chờ duyệt.')).toBeTruthy()
   expect(screen.queryByRole('alert')).toBeNull()
 })
+
+it('charts pending work by queue, largest first, without hidden content, and hides the chart on error', async () => {
+  let fail = false
+  vi.stubGlobal('fetch', vi.fn(async () => (fail ? json(null, 500, 'INTERNAL_ERROR') : json(FULL_MOD))))
+  setAccessToken('mod-token')
+  const user = userEvent.setup()
+
+  render(<MemoryRouter><ModeratorDashboardPage language="vi" /></MemoryRouter>)
+
+  const chart = await screen.findByRole('img', { name: /^Việc đang chờ theo hàng đợi:/ })
+  expect(chart.getAttribute('aria-label')).toBe('Việc đang chờ theo hàng đợi: Câu hỏi phỏng vấn 7, Bộ bài tập 5, Bài viết 4, Báo cáo 3, Khóa học 2')
+
+  fail = true
+  await user.click(screen.getByRole('button', { name: 'Tải lại' }))
+  await screen.findByRole('alert')
+  expect(screen.queryByRole('img', { name: /^Việc đang chờ theo hàng đợi/ })).toBeNull()
+})

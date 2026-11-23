@@ -17,6 +17,7 @@ import { dashboardText } from '../../data/dashboardI18n'
 import { dashboard } from '../../services/dashboardService'
 import type { Language } from '../../types/preferences'
 import { DashboardStatTile, useDashboardData, type StatTileItem } from '../Admin/AdminDashboardPage'
+import { ChartCard, RankedBars } from '@/components/DashboardCharts'
 
 const touch = 'pointer-coarse:min-h-11 pointer-coarse:min-w-11'
 
@@ -79,6 +80,15 @@ export function ModeratorDashboardPage({ language }: { language: Language }) {
   ]
 
   const visibleTiles = showPlaceholder ? tiles : tiles.filter(item => typeof item.value === 'number')
+  // Pending work only: hidden content is not a queue waiting for a decision.
+  const queueRows = [
+    { key: 'articles', label: dt('articles'), value: data?.pending?.articles },
+    { key: 'courses', label: dt('courses'), value: data?.pending?.courses },
+    { key: 'exercises', label: dt('exerciseSets'), value: data?.pending?.exerciseSets },
+    { key: 'interviews', label: dt('interviewQuestions'), value: data?.pending?.interviewQuestions },
+    { key: 'reports', label: dt('reportsShort'), value: data?.reports?.open },
+  ]
+  const showQueueChart = !error && (initialLoading || (!showPlaceholder && queueRows.some(row => typeof row.value === 'number')))
   const pendingArticles = typeof data?.pending?.articles === 'number' ? data.pending.articles : null
 
   return (
@@ -129,6 +139,12 @@ export function ModeratorDashboardPage({ language }: { language: Language }) {
             />
           ))}
         </section>
+      )}
+
+      {showQueueChart && (
+        <ChartCard title={dt('pendingByQueue')} hint={dt('pendingByQueueHint')} loading={initialLoading}>
+          <RankedBars title={dt('pendingByQueue')} rows={queueRows} language={language} noData={dt('noData')} />
+        </ChartCard>
       )}
 
       <Card className="flex-row flex-wrap items-center gap-4 rounded-xl p-5">

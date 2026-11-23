@@ -58,6 +58,21 @@ const COPY = {
   openReports: { vi: 'Báo cáo chờ xử lý', en: 'Open reports' },
   hiddenContent: { vi: 'Nội dung đang ẩn', en: 'Hidden content' },
 
+  // Breakdown charts (Task 2b)
+  breakdown: { vi: 'Phân bổ', en: 'Breakdown' },
+  contentByType: { vi: 'Nội dung đang công khai theo loại', en: 'Public content by type' },
+  contentByTypeHint: { vi: 'Số mục đang công khai của từng loại', en: 'Public items of each type' },
+  accounts: { vi: 'Tài khoản', en: 'Accounts' },
+  approvedShort: { vi: 'Đã duyệt', en: 'Approved' },
+  suspendedShort: { vi: 'Bị đình chỉ', en: 'Suspended' },
+  pendingShort: { vi: 'Chờ duyệt', en: 'Pending' },
+  revenue30: { vi: 'Doanh thu 30 ngày qua', en: 'Revenue in the last 30 days' },
+  revenue30Hint: { vi: 'So với tổng thu toàn thời gian', en: 'Compared with all-time gross' },
+  pendingByQueue: { vi: 'Việc đang chờ theo hàng đợi', en: 'Pending work by queue' },
+  pendingByQueueHint: { vi: 'Số mục đang chờ ở từng hàng đợi', en: 'Items waiting in each queue' },
+  reportsShort: { vi: 'Báo cáo', en: 'Reports' },
+  noData: { vi: 'Chưa có dữ liệu.', en: 'No data yet.' },
+
   // Actions & states
   refresh: { vi: 'Tải lại', en: 'Refresh' },
   retry: { vi: 'Thử lại', en: 'Retry' },

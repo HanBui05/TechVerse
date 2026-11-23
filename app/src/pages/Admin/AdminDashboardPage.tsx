@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { ChartCard, Meter, RankedBars, SplitBar } from '@/components/DashboardCharts'
 import { dashboardText, formatCount, formatMoney } from '../../data/dashboardI18n'
 import { managementText } from '../../data/managementI18n'
 import { dashboard } from '../../services/dashboardService'
@@ -243,6 +244,25 @@ export function AdminDashboardPage({ language = 'vi' }: { language?: Language } 
   const showRevenueCard = visiblePeriods.length > 0 && visibleRevenueCols.length > 0
   const showOrdersRevenueGroup = visibleOrders.length > 0 || showRevenueCard
 
+  // Breakdown (Task 2b): drawn from the same response; a split needs every one of its parts.
+  const showContentChart = !showPlaceholder && contentTiles.some(tile => typeof tile.value === 'number')
+  const allNumbers = (rows: { value: number | undefined }[]) => rows.every(row => typeof row.value === 'number')
+  const usersRows = [
+    { key: 'active', label: dt('activeUsers'), value: data?.users?.active },
+    { key: 'locked', label: dt('lockedUsers'), value: data?.users?.locked },
+  ]
+  const authorsRows = [
+    { key: 'approved', label: dt('approvedShort'), value: data?.authors?.approved },
+    { key: 'suspended', label: dt('suspendedShort'), value: data?.authors?.suspended },
+    { key: 'pending', label: dt('pendingShort'), value: data?.authors?.pendingApplications },
+  ]
+  const usersSplit = !showPlaceholder && allNumbers(usersRows) ? usersRows : null
+  const authorsSplit = !showPlaceholder && allNumbers(authorsRows) ? authorsRows : null
+  const showAccounts = Boolean(usersSplit || authorsSplit)
+  const gross30 = data?.revenue?.last30Days?.grossAmount
+  const grossAll = data?.revenue?.allTime?.grossAmount
+  const showMeter = !showPlaceholder && typeof gross30 === 'number' && typeof grossAll === 'number' && grossAll > 0
+
   const renderCell = (period: DashboardRevenuePeriod | undefined, col: { key: RevenueColumnKey; isMoney: boolean }) => {
     if (initialLoading) return <Skeleton data-slot="stat-skeleton" className="ml-auto h-6 w-24 rounded-md" />
     const raw = period?.[col.key]
@@ -443,6 +463,32 @@ export function AdminDashboardPage({ language = 'vi' }: { language?: Language } 
           </div>
         )}
       </section>
+
+      {!error && (initialLoading || showContentChart || showAccounts || showMeter) && (
+        <section aria-labelledby="admin-breakdown" className="flex flex-col gap-4">
+          <h2 id="admin-breakdown" className="text-base font-semibold tracking-tight">{dt('breakdown')}</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {(initialLoading || showContentChart) && (
+              <ChartCard title={dt('contentByType')} hint={dt('contentByTypeHint')} loading={initialLoading} className="xl:row-span-2">
+                <RankedBars title={dt('contentByType')} rows={contentTiles} language={language} noData={dt('noData')} />
+              </ChartCard>
+            )}
+            {(initialLoading || showAccounts) && (
+              <ChartCard title={dt('accounts')} loading={initialLoading}>
+                <div className="flex flex-col gap-5">
+                  {usersSplit && <SplitBar title={dt('groupUsers')} rows={usersSplit} language={language} noData={dt('noData')} />}
+                  {authorsSplit && <SplitBar title={dt('groupAuthors')} rows={authorsSplit} language={language} noData={dt('noData')} />}
+                </div>
+              </ChartCard>
+            )}
+            {(initialLoading || showMeter) && (
+              <ChartCard title={dt('revenue30')} hint={dt('revenue30Hint')} loading={initialLoading}>
+                {showMeter && <Meter title={dt('revenue30')} part={gross30!} whole={grossAll!} format={n => formatMoney(n, language)} language={language} />}
+              </ChartCard>
+            )}
+          </div>
+        </section>
+      )}
 
       <section aria-labelledby="admin-shortcuts" className="flex flex-col gap-4">
         <h2 id="admin-shortcuts" className="text-base font-semibold tracking-tight">{vi ? 'Khu vực quản trị' : 'Admin areas'}</h2>

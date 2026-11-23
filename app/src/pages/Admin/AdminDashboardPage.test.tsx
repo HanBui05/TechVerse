@@ -255,3 +255,52 @@ it('supports English copy and formatting and ignores stale overlapping responses
   await user.click(screen.getByRole('button', { name: 'Refresh' }))
   expect(await screen.findByText('2,500')).toBeTruthy()
 })
+
+it('renders the Breakdown section between the numbers and the admin areas: ranked content, account split, 30-day revenue meter', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => json(FULL_ADMIN)))
+  setAccessToken('admin-token')
+
+  render(<MemoryRouter><AdminDashboardPage language="vi" /></MemoryRouter>)
+
+  const heading = await screen.findByRole('heading', { level: 2, name: 'Phân bổ' })
+  const overview = screen.getByRole('heading', { level: 2, name: 'Số liệu' })
+  const areas = screen.getByRole('heading', { level: 2, name: 'Khu vực quản trị' })
+  expect(overview.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(heading.compareDocumentPosition(areas) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+  // Largest first; every number readable without hovering
+  expect(screen.getByRole('img', { name: 'Nội dung đang công khai theo loại: Câu hỏi diễn đàn 512, Bài viết 342, Câu hỏi phỏng vấn 190, Bộ bài tập 45, Khóa học 28' })).toBeTruthy()
+
+  // Shares use largest remainders so each bar adds up to 100%
+  expect(screen.getByRole('img', { name: 'Người dùng: Đang hoạt động 1.210 (97%), Đã khóa 38 (3%)' })).toBeTruthy()
+  expect(screen.getByRole('img', { name: 'Tác giả: Đã duyệt 86 (93%), Bị đình chỉ 3 (3%), Chờ duyệt 4 (4%)' })).toBeTruthy()
+  expect(screen.getByText('86 (93%)')).toBeTruthy()
+
+  const meter = screen.getByRole('img', { name: /^Doanh thu 30 ngày qua: 15% / })
+  expect(meter).toBeTruthy()
+  expect(screen.getByText(/6\.850\.000.*\/.*45\.600\.000.*· 15%/)).toBeTruthy()
+})
+
+it('hides the Breakdown on error, shows "Chưa có dữ liệu." when a chart is all zero and drops missing rows', async () => {
+  let response = json(null, 500, 'INTERNAL_ERROR')
+  vi.stubGlobal('fetch', vi.fn(async () => response))
+  setAccessToken('admin-token')
+  const user = userEvent.setup()
+
+  render(<MemoryRouter><AdminDashboardPage language="vi" /></MemoryRouter>)
+  await screen.findByRole('alert')
+  expect(screen.queryByRole('heading', { level: 2, name: 'Phân bổ' })).toBeNull()
+
+  response = json({
+    users: { total: 0, active: 0, locked: 0 },
+    content: { articles: 3, courses: 1 },
+    revenue: { allTime: { grossAmount: 0 }, last30Days: { grossAmount: 0 } },
+  } satisfies AdminDashboard)
+  await user.click(screen.getByRole('button', { name: 'Thử lại' }))
+
+  expect(await screen.findByRole('heading', { level: 2, name: 'Phân bổ' })).toBeTruthy()
+  expect(screen.getByRole('img', { name: 'Nội dung đang công khai theo loại: Bài viết 3, Khóa học 1' })).toBeTruthy()
+  expect(screen.getByText('Chưa có dữ liệu.')).toBeTruthy() // users all zero
+  expect(screen.queryByRole('img', { name: /^Tác giả:/ })).toBeNull() // authors missing
+  expect(screen.queryByRole('img', { name: /^Doanh thu 30 ngày qua/ })).toBeNull() // all-time gross is 0
+})
