@@ -4,21 +4,32 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Spec: [`dashboard-stats.m
 
 ## Bắt đầu từ đây (cập nhật 2026-11-24)
 
-- **Task tiếp:** Task 2b (biểu đồ “Phân bổ”, xem quyết định 2026-11-24): bổ sung wireframe rồi dừng chờ duyệt · Giao diện: Có
-- Task 1 đã nhận (2026-11-23); Task 2 đã nhận (2026-11-24).
+- **Task tiếp:** đồng bộ spec cuối module (Codex) · Giao diện: Không
+- Task 1 đã nhận (2026-11-23); Task 2, Task 2b đã nhận (2026-11-24).
 - Task 2 chưa kiểm với API thật (backend người dùng đang chạy bản trước Task 1).
-- Nhánh `feature/dashboard-stats` (từ `main`), Task 1 + 2 đã commit cục bộ, chưa push.
+- Nhánh `feature/dashboard-stats` (từ `main`), Task 1, 2, 2b đã commit cục bộ, chưa push.
 
 ## Quyết định người dùng chưa có trong spec
 
 - **2026-11-23 — Duyệt wireframe Task 2 kèm 5 điều chỉnh (`plans/dashboard-stats.wireframe.md` mục 4):** (1) dùng đúng copy đầy đủ của spec, nhãn dài xuống dòng; (2) khi đang tải lần đầu render ô thật có nhãn, chỉ thay số bằng `Skeleton` (không dùng khung `h-[88px]` cố định), ô cùng hàng cao bằng nhau, số canh đáy (`mt-auto`); (3) bấm “Tải lại” khi đã có số giữ số cũ, nút `disabled` + spinner, không quay về khung chờ, chỉ lượt mới nhất được ghi; (4) bảng doanh thu desktop dùng `<table>` có `th scope` (ô tiêu đề cột kỳ để trống với nhãn `sr-only`), mobile dùng `<dl>`, thiếu một kỳ hoặc một trường tiền thì ẩn đúng hàng/dòng đó; (5) mobile: ô lẻ cuối nhóm chiếm nửa hàng như các ô khác (không `col-span`).
 - 2026-11-24 — Thêm **Task 2b: khu “Phân bổ”** (biểu đồ cột) dưới khu “Số liệu”, giữ nguyên các ô số; dùng số của API hiện có, **không đổi backend** (thay mục “Ngoài phạm vi: biểu đồ” của spec). Admin: thẻ “Nội dung đang công khai theo loại” (cột), “Chia doanh thu” (cột chồng nền tảng/tác giả theo kỳ), “Tài khoản” (tỷ lệ người dùng hoạt động/khóa, tác giả duyệt/đình chỉ/chờ); “Khu vực quản trị” ở cuối trang. Moderator: thẻ “Việc đang chờ theo hàng đợi” (4 hàng đợi + báo cáo chờ xử lý, không gồm nội dung đang ẩn) giữa ô số và thẻ hàng đợi. Dùng **shadcn `chart` (Recharts)** qua `npx shadcn@latest add chart` (đúng D-024), thêm biến `--chart-*` vào `tokens.css` lấy từ tone có sẵn (dark + light). Cần wireframe được duyệt trước khi code.
+- 2026-11-24 — Duyệt wireframe Task 2b (`dashboard-stats.wireframe.md` mục 5); mục 5.5 theo khuyến nghị: thay “Chia doanh thu” bằng thẻ **“Doanh thu 30 ngày qua”** (thanh tỷ lệ tổng thu 30 ngày / toàn thời gian).
 
 ## Câu hỏi mở cho người dùng
 
 - (không có)
 
 ## Nhật ký phiên
+
+### 2026-11-24 — Task 2b: khu “Phân bổ” (biểu đồ)
+- Người dùng nhận Task 2b (2026-11-24).
+- `npx shadcn@latest add chart` (không ghi đè `card.tsx`): thêm `components/ui/chart.tsx` + `recharts` ^3.8.0. `tokens.css`: `--chart-1..3` (light = `--tone-blue/amber/purple-fg`; dark #3b82f6/#d97706/#a855f7) — `validate_palette.js` 5/5 đạt cả hai chế độ; tone dark hiện có quá nhạt nên không dùng được.
+- `components/DashboardCharts.tsx` (hai trang dùng): `RankedBars` (Recharts cột ngang, xếp lớn → nhỏ, số cuối thanh, tooltip), `SplitBar` (thanh chia đoạn + chú thích số/% làm tròn kiểu largest remainder), `Meter`, `ChartCard`. Admin: khu “Phân bổ” giữa “Số liệu” và “Khu vực quản trị”; Moderator: thẻ “Việc đang chờ theo hàng đợi” trước thẻ hàng đợi. Copy mới trong `dashboardI18n.ts`.
+- Test: 3 ca mới (Admin 2, Moderator 1), đỏ đúng lý do rồi xanh. Chạy `npx vitest run` 4 file dashboard + `components/ui/{focus,labels,sidebar}` → 47/47 đạt; `npm run build` đạt (chunk `AdminDashboardPage` 376 kB / gzip 111 kB do Recharts).
+- Kiểm mắt (Playwright MCP, Vite 3000, đăng nhập thật, chặn 2 API dashboard trả dữ liệu mẫu vì backend người dùng vẫn bản trước Task 1): `/admin`, `/moderator` × dark/light × desktop 1440 / điện thoại cảm ứng 390: không cuộn ngang, nhãn trục/số không bị cắt, màu thanh đúng `--chart-1` từng theme, 0 lỗi/cảnh báo console; nhãn trục dài tự xuống dòng ở mobile.
+- Codex vòng 1: [P2] lề phải cố định 44px cắt nhãn số lớn ở thanh dài nhất. Đúng → lề phải tính theo nhãn dài nhất (~7px/ký tự + 16px). Kiểm thêm phát hiện: thanh giá trị 0 mất nhãn số (Recharts bỏ nhãn của thanh rỗng) → `minPointSize={1}`. Kiểm mắt số lớn (1.234.567, 999.999) desktop 1440 + mobile 390 Admin/Moderator: mọi nhãn trong khung (cách mép ≥ 30px), nhãn “0” hiện. Chạy lại 7 file test: 47/47 đạt; build đạt.
+- Codex vòng 2 (adversarial, phần sửa): approve, không có phát hiện.
+- Lệch khác wireframe: không có. Chưa kiểm: số thật từ API (cần khởi động lại backend).
 
 ### 2026-11-23 — Task 2: Giao diện hai trang tổng quan
 - Người dùng nhận Task 2 (2026-11-24).

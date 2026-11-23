@@ -339,3 +339,145 @@ Ký hiệu: `[Nút]` · `[↗ Ô liên kết]` · `●` chấm nhấn (`amber` k
 4. **Bảng doanh thu:** desktop `<table>` có `th scope`, ô tiêu đề cột kỳ để trống với nhãn `sr-only` (không thêm copy `"Kỳ"` hiển thị); mobile `<dl>`; thiếu một kỳ hoặc một trường tiền thì ẩn đúng hàng/dòng đó.
 5. **Mobile:** ô lẻ cuối nhóm chiếm nửa hàng như các ô khác (không `col-span`).
 
+---
+
+## 5. Task 2b — Khu “Phân bổ” (biểu đồ, quyết định người dùng 2026-11-24)
+
+Trạng thái: **Đã duyệt** (2026-11-24; mục 5.5 chọn “Doanh thu 30 ngày qua”). Nguồn: quyết định 2026-11-24 trong [`dashboard-stats.log.md`](dashboard-stats.log.md). Không đổi backend: mọi biểu đồ vẽ từ đúng response `GET /api/v1/admin/dashboard` và `GET /api/v1/moderator/dashboard` mà khu “Số liệu” đã tải (không gọi thêm API).
+
+### 5.1. Nguyên tắc
+
+- **Thư viện:** shadcn `chart` (`npx shadcn@latest add chart`, chạy trên Recharts; sinh `app/src/components/ui/chart.tsx`). Không thêm thư viện nào khác.
+- **Phong cách:** mỗi biểu đồ nằm trong `Card` cùng kiểu ô số liệu (`rounded-xl border-border bg-card p-5`), tiêu đề `text-sm font-semibold`, một dòng phụ `text-xs text-muted-foreground`. Lưới và trục mờ (`--border`, chữ trục `--muted-foreground`), không gradient, không bóng, không hiệu ứng vào.
+- **Dạng biểu đồ (theo hướng dẫn dataviz):** so sánh độ lớn giữa các loại → **cột ngang xếp từ lớn đến nhỏ, một màu**; một tổng chia ≤ 3 phần → **thanh chia đoạn** có chú thích. Không biểu đồ tròn, không hai trục.
+- **Số luôn hiện cạnh thanh** (không phải rê chuột mới thấy); tooltip khi rê/chạm chỉ nhắc lại nhãn + số + phần trăm. Chữ dùng màu chữ (`foreground`/`muted-foreground`), không dùng màu của thanh.
+- **Màu biểu đồ** (biến mới trong `tokens.css`, đã chạy `validate_palette.js`, cả 5 kiểm tra đạt ở cả hai chế độ):
+
+  | Biến | Light (nền `--card` #f9fafb) | Dark (nền `--card` #111827) | Dùng cho |
+  |---|---|---|---|
+  | `--chart-1` | `#1d4ed8` (= `--tone-blue-fg` light) | `#3b82f6` | cột một màu; phần thứ nhất của thanh chia đoạn |
+  | `--chart-2` | `#92400e` (= `--tone-amber-fg` light) | `#d97706` | phần thứ hai |
+  | `--chart-3` | `#7e22ce` (= `--tone-purple-fg` light) | `#a855f7` | phần thứ ba |
+
+  Dark không dùng được `--tone-*-fg` hiện có (quá nhạt: L > 0.8, rơi ra ngoài dải sáng của biểu đồ), nên lấy bậc đậm hơn cùng họ màu. Giữa các đoạn của thanh chia có khe 2px màu nền thẻ.
+- **Bảng thay thế:** các ô số ở khu “Số liệu” phía trên là bản số đầy đủ của từng biểu đồ, nên không thêm nút “xem dạng bảng”.
+
+### 5.2. Trang Admin — vị trí và nội dung
+
+Thứ tự trang: Header → **Số liệu** (giữ nguyên) → **Phân bổ** (mới) → **Khu vực quản trị** (giữ nguyên, cuối trang).
+
+| Thẻ | Dữ liệu | Dạng | Ẩn khi |
+|---|---|---|---|
+| **Nội dung đang công khai theo loại** | `content.*` (5 loại) | Cột ngang, `--chart-1`, xếp lớn → nhỏ, số ở cuối mỗi thanh, trục x từ 0 | thiếu cả nhóm `content`; loại nào thiếu trường thì bỏ hàng đó |
+| **Tài khoản** | `users.active`/`users.locked`; `authors.approved`/`suspended`/`pendingApplications` | Hai thanh chia đoạn xếp dọc trong cùng thẻ: “Người dùng” (2 phần: đang hoạt động `--chart-1`, đã khóa `--chart-2`), “Tác giả” (3 phần: đã duyệt `--chart-1`, bị đình chỉ `--chart-2`, chờ duyệt `--chart-3`); chú thích dưới mỗi thanh: chấm màu + nhãn + số + % | thanh nào thiếu trường cần thiết thì ẩn thanh đó; ẩn thẻ khi không còn thanh nào |
+| **Doanh thu 30 ngày qua** *(đề xuất thay “Chia doanh thu”, xem 5.5)* | `revenue.last30Days.grossAmount` / `revenue.allTime.grossAmount` | Một thanh tiến độ (meter): phần đã tô `--chart-1` là tỷ lệ tổng thu 30 ngày trên tổng thu toàn thời gian; dưới thanh: “6.850.000 ₫ / 9.120.000.000 ₫ · 0,1%” | thiếu một trong hai số, hoặc tổng thu toàn thời gian = 0 |
+
+Desktop ≥ 1280px: lưới 2 cột — “Nội dung theo loại” bên trái chiếm 2 hàng; “Tài khoản” và “Doanh thu 30 ngày qua” xếp chồng bên phải. 768–1279px: 2 cột, mỗi thẻ một ô. < 768px: 1 cột.
+
+```
+│ Phân bổ (h2)                                                                             │
+│ ┌─ Nội dung đang công khai theo loại ──────────┐ ┌─ Tài khoản ───────────────────────────┐│
+│ │ Số mục đang công khai của từng loại          │ │ Người dùng                            ││
+│ │                                              │ │ ███████████████████████████████████▒▒ ││
+│ │ Câu hỏi diễn đàn   ███████████████████  512  │ │ ● Đang hoạt động 1.210 (97%)          ││
+│ │ Bài viết           █████████████        342  │ │ ● Đã khóa 38 (3%)                     ││
+│ │ Câu hỏi phỏng vấn  ███████              190  │ │                                       ││
+│ │ Bộ bài tập         ██                    45  │ │ Tác giả                               ││
+│ │ Khóa học           █                     28  │ │ ██████████████████████████████▒░      ││
+│ │                    0    200   400   600      │ │ ● Đã duyệt 86 (93%) ● Bị đình chỉ 3   ││
+│ │                                              │ │   (3%) ● Chờ duyệt 4 (4%)             ││
+│ │                                              │ └───────────────────────────────────────┘│
+│ │                                              │ ┌─ Doanh thu 30 ngày qua ───────────────┐│
+│ │                                              │ │ So với tổng thu toàn thời gian        ││
+│ │                                              │ │ █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ ││
+│ │                                              │ │ 6.850.000 ₫ / 9.120.000.000 ₫ · 0,1%  ││
+│ └──────────────────────────────────────────────┘ └───────────────────────────────────────┘│
+│                                                                                          │
+│ Khu vực quản trị (h2 — giữ nguyên)                                                       │
+```
+
+Mobile 390px (1 cột, thứ tự: Nội dung theo loại → Tài khoản → Doanh thu 30 ngày qua). Nhãn loại dài ở cột ngang dùng trục y rộng cố định ~40% thẻ và xuống dòng; số vẫn ở cuối thanh, không cuộn ngang:
+
+```
+┌──────────────────────────────────────┐
+│ Phân bổ                              │
+│ ┌─ Nội dung đang công khai theo loại ┐│
+│ │ Câu hỏi diễn   ████████████   512  ││
+│ │ đàn                                ││
+│ │ Bài viết       ████████       342  ││
+│ │ Câu hỏi phỏng  ████           190  ││
+│ │ vấn                                ││
+│ │ Bộ bài tập     █               45  ││
+│ │ Khóa học       ▌               28  ││
+│ └────────────────────────────────────┘│
+│ ┌─ Tài khoản ────────────────────────┐│
+│ │ Người dùng                         ││
+│ │ ████████████████████████████████▒▒ ││
+│ │ ● Đang hoạt động 1.210 (97%)       ││
+│ │ ● Đã khóa 38 (3%)                  ││
+│ │ Tác giả                            ││
+│ │ ███████████████████████████▒░      ││
+│ │ ● Đã duyệt 86 (93%)                ││
+│ │ ● Bị đình chỉ 3 (3%)               ││
+│ │ ● Chờ duyệt 4 (4%)                 ││
+│ └────────────────────────────────────┘│
+│ ┌─ Doanh thu 30 ngày qua ────────────┐│
+│ │ █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ ││
+│ │ 6.850.000 ₫ / 9.120.000.000 ₫      ││
+│ │ 0,1%                               ││
+│ └────────────────────────────────────┘│
+│ Khu vực quản trị …                    │
+```
+
+### 5.3. Trang Moderator
+
+Thứ tự: Header → 6 ô số (giữ nguyên) → **Việc đang chờ theo hàng đợi** (mới) → thẻ “Hàng đợi kiểm duyệt” (giữ nguyên).
+
+- Một thẻ rộng hết trang: cột ngang `--chart-1`, xếp lớn → nhỏ, 5 hàng: Bài viết, Khóa học, Bộ bài tập, Câu hỏi phỏng vấn (từ `pending.*`), Báo cáo chờ xử lý (`reports.open`). Không gồm “Nội dung đang ẩn” (không phải việc chờ làm). Nhãn hàng ngắn (“Bài viết”, “Báo cáo”…); dòng phụ của thẻ: “Số mục đang chờ ở từng hàng đợi”.
+- Hàng nào thiếu trường thì bỏ; không còn hàng nào thì ẩn thẻ.
+
+```
+│ ┌─ Việc đang chờ theo hàng đợi ─────────────────────────────────────────────────────────┐│
+│ │ Số mục đang chờ ở từng hàng đợi                                                       ││
+│ │ Câu hỏi phỏng vấn  ████████████████████████████████████████████████████████████   7  ││
+│ │ Bài viết           ██████████████████████████████████                               4  ││
+│ │ Báo cáo            █████████████████████████                                        3  ││
+│ │ Khóa học           █████████████████                                                2  ││
+│ │ Bộ bài tập                                                                          0  ││
+│ └───────────────────────────────────────────────────────────────────────────────────────┘│
+```
+
+Mobile 390px: cùng thẻ, nhãn trục y ~40% bề ngang, xuống dòng khi dài.
+
+### 5.4. Trạng thái (cả hai trang)
+
+| Trạng thái | Khu “Phân bổ” |
+|---|---|
+| Đang tải lần đầu | Thẻ thật có tiêu đề; thân thẻ là `Skeleton` cao bằng biểu đồ (cột ngang: 5 thanh skeleton; thanh chia đoạn: 1 thanh skeleton mỗi dòng) |
+| Đang “Tải lại” khi đã có số | Giữ biểu đồ cũ, không nháy (giống ô số) |
+| Lỗi tải | **Ẩn cả khu** (tiêu đề h2 lẫn thẻ): thông báo lỗi + “Thử lại” đã ở khu “Số liệu” phía trên; tránh biểu đồ rỗng |
+| Có dữ liệu nhưng mọi giá trị của một biểu đồ = 0 | Thẻ giữ tiêu đề, thân thẻ là chữ `text-sm text-muted-foreground` “Chưa có dữ liệu.” / “No data yet.” thay cho trục rỗng |
+| Thiếu trường | Bỏ đúng hàng/thanh; thẻ hết dữ liệu thì ẩn thẻ; khu hết thẻ thì ẩn cả khu |
+
+### 5.5. Điểm cần người dùng quyết
+
+- **“Chia doanh thu” → đề xuất thay bằng “Doanh thu 30 ngày qua”.** Phần nền tảng giữ luôn bằng tỷ lệ hoa hồng (đang 20%), nên thanh chia nền tảng/tác giả của cả hai kỳ gần như giống hệt nhau (≈ 20/80): biểu đồ không cho thêm thông tin gì ngoài con số đã có trong bảng doanh thu. Thanh tỷ lệ “30 ngày qua / toàn thời gian” cho thấy nhịp bán gần đây — thứ bảng số không cho thấy ngay. Nếu vẫn muốn “Chia doanh thu”: hai thanh chia đoạn 100% (Toàn thời gian, 30 ngày qua), nền tảng `--chart-1`, tác giả `--chart-2`, chú thích số + %.
+
+### 5.6. Copy mới (vi / en)
+
+| Khóa | vi | en |
+|---|---|---|
+| Tiêu đề khu | Phân bổ | Breakdown |
+| Thẻ nội dung | Nội dung đang công khai theo loại · Số mục đang công khai của từng loại | Public content by type · Public items of each type |
+| Thẻ tài khoản | Tài khoản · Người dùng · Tác giả | Accounts · Users · Authors |
+| Thẻ doanh thu | Doanh thu 30 ngày qua · So với tổng thu toàn thời gian | Revenue in the last 30 days · Compared with all-time gross |
+| Thẻ Moderator | Việc đang chờ theo hàng đợi · Số mục đang chờ ở từng hàng đợi | Pending work by queue · Items waiting in each queue |
+| Nhãn hàng Moderator | Bài viết / Khóa học / Bộ bài tập / Câu hỏi phỏng vấn / Báo cáo | Articles / Courses / Exercise sets / Interview questions / Reports |
+| Rỗng | Chưa có dữ liệu. | No data yet. |
+
+Nhãn chú thích của thẻ “Tài khoản” dùng lại copy ô số đã có (Đang hoạt động, Đã khóa, Tác giả đã duyệt → “Đã duyệt”, …).
+
+### 5.7. Kiểm khi code (tóm tắt cho Task 2b)
+
+- Test (Vitest, bám role/label/text): mỗi biểu đồ có tên truy cập (`role="img"` + `aria-label` liệt kê nhãn và số, hoặc `figure` + `figcaption`); thứ tự xếp lớn → nhỏ; % đúng và cộng lại 100% (làm tròn); thiếu trường → bỏ hàng; mọi số 0 → “Chưa có dữ liệu.”; lỗi → không có khu “Phân bổ”; Moderator không có hàng “Nội dung đang ẩn”. Recharts trong jsdom cần giả lập kích thước khung (`ResizeObserver`/kích thước phần tử) — đặt trong file test, không sửa `setup.ts` nếu không bắt buộc.
+- Build + kiểm mắt dark/light × desktop/mobile cảm ứng 390px: không cuộn ngang, nhãn trục không chồng nhau, số không bị cắt.
