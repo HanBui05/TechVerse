@@ -9,19 +9,26 @@ Demo trên internet ổn định, tải trang đủ nhanh, ít lỗi vặt. Khô
 ## Quyết định người dùng
 
 - **2026-11-23 — Hosting cách A:** mua tên miền; frontend ở `<tên-miền>` (Vercel hoặc Railway), backend ở `api.<tên-miền>` trên Railway (Custom Domain + bản ghi CNAME, HTTPS do Railway cấp). Không dùng VPS/nginx. Frontend và API cùng site nên cookie refresh `SameSite=Lax` giữ nguyên, không cần rewrite `/api`.
+- **2026-11-23 — Dịch vụ và chi phí:** dùng Postgres và Redis của Railway, trial 30 ngày; theo dõi Usage và chuyển gói trả phí khi hết trial/credit. Không chạy 24/7: chỉ bật khi code/test và báo cáo môn học (1–2 giờ); dùng App Sleeping hoặc dừng/bật thủ công, lưu ý khởi động lạnh Spring Boot, deploy sát ngày báo cáo và giới hạn heap JVM vì trial có 1 GB RAM/dịch vụ.
+- **2026-11-23 — Review Task 1:** không sửa góp ý vòng 2 về reload về trang nguồn, sau khi đối chiếu mã router và kiểm mắt; màn lỗi tiếng Việt khi chunk lỗi liên tục để task riêng nếu cần.
 
 ## Task 1 — Chia code frontend theo trang · Giao diện: Không
 
-- Hiện trạng (build 2026-11-22): `index-*.js` 1,87 MB; `App.tsx` import thẳng 58 trang. `simple-icons` (5,3 MB) đã nạp lười và chỉ `pages/Admin/TaxonomyPage.tsx` dùng: không đụng.
-- Làm: các trang trong `app/src/App.tsx` nạp bằng `React.lazy` + `Suspense` (fallback dùng component có sẵn, ví dụ `Skeleton`); giữ nguyên route, guard, layout. Không đổi bố cục nên không cần wireframe.
-- Xong khi: chunk JS lớn nhất lúc vào trang chủ giảm rõ (ghi kích thước trước/sau từ `npm run build`); các `App*.test.tsx` đạt (chỉnh test chờ phần tử bằng `findBy…` nếu cần, không đổi kỳ vọng); `npm run build` đạt.
+Đã nhận 2026-11-23: chia trang bằng `React.lazy` + `Suspense`, giữ route, guard và layout; lỗi tải chunk được thử reload một lần. Chi tiết và kết quả: [log Task 1](deploy-readiness.log.md). Test nạp trước trang bằng `import.meta.glob(..., { eager: true })` trong 6 file `App.*.test.tsx`, tăng timeout ca payment lên 15 giây và dùng `findBy` khi cần; không đổi kỳ vọng.
+
+Xong khi:
+- [x] Chunk JS lớn nhất lúc vào trang chủ giảm rõ: `index` 1.873,40 kB → 443,05 kB theo build ghi trong log.
+- [ ] Các `App*.test.tsx` đạt: log ghi 4 lỗi có sẵn trên `main` (xem log).
+- [x] `npm run build` đạt theo log.
 
 ## Task 2 — Cấu hình triển khai · Giao diện: Không
 
-- Làm khi người dùng đã mua tên miền. Đối chiếu code thật trước (tên biến web-url/CORS/OAuth trong `server/src/main/resources/application*.yaml`, `OAuth2Properties`).
-- `application-prod.yaml`: Redis nhận mật khẩu/TLS qua biến môi trường (Railway Redis cần).
-- `docs/RUNBOOK.md`: mục triển khai Railway — biến môi trường frontend (`VITE_API_BASE_URL=https://api.<tên-miền>`) và backend (web-url `https://<tên-miền>`, DB, Redis, khóa dịch vụ ngoài), Custom Domain + CNAME, redirect URI Google OAuth, WebSocket `wss://`, lưu ý gói free ngủ (khởi động lạnh).
-- Xong khi: test/khởi động backend với profile prod không vỡ vì cấu hình mới (kiểm tĩnh nếu không chạy được), RUNBOOK đủ bước để người dùng tự deploy.
+Đã nhận 2026-11-23; deploy thật theo [RUNBOOK](../docs/RUNBOOK.md) khi có tên miền. Cấu hình `prod` bổ sung Redis qua biến môi trường, Google OAuth + SendGrid, `server.port: ${SERVER_PORT:${PORT:8080}}`, `forward-headers-strategy: native` và `GOOGLE_REDIRECT_URI` tùy chọn (mặc định dùng `{baseUrl}`); chi tiết và kết quả: [log Task 2](deploy-readiness.log.md).
+
+Xong khi:
+- [x] Backend khởi động với profile `prod` và cấu hình mới trong kiểm thử cục bộ theo log.
+- [x] RUNBOOK có các bước và biến môi trường để tự deploy Railway theo log.
+- [ ] Kiểm SPA fallback (`RAILPACK_SPA_OUTPUT_DIR`) và dải IP proxy Railway tin cậy của Tomcat trên Railway thật (chưa kiểm — xem log).
 
 ## Ngoài phạm vi
 
