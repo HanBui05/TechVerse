@@ -4,13 +4,15 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Brief: [`deploy-readiness
 
 ## Bắt đầu từ đây (cập nhật 2026-11-23)
 
-- **Task tiếp:** Task 2 — cấu hình triển khai Railway + RUNBOOK, chờ người dùng mua tên miền · Giao diện: Không
+- **Task tiếp:** Task 2 — cấu hình triển khai Railway + RUNBOOK (làm được ngay, tên miền để chỗ trống `<tên-miền>`; không cần tài khoản) · Giao diện: Không
 - Task 1 đã nhận (2026-11-23).
 - Nhánh `feature/deploy-readiness` (từ `main`), Task 1 đã commit cục bộ, chưa push.
 
 ## Quyết định người dùng chưa có trong spec
 
 - 2026-11-23 — Không sửa góp ý Codex vòng 2 Task 1 (reload về trang nguồn): theo khuyến nghị Claude, đã chứng minh bằng mã nguồn router + kiểm mắt. Màn lỗi tiếng Việt khi chunk lỗi mãi: để task riêng nếu cần.
+- 2026-11-23 — Postgres + Redis dùng dịch vụ có sẵn của Railway (không Supabase/Upstash); dùng gói trial Railway 30 ngày. RUNBOOK Task 2 ghi: theo dõi Usage, gói trả phí khi hết trial/credit.
+- 2026-11-23 — Không chạy 24/7: chỉ bật khi code/test và lúc báo cáo môn học (1–2 giờ). RUNBOOK Task 2: bật App Sleeping hoặc dừng/bật dịch vụ thủ công, khởi động lạnh Spring Boot, deploy sát ngày báo cáo (trial 30 ngày), giới hạn heap JVM vì trial 1 GB RAM/dịch vụ.
 
 ## Câu hỏi mở cho người dùng
 
