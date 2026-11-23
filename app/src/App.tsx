@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Link, matchPath, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import { Menu, Moon } from 'lucide-react'
 import { Brand } from './components/brand/Brand'
 import { Sidebar } from './components/layout/Sidebar'
@@ -8,71 +8,93 @@ import { ModeratorSidebar } from './components/layout/ModeratorSidebar'
 import { AdminSidebar } from './components/layout/AdminSidebar'
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { copy } from './data/i18n'
 import { HomePage } from './pages/Home/HomePage'
-import { BlogsPage } from './pages/Blogs/BlogsPage'
-import { BlogDetailPage } from './pages/Blogs/BlogDetailPage'
-import { SavedArticlesPage } from './pages/Blogs/SavedArticlesPage'
-import { CoursesPage } from './pages/Courses/CoursesPage'
-import { CourseOverviewPage } from './pages/Courses/CourseOverviewPage'
-import { CourseLessonPage } from './pages/Courses/CourseLessonPage'
-import { MyCoursesPage } from './pages/Courses/MyCoursesPage'
-import { PracticeListPage } from './pages/Practice/PracticeListPage'
-import { PracticeIntroPage } from './pages/Practice/PracticeIntroPage'
-import { PracticeAttemptPage } from './pages/Practice/PracticeAttemptPage'
-import { PracticeAttemptReviewPage, PracticeHistoryPage } from './pages/Practice/PracticeHistoryPage'
-import { InterviewListPage } from './pages/Interview/InterviewListPage'
-import { InterviewDetailPage } from './pages/Interview/InterviewDetailPage'
-import { ForumListPage } from './pages/Forum/ForumListPage'
-import { ForumQuestionEditorPage } from './pages/Forum/ForumQuestionEditorPage'
-import { ForumQuestionDetailPage } from './pages/Forum/ForumQuestionDetailPage'
-import { MessagesPage } from './pages/Messages/MessagesPage'
-import { OrdersPage } from './pages/Payments/OrdersPage'
-import { OrderDetailPage } from './pages/Payments/OrderDetailPage'
-import { LanguagePage } from './pages/Settings/LanguagePage'
-import { ThemePage } from './pages/Settings/ThemePage'
 import { AuthLayout } from './components/auth/AuthLayout'
-import { LoginPage } from './pages/Login/LoginPage'
-import { GoogleCallbackPage } from './pages/Login/GoogleCallbackPage'
-import { ForgotPasswordPage } from './pages/Login/ForgotPasswordPage'
-import { RegisterPage } from './pages/Register/RegisterPage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
-import { ProfilePage } from './pages/Profile/ProfilePage'
-import { AdminDashboardPage } from './pages/Admin/AdminDashboardPage'
-import { AuthorApplicationsPage } from './pages/Admin/AuthorApplicationsPage'
-import { AdminUsersPage } from './pages/Admin/AdminUsersPage'
-import { TaxonomyPage } from './pages/Admin/TaxonomyPage'
-import { AdminOrdersPage } from './pages/Admin/Orders/AdminOrdersPage'
-import { AdminRevenuePage } from './pages/Admin/Revenue/AdminRevenuePage'
-import { AdminPayoutsPage } from './pages/Admin/Payouts/AdminPayoutsPage'
-import { AdminCommissionPage } from './pages/Admin/Commission/AdminCommissionPage'
-import { AuthorRevenuePage } from './pages/Author/Revenue/AuthorRevenuePage'
-import { AuthorApplyPage } from './pages/Author/AuthorApplyPage'
-import { AuthorBlogsPage } from './pages/Author/AuthorBlogsPage'
-import { ArticleEditorPage } from './pages/Author/ArticleEditorPage'
-import { AiArticlePage } from './pages/Author/AiArticlePage'
-import { AuthorCoursesPage } from './pages/Author/Courses/AuthorCoursesPage'
-import { CourseEditorPage } from './pages/Author/Courses/CourseEditorPage'
-import { CourseStudentsPage } from './pages/Author/Courses/CourseStudentsPage'
-import { AuthorExercisesPage } from './pages/Author/Exercises/AuthorExercisesPage'
-import { ExerciseEditorPage } from './pages/Author/Exercises/ExerciseEditorPage'
-import { AuthorInterviewQuestionsPage } from './pages/Author/InterviewQuestions/AuthorInterviewQuestionsPage'
-import { InterviewQuestionEditorPage } from './pages/Author/InterviewQuestions/InterviewQuestionEditorPage'
-import { ModeratorDashboardPage } from './pages/Moderator/ModeratorDashboardPage'
-import { ModeratorArticlesPage } from './pages/Moderator/ModeratorArticlesPage'
-import { ModeratorArticleDetailPage } from './pages/Moderator/ModeratorArticleDetailPage'
-import { ModeratorCoursesPage } from './pages/Moderator/Courses/ModeratorCoursesPage'
-import { ModeratorCourseDetailPage } from './pages/Moderator/Courses/ModeratorCourseDetailPage'
-import { ModeratorExercisesPage } from './pages/Moderator/Exercises/ModeratorExercisesPage'
-import { ModeratorExerciseDetailPage } from './pages/Moderator/Exercises/ModeratorExerciseDetailPage'
-import { ModeratorInterviewQuestionsPage } from './pages/Moderator/InterviewQuestions/ModeratorInterviewQuestionsPage'
-import { ModeratorInterviewQuestionDetailPage } from './pages/Moderator/InterviewQuestions/ModeratorInterviewQuestionDetailPage'
-import { ModeratorReportsPage } from './pages/Moderator/Reports/ModeratorReportsPage'
 import type { Language, Theme } from './types/preferences'
 import { login as loginWithApi, logout as logoutFromApi, logoutAll as logoutAllFromApi, restoreSession, type GoogleSession } from './services/authService'
 import { setAccessToken } from './services/api/client'
 import { register as registerWithApi } from './services/registerService'
 import { getMyProfile, type UserProfile } from './services/profileService'
+
+// Pages export by name; each lazy page becomes its own chunk, so the first visit loads only the shell and its route.
+function lazyPage<K extends string, M extends Record<K, ComponentType<any>>>(load: () => Promise<M>, name: K) {
+  return lazy(() => loadPage(load, name))
+}
+
+const CHUNK_RELOAD = 'techverse-chunk-reload'
+// A redeploy deletes old chunks: reload once to fetch the new index.html; a second failure in a row (offline) reaches the router error screen.
+export function loadPage<K extends string, M extends Record<K, unknown>>(load: () => Promise<M>, name: K, reload = () => window.location.reload()) {
+  return load().then(module => {
+    sessionStorage.removeItem(CHUNK_RELOAD)
+    return { default: module[name] }
+  }, (error: unknown) => {
+    if (sessionStorage.getItem(CHUNK_RELOAD)) throw error
+    sessionStorage.setItem(CHUNK_RELOAD, '1')
+    reload()
+    return new Promise<never>(() => {})
+  })
+}
+
+const BlogsPage = lazyPage(() => import('./pages/Blogs/BlogsPage'), 'BlogsPage')
+const BlogDetailPage = lazyPage(() => import('./pages/Blogs/BlogDetailPage'), 'BlogDetailPage')
+const SavedArticlesPage = lazyPage(() => import('./pages/Blogs/SavedArticlesPage'), 'SavedArticlesPage')
+const CoursesPage = lazyPage(() => import('./pages/Courses/CoursesPage'), 'CoursesPage')
+const CourseOverviewPage = lazyPage(() => import('./pages/Courses/CourseOverviewPage'), 'CourseOverviewPage')
+const CourseLessonPage = lazyPage(() => import('./pages/Courses/CourseLessonPage'), 'CourseLessonPage')
+const MyCoursesPage = lazyPage(() => import('./pages/Courses/MyCoursesPage'), 'MyCoursesPage')
+const PracticeListPage = lazyPage(() => import('./pages/Practice/PracticeListPage'), 'PracticeListPage')
+const PracticeIntroPage = lazyPage(() => import('./pages/Practice/PracticeIntroPage'), 'PracticeIntroPage')
+const PracticeAttemptPage = lazyPage(() => import('./pages/Practice/PracticeAttemptPage'), 'PracticeAttemptPage')
+const PracticeAttemptReviewPage = lazyPage(() => import('./pages/Practice/PracticeHistoryPage'), 'PracticeAttemptReviewPage')
+const PracticeHistoryPage = lazyPage(() => import('./pages/Practice/PracticeHistoryPage'), 'PracticeHistoryPage')
+const InterviewListPage = lazyPage(() => import('./pages/Interview/InterviewListPage'), 'InterviewListPage')
+const InterviewDetailPage = lazyPage(() => import('./pages/Interview/InterviewDetailPage'), 'InterviewDetailPage')
+const ForumListPage = lazyPage(() => import('./pages/Forum/ForumListPage'), 'ForumListPage')
+const ForumQuestionEditorPage = lazyPage(() => import('./pages/Forum/ForumQuestionEditorPage'), 'ForumQuestionEditorPage')
+const ForumQuestionDetailPage = lazyPage(() => import('./pages/Forum/ForumQuestionDetailPage'), 'ForumQuestionDetailPage')
+const MessagesPage = lazyPage(() => import('./pages/Messages/MessagesPage'), 'MessagesPage')
+const OrdersPage = lazyPage(() => import('./pages/Payments/OrdersPage'), 'OrdersPage')
+const OrderDetailPage = lazyPage(() => import('./pages/Payments/OrderDetailPage'), 'OrderDetailPage')
+const LanguagePage = lazyPage(() => import('./pages/Settings/LanguagePage'), 'LanguagePage')
+const ThemePage = lazyPage(() => import('./pages/Settings/ThemePage'), 'ThemePage')
+const LoginPage = lazyPage(() => import('./pages/Login/LoginPage'), 'LoginPage')
+const GoogleCallbackPage = lazyPage(() => import('./pages/Login/GoogleCallbackPage'), 'GoogleCallbackPage')
+const ForgotPasswordPage = lazyPage(() => import('./pages/Login/ForgotPasswordPage'), 'ForgotPasswordPage')
+const RegisterPage = lazyPage(() => import('./pages/Register/RegisterPage'), 'RegisterPage')
+const PlaceholderPage = lazyPage(() => import('./pages/PlaceholderPage'), 'PlaceholderPage')
+const ProfilePage = lazyPage(() => import('./pages/Profile/ProfilePage'), 'ProfilePage')
+const AdminDashboardPage = lazyPage(() => import('./pages/Admin/AdminDashboardPage'), 'AdminDashboardPage')
+const AuthorApplicationsPage = lazyPage(() => import('./pages/Admin/AuthorApplicationsPage'), 'AuthorApplicationsPage')
+const AdminUsersPage = lazyPage(() => import('./pages/Admin/AdminUsersPage'), 'AdminUsersPage')
+const TaxonomyPage = lazyPage(() => import('./pages/Admin/TaxonomyPage'), 'TaxonomyPage')
+const AdminOrdersPage = lazyPage(() => import('./pages/Admin/Orders/AdminOrdersPage'), 'AdminOrdersPage')
+const AdminRevenuePage = lazyPage(() => import('./pages/Admin/Revenue/AdminRevenuePage'), 'AdminRevenuePage')
+const AdminPayoutsPage = lazyPage(() => import('./pages/Admin/Payouts/AdminPayoutsPage'), 'AdminPayoutsPage')
+const AdminCommissionPage = lazyPage(() => import('./pages/Admin/Commission/AdminCommissionPage'), 'AdminCommissionPage')
+const AuthorRevenuePage = lazyPage(() => import('./pages/Author/Revenue/AuthorRevenuePage'), 'AuthorRevenuePage')
+const AuthorApplyPage = lazyPage(() => import('./pages/Author/AuthorApplyPage'), 'AuthorApplyPage')
+const AuthorBlogsPage = lazyPage(() => import('./pages/Author/AuthorBlogsPage'), 'AuthorBlogsPage')
+const ArticleEditorPage = lazyPage(() => import('./pages/Author/ArticleEditorPage'), 'ArticleEditorPage')
+const AiArticlePage = lazyPage(() => import('./pages/Author/AiArticlePage'), 'AiArticlePage')
+const AuthorCoursesPage = lazyPage(() => import('./pages/Author/Courses/AuthorCoursesPage'), 'AuthorCoursesPage')
+const CourseEditorPage = lazyPage(() => import('./pages/Author/Courses/CourseEditorPage'), 'CourseEditorPage')
+const CourseStudentsPage = lazyPage(() => import('./pages/Author/Courses/CourseStudentsPage'), 'CourseStudentsPage')
+const AuthorExercisesPage = lazyPage(() => import('./pages/Author/Exercises/AuthorExercisesPage'), 'AuthorExercisesPage')
+const ExerciseEditorPage = lazyPage(() => import('./pages/Author/Exercises/ExerciseEditorPage'), 'ExerciseEditorPage')
+const AuthorInterviewQuestionsPage = lazyPage(() => import('./pages/Author/InterviewQuestions/AuthorInterviewQuestionsPage'), 'AuthorInterviewQuestionsPage')
+const InterviewQuestionEditorPage = lazyPage(() => import('./pages/Author/InterviewQuestions/InterviewQuestionEditorPage'), 'InterviewQuestionEditorPage')
+const ModeratorDashboardPage = lazyPage(() => import('./pages/Moderator/ModeratorDashboardPage'), 'ModeratorDashboardPage')
+const ModeratorArticlesPage = lazyPage(() => import('./pages/Moderator/ModeratorArticlesPage'), 'ModeratorArticlesPage')
+const ModeratorArticleDetailPage = lazyPage(() => import('./pages/Moderator/ModeratorArticleDetailPage'), 'ModeratorArticleDetailPage')
+const ModeratorCoursesPage = lazyPage(() => import('./pages/Moderator/Courses/ModeratorCoursesPage'), 'ModeratorCoursesPage')
+const ModeratorCourseDetailPage = lazyPage(() => import('./pages/Moderator/Courses/ModeratorCourseDetailPage'), 'ModeratorCourseDetailPage')
+const ModeratorExercisesPage = lazyPage(() => import('./pages/Moderator/Exercises/ModeratorExercisesPage'), 'ModeratorExercisesPage')
+const ModeratorExerciseDetailPage = lazyPage(() => import('./pages/Moderator/Exercises/ModeratorExerciseDetailPage'), 'ModeratorExerciseDetailPage')
+const ModeratorInterviewQuestionsPage = lazyPage(() => import('./pages/Moderator/InterviewQuestions/ModeratorInterviewQuestionsPage'), 'ModeratorInterviewQuestionsPage')
+const ModeratorInterviewQuestionDetailPage = lazyPage(() => import('./pages/Moderator/InterviewQuestions/ModeratorInterviewQuestionDetailPage'), 'ModeratorInterviewQuestionDetailPage')
+const ModeratorReportsPage = lazyPage(() => import('./pages/Moderator/Reports/ModeratorReportsPage'), 'ModeratorReportsPage')
 
 function AuthRoute({ authenticated, returnTo, children }: { authenticated: boolean; returnTo?: string; children: ReactNode }) {
   return authenticated ? children : <Navigate to="/login" replace state={returnTo ? { returnTo } : undefined} />
@@ -185,7 +207,7 @@ export default function App() {
   const canSave = !managerHome(roles)
   const routes = authenticated && !profile && !isAuthPage
       ? <main className={LOADING_MAIN}><p role="status">Đang đồng bộ phiên đăng nhập và quyền truy cập...</p></main>
-      : <Routes>
+      : <Suspense fallback={<main className={LOADING_MAIN} aria-busy="true"><Skeleton className="h-8 w-full max-w-md" /></main>}><Routes>
       <Route path="/" element={<ReaderRoute roles={roles}><HomePage t={t} /></ReaderRoute>} />
       <Route path="/blogs" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><BlogsPage language={language} canSave={canSave} /></ReaderRoute></AuthRoute>} />
       <Route path="/blogs/:id" element={<AuthRoute authenticated={authenticated}><ReaderRoute roles={roles}><BlogDetailPage language={language} canSave={canSave} /></ReaderRoute></AuthRoute>} />
@@ -256,7 +278,7 @@ export default function App() {
       <Route path="/settings/theme" element={<ThemePage theme={theme} setTheme={setTheme} t={t} />} />
       <Route path="/settings/language" element={<LanguagePage language={language} setLanguage={setLanguage} t={t} />} />
       <Route path="*" element={<PlaceholderPage t={t} language={language} />} />
-    </Routes>
+    </Routes></Suspense>
   // The learning frame has its own top bar and curriculum: no app Sidebar or mobile bar around it.
   const isLearningFrame = Boolean(matchPath('/courses/:id', location.pathname) || matchPath('/courses/:courseId/lessons/:lessonId', location.pathname))
   if (isAuthPage || (isLearningFrame && !roles.some(role => role === 'ADMIN' || role === 'MODERATOR'))) return <div className="min-h-svh">{routes}</div>

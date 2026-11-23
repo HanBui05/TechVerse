@@ -7,6 +7,8 @@ import { LoginPage } from './pages/Login/LoginPage'
 import { copy } from './data/i18n'
 import { setAccessToken } from './services/api/client'
 import { detail, json, options, order, page, summary } from './pages/Courses/fixtures'
+// App lazy-loads pages; load them up front so a cold module transform does not eat the waitFor budget.
+import.meta.glob(['./pages/**/*.tsx', '!./pages/**/*.test.tsx'], { eager: true })
 
 const fetchMock = vi.fn<typeof fetch>()
 let roles: string[] = []
@@ -122,4 +124,4 @@ it('serves the payment pages only to their role: Admin orders/commission, Author
     expect(paymentCalls()).toHaveLength(0)
     cleanup()
   }
-})
+}, 15000) // 16 renders, each waiting for its lazy page chunk

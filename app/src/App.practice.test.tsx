@@ -4,6 +4,8 @@ import { MemoryRouter, useLocation } from 'react-router-dom'
 import App from './App'
 import { setAccessToken } from './services/api/client'
 import { json, page, set } from './pages/Practice/fixtures'
+// App lazy-loads pages; load them up front so a cold module transform does not eat the waitFor budget.
+import.meta.glob(['./pages/**/*.tsx', '!./pages/**/*.test.tsx'], { eager: true })
 
 const fetchMock = vi.fn<typeof fetch>()
 let roles: string[] = []
