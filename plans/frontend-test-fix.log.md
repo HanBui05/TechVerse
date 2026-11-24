@@ -4,7 +4,7 @@ Trạng thái chính thức: xem [`PLAN.md`](PLAN.md). Làn nhẹ, không spec (
 
 ## Bắt đầu từ đây (cập nhật 2026-11-24)
 
-- **Task tiếp:** (không có) — push/PR nhánh `fix/frontend-tests` khi người dùng yêu cầu · Giao diện: Không
+- **Task tiếp:** (không có) — chờ merge PR #18 (`fix/frontend-tests` → `main`, mở 2026-11-24) · Giao diện: Không
 - Task sửa 4 test đã nhận (2026-11-24), đã commit cục bộ trên `fix/frontend-tests`.
 
 ## Bốn ca lỗi (chạy lại 2026-11-24 trên nhánh `feature/dashboard-stats`, giống `main`)
