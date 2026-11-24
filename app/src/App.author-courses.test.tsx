@@ -46,7 +46,8 @@ it('opens the course workspace from the Author menu and the editor from “Tạo
   const user = userEvent.setup()
   renderAt('/author/blogs')
   await screen.findByRole('heading', { name: 'Bài viết của tôi' })
-  await user.click(screen.getByRole('link', { name: 'Khóa học' }))
+  // The main menu also has a "Khóa học" link (the learner catalogue), so pick the Author one.
+  await user.click(screen.getAllByRole('link', { name: 'Khóa học' }).find(link => link.getAttribute('href') === '/author/courses')!)
   expect(await screen.findByRole('heading', { name: 'Khóa học của tôi' })).toBeTruthy()
   await user.click(screen.getByRole('link', { name: /Tạo khóa học đầu tiên/ }))
   expect(await screen.findByRole('heading', { name: 'Tạo khóa học' })).toBeTruthy()
